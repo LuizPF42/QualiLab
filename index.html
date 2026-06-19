@@ -459,12 +459,19 @@ async function importQDPX(file, store, projectId){
     });
   });
 
+  // gera ids novos para evitar colisao com dados ja existentes (ex.: reimportar o mesmo .qdpx),
+  // remapeando todas as referencias internas (parent_id, document_id, category_id, code_id)
+  const docMap = {}, catMap = {}, codeMap = {};
+  newDocs.forEach(d=> docMap[d.id]=uid());
+  newCats.forEach(c=> catMap[c.id]=uid());
+  newCodes.forEach(c=> codeMap[c.id]=uid());
+
   // persiste no projeto ativo, respeitando ordem por causa de FKs
-  for(const d of newDocs) await store.addDocument(projectId, { id:d.id, name:d.name, content:d.content });
-  for(const c of newCats) await store.addCategory(projectId, { id:c.id, name:c.name, kind:c.kind, options:c.options, position:0 });
-  for(const c of newCodes) await store.addCode(projectId, { id:c.id, parent_id:c.parent_id, name:c.name, hue:c.hue, depth:c.depth, position:0 });
-  for(const v of newValues) await store.setDocValue(projectId, v.document_id, v.category_id, v.value);
-  for(const c of newCodings) await store.addCoding(projectId, { id:c.id, document_id:c.document_id, code_id:c.code_id, span_start:c.span_start, span_end:c.span_end, quote:c.quote, author_name:c.author_name });
+  for(const d of newDocs) await store.addDocument(projectId, { id:docMap[d.id], name:d.name, content:d.content });
+  for(const c of newCats) await store.addCategory(projectId, { id:catMap[c.id], name:c.name, kind:c.kind, options:c.options, position:0 });
+  for(const c of newCodes) await store.addCode(projectId, { id:codeMap[c.id], parent_id:c.parent_id?codeMap[c.parent_id]:null, name:c.name, hue:c.hue, depth:c.depth, position:0 });
+  for(const v of newValues){ if(docMap[v.document_id] && catMap[v.category_id]) await store.setDocValue(projectId, docMap[v.document_id], catMap[v.category_id], v.value); }
+  for(const c of newCodings){ if(docMap[c.document_id] && codeMap[c.code_id]) await store.addCoding(projectId, { document_id:docMap[c.document_id], code_id:codeMap[c.code_id], span_start:c.span_start, span_end:c.span_end, quote:c.quote, author_name:c.author_name }); }
 
   return {
     documentos:newDocs.length, categorias:newCats.length, codigos:newCodes.length,
@@ -541,6 +548,13 @@ function SupabaseStore(sb){
     currentUser(){ return user ? { id:user.id, name, email:user.email||null, anon:!!user.is_anonymous } : null; },
     async createProject(pn, display){ name=display||name; const d=must(await sb.rpc('create_project',{p_name:pn,p_display:name})); return { id:d.id, name:d.name, code:d.code }; },
     async joinProject(code, display){ name=display||name; const d=must(await sb.rpc('join_project',{p_code:code,p_display:name})); return { id:d.id, name:d.name, code:d.code }; },
+    // lista os projetos do usuario: tenta a RPC dedicada (com contagens), senao a tabela projects;
+    // null = sem suporte no servidor (o app cai na lista local por conta)
+    async listMyProjects(){
+      try{ const r = await sb.rpc('my_projects'); if(!r.error && Array.isArray(r.data)) return r.data; }catch(e){}
+      try{ const r = await sb.from('projects').select('id,name,code,created_at'); if(!r.error && Array.isArray(r.data)) return r.data; }catch(e){}
+      return null;
+    },
     async listDocuments(pid){ return must(await sb.from('documents').select('*').eq('project_id',pid).order('created_at')); },
     async addDocument(pid,{id,name:dn,content}){ const row={project_id:pid,name:dn,content,created_by:user.id}; if(id) row.id=id; return must(await sb.from('documents').insert(row).select().single()); },
     async deleteDocument(id){ must(await sb.from('documents').delete().eq('id',id)); },
@@ -577,6 +591,14 @@ function SupabaseStore(sb){
     async listCodings(pid,docId){ return must(await sb.from('codings').select('*').eq('project_id',pid).eq('document_id',docId)); },
     async addCoding(pid,co){ return must(await sb.from('codings').insert({project_id:pid,created_by:user.id,author_name:name,...co}).select().single()); },
     async deleteCoding(id){ must(await sb.from('codings').delete().eq('id',id)); },
+    // sincronizacao ao vivo: dispara onChange a cada alteracao em codings/doc_values do projeto
+    realtime(projectId, onChange){
+      const ch = sb.channel('qualilab:'+projectId)
+        .on('postgres_changes', { event:'*', schema:'public', table:'codings',    filter:'project_id=eq.'+projectId }, onChange)
+        .on('postgres_changes', { event:'*', schema:'public', table:'doc_values', filter:'project_id=eq.'+projectId }, onChange)
+        .subscribe();
+      return ()=>{ try{ sb.removeChannel(ch); }catch(e){} };
+    },
   };
 }
 
@@ -589,6 +611,7 @@ function App(){
   const [err, setErr] = useState(null);
   const [project, setProject] = useState(null);
   const [user, setUser] = useState(null);
+  const [myProjects, setMyProjects] = useState([]);
 
   const [docs, setDocs] = useState([]);
   const [activeId, setActiveId] = useState(null);
@@ -613,12 +636,29 @@ function App(){
 
   const activeDoc = docs.find(d=>d.id===activeId) || null;
 
+  /* lista "Meus Projetos" por conta (cache local, complementa o servidor) */
+  const recentKey = (st)=> 'lastro:projects:'+((st||store)?.currentUser?.()?.id || 'anon');
+  const getRecent = (st)=>{ try{ return JSON.parse(localStorage.getItem(recentKey(st))||'[]'); }catch(e){ return []; } };
+  const pushRecent = (p, st)=>{ try{ const k=recentKey(st); const list=getRecent(st).filter(x=>x.code!==p.code);
+    list.unshift({ id:p.id, name:p.name, code:p.code, at:Date.now() }); localStorage.setItem(k, JSON.stringify(list.slice(0,30))); }catch(e){} };
+
+  const loadMyProjects = useCallback(async ()=>{
+    if(!store){ setMyProjects([]); return; }
+    let list = null;
+    try{ list = await store.listMyProjects?.(); }catch(e){}
+    const local = getRecent();
+    if(list && list.length){ const codes=new Set(list.map(p=>p.code)); list=[...list, ...local.filter(p=>!codes.has(p.code))]; }
+    else { list = local; }
+    setMyProjects(list);
+  }, [store, user]); // eslint-disable-line
+  useEffect(()=>{ if(phase==='gate') loadMyProjects(); }, [phase, loadMyProjects]);
+
   /* apos autenticar (sessao existente ou login): reentra no projeto salvo ou vai pro gate */
   async function afterAuth(st, display){
     setUser(st.currentUser());
     const saved = (()=>{ try{return JSON.parse(localStorage.getItem('lastro:project')||'null');}catch(e){return null;} })();
     if(saved && saved.code){
-      try{ const p = await st.joinProject(saved.code, display||st.currentUser()?.name||'anonimo'); setProject(p); setPhase('work'); return; }
+      try{ const p = await st.joinProject(saved.code, display||st.currentUser()?.name||'anonimo'); pushRecent(p, st); setProject(p); setPhase('work'); return; }
       catch(e){ try{localStorage.removeItem('lastro:project');}catch(_){} }
     }
     setPhase('gate');
@@ -676,12 +716,18 @@ function App(){
   }, [store, project, docs]);
   useEffect(()=>{ if(phase==='work' && mainView==='visualizar') loadAll(); }, [phase, mainView, loadAll, codings]);
 
-  /* polling no modo nuvem (ver colaboradores) */
+  /* recarrega a visao atual (doc ativo + visualizacao, se aberta) — usado pelo realtime */
+  const reloadRef = useRef(()=>{});
+  reloadRef.current = ()=>{ loadDoc(); if(mainView==='visualizar') loadAll(); };
+
+  /* sincronizacao ao vivo no modo nuvem (codings/doc_values), com poll lento de reserva */
   useEffect(()=>{
-    if(mode!=='cloud' || phase!=='work' || !activeId) return;
-    const t = setInterval(()=>{ loadDoc(); }, 5000);
-    return ()=>clearInterval(t);
-  }, [mode, phase, activeId, loadDoc]);
+    if(mode!=='cloud' || phase!=='work' || !project || !store || !store.realtime) return;
+    const onChange = ()=>reloadRef.current();
+    const unsub = store.realtime(project.id, onChange);
+    const t = setInterval(onChange, 20000); // reserva: caso a replicacao realtime nao esteja habilitada
+    return ()=>{ if(unsub) unsub(); clearInterval(t); };
+  }, [mode, phase, project, store]);
 
   /* ----- acoes ----- */
   async function onUpload(fileList){
@@ -830,9 +876,10 @@ function App(){
   />`;
 
   if(phase==='gate') return html`<${Gate}
-    err=${err}
-    onCreate=${async (n,disp)=>{ try{ try{localStorage.setItem('lastro:name',disp);}catch(e){} const p=await store.createProject(n,disp); try{localStorage.setItem('lastro:project',JSON.stringify(p));}catch(e){} setUser(store.currentUser()); setProject(p); setPhase('work'); }catch(e){ setErr(String(e.message||e)); } }}
-    onJoin=${async (code,disp)=>{ try{ try{localStorage.setItem('lastro:name',disp);}catch(e){} const p=await store.joinProject(code,disp); try{localStorage.setItem('lastro:project',JSON.stringify(p));}catch(e){} setUser(store.currentUser()); setProject(p); setPhase('work'); }catch(e){ setErr(String(e.message||e)); } }}
+    err=${err} user=${user} projects=${myProjects}
+    onOpen=${async (proj)=>{ try{ const p=await store.joinProject(proj.code, user?.name||''); try{localStorage.setItem('lastro:project',JSON.stringify(p));}catch(e){} pushRecent(p); setProject(p); setPhase('work'); }catch(e){ setErr(String(e.message||e)); } }}
+    onCreate=${async (n,disp)=>{ try{ try{localStorage.setItem('lastro:name',disp);}catch(e){} const p=await store.createProject(n,disp); try{localStorage.setItem('lastro:project',JSON.stringify(p));}catch(e){} pushRecent(p); setUser(store.currentUser()); setProject(p); setPhase('work'); }catch(e){ setErr(String(e.message||e)); } }}
+    onJoin=${async (code,disp)=>{ try{ try{localStorage.setItem('lastro:name',disp);}catch(e){} const p=await store.joinProject(code,disp); try{localStorage.setItem('lastro:project',JSON.stringify(p));}catch(e){} pushRecent(p); setUser(store.currentUser()); setProject(p); setPhase('work'); }catch(e){ setErr(String(e.message||e)); } }}
   />`;
 
   return html`
@@ -1007,15 +1054,32 @@ function Auth({ onSignIn, onSignUp, onAnon, err }){
   </div></div>`;
 }
 
-/* ============ GATE (criar / entrar em projeto) ============ */
-function Gate({ onCreate, onJoin, err }){
-  const [name,setName]=useState('');
+/* ============ GATE (Meus Projetos + criar / entrar em projeto) ============ */
+function Gate({ onCreate, onJoin, onOpen, err, user, projects }){
+  const [name,setName]=useState(user?.name||'');
   const [pname,setPname]=useState('');
   const [code,setCode]=useState('');
-  return html`<div class="modal-bg"><div class="modal">
-    <h2>Projeto coletivo</h2>
-    <p class="hint">Crie um projeto novo ou entre em um existente com o código. Várias pessoas no mesmo código codificam juntas.</p>
+  const list = projects||[];
+  const num = (p)=>{ const bits=[];
+    if(p.n_documents!=null) bits.push(`${p.n_documents} documento(s)`);
+    if(p.n_codings!=null) bits.push(`${p.n_codings} trecho(s)`);
+    return bits.join(' · '); };
+  return html`<div class="modal-bg"><div class="modal" style="max-width:520px">
+    <h2>Meus projetos</h2>
+    <p class="hint">Abra um projeto que você já criou ou participou, ou comece um novo. Vários pesquisadores no mesmo código codificam juntos.</p>
     ${err && html`<div class="banner err" style="margin:0 0 12px">${err}</div>`}
+
+    ${list.length>0 ? html`<div style="margin-bottom:14px;max-height:240px;overflow:auto">
+        ${list.map(p=>html`<div class="docitem" key=${p.code||p.id} style="cursor:pointer" onClick=${()=>onOpen(p)}>
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.name||'(sem nome)'}</div>
+            <div class="meta">código ${p.code}${num(p)?` · ${num(p)}`:''}</div>
+          </div>
+          <button class="btn sm">abrir</button>
+        </div>`)}
+      </div>`
+      : html`<div class="card" style="margin-bottom:14px"><span class="meta">Você ainda não tem projetos. Crie o primeiro abaixo.</span></div>`}
+
     <div class="field"><div class="field-label">Seu nome de exibição</div>
       <input class="txtin" value=${name} onInput=${e=>setName(e.target.value)} placeholder="como você aparece nas codificações" /></div>
     <div class="card" style="margin-bottom:12px">
