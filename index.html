@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>QualiLab — your own lab for qualitative research</title>
+<title>QualiLab — o seu laboratório de pesquisa qualitativa -- your own lab for qualitative research</title>
 <script>
   // captura erros do modulo (import falho, sintaxe, runtime) e mostra na tela
   function showFatal(msg){
@@ -20,7 +20,9 @@
 <style>
   :root{
     --paper:#F4F3EF; --surface:#FFFFFF; --ink:#1A1B1E; --ink-soft:#5C5F66; --ink-faint:#8B8E94;
-    --line:#E5E3DD; --line-soft:#EEECE6; --teal:#0F6E66; --teal-deep:#0B5650; --teal-soft:#E2EFED;
+    --line:#E5E3DD; --line-soft:#EEECE6;
+    /* paleta FGV: azul-marinho (primario) + azul-celeste (acento). nomes --teal* mantidos por compatibilidade */
+    --teal:#00427A; --teal-deep:#002B5C; --teal-soft:#E2ECF5; --sky:#1B9DD9;
     --amber:#8A6D1F; --amber-soft:#F3ECD9; --danger:#B23A3A;
     --serif:"Newsreader","Iowan Old Style",Palatino,Georgia,serif;
     --sans:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
@@ -31,20 +33,20 @@
   html,body{margin:0;height:100%;}
   body{font-family:var(--sans);color:var(--ink);background:var(--paper);font-size:14px;}
   #app{height:100%;}
-  ::selection{background:rgba(15,110,102,.22);}
+  ::selection{background:rgba(0,66,122,.18);}
   button{font-family:var(--sans);cursor:pointer;}
   input,select,textarea{font-family:var(--sans);}
   .scroll::-webkit-scrollbar{width:10px;height:10px;}
   .scroll::-webkit-scrollbar-thumb{background:var(--line);border-radius:8px;}
-  :focus-visible{outline:2px solid var(--teal);outline-offset:2px;}
+  :focus-visible{outline:2px solid var(--sky);outline-offset:2px;}
 
   .app{display:flex;flex-direction:column;height:100vh;}
   header.top{background:var(--surface);border-bottom:1px solid var(--line);padding:8px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
-  .brand{font-family:var(--serif);font-size:22px;font-weight:600;letter-spacing:-.01em;}
+  .brand{font-family:var(--serif);font-size:22px;font-weight:600;letter-spacing:-.01em;color:var(--teal-deep);}
   .tag{font-size:11px;color:var(--ink-faint);letter-spacing:.04em;}
   .grow{flex:1;}
   .pill{font-size:12px;padding:4px 10px;border-radius:99px;border:1px solid var(--line);background:var(--surface);color:var(--ink);display:inline-flex;align-items:center;gap:6px;}
-  .pill.mode-cloud{background:var(--teal-soft);border-color:rgba(15,110,102,.35);color:var(--teal-deep);}
+  .pill.mode-cloud{background:var(--teal-soft);border-color:rgba(0,66,122,.35);color:var(--teal-deep);}
   .btn{font-size:13px;font-weight:500;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:7px 12px;display:inline-flex;align-items:center;gap:7px;}
   .btn:hover{background:var(--paper);}
   .btn.primary{background:var(--teal);color:#fff;border:none;font-weight:600;}
@@ -64,7 +66,7 @@
   .reader{font-family:var(--serif);font-size:17px;line-height:1.8;color:var(--ink);padding:22px 26px;white-space:pre-wrap;}
   .reader span[data-c]{border-radius:3px;padding:0 1px;cursor:default;}
 
-  .toolbar{position:sticky;top:0;z-index:5;background:var(--teal-soft);border-bottom:1px solid rgba(15,110,102,.3);padding:8px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .toolbar{position:sticky;top:0;z-index:5;background:var(--teal-soft);border-bottom:1px solid rgba(0,66,122,.3);padding:8px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
   .toolbar .q{font-family:var(--mono);font-size:12px;color:var(--ink);max-width:50%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
   .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;}
@@ -156,6 +158,26 @@ function codeColor(hue, depth){
   const bgL = Math.min(94, 86 + depth*3);
   return { solid:`hsl(${H} 58% ${solidL}%)`, tint:`hsl(${H} 55% ${bgL}%)`, H };
 }
+
+/* ============ TIPOS DE CATEGORIA ============
+   'single' (token legado) = Multipla Escolha. Os demais tokens sao novos.
+   Os tipos com lista de valores: select, single, checkbox. Caixa de Selecao
+   guarda varios valores num unico campo, separados por CAT_MULTI_SEP. */
+const CAT_KINDS = [
+  { id:'select',   label:'Texto Fechado' },
+  { id:'text',     label:'Texto Aberto' },
+  { id:'date',     label:'Data' },
+  { id:'single',   label:'Múltipla Escolha' },
+  { id:'checkbox', label:'Caixa de Seleção' },
+];
+const CAT_LABEL = (k)=> (CAT_KINDS.find(x=>x.id===k)||{}).label || 'Texto Aberto';
+const CAT_HAS_OPTIONS = (k)=> k==='select' || k==='single' || k==='checkbox';
+const CAT_MULTI_SEP = ' | ';
+// valores especiais guardados dentro de options (sem precisar de colunas novas):
+// NAO_INFO = "o documento nao informa"; OUTROS = habilita um valor livre "Outros".
+const NAO_INFO = 'Não informado';
+const OUTROS = 'Outros';
+const isSpecialOpt = (o)=> o===NAO_INFO || o===OUTROS;
 
 /* ============ EXTRACAO DE TEXTO ============ */
 async function extractText(file){
@@ -262,12 +284,13 @@ async function exportQDPX(docs, cats, allV, codes, allC, project){
   const topCodes = byParent['__root__']||[];
   const codesXml = topCodes.map(c=>buildCodeXml(c, byParent)).join('');
 
-  // variaveis (categorias do documento). se "single", a lista de valores fechados
-  // entra na Description em texto legivel, e o proprio QualiLab consegue reconstrui-la na importacao.
+  // variaveis (categorias do documento). o tipo e a lista de valores entram na
+  // Description em texto legivel; o proprio QualiLab reconstroi tudo na importacao.
   const variablesXml = cats.map(c=>{
-    const desc = c.kind==='single' && (c.options||[]).length
-      ? `<Description>Valores fechados: ${xmlEsc(c.options.join(', '))}</Description>` : '';
-    return `<Variable guid="${stripGuid(c.id)}" name="${xmlEsc(c.name)}" typeOfVariable="Text">${desc}</Variable>`;
+    const bits = [`tipo: ${c.kind||'text'}`];
+    if((c.options||[]).length) bits.push(`valores: ${c.options.join(', ')}`);
+    // sempre Text: nossas datas podem ser parciais (DD/MM/AAAA), invalidas como Date ISO
+    return `<Variable guid="${stripGuid(c.id)}" name="${xmlEsc(c.name)}" typeOfVariable="Text"><Description>${xmlEsc(bits.join(' | '))}</Description></Variable>`;
   }).join('');
 
   // sources (um TextSource por documento, conteudo gravado em sources/<guid>.txt)
@@ -346,16 +369,21 @@ async function importQDPX(file, store, projectId){
     Array.from(codeBook.children).filter(c=>c.tagName==='Code').forEach(c=>{ walkCode(c, null, 0, topHue % HUES.length); topHue++; });
   }
 
-  // variaveis -> categorias (reconstroi "single" se a Description trouxer "Valores fechados: ...")
+  // variaveis -> categorias (reconstroi o tipo a partir de "tipo: ..." e "valores: ..."
+  // na Description; aceita o formato legado "Valores fechados: ...")
   const newCats = [];
+  const KNOWN_KINDS = new Set(CAT_KINDS.map(k=>k.id));
   xml.querySelectorAll('Variables > Variable').forEach(v=>{
     const id = stripGuid(v.getAttribute('guid'));
     const name = v.getAttribute('name') || 'categoria';
     const descEl = v.querySelector('Description');
     const desc = descEl ? descEl.textContent : '';
-    const m = /Valores fechados:\s*(.+)/i.exec(desc||'');
-    if(m){ newCats.push({ id, name, kind:'single', options: m[1].split(',').map(s=>s.trim()).filter(Boolean) }); }
-    else { newCats.push({ id, name, kind:'text', options:[] }); }
+    const mVals = /(?:valores|Valores fechados):\s*(.+)/i.exec(desc||'');
+    const options = mVals ? mVals[1].split(',').map(s=>s.trim()).filter(Boolean) : [];
+    const mTipo = /tipo:\s*([a-z]+)/i.exec(desc||'');
+    let kind = mTipo && KNOWN_KINDS.has(mTipo[1].toLowerCase()) ? mTipo[1].toLowerCase()
+             : (mVals ? 'single' : ((v.getAttribute('typeOfVariable')||'').toLowerCase()==='date' ? 'date' : 'text'));
+    newCats.push({ id, name, kind, options });
   });
 
   // fontes de texto (TextSource e, quando existir, a Representation textual de um PDFSource)
@@ -505,8 +533,18 @@ function SupabaseStore(sb){
       await sb.from('categories').delete().eq('project_id',pid);
     },
     async listCategories(pid){ return must(await sb.from('categories').select('*').eq('project_id',pid).order('position')); },
-    async addCategory(pid,cat){ return must(await sb.from('categories').insert({project_id:pid,...cat}).select().single()); },
-    async updateCategory(id,patch){ must(await sb.from('categories').update(patch).eq('id',id)); },
+    async addCategory(pid,cat){
+      try { return must(await sb.from('categories').insert({project_id:pid,...cat}).select().single()); }
+      catch(e){ if(!/description/i.test(String(e.message||e))) throw e;
+        const { description, ...rest } = cat; // coluna ausente na nuvem: grava sem a descricao
+        return must(await sb.from('categories').insert({project_id:pid,...rest}).select().single()); }
+    },
+    async updateCategory(id,patch){
+      try { must(await sb.from('categories').update(patch).eq('id',id)); }
+      catch(e){ if(!/description/i.test(String(e.message||e))) throw e;
+        const { description, ...rest } = patch;
+        if(Object.keys(rest).length) must(await sb.from('categories').update(rest).eq('id',id)); }
+    },
     async deleteCategory(id){ must(await sb.from('categories').delete().eq('id',id)); },
     async getDocValues(docId){ return must(await sb.from('doc_values').select('*').eq('document_id',docId)); },
     async setDocValue(pid,docId,catId,value){
@@ -540,9 +578,15 @@ function App(){
   const [codes, setCodes] = useState([]);
   const [codings, setCodings] = useState([]);
 
+  // dados de todo o projeto (para a aba de visualizacao, que cruza documentos)
+  const [allCodings, setAllCodings] = useState([]);
+  const [allValues, setAllValues] = useState([]);
+
   const [sel, setSel] = useState(null);
+  const [ctxMenu, setCtxMenu] = useState(null); // menu de contexto (botão direito) p/ aplicar código
   const [selCode, setSelCode] = useState(null);
   const [rtab, setRtab] = useState('categorias');
+  const [mainView, setMainView] = useState('codificar'); // codificar | visualizar (tela inteira)
   const [settings, setSettings] = useState(false);
   const [expOpen, setExpOpen] = useState(false);
   const [busy, setBusy] = useState(null);
@@ -590,7 +634,20 @@ function App(){
     const [v, co] = await Promise.all([store.getDocValues(activeId), store.listCodings(project.id, activeId)]);
     setValues(v); setCodings(co);
   }, [store, project, activeId]);
-  useEffect(()=>{ loadDoc(); setSel(null); }, [loadDoc]);
+  useEffect(()=>{ loadDoc(); setSel(null); setCtxMenu(null); }, [loadDoc]);
+
+  /* carregar trechos e valores de TODOS os documentos (aba de visualizacao) */
+  const loadAll = useCallback(async ()=>{
+    if(!store || !project){ setAllCodings([]); setAllValues([]); return; }
+    const V=[], C=[];
+    for(const d of docs){
+      const [v,co]=await Promise.all([store.getDocValues(d.id), store.listCodings(project.id, d.id)]);
+      v.forEach(x=>V.push({ document_id:d.id, category_id:x.category_id, value:x.value, author_name:x.author_name }));
+      co.forEach(x=>C.push(x));
+    }
+    setAllValues(V); setAllCodings(C);
+  }, [store, project, docs]);
+  useEffect(()=>{ if(phase==='work' && mainView==='visualizar') loadAll(); }, [phase, mainView, loadAll, codings]);
 
   /* polling no modo nuvem (ver colaboradores) */
   useEffect(()=>{
@@ -613,7 +670,7 @@ function App(){
   async function delDoc(id){ await store.deleteDocument(id); setDocs(d=>d.filter(x=>x.id!==id)); if(activeId===id) setActiveId(docs.find(x=>x.id!==id)?.id||null); }
 
   async function setValue(catId, value){ await store.setDocValue(project.id, activeId, catId, value); loadDoc(); }
-  async function addCategory(){ const c = await store.addCategory(project.id,{name:'Nova categoria',kind:'single',options:[],color:cats.length%HUES.length,position:cats.length}); setCats(x=>[...x,c]); }
+  async function addCategory(){ const c = await store.addCategory(project.id,{name:'Nova categoria',kind:'single',options:[NAO_INFO],color:cats.length%HUES.length,position:cats.length}); setCats(x=>[...x,c]); }
   async function updCategory(id,patch){ await store.updateCategory(id,patch); setCats(x=>x.map(c=>c.id===id?{...c,...patch}:c)); }
   async function delCategory(id){ await store.deleteCategory(id); setCats(x=>x.filter(c=>c.id!==id)); setValues(v=>v.filter(x=>x.category_id!==id)); }
 
@@ -626,10 +683,11 @@ function App(){
   }
   async function updCode(id,patch){ await store.updateCode(id,patch); setCodes(x=>x.map(c=>c.id===id?{...c,...patch}:c)); }
   async function delCode(id){ await store.deleteCode(id); loadProject(store,project.id); loadDoc(); }
-  async function applyCode(codeId){
-    if(!sel) return;
-    const c = await store.addCoding(project.id,{ document_id:activeId, code_id:codeId, span_start:sel.start, span_end:sel.end, quote:sel.quote });
-    setCodings(x=>[...x,c]); setSel(null); window.getSelection()?.removeAllRanges();
+  async function applyCode(codeId, selection){
+    const s = selection || sel;
+    if(!s) return;
+    const c = await store.addCoding(project.id,{ document_id:activeId, code_id:codeId, span_start:s.start, span_end:s.end, quote:s.quote });
+    setCodings(x=>[...x,c]); setSel(null); setCtxMenu(null); window.getSelection()?.removeAllRanges();
   }
   async function delCoding(id){ await store.deleteCoding(id); setCodings(x=>x.filter(c=>c.id!==id)); }
 
@@ -646,7 +704,7 @@ function App(){
       if(kind==='json'){
         const obj={ exported_at:new Date().toISOString(), project:{ name:project.name, code:project.code },
           documents:docs.map(d=>({id:d.id,name:d.name,content:d.content})),
-          categories:cats.map(c=>({id:c.id,name:c.name,kind:c.kind,options:c.options})),
+          categories:cats.map(c=>({id:c.id,name:c.name,kind:c.kind,options:c.options,description:c.description||''})),
           document_values:allV,
           codes:codes.map(c=>({id:c.id,parent_id:c.parent_id,name:c.name,depth:c.depth,path:codePathFor(codes,c.id)})),
           codings:allC.map(c=>({id:c.id,document_id:c.document_id,code_id:c.code_id,code_path:codePathFor(codes,c.code_id),start:c.span_start,end:c.span_end,quote:c.quote,author:c.author_name})) };
@@ -697,21 +755,40 @@ function App(){
     }catch(e){ setBusy(null); setErr('Falha ao limpar: '+(e.message||e)); }
   }
 
-  function onMouseUp(){
-    if(!activeDoc) return;
+  function computeSelection(){
+    if(!activeDoc) return null;
     const s = window.getSelection();
-    if(!s || s.rangeCount===0 || s.isCollapsed) return;
+    if(!s || s.rangeCount===0 || s.isCollapsed) return null;
     const r = s.getRangeAt(0);
     const off=(node,o)=>{ let el=node.nodeType===3?node.parentElement:node; while(el && (!el.dataset || el.dataset.start===undefined)) el=el.parentElement; return el?parseInt(el.dataset.start,10)+o:null; };
     const a=off(r.startContainer,r.startOffset), b=off(r.endContainer,r.endOffset);
-    if(a==null||b==null) return;
+    if(a==null||b==null) return null;
     const start=Math.min(a,b), end=Math.max(a,b);
-    const q = activeDoc.content.slice(start,end); if(q.trim().length===0) return;
-    setSel({ start, end, quote:q }); setRtab('codigos');
+    const q = activeDoc.content.slice(start,end); if(q.trim().length===0) return null;
+    return { start, end, quote:q };
+  }
+  function onMouseUp(e){
+    if(e && e.button!==0) return; // ignora clique direito (tratado em onContextMenu)
+    const sx = computeSelection();
+    if(sx){ setSel(sx); setRtab('codigos'); }
+  }
+  function onContextMenu(e){
+    const sx = computeSelection();
+    if(!sx) return; // sem seleção: deixa o menu normal do navegador
+    e.preventDefault();
+    setSel(sx);
+    setCtxMenu({ x:e.clientX, y:e.clientY, sel:sx });
   }
 
   /* ----- maps ----- */
   const codeById = useMemo(()=>Object.fromEntries(codes.map(c=>[c.id,c])), [codes]);
+  // codigos em ordem de arvore (pai antes dos filhos), para o menu de contexto
+  const orderedCodes = useMemo(()=>{
+    const out=[]; const childrenOf=(id)=>codes.filter(c=>c.parent_id===id);
+    const walk=(list)=>list.forEach(c=>{ out.push(c); walk(childrenOf(c.id)); });
+    walk(codes.filter(c=>!c.parent_id));
+    return out;
+  }, [codes]);
   const codePath = useCallback((id)=>{ const out=[]; let c=codeById[id]; let guard=0; while(c&&guard++<12){ out.unshift(c.name); c=c.parent_id?codeById[c.parent_id]:null; } return out; }, [codeById]);
   const codingCount = useMemo(()=>{ const m={}; codings.forEach(c=>{m[c.code_id]=(m[c.code_id]||0)+1;}); return m; }, [codings]);
 
@@ -728,7 +805,11 @@ function App(){
   <div class="app">
     <header class="top">
       <div class="brand">QualiLab</div>
-      <div class="tag">your own lab for qualitative research</div>
+      <div class="tag">o seu laboratório de pesquisa qualitativa / your own lab for qualitative research</div>
+      ${project && html`<div class="seg" style="margin-left:10px">
+        <button class=${mainView==='codificar'?'on':''} onClick=${()=>setMainView('codificar')}>Codificação</button>
+        <button class=${mainView==='visualizar'?'on':''} onClick=${()=>setMainView('visualizar')}>Visualização</button>
+      </div>`}
       <div class="grow"></div>
       ${project && html`<span class="pill ${mode==='cloud'?'mode-cloud':''}">${mode==='cloud'?'nuvem':'local'} · ${project.name}${mode==='cloud'?` · ${project.code}`:''}</span>`}
       ${user && html`<span class="meta">${user.name}</span>`}
@@ -756,7 +837,7 @@ function App(){
     ${importMsg && html`<div class="banner warn">${importMsg} <button class="btn sm ghost" onClick=${()=>setImportMsg(null)}>fechar</button></div>`}
     ${busy && html`<div class="banner warn">${busy}</div>`}
 
-    <div class="split">
+    ${mainView==='codificar' ? html`<div class="split">
       <!-- ESQUERDA: documento -->
       <section class="pane left">
         <div class="pane-head">
@@ -782,7 +863,7 @@ function App(){
 
         <div class="pane-body scroll">
           ${!activeDoc ? html`<div class="empty"><div class="t">Nenhum documento</div><div>Envie arquivos (.txt, .md, .docx, .pdf) ou cole um texto. O conteúdo é extraído e exibido aqui para codificação.</div></div>`
-          : html`<div class="reader" onMouseUp=${onMouseUp}>
+          : html`<div class="reader" onMouseUp=${onMouseUp} onContextMenu=${onContextMenu}>
               ${buildRuns(activeDoc.content, codings).map((run,i)=>{
                 if(run.codings.length===0) return html`<span key=${i} data-start=${run.start}>${run.text}</span>`;
                 const top = run.codings[run.codings.length-1];
@@ -801,22 +882,47 @@ function App(){
         <div class="pane-head">
           <div class="seg">
             <button class=${rtab==='categorias'?'on':''} onClick=${()=>setRtab('categorias')}>Categorias do documento</button>
-            <button class=${rtab==='codigos'?'on':''} onClick=${()=>setRtab('codigos')}>Códigos</button>
+            <button class=${rtab==='codigos'?'on':''} onClick=${()=>setRtab('codigos')}>Codificar</button>
           </div>
         </div>
         <div class="pane-body scroll">
-          ${rtab==='categorias'
-            ? html`<${CategoriesPanel} cats=${cats} values=${values} activeDoc=${activeDoc}
-                 onSet=${setValue} onAdd=${addCategory} onUpd=${updCategory} onDel=${delCategory} />`
-            : html`<${CodesPanel} codes=${codes} codeById=${codeById} count=${codingCount} sel=${sel}
+          ${rtab==='categorias' && html`<${CategoriesPanel} cats=${cats} values=${values} activeDoc=${activeDoc}
+                 onSet=${setValue} onAdd=${addCategory} onUpd=${updCategory} onDel=${delCategory} />`}
+          ${rtab==='codigos' && html`<${CodesPanel} codes=${codes} codeById=${codeById} count=${codingCount} sel=${sel}
                  selCode=${selCode} setSelCode=${setSelCode} codePath=${codePath}
                  onAdd=${addCode} onDel=${delCode} onApply=${applyCode} onUpd=${updCode}
-                 codings=${codings} onDelCoding=${delCoding}
                  store=${store} project=${project} reload=${()=>loadProject(store,project.id)} />`}
         </div>
       </aside>
-    </div>
+    </div>`
+    : html`<div class="split">
+      <!-- VISUALIZACAO: tela inteira -->
+      <section class="pane left" style="flex:1 1 100%;border-right:none;max-width:none">
+        <div class="pane-head"><span class="h" style="margin:0">Visualização — trechos codificados de todo o projeto</span></div>
+        <div class="pane-body scroll">
+          <div style="max-width:900px;margin:0 auto">
+            <${CodedPanel} docs=${docs} cats=${cats} codes=${codes}
+              codeById=${codeById} codePath=${codePath}
+              allCodings=${allCodings} allValues=${allValues}
+              onDelCoding=${async id=>{ await delCoding(id); loadAll(); }}
+              onJump=${(docId)=>{ setActiveId(docId); setMainView('codificar'); }} />
+          </div>
+        </div>
+      </section>
+    </div>`}
   </div>
+
+  ${ctxMenu && html`<div>
+    <div onClick=${()=>setCtxMenu(null)} onContextMenu=${e=>{e.preventDefault();setCtxMenu(null);}} style="position:fixed;inset:0;z-index:60"></div>
+    <div class="exmenu" style=${`position:fixed;left:${Math.min(ctxMenu.x, window.innerWidth-260)}px;top:${Math.min(ctxMenu.y, window.innerHeight-40)}px;z-index:61;max-height:60vh;overflow:auto;min-width:240px`}>
+      <div style="padding:7px 12px;font-size:11px;color:var(--ink-faint);border-bottom:1px solid var(--line-soft);font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px">“${ctxMenu.sel.quote}”</div>
+      ${orderedCodes.length===0
+        ? html`<div style="padding:9px 12px;color:var(--ink-faint);font-size:12.5px">Nenhum código criado ainda. Crie um na aba “Codificar”.</div>`
+        : orderedCodes.map(c=>{ const col=codeColor(c.hue,c.depth); return html`<button key=${c.id} onClick=${()=>applyCode(c.id, ctxMenu.sel)} style=${`padding-left:${12+c.depth*14}px`}>
+            <span class="swatch" style=${`background:${col.solid};display:inline-block;margin-right:7px;vertical-align:middle`}></span>${c.name}
+          </button>`; })}
+    </div>
+  </div>`}
 
   ${settings && html`<${SettingsModal} mode=${mode} user=${user}
     onClose=${()=>setSettings(false)}
@@ -862,12 +968,8 @@ function CategoriesPanel({ cats, values, activeDoc, onSet, onAdd, onUpd, onDel }
       const v = valOf(cat.id);
       return html`<div class="field" key=${cat.id}>
         <div class="field-label">${cat.name} ${v && html`<span class="author">${v.author_name}</span>`}</div>
-        ${cat.kind==='single'
-          ? html`<div class="row" style="flex-wrap:wrap;gap:6px">
-              ${(cat.options||[]).map(o=>html`<button class="opt ${v&&v.value===o?'on':''}" onClick=${()=>onSet(cat.id, v&&v.value===o?'':o)}>${o}</button>`)}
-              ${(cat.options||[]).length===0 && html`<span class="meta">sem valores — edite o esquema abaixo</span>`}
-            </div>`
-          : html`<${DebInput} value=${v?v.value:''} onCommit=${val=>onSet(cat.id,val)} placeholder="valor descritivo" />`}
+        ${cat.description && html`<p class="hint" style="margin:-2px 0 7px">${cat.description}</p>`}
+        <${CategoryValue} cat=${cat} v=${v} onSet=${val=>onSet(cat.id,val)} />
       </div>`;
     })}
     <details style="margin-top:10px">
@@ -881,30 +983,113 @@ function CategoriesPanel({ cats, values, activeDoc, onSet, onAdd, onUpd, onDel }
 }
 function CategoryEditor({ cat, onUpd, onDel }){
   const [nv,setNv]=useState('');
+  const opts = cat.options||[];
+  const realOpts = opts.filter(o=>!isSpecialOpt(o));
+  const hasTok = (tok)=> opts.includes(tok);
+  // mantem os valores reais e adiciona/remove o token no fim, preservando a ordem dos demais
+  const toggleTok = (tok,on)=>{ const base = opts.filter(o=>o!==tok); onUpd(cat.id,{ options: on ? [...base,tok] : base }); };
+  const addVal = ()=>{ const t=nv.trim(); if(!t||isSpecialOpt(t)||opts.includes(t)) { setNv(''); return; }
+    const tokens = opts.filter(isSpecialOpt); onUpd(cat.id,{ options:[...realOpts, t, ...tokens] }); setNv(''); };
   return html`<div class="card" style="margin-bottom:8px">
     <div class="row" style="gap:6px">
       <input class="txtin" value=${cat.name} onInput=${e=>onUpd(cat.id,{name:e.target.value})} />
       <select class="opt" value=${cat.kind} onChange=${e=>onUpd(cat.id,{kind:e.target.value})}>
-        <option value="single">fechada</option><option value="text">texto</option>
+        ${CAT_KINDS.map(k=>html`<option value=${k.id}>${k.label}</option>`)}
       </select>
       <button class="icon-btn" onClick=${()=>onDel(cat.id)} title="excluir">🗑</button>
     </div>
-    ${cat.kind==='single' && html`<div style="margin-top:8px">
+    <input class="txtin" style="margin-top:6px" placeholder="descrição / instrução (opcional)"
+      value=${cat.description||''} onInput=${e=>onUpd(cat.id,{description:e.target.value})} />
+    ${CAT_HAS_OPTIONS(cat.kind) && html`<div style="margin-top:8px">
       <div class="row" style="flex-wrap:wrap;gap:5px;margin-bottom:6px">
-        ${(cat.options||[]).map(o=>html`<span class="opt" style="display:inline-flex;gap:5px">${o}
-          <button class="icon-btn" style="padding:0" onClick=${()=>onUpd(cat.id,{options:cat.options.filter(x=>x!==o)})}>✕</button></span>`)}
+        ${realOpts.map(o=>html`<span class="opt" style="display:inline-flex;gap:5px">${o}
+          <button class="icon-btn" style="padding:0" onClick=${()=>onUpd(cat.id,{options:opts.filter(x=>x!==o)})}>✕</button></span>`)}
       </div>
       <div class="row" style="gap:6px">
         <input class="txtin" placeholder="adicionar valor" value=${nv} onInput=${e=>setNv(e.target.value)}
-          onKeyDown=${e=>{ if(e.key==='Enter'&&nv.trim()){ if(!(cat.options||[]).includes(nv.trim())) onUpd(cat.id,{options:[...(cat.options||[]),nv.trim()]}); setNv(''); } }} />
-        <button class="btn sm" onClick=${()=>{ if(nv.trim()&&!(cat.options||[]).includes(nv.trim())){ onUpd(cat.id,{options:[...(cat.options||[]),nv.trim()]}); setNv(''); } }}>＋</button>
+          onKeyDown=${e=>{ if(e.key==='Enter') addVal(); }} />
+        <button class="btn sm" onClick=${addVal}>＋</button>
       </div>
     </div>`}
+    <div class="row" style="gap:16px;margin-top:8px;flex-wrap:wrap">
+      <label class="row" style="gap:5px;font-size:12.5px;cursor:pointer">
+        <input type="checkbox" checked=${hasTok(NAO_INFO)} onChange=${e=>toggleTok(NAO_INFO,e.target.checked)} /> Permitir “Não informado”</label>
+      ${CAT_HAS_OPTIONS(cat.kind) && html`<label class="row" style="gap:5px;font-size:12.5px;cursor:pointer">
+        <input type="checkbox" checked=${hasTok(OUTROS)} onChange=${e=>toggleTok(OUTROS,e.target.checked)} /> Permitir “Outros” (valor livre)</label>`}
+    </div>
   </div>`;
 }
 
+/* ============ VALOR DE UMA CATEGORIA (por documento) ============
+   "Não informado" e "Outros" sao opcoes dentro da categoria (tokens em options).
+   Escolher "Outros" abre um campo de texto livre cujo conteudo vira o valor. */
+function CategoryValue({ cat, v, onSet }){
+  const [editingOther,setEditingOther]=useState(false);
+  const opts = cat.options||[];
+  const hasNA = opts.includes(NAO_INFO);
+  const hasOther = opts.includes(OUTROS);
+  const realOpts = opts.filter(o=>!isSpecialOpt(o));
+  const value = v ? v.value : '';
+  const isNA = value===NAO_INFO;
+  const noVals = realOpts.length===0 && !hasNA && !hasOther
+    ? html`<span class="meta">sem valores — edite o esquema abaixo</span>` : '';
+
+  if(cat.kind==='date') return html`<${DateInput} value=${value} onCommit=${onSet} />`;
+
+  if(cat.kind==='text'){
+    return html`<div>
+      ${hasNA && html`<button class="opt ${isNA?'on':''}" style="margin-bottom:6px" onClick=${()=>onSet(isNA?'':NAO_INFO)}>Não informado</button>`}
+      ${!isNA && html`<${DebInput} value=${value} onCommit=${onSet} placeholder="valor descritivo" />`}
+    </div>`;
+  }
+
+  if(cat.kind==='checkbox'){
+    const selv = isNA ? [] : (value?String(value):'').split(CAT_MULTI_SEP).filter(Boolean);
+    const customs = selv.filter(s=>!realOpts.includes(s));
+    const showOther = hasOther && (editingOther || customs.length>0);
+    const setSel = (arr)=> onSet(arr.join(CAT_MULTI_SEP));
+    const toggle = (o)=>{ const base=isNA?[]:selv; setSel(base.includes(o)?base.filter(x=>x!==o):[...base,o]); };
+    const setOther = (txt)=>{ const keep = selv.filter(s=>realOpts.includes(s)); setSel(txt.trim()?[...keep,txt.trim()]:keep); };
+    return html`<div class="row" style="flex-wrap:wrap;gap:6px">
+        ${noVals}
+        ${realOpts.map(o=>html`<button class="opt ${selv.includes(o)?'on':''}" onClick=${()=>toggle(o)}>${selv.includes(o)?'☑':'☐'} ${o}</button>`)}
+        ${hasOther && html`<button class="opt ${showOther?'on':''}" onClick=${()=>setEditingOther(x=>!x)}>${showOther?'☑':'☐'} Outros</button>`}
+        ${hasNA && html`<button class="opt ${isNA?'on':''}" onClick=${()=>onSet(isNA?'':NAO_INFO)}>${isNA?'☑':'☐'} Não informado</button>`}
+        ${showOther && html`<${DebInput} value=${customs[0]||''} onCommit=${setOther} placeholder="qual?" />`}
+      </div>`;
+  }
+
+  // single / select: valor unico
+  const isCustom = hasOther && !!value && value!==NAO_INFO && !realOpts.includes(value);
+  const showOther = hasOther && (editingOther || isCustom);
+
+  if(cat.kind==='select'){
+    const selVal = showOther ? '__other__' : (isNA ? NAO_INFO : (realOpts.includes(value)?value:''));
+    return html`<div>
+      <select class="opt" style="min-width:180px" value=${selVal} onChange=${e=>{ const val=e.target.value;
+          if(val==='__other__'){ setEditingOther(true); onSet(''); } else { setEditingOther(false); onSet(val); } }}>
+        <option value="">(sem valor)</option>
+        ${realOpts.map(o=>html`<option value=${o}>${o}</option>`)}
+        ${hasOther && html`<option value="__other__">Outros…</option>`}
+        ${hasNA && html`<option value=${NAO_INFO}>Não informado</option>`}
+      </select>
+      ${showOther && html`<div style="margin-top:6px"><${DebInput} value=${isCustom?value:''} onCommit=${onSet} placeholder="qual?" /></div>`}
+      ${noVals && html`<div style="margin-top:4px">${noVals}</div>`}
+    </div>`;
+  }
+
+  // single = Múltipla Escolha (botões)
+  return html`<div class="row" style="flex-wrap:wrap;gap:6px;align-items:center">
+      ${noVals}
+      ${realOpts.map(o=>html`<button class="opt ${(!isCustom && value===o)?'on':''}" onClick=${()=>{ setEditingOther(false); onSet(value===o?'':o); }}>${o}</button>`)}
+      ${hasOther && html`<button class="opt ${showOther?'on':''}" onClick=${()=>setEditingOther(true)}>Outros</button>`}
+      ${hasNA && html`<button class="opt ${isNA?'on':''}" onClick=${()=>{ setEditingOther(false); onSet(isNA?'':NAO_INFO); }}>Não informado</button>`}
+      ${showOther && html`<${DebInput} value=${isCustom?value:''} onCommit=${onSet} placeholder="qual?" />`}
+    </div>`;
+}
+
 /* ============ PAINEL DE CODIGOS (tags de trecho, hierarquicas) ============ */
-function CodesPanel({ codes, codeById, count, sel, selCode, setSelCode, codePath, onAdd, onDel, onApply, onUpd, codings, onDelCoding, store, project, reload }){
+function CodesPanel({ codes, codeById, count, sel, selCode, setSelCode, codePath, onAdd, onDel, onApply, onUpd, store, project, reload }){
   const tops = codes.filter(c=>!c.parent_id);
   const childrenOf = (id)=>codes.filter(c=>c.parent_id===id);
   const selected = selCode ? codeById[selCode] : null;
@@ -930,21 +1115,121 @@ function CodesPanel({ codes, codeById, count, sel, selCode, setSelCode, codePath
       <div class="crumb">${codePath(selected.id).join(' ▸ ')}</div>
       <${RenameCode} code=${selected} onUpd=${onUpd} />
     </div>`}
+  </div>`;
+}
 
-    <p class="h" style="margin-top:18px">Trechos codificados</p>
-    ${codings.length===0 ? html`<span class="meta">Nenhum trecho neste documento.</span>`
-      : codings.slice().reverse().map(c=>{
-        const code=codeById[c.code_id]; const col=code?codeColor(code.hue,code.depth):codeColor(0,0);
-        return html`<div class="card" key=${c.id} style="margin-bottom:6px;padding:9px 11px">
-          <div class="row" style="gap:7px;margin-bottom:3px">
-            <span class="swatch" style=${`background:${col.solid}`}></span>
-            <span style="font-size:12.5px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${codePath(c.code_id).join(' ▸ ')}</span>
-            <span class="author">${c.author_name}</span>
-            <button class="icon-btn" onClick=${()=>onDelCoding(c.id)} title="remover">🗑</button>
-          </div>
-          <div style="font-family:var(--mono);font-size:11px;color:var(--ink-soft)">“${(c.quote||'').slice(0,120)}”</div>
-        </div>`;
-      })}
+/* ============ PAINEL DE TRECHOS CODIFICADOS (visualizacao de todo o projeto) ============
+   Filtra por categorias do documento e cruza ate 3 codigos por co-ocorrencia (sobreposicao
+   de trechos no mesmo documento). E so visualizacao: a codificacao acontece na aba "Codificar". */
+function CodedPanel({ docs, cats, codes, codeById, codePath, allCodings, allValues, onDelCoding, onJump }){
+  const [catFilter, setCatFilter] = useState({});   // category_id -> valor exigido
+  const [codeSel, setCodeSel] = useState(['','','']); // ate 3 codigos cruzados
+
+  const docById = useMemo(()=>Object.fromEntries(docs.map(d=>[d.id,d])), [docs]);
+  const docName = (id)=>docById[id]?.name || '';
+
+  // valores possiveis por categoria (uniao do esquema fechado + valores presentes)
+  const valuesFor = (cat)=>{
+    const present = allValues.filter(v=>v.category_id===cat.id && v.value).map(v=>v.value);
+    return [...new Set([...(cat.options||[]), ...present])];
+  };
+  const setCat = (catId,val)=> setCatFilter(f=>{ const n={...f}; if(val) n[catId]=val; else delete n[catId]; return n; });
+  const setCode = (i,val)=> setCodeSel(s=>{ const n=s.slice(); n[i]=val; return n; });
+
+  // documentos que passam no filtro de categorias
+  const docMatches = (docId)=> Object.entries(catFilter).every(([catId,want])=>{
+    const v = allValues.find(x=>x.document_id===docId && x.category_id===catId);
+    // casa valor único ou um dos valores de uma Caixa de Seleção (multivalor)
+    return v && v.value!=null && String(v.value).split(CAT_MULTI_SEP).includes(want);
+  });
+
+  const active = [...new Set(codeSel.filter(Boolean))]; // codigos cruzados, sem repetir
+
+  // resultados: cada item e {key, docId, start, end, quote, codeIds, codingId?}
+  const results = useMemo(()=>{
+    const out = [];
+    const docIds = docs.filter(d=>docMatches(d.id)).map(d=>d.id);
+    for(const docId of docIds){
+      const inDoc = allCodings.filter(c=>c.document_id===docId);
+      if(active.length<=1){
+        const list = active.length===1 ? inDoc.filter(c=>c.code_id===active[0]) : inDoc;
+        list.forEach(c=> out.push({ key:c.id, docId, start:c.span_start, end:c.span_end, quote:c.quote, codeIds:[c.code_id], codingId:c.id }));
+      } else {
+        // co-ocorrencia: interseccao das combinacoes de trechos dos codigos selecionados
+        const arrs = active.map(id=>inDoc.filter(c=>c.code_id===id));
+        if(arrs.some(a=>a.length===0)) continue;
+        const seen = new Set();
+        const content = docById[docId]?.content || '';
+        const combine = (idx, accStart, accEnd)=>{
+          if(idx===arrs.length){
+            if(accStart < accEnd){
+              const k = docId+':'+accStart+':'+accEnd;
+              if(!seen.has(k)){ seen.add(k); out.push({ key:k, docId, start:accStart, end:accEnd, quote:content.slice(accStart,accEnd), codeIds:active.slice() }); }
+            }
+            return;
+          }
+          for(const c of arrs[idx]){
+            const s=Math.max(accStart, c.span_start), e=Math.min(accEnd, c.span_end);
+            if(s<e) combine(idx+1, s, e);
+          }
+        };
+        combine(0, 0, Infinity);
+      }
+    }
+    return out.sort((a,b)=> a.docId===b.docId ? a.start-b.start : (docName(a.docId)>docName(b.docId)?1:-1));
+  }, [docs, allCodings, allValues, catFilter, codeSel]);
+
+  const crossing = active.length>=2;
+
+  return html`<div class="section">
+    <p class="h">Trechos codificados</p>
+    <p class="hint">Visualização de todo o projeto. Filtre por atributos do documento e cruze até 3 códigos por co-ocorrência (trechos que se sobrepõem no mesmo documento). A codificação acontece na aba “Codificar”.</p>
+
+    <div class="card" style="margin-bottom:12px">
+      <div class="field-label">Filtrar por categorias</div>
+      ${cats.length===0 ? html`<span class="meta">Nenhuma categoria definida.</span>`
+        : cats.map(cat=>html`<div class="row" key=${cat.id} style="gap:6px;margin-bottom:6px">
+            <span style="font-size:12.5px;min-width:120px">${cat.name}</span>
+            <select class="opt" style="flex:1" value=${catFilter[cat.id]||''} onChange=${e=>setCat(cat.id, e.target.value)}>
+              <option value="">(qualquer)</option>
+              ${valuesFor(cat).map(o=>html`<option value=${o}>${o}</option>`)}
+            </select>
+          </div>`)}
+
+      <div class="field-label" style="margin-top:12px">Cruzar códigos (co-ocorrência)</div>
+      ${[0,1,2].map(i=>html`<div class="row" key=${i} style="gap:6px;margin-bottom:6px">
+        <span style="font-size:12.5px;min-width:120px">${i===0?'Código':i===1?'+ Código':'+ Código'}</span>
+        <select class="opt" style="flex:1" value=${codeSel[i]||''} onChange=${e=>setCode(i, e.target.value)}>
+          <option value="">${i===0?'(todos)':'(nenhum)'}</option>
+          ${codes.map(c=>html`<option value=${c.id}>${codePath(c.id).join(' ▸ ')}</option>`)}
+        </select>
+      </div>`)}
+      ${(Object.keys(catFilter).length>0 || active.length>0) && html`<button class="btn sm ghost" style="margin-top:4px"
+        onClick=${()=>{ setCatFilter({}); setCodeSel(['','','']); }}>limpar filtros</button>`}
+    </div>
+
+    <div class="row" style="justify-content:space-between;margin-bottom:8px">
+      <span class="meta">${results.length} ${crossing?'co-ocorrência(s)':'trecho(s)'}</span>
+      ${crossing && html`<span class="meta">cruzando ${active.length} códigos</span>`}
+    </div>
+
+    ${results.length===0 && html`<div class="card"><span class="meta">Nenhum trecho corresponde aos filtros.</span></div>`}
+    ${results.map(r=>{
+      const firstCode = codeById[r.codeIds[0]];
+      const col = firstCode ? codeColor(firstCode.hue, firstCode.depth) : codeColor(0,0);
+      return html`<div class="card" key=${r.key} style="margin-bottom:6px;padding:9px 11px">
+        <div class="row" style="gap:7px;margin-bottom:3px">
+          <span class="swatch" style=${`background:${col.solid}`}></span>
+          <span class="crumb" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer"
+            title=${'Abrir '+docName(r.docId)} onClick=${()=>onJump&&onJump(r.docId)}>${docName(r.docId)}</span>
+          ${r.codingId && html`<button class="icon-btn" onClick=${()=>onDelCoding(r.codingId)} title="remover">🗑</button>`}
+        </div>
+        <div class="row" style="flex-wrap:wrap;gap:4px;margin-bottom:4px">
+          ${r.codeIds.map(cid=>html`<span class="author" key=${cid}>${codePath(cid).join(' ▸ ')}</span>`)}
+        </div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--ink-soft)">“${(r.quote||'').slice(0,160)}”</div>
+      </div>`;
+    })}
   </div>`;
 }
 
@@ -984,6 +1269,42 @@ function DebInput({ value, onCommit, placeholder }){
   return html`<input class="txtin" placeholder=${placeholder} value=${v}
     onInput=${e=>{ setV(e.target.value); clearTimeout(t.current); const val=e.target.value; t.current=setTimeout(()=>onCommit(val),600); }}
     onBlur=${()=>{ clearTimeout(t.current); onCommit(v); }} />`;
+}
+
+/* data possivelmente parcial: DD/MM/AAAA com partes em branco quando o documento nao informa.
+   guarda como string "dd/mm/aaaa" (campo vazio = parte desconhecida); tudo vazio = nao informada. */
+function parseDate(val){
+  if(!val) return { d:'', mo:'', y:'' };
+  const iso = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(val);   // aceita formato ISO legado
+  if(iso) return { d:iso[3], mo:iso[2], y:iso[1] };
+  const m = /^(\d{0,2})\/(\d{0,2})\/(\d{0,4})$/.exec(val);
+  return m ? { d:m[1], mo:m[2], y:m[3] } : { d:'', mo:'', y:'' };
+}
+function DateInput({ value, onCommit }){
+  const [p,setP]=useState(parseDate(value)); const t=useRef(null);
+  useEffect(()=>setP(parseDate(value)),[value]);
+  const build = (q)=> (q.d||q.mo||q.y) ? `${q.d}/${q.mo}/${q.y}` : '';
+  const set = (k,raw,max)=>{ const digits=String(raw).replace(/\D/g,'').slice(0,max); const q={...p,[k]:digits}; setP(q);
+    clearTimeout(t.current); t.current=setTimeout(()=>onCommit(build(q)),600); };
+  const flush = ()=>{ clearTimeout(t.current); onCommit(build(p)); };
+  const informada = !!(p.d||p.mo||p.y);
+  return html`<div>
+    <div class="row" style="gap:8px;margin-bottom:8px">
+      <button class="opt ${informada?'':'on'}" title="Marca a data como não informada (limpa os campos)"
+        onClick=${()=>{ const q={d:'',mo:'',y:''}; setP(q); clearTimeout(t.current); onCommit(''); }}>Não informada</button>
+    </div>
+    <div class="row" style="gap:6px;align-items:center">
+      <input class="txtin" style="width:60px;text-align:center" inputmode="numeric" placeholder="DD" maxlength="2"
+        value=${p.d} onInput=${e=>set('d',e.target.value,2)} onBlur=${flush} />
+      <span class="meta">/</span>
+      <input class="txtin" style="width:60px;text-align:center" inputmode="numeric" placeholder="MM" maxlength="2"
+        value=${p.mo} onInput=${e=>set('mo',e.target.value,2)} onBlur=${flush} />
+      <span class="meta">/</span>
+      <input class="txtin" style="width:78px;text-align:center" inputmode="numeric" placeholder="AAAA" maxlength="4"
+        value=${p.y} onInput=${e=>set('y',e.target.value,4)} onBlur=${flush} />
+    </div>
+    <div class="meta" style="margin-top:6px">Deixe em branco as partes que o documento não informa.</div>
+  </div>`;
 }
 function AddPaste({ onAdd }){
   const [open,setOpen]=useState(false); const [n,setN]=useState(''); const [t,setT]=useState('');
