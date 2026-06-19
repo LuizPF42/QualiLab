@@ -783,7 +783,7 @@ function App(){
     }
     setAllValues(V); setAllCodings(C);
   }, [store, project, docs]);
-  useEffect(()=>{ if(phase==='work' && mainView==='visualizar') loadAll(); }, [phase, mainView, loadAll, codings]);
+  useEffect(()=>{ if(phase==='work' && (mainView==='visualizar'||mainView==='graficos')) loadAll(); }, [phase, mainView, loadAll, codings]);
 
   /* recarrega a visao atual (doc ativo + visualizacao, se aberta) — usado pelo realtime */
   const reloadRef = useRef(()=>{});
@@ -974,6 +974,7 @@ function App(){
         <button class=${mainView==='codificar'?'on':''} onClick=${()=>setMainView('codificar')}>Codificação</button>
         <button class=${mainView==='reconciliar'?'on':''} onClick=${()=>setMainView('reconciliar')}>Reconciliação</button>
         <button class=${mainView==='visualizar'?'on':''} onClick=${()=>setMainView('visualizar')}>Visualização</button>
+        <button class=${mainView==='graficos'?'on':''} onClick=${()=>setMainView('graficos')}>Gráficos</button>
       </div>`}
       <div class="grow"></div>
       ${project && html`<span class="pill ${mode==='cloud'?'mode-cloud':''}">${mode==='cloud'?'nuvem':'local'} · ${project.name}${mode==='cloud'?` · ${project.code}`:''}</span>`}
@@ -1086,6 +1087,19 @@ function App(){
               cats=${cats} values=${values} isOwner=${isAdmin} onSetFinal=${setFinalValue}
               onConsolidate=${(codeId,start,end,quote)=>addFinalCoding(activeId,codeId,start,end,quote)}
               onDelCoding=${delCoding} />
+          </div>
+        </div>
+      </section>
+    </div>`
+    : mainView==='graficos' ? html`<div class="split">
+      <!-- GRAFICOS: tela inteira -->
+      <section class="pane left" style="flex:1 1 100%;border-right:none;max-width:none">
+        <div class="pane-head"><span class="h" style="margin:0">Gráficos</span></div>
+        <div class="pane-body scroll">
+          <div style="max-width:920px;margin:0 auto">
+            <${ChartsPanel} docs=${docs} cats=${cats} codes=${codes}
+              codeById=${codeById} codePath=${codePath}
+              allCodings=${allCodings} allValues=${allValues} />
           </div>
         </div>
       </section>
@@ -1579,6 +1593,127 @@ function CodedPanel({ docs, cats, codes, codeById, codePath, allCodings, allValu
         <div style="font-family:var(--mono);font-size:11px;color:var(--ink-soft)">“${(r.quote||'').slice(0,160)}”</div>
       </div>`;
     })}
+  </div>`;
+}
+
+/* ============ GRAFICOS (barras em HTML/CSS + heatmap em tabela) ============ */
+function barRows(items, color){
+  const max = Math.max(1, ...items.map(i=>i.value));
+  return items.map((it,idx)=>html`<div class="row" key=${it.key||it.label||idx} style="gap:8px;margin-bottom:5px;align-items:center">
+    <div style="width:190px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title=${it.label}>${it.label}</div>
+    <div style="flex:1;background:var(--line-soft);border-radius:5px;height:16px">
+      <div style=${`width:${Math.round(it.value/max*100)}%;min-width:2px;height:100%;border-radius:5px;background:${it.color||color||'var(--teal)'}`}></div>
+    </div>
+    <div class="count" style="width:38px;text-align:right">${it.value}</div>
+  </div>`);
+}
+function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allValues }){
+  const [layer,setLayer] = useState('individual');         // individual | final
+  const closedCats = (cats||[]).filter(c=>CAT_HAS_OPTIONS(c.kind) || c.kind==='date');
+  const [catId,setCatId] = useState(closedCats[0]?.id || '');
+  useEffect(()=>{ if(!closedCats.find(c=>c.id===catId)) setCatId(closedCats[0]?.id || ''); }, [cats]); // eslint-disable-line
+  const cat = (cats||[]).find(c=>c.id===catId) || null;
+
+  const cod = useMemo(()=> allCodings.filter(c=> layer==='final' ? c.layer==='final' : c.layer!=='final'), [allCodings, layer]);
+
+  // 1) frequência de códigos
+  const freqItems = useMemo(()=>{
+    const f={}; cod.forEach(c=>{ f[c.code_id]=(f[c.code_id]||0)+1; });
+    return codes.filter(c=>f[c.id]).map(c=>({ key:c.id, label:codePath(c.id).join(' ▸ '), value:f[c.id], color:codeColor(c.hue,c.depth).solid }))
+      .sort((a,b)=>b.value-a.value);
+  }, [cod, codes, codePath]);
+
+  // valor consolidado (gabarito) de um documento para uma categoria
+  const finalVal = (docId)=>{ const f=allValues.find(v=>v.document_id===docId && v.category_id===catId && v.layer==='final'); return f?f.value:null; };
+  const splitVals = (val)=> val==null ? ['(não consolidado)'] : String(val).split(CAT_MULTI_SEP).filter(Boolean);
+
+  // 2) distribuição de documentos por valor da categoria
+  const distItems = useMemo(()=>{
+    if(!cat) return [];
+    const counts={};
+    docs.forEach(d=>{ splitVals(finalVal(d.id)).forEach(v=>{ counts[v]=(counts[v]||0)+1; }); });
+    return Object.entries(counts).map(([label,value])=>({label,value})).sort((a,b)=>b.value-a.value);
+  }, [cat, docs, allValues, catId]);
+
+  // 3) código × categoria (heatmap): linhas = códigos com trechos, colunas = valores
+  const cross = useMemo(()=>{
+    if(!cat) return { cols:[], rows:[] };
+    const docVals = {}; docs.forEach(d=>{ docVals[d.id]=splitVals(finalVal(d.id)); });
+    const colSet = new Set(); Object.values(docVals).forEach(vs=>vs.forEach(v=>colSet.add(v)));
+    const cols = [...colSet];
+    const cellCounts = {}; // codeId -> {val -> n}
+    cod.forEach(c=>{ (docVals[c.document_id]||[]).forEach(v=>{ (cellCounts[c.code_id]=cellCounts[c.code_id]||{}); cellCounts[c.code_id][v]=(cellCounts[c.code_id][v]||0)+1; }); });
+    const rows = codes.filter(c=>cellCounts[c.id]).map(c=>({ id:c.id, label:codePath(c.id).join(' ▸ '), cells:cellCounts[c.id] }));
+    let max=1; rows.forEach(r=>cols.forEach(v=>{ max=Math.max(max, r.cells[v]||0); }));
+    return { cols, rows, max };
+  }, [cat, docs, cod, codes, catId, allValues]);
+
+  // 4) por codificador + concordância por código
+  const indiv = useMemo(()=> allCodings.filter(c=>c.layer!=='final'), [allCodings]);
+  const prodItems = useMemo(()=>{
+    const p={}; indiv.forEach(c=>{ const k=c.author_name||'anônimo'; p[k]=(p[k]||0)+1; });
+    return Object.entries(p).map(([label,value])=>({label,value})).sort((a,b)=>b.value-a.value);
+  }, [indiv]);
+  const agreeItems = useMemo(()=>{
+    const m={}; indiv.forEach(c=>{ (m[c.code_id]=m[c.code_id]||new Set()).add(c.created_by||c.author_name); });
+    return codes.filter(c=>m[c.id]).map(c=>({ key:c.id, label:codePath(c.id).join(' ▸ '), value:m[c.id].size, color:codeColor(c.hue,c.depth).solid }))
+      .sort((a,b)=>b.value-a.value);
+  }, [indiv, codes, codePath]);
+
+  const empty = allCodings.length===0 && (allValues||[]).length===0;
+  const heat = (n)=>{ if(!n) return 'transparent'; const a = 0.12 + 0.78*(n/cross.max); return `hsl(170 55% 38% / ${a.toFixed(2)})`; };
+
+  return html`<div class="section">
+    <div class="row" style="gap:14px;flex-wrap:wrap;margin-bottom:6px">
+      <label class="row" style="gap:6px;font-size:12.5px">Camada das codificações:
+        <select class="opt" value=${layer} onChange=${e=>setLayer(e.target.value)}>
+          <option value="individual">Individuais (todos)</option>
+          <option value="final">Final (consolidada)</option>
+        </select></label>
+      ${closedCats.length>0 && html`<label class="row" style="gap:6px;font-size:12.5px">Categoria:
+        <select class="opt" value=${catId} onChange=${e=>setCatId(e.target.value)}>
+          ${closedCats.map(c=>html`<option value=${c.id}>${c.name}</option>`)}
+        </select></label>`}
+    </div>
+    ${empty && html`<div class="card"><span class="meta">Ainda não há dados para gráficos. Codifique trechos e preencha categorias.</span></div>`}
+
+    <p class="h" style="margin-top:14px">Frequência de códigos</p>
+    <div class="card">
+      ${freqItems.length===0 ? html`<span class="meta">Nenhuma codificação nesta camada.</span>` : barRows(freqItems)}
+    </div>
+
+    <p class="h" style="margin-top:18px">Distribuição por categoria${cat?` — ${cat.name}`:''}</p>
+    <div class="card">
+      ${!cat ? html`<span class="meta">Defina uma categoria.</span>`
+        : distItems.length===0 ? html`<span class="meta">Sem valores.</span>` : barRows(distItems, 'var(--teal)')}
+    </div>
+
+    <p class="h" style="margin-top:18px">Código × categoria${cat?` — ${cat.name}`:''} (nº de trechos)</p>
+    <div class="card" style="overflow:auto">
+      ${!cat || cross.rows.length===0 ? html`<span class="meta">Sem cruzamento disponível.</span>`
+        : html`<table style="border-collapse:collapse;font-size:12px;min-width:100%">
+            <thead><tr>
+              <th style="text-align:left;padding:4px 8px;position:sticky;left:0;background:var(--surface)"></th>
+              ${cross.cols.map(v=>html`<th key=${v} style="padding:4px 8px;text-align:center;font-weight:600">${v}</th>`)}
+            </tr></thead>
+            <tbody>
+              ${cross.rows.map(r=>html`<tr key=${r.id}>
+                <td style="padding:3px 8px;white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis;position:sticky;left:0;background:var(--surface)" title=${r.label}>${r.label}</td>
+                ${cross.cols.map(v=>{ const n=r.cells[v]||0; return html`<td key=${v} style=${`text-align:center;padding:3px 8px;background:${heat(n)}`}>${n||''}</td>`; })}
+              </tr>`)}
+            </tbody>
+          </table>`}
+    </div>
+
+    <p class="h" style="margin-top:18px">Produção por codificador</p>
+    <div class="card">
+      ${prodItems.length===0 ? html`<span class="meta">Nenhuma codificação individual.</span>` : barRows(prodItems, 'var(--amber)')}
+    </div>
+
+    <p class="h" style="margin-top:18px">Concordância por código (nº de codificadores)</p>
+    <div class="card">
+      ${agreeItems.length===0 ? html`<span class="meta">Nenhuma codificação individual.</span>` : barRows(agreeItems)}
+    </div>
   </div>`;
 }
 

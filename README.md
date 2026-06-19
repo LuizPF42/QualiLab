@@ -22,10 +22,11 @@ QualiLab é uma ferramenta de **análise qualitativa de dados** (codificação d
   - Cada categoria pode ter **descrição/instrução** opcional e habilitar as opções **"Não informado"** e **"Outros"** (valor livre).
   - O **esquema de categorias e o gabarito são definidos pelos administradores**; os demais membros apenas preenchem os valores.
 - **Papéis e administradores**: o criador nasce administrador; admins podem **promover/rebaixar** e **remover** membros, **renomear** e **excluir** o projeto (com trava para o projeto nunca ficar sem admin). Qualquer membro pode **sair** do projeto. Gerenciado em **⚙ → Membros & administradores**.
-- **Três telas principais**:
+- **Quatro telas principais**:
   - **Codificação**: leitor à esquerda + painéis (Categorias do documento, Codificar) à direita. Filtro **"Ver:"** alterna entre suas codificações, as de outro codificador, todas ou a camada final.
   - **Reconciliação**: agrupa as codificações individuais que se sobrepõem com o mesmo código, mostra quantos codificadores concordam (consenso) e permite **consolidar** cada grupo na **camada final**.
   - **Visualização** (tela inteira): lista de trechos de **todo o projeto** (camada individual ou final), com filtro por categorias e **cruzamento de até 3 códigos por co-ocorrência**.
+  - **Gráficos** (tela inteira): frequência de códigos, distribuição de documentos por categoria (gabarito), cruzamento **código × categoria** (heatmap), produção por codificador e concordância por código. Barras em HTML/CSS, sem dependências.
 - **Codificação colaborativa em camadas**: cada codificação registra o autor (`código → usuário → documento`); o trabalho de cada um é independente e a equipe consolida uma camada final na tela de Reconciliação.
 - **Modo coletivo** (nuvem): vários pesquisadores no mesmo projeto, com **login por e-mail/senha** (ou entrar como visitante), tela **Meus Projetos** e **sincronização ao vivo** (realtime).
 - **Importação/Exportação**:
