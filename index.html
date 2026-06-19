@@ -491,8 +491,14 @@ function LocalStore(){
     mode:'local',
     async init(display){ name = display || name; return { id:'local-user', name }; },
     currentUser(){ return { id:'local-user', name }; },
-    async createProject(){ return { id:'local', name:'Projeto local', code:'LOCAL' }; },
-    async joinProject(){ return { id:'local', name:'Projeto local', code:'LOCAL' }; },
+    async createProject(){ return { id:'local', name:'Projeto local', code:'LOCAL', created_by:'local-user' }; },
+    async joinProject(){ return { id:'local', name:'Projeto local', code:'LOCAL', created_by:'local-user' }; },
+    async myRole(){ return 'admin'; },
+    async listMembers(){ return [{ user_id:'local-user', display_name:name, role:'admin' }]; },
+    async setMemberRole(){ return P(); },
+    async removeMember(){ return P(); },
+    async renameProject(){ return P(); },
+    async deleteProject(){ db={ documents:[], categories:[], doc_values:[], codes:[], codings:[] }; save(); return P(); },
     listDocuments(){ return P(db.documents.slice()); },
     addDocument(pid,{id,name:dn,content}){ const d={id:id||uid(),name:dn,content,created_at:new Date().toISOString()}; db.documents.push(d); save(); return P(d); },
     deleteDocument(id){ db.documents=db.documents.filter(d=>d.id!==id); db.doc_values=db.doc_values.filter(v=>v.document_id!==id); db.codings=db.codings.filter(c=>c.document_id!==id); save(); return P(); },
@@ -502,7 +508,8 @@ function LocalStore(){
     updateCategory(id,patch){ db.categories=db.categories.map(c=>c.id===id?{...c,...patch}:c); save(); return P(); },
     deleteCategory(id){ db.categories=db.categories.filter(c=>c.id!==id); db.doc_values=db.doc_values.filter(v=>v.category_id!==id); save(); return P(); },
     getDocValues(docId){ return P(db.doc_values.filter(v=>v.document_id===docId)); },
-    setDocValue(pid,docId,catId,value){ db.doc_values=db.doc_values.filter(v=>!(v.document_id===docId&&v.category_id===catId)); if(value!=='') db.doc_values.push({id:uid(),document_id:docId,category_id:catId,value,author_name:name}); save(); return P(); },
+    setDocValue(pid,docId,catId,value){ db.doc_values=db.doc_values.filter(v=>!(v.document_id===docId&&v.category_id===catId&&v.set_by==='local-user'&&(v.layer||'individual')==='individual')); if(value!=='') db.doc_values.push({id:uid(),document_id:docId,category_id:catId,value,set_by:'local-user',author_name:name,layer:'individual'}); save(); return P(); },
+    setFinalValue(pid,docId,catId,value){ db.doc_values=db.doc_values.filter(v=>!(v.document_id===docId&&v.category_id===catId&&v.layer==='final')); if(value!=='') db.doc_values.push({id:uid(),document_id:docId,category_id:catId,value,set_by:'local-user',author_name:name,layer:'final'}); save(); return P(); },
     listCodes(){ return P(db.codes.slice().sort((a,b)=>a.depth-b.depth||a.position-b.position)); },
     addCode(pid,code){ const c={id:uid(),position:db.codes.length,...code}; db.codes.push(c); save(); return P(c); },
     updateCode(id,patch){ db.codes=db.codes.map(c=>c.id===id?{...c,...patch}:c); save(); return P(); },
@@ -546,8 +553,8 @@ function SupabaseStore(sb){
     },
     async signOut(){ try{ await sb.auth.signOut(); }catch(e){} user=null; },
     currentUser(){ return user ? { id:user.id, name, email:user.email||null, anon:!!user.is_anonymous } : null; },
-    async createProject(pn, display){ name=display||name; const d=must(await sb.rpc('create_project',{p_name:pn,p_display:name})); return { id:d.id, name:d.name, code:d.code }; },
-    async joinProject(code, display){ name=display||name; const d=must(await sb.rpc('join_project',{p_code:code,p_display:name})); return { id:d.id, name:d.name, code:d.code }; },
+    async createProject(pn, display){ name=display||name; const d=must(await sb.rpc('create_project',{p_name:pn,p_display:name})); return { id:d.id, name:d.name, code:d.code, created_by:d.created_by }; },
+    async joinProject(code, display){ name=display||name; const d=must(await sb.rpc('join_project',{p_code:code,p_display:name})); return { id:d.id, name:d.name, code:d.code, created_by:d.created_by }; },
     // lista os projetos do usuario: tenta a RPC dedicada (com contagens), senao a tabela projects;
     // null = sem suporte no servidor (o app cai na lista local por conta)
     async listMyProjects(){
@@ -555,6 +562,13 @@ function SupabaseStore(sb){
       try{ const r = await sb.from('projects').select('id,name,code,created_at'); if(!r.error && Array.isArray(r.data)) return r.data; }catch(e){}
       return null;
     },
+    // papel do usuario atual no projeto: 'admin' | 'member'
+    async myRole(pid){ try{ const r = await sb.from('members').select('role').eq('project_id',pid).eq('user_id',user.id).maybeSingle(); return (r.data&&r.data.role)||'member'; }catch(e){ return 'member'; } },
+    async listMembers(pid){ try{ return must(await sb.from('members').select('user_id,display_name,role,joined_at').eq('project_id',pid).order('joined_at')); }catch(e){ return []; } },
+    async setMemberRole(pid, userId, role){ must(await sb.rpc('set_member_role',{ p_project:pid, p_user:userId, p_role:role })); },
+    async removeMember(pid, userId){ must(await sb.rpc('remove_member',{ p_project:pid, p_user:userId })); },
+    async renameProject(pid, pn){ must(await sb.rpc('rename_project',{ p_project:pid, p_name:pn })); },
+    async deleteProject(pid){ must(await sb.rpc('delete_project',{ p_project:pid })); },
     async listDocuments(pid){ return must(await sb.from('documents').select('*').eq('project_id',pid).order('created_at')); },
     async addDocument(pid,{id,name:dn,content}){ const row={project_id:pid,name:dn,content,created_by:user.id}; if(id) row.id=id; return must(await sb.from('documents').insert(row).select().single()); },
     async deleteDocument(id){ must(await sb.from('documents').delete().eq('id',id)); },
@@ -580,9 +594,15 @@ function SupabaseStore(sb){
     },
     async deleteCategory(id){ must(await sb.from('categories').delete().eq('id',id)); },
     async getDocValues(docId){ return must(await sb.from('doc_values').select('*').eq('document_id',docId)); },
+    // valor individual do usuario atual (cada pesquisador responde o seu)
     async setDocValue(pid,docId,catId,value){
-      if(value===''){ must(await sb.from('doc_values').delete().eq('document_id',docId).eq('category_id',catId)); return; }
-      must(await sb.from('doc_values').upsert({project_id:pid,document_id:docId,category_id:catId,value,set_by:user.id,author_name:name,updated_at:new Date().toISOString()},{onConflict:'document_id,category_id'}));
+      if(value===''){ must(await sb.from('doc_values').delete().eq('document_id',docId).eq('category_id',catId).eq('set_by',user.id).eq('layer','individual')); return; }
+      must(await sb.from('doc_values').upsert({project_id:pid,document_id:docId,category_id:catId,value,set_by:user.id,author_name:name,layer:'individual',updated_at:new Date().toISOString()},{onConflict:'document_id,category_id,set_by,layer'}));
+    },
+    // valor consolidado (gabarito) — somente o dono escreve (garantido por RLS)
+    async setFinalValue(pid,docId,catId,value){
+      if(value===''){ must(await sb.from('doc_values').delete().eq('document_id',docId).eq('category_id',catId).eq('layer','final')); return; }
+      must(await sb.from('doc_values').upsert({project_id:pid,document_id:docId,category_id:catId,value,set_by:user.id,author_name:name,layer:'final',updated_at:new Date().toISOString()},{onConflict:'document_id,category_id,set_by,layer'}));
     },
     async listCodes(pid){ return must(await sb.from('codes').select('*').eq('project_id',pid).order('depth').order('position')); },
     async addCode(pid,code){ return must(await sb.from('codes').insert({project_id:pid,...code}).select().single()); },
@@ -628,13 +648,32 @@ function App(){
   const [ctxMenu, setCtxMenu] = useState(null); // menu de contexto (botão direito) p/ aplicar código
   const [selCode, setSelCode] = useState(null);
   const [rtab, setRtab] = useState('categorias');
-  const [mainView, setMainView] = useState('codificar'); // codificar | visualizar (tela inteira)
+  const [mainView, setMainView] = useState('codificar'); // codificar | reconciliar | visualizar
+  const [viewCoder, setViewCoder] = useState('all');      // all | mine | <userId> | final
   const [settings, setSettings] = useState(false);
   const [expOpen, setExpOpen] = useState(false);
   const [busy, setBusy] = useState(null);
   const [importMsg, setImportMsg] = useState(null);
+  const [role, setRole] = useState('member');  // papel do usuário no projeto: admin | member
+  const [members, setMembers] = useState([]);   // membros do projeto (gestão de admins)
 
   const activeDoc = docs.find(d=>d.id===activeId) || null;
+  const isAdmin = role==='admin';
+
+  // codificadores presentes no documento ativo (para o filtro "Ver:")
+  const coders = useMemo(()=>{
+    const m = {}; codings.forEach(c=>{ if(c.created_by) m[c.created_by]=c.author_name||'anônimo'; });
+    return Object.entries(m).map(([id,nm])=>({id,name:nm}));
+  }, [codings]);
+
+  // codificações visíveis no leitor conforme o filtro de camada/codificador
+  const visibleCodings = useMemo(()=>{
+    if(viewCoder==='final') return codings.filter(c=>c.layer==='final');
+    const indiv = codings.filter(c=>c.layer!=='final');
+    if(viewCoder==='mine') return indiv.filter(c=>c.created_by===user?.id);
+    if(viewCoder==='all') return indiv;
+    return indiv.filter(c=>c.created_by===viewCoder);
+  }, [codings, viewCoder, user]);
 
   /* lista "Meus Projetos" por conta (cache local, complementa o servidor) */
   const recentKey = (st)=> 'lastro:projects:'+((st||store)?.currentUser?.()?.id || 'anon');
@@ -695,6 +734,36 @@ function App(){
   }, []);
   useEffect(()=>{ if(store && project && phase==='work') loadProject(store, project.id); }, [store, project, phase, loadProject]);
 
+  /* papel do usuário no projeto (admin/member) */
+  useEffect(()=>{ (async()=>{ if(store && project && phase==='work' && store.myRole){ try{ setRole(await store.myRole(project.id)); }catch(e){ setRole('member'); } } })(); }, [store, project, phase]);
+
+  /* membros do projeto (carregado ao abrir as configurações) */
+  const loadMembers = useCallback(async ()=>{ if(store && project && store.listMembers){ try{ setMembers(await store.listMembers(project.id)); }catch(e){ setMembers([]); } } }, [store, project]);
+  useEffect(()=>{ if(settings) loadMembers(); }, [settings, loadMembers]);
+  async function changeMemberRole(userId, newRole){
+    try{ await store.setMemberRole(project.id, userId, newRole); await loadMembers();
+      if(userId===user?.id && store.myRole) setRole(await store.myRole(project.id)); }
+    catch(e){ setErr(String(e.message||e)); }
+  }
+  function leaveToGate(){ try{localStorage.removeItem('lastro:project');}catch(e){} setSettings(false); setProject(null); setDocs([]); setActiveId(null); setPhase('gate'); }
+  async function removeMember(userId){
+    const self = userId===user?.id;
+    if(self && !confirm('Sair deste projeto? Você perderá o acesso (suas codificações permanecem no projeto).')) return;
+    try{ await store.removeMember(project.id, userId);
+      if(self) leaveToGate(); else await loadMembers(); }
+    catch(e){ setErr(String(e.message||e)); }
+  }
+  async function renameProject(pn){
+    try{ await store.renameProject(project.id, pn); const np={...project, name:pn};
+      setProject(np); try{localStorage.setItem('lastro:project',JSON.stringify(np));}catch(e){} }
+    catch(e){ setErr(String(e.message||e)); }
+  }
+  async function deleteProject(){
+    if(!confirm('Excluir DEFINITIVAMENTE este projeto e todos os seus documentos, códigos e codificações? Esta ação não pode ser desfeita.')) return;
+    try{ await store.deleteProject(project.id); leaveToGate(); }
+    catch(e){ setErr(String(e.message||e)); }
+  }
+
   /* carregar doc ativo */
   const loadDoc = useCallback(async ()=>{
     if(!store || !project || !activeId){ setValues([]); setCodings([]); return; }
@@ -709,7 +778,7 @@ function App(){
     const V=[], C=[];
     for(const d of docs){
       const [v,co]=await Promise.all([store.getDocValues(d.id), store.listCodings(project.id, d.id)]);
-      v.forEach(x=>V.push({ document_id:d.id, category_id:x.category_id, value:x.value, author_name:x.author_name }));
+      v.forEach(x=>V.push({ document_id:d.id, category_id:x.category_id, value:x.value, author_name:x.author_name, layer:x.layer||'individual' }));
       co.forEach(x=>C.push(x));
     }
     setAllValues(V); setAllCodings(C);
@@ -743,6 +812,7 @@ function App(){
   async function delDoc(id){ await store.deleteDocument(id); setDocs(d=>d.filter(x=>x.id!==id)); if(activeId===id) setActiveId(docs.find(x=>x.id!==id)?.id||null); }
 
   async function setValue(catId, value){ await store.setDocValue(project.id, activeId, catId, value); loadDoc(); }
+  async function setFinalValue(catId, value){ if(!store.setFinalValue) return; await store.setFinalValue(project.id, activeId, catId, value); loadDoc(); }
   async function addCategory(){ const c = await store.addCategory(project.id,{name:'Nova categoria',kind:'single',options:[NAO_INFO],color:cats.length%HUES.length,position:cats.length}); setCats(x=>[...x,c]); }
   async function updCategory(id,patch){ await store.updateCategory(id,patch); setCats(x=>x.map(c=>c.id===id?{...c,...patch}:c)); }
   async function delCategory(id){ await store.deleteCategory(id); setCats(x=>x.filter(c=>c.id!==id)); setValues(v=>v.filter(x=>x.category_id!==id)); }
@@ -759,8 +829,13 @@ function App(){
   async function applyCode(codeId, selection){
     const s = selection || sel;
     if(!s) return;
-    const c = await store.addCoding(project.id,{ document_id:activeId, code_id:codeId, span_start:s.start, span_end:s.end, quote:s.quote });
+    const c = await store.addCoding(project.id,{ document_id:activeId, code_id:codeId, span_start:s.start, span_end:s.end, quote:s.quote, layer:'individual' });
     setCodings(x=>[...x,c]); setSel(null); setCtxMenu(null); window.getSelection()?.removeAllRanges();
+  }
+  // consolidacao: cria uma codificacao na camada "final" (reconciliacao manual)
+  async function addFinalCoding(docId, codeId, start, end, quote){
+    const c = await store.addCoding(project.id,{ document_id:docId, code_id:codeId, span_start:start, span_end:end, quote, layer:'final' });
+    setCodings(x=>[...x,c]);
   }
   async function delCoding(id){ await store.deleteCoding(id); setCodings(x=>x.filter(c=>c.id!==id)); }
 
@@ -770,7 +845,7 @@ function App(){
       const allV=[], allC=[];
       for(const d of docs){
         const [v,co]=await Promise.all([store.getDocValues(d.id), store.listCodings(project.id,d.id)]);
-        v.forEach(x=>allV.push({ document_id:d.id, category_id:x.category_id, value:x.value, author:x.author_name||'anonimo' }));
+        v.forEach(x=>allV.push({ document_id:d.id, category_id:x.category_id, value:x.value, author:x.author_name||'anonimo', layer:x.layer||'individual' }));
         co.forEach(x=>allC.push(x));
       }
       const dn=(id)=>docs.find(d=>d.id===id)?.name||"";
@@ -780,19 +855,27 @@ function App(){
           categories:cats.map(c=>({id:c.id,name:c.name,kind:c.kind,options:c.options,description:c.description||''})),
           document_values:allV,
           codes:codes.map(c=>({id:c.id,parent_id:c.parent_id,name:c.name,depth:c.depth,path:codePathFor(codes,c.id)})),
-          codings:allC.map(c=>({id:c.id,document_id:c.document_id,code_id:c.code_id,code_path:codePathFor(codes,c.code_id),start:c.span_start,end:c.span_end,quote:c.quote,author:c.author_name})) };
+          codings:allC.map(c=>({id:c.id,document_id:c.document_id,code_id:c.code_id,code_path:codePathFor(codes,c.code_id),start:c.span_start,end:c.span_end,quote:c.quote,author:c.author_name,layer:c.layer||'individual'})) };
         download('qualilab_projeto.json', JSON.stringify(obj,null,2), 'application/json');
       } else if(kind==='trechos'){
-        const header=["documento","familia","codigo","nivel","trecho","inicio","fim","autor"];
+        const header=["documento","familia","codigo","nivel","trecho","inicio","fim","autor","camada"];
         const sorted=allC.slice().sort((a,b)=> a.document_id===b.document_id ? a.span_start-b.span_start : (dn(a.document_id)>dn(b.document_id)?1:-1));
-        const rows=sorted.map(c=>{ const p=codePathFor(codes,c.code_id); return [dn(c.document_id), p[0]||"", p.join(" > "), String(p.length-1), c.quote, String(c.span_start), String(c.span_end), c.author_name]; });
+        const rows=sorted.map(c=>{ const p=codePathFor(codes,c.code_id); return [dn(c.document_id), p[0]||"", p.join(" > "), String(p.length-1), c.quote, String(c.span_start), String(c.span_end), c.author_name, c.layer||'individual']; });
         download('qualilab_trechos.csv', '\uFEFF'+toCSV([header,...rows]), 'text/csv;charset=utf-8');
       } else if(kind==='documentos'){
+        // usa o gabarito (final) quando existe; senao a primeira resposta individual
+        const valFor=(docId,catId)=>{ const rows=allV.filter(x=>x.document_id===docId&&x.category_id===catId);
+          const fin=rows.find(r=>r.layer==='final'); return (fin||rows[0]||{}).value||""; };
         const header=["documento",...cats.map(c=>c.name),"n_trechos"];
-        const rows=docs.map(d=>[d.name, ...cats.map(cat=>{ const v=allV.find(x=>x.document_id===d.id&&x.category_id===cat.id); return v?v.value:""; }), String(allC.filter(c=>c.document_id===d.id).length)]);
+        const rows=docs.map(d=>[d.name, ...cats.map(cat=>valFor(d.id,cat.id)), String(allC.filter(c=>c.document_id===d.id&&(c.layer||'individual')!=='final').length)]);
         download('qualilab_documentos.csv', '\uFEFF'+toCSV([header,...rows]), 'text/csv;charset=utf-8');
       } else if(kind==='qdpx'){
-        await exportQDPX(docs, cats, allV, codes, allC, project);
+        // um valor por documento/categoria (QDPX espera isso): prefere o gabarito (final)
+        const pick = {};
+        allV.forEach(x=>{ const k=x.document_id+':'+x.category_id; const cur=pick[k];
+          if(!cur || (x.layer==='final' && cur.layer!=='final')) pick[k]=x; });
+        const codForQdpx = allC.filter(c=>(c.layer||'individual')!=='final');
+        await exportQDPX(docs, cats, Object.values(pick), codes, codForQdpx, project);
       }
     }catch(e){ setErr('Falha ao exportar: '+(e.message||e)); }
   }
@@ -889,6 +972,7 @@ function App(){
       <div class="tag">o seu laboratório de pesquisa qualitativa / your own lab for qualitative research</div>
       ${project && html`<div class="seg" style="margin-left:10px">
         <button class=${mainView==='codificar'?'on':''} onClick=${()=>setMainView('codificar')}>Codificação</button>
+        <button class=${mainView==='reconciliar'?'on':''} onClick=${()=>setMainView('reconciliar')}>Reconciliação</button>
         <button class=${mainView==='visualizar'?'on':''} onClick=${()=>setMainView('visualizar')}>Visualização</button>
       </div>`}
       <div class="grow"></div>
@@ -932,6 +1016,13 @@ function App(){
           </label>
           <${AddPaste} onAdd=${addPasted} />
           <div class="grow"></div>
+          ${mode==='cloud' && html`<label class="meta" style="display:flex;align-items:center;gap:5px">Ver:
+            <select class="opt" value=${viewCoder} onChange=${e=>setViewCoder(e.target.value)}>
+              <option value="all">Todas (individuais)</option>
+              <option value="mine">Minhas</option>
+              ${coders.filter(c=>c.id!==user?.id).map(c=>html`<option value=${c.id}>${c.name}</option>`)}
+              <option value="final">Camada final</option>
+            </select></label>`}
           ${activeDoc && html`<button class="icon-btn" title="Remover documento" onClick=${()=>delDoc(activeDoc.id)}>🗑</button>`}
         </div>
 
@@ -946,7 +1037,7 @@ function App(){
         <div class="pane-body scroll">
           ${!activeDoc ? html`<div class="empty"><div class="t">Nenhum documento</div><div>Envie arquivos (.txt, .md, .docx, .pdf) ou cole um texto. O conteúdo é extraído e exibido aqui para codificação.</div></div>`
           : html`<div class="reader" onMouseUp=${onMouseUp} onContextMenu=${onContextMenu}>
-              ${buildRuns(activeDoc.content, codings).map((run,i)=>{
+              ${buildRuns(activeDoc.content, visibleCodings).map((run,i)=>{
                 if(run.codings.length===0) return html`<span key=${i} data-start=${run.start}>${run.text}</span>`;
                 const top = run.codings[run.codings.length-1];
                 const code = codeById[top.code_id];
@@ -969,6 +1060,7 @@ function App(){
         </div>
         <div class="pane-body scroll">
           ${rtab==='categorias' && html`<${CategoriesPanel} cats=${cats} values=${values} activeDoc=${activeDoc}
+                 canEditSchema=${isAdmin} userId=${user?.id}
                  onSet=${setValue} onAdd=${addCategory} onUpd=${updCategory} onDel=${delCategory} />`}
           ${rtab==='codigos' && html`<${CodesPanel} codes=${codes} codeById=${codeById} count=${codingCount} sel=${sel}
                  selCode=${selCode} setSelCode=${setSelCode} codePath=${codePath}
@@ -976,6 +1068,27 @@ function App(){
                  store=${store} project=${project} reload=${()=>loadProject(store,project.id)} />`}
         </div>
       </aside>
+    </div>`
+    : mainView==='reconciliar' ? html`<div class="split">
+      <!-- RECONCILIACAO: tela inteira -->
+      <section class="pane left" style="flex:1 1 100%;border-right:none;max-width:none">
+        <div class="pane-head">
+          <span class="h" style="margin:0">Reconciliação</span>
+          <select class="opt" style="max-width:260px;margin-left:10px" value=${activeId||''} onChange=${e=>setActiveId(e.target.value)}>
+            ${docs.length===0 && html`<option value="">sem documentos</option>`}
+            ${docs.map(d=>html`<option value=${d.id}>${d.name}</option>`)}
+          </select>
+        </div>
+        <div class="pane-body scroll">
+          <div style="max-width:900px;margin:0 auto">
+            <${Reconcile} activeDoc=${activeDoc} codings=${codings} coders=${coders}
+              codeById=${codeById} codePath=${codePath}
+              cats=${cats} values=${values} isOwner=${isAdmin} onSetFinal=${setFinalValue}
+              onConsolidate=${(codeId,start,end,quote)=>addFinalCoding(activeId,codeId,start,end,quote)}
+              onDelCoding=${delCoding} />
+          </div>
+        </div>
+      </section>
     </div>`
     : html`<div class="split">
       <!-- VISUALIZACAO: tela inteira -->
@@ -1007,6 +1120,8 @@ function App(){
   </div>`}
 
   ${settings && html`<${SettingsModal} mode=${mode} user=${user}
+    project=${project} members=${members} isAdmin=${isAdmin} onSetRole=${changeMemberRole}
+    onRemoveMember=${removeMember} onRenameProject=${renameProject} onDeleteProject=${deleteProject}
     onClose=${()=>setSettings(false)}
     onSaveCloud=${(url,key)=>{ try{localStorage.setItem('lastro:url',url);localStorage.setItem('lastro:key',key);}catch(e){} location.reload(); }}
     onClearCloud=${()=>{ try{localStorage.removeItem('lastro:url');localStorage.removeItem('lastro:key');localStorage.removeItem('lastro:project');}catch(e){} location.reload(); }}
@@ -1096,13 +1211,14 @@ function Gate({ onCreate, onJoin, onOpen, err, user, projects }){
 }
 
 /* ============ PAINEL DE CATEGORIAS (atributos do documento) ============ */
-function CategoriesPanel({ cats, values, activeDoc, onSet, onAdd, onUpd, onDel }){
-  const valOf = (catId)=> values.find(v=>v.category_id===catId);
+function CategoriesPanel({ cats, values, activeDoc, canEditSchema, userId, onSet, onAdd, onUpd, onDel }){
+  // valor individual do usuario atual (cada pesquisador responde o seu)
+  const valOf = (catId)=> values.find(v=>v.category_id===catId && (v.layer||'individual')!=='final' && (v.set_by==null || v.set_by===userId));
   return html`<div class="section">
     <p class="h">Atributos deste documento</p>
-    <p class="hint">Cada categoria recebe um valor para o documento inteiro (não para um trecho). Defina o esquema uma vez; o valor é preenchido por documento.</p>
+    <p class="hint">Cada categoria recebe um valor para o documento inteiro (não para um trecho). O esquema é definido pelo dono do projeto; o valor é preenchido por documento.</p>
     ${!activeDoc && html`<div class="card"><span class="meta">Abra um documento para preencher.</span></div>`}
-    ${activeDoc && cats.length===0 && html`<div class="card"><span class="meta">Nenhuma categoria ainda. Crie abaixo.</span></div>`}
+    ${activeDoc && cats.length===0 && html`<div class="card"><span class="meta">${canEditSchema?'Nenhuma categoria ainda. Crie abaixo.':'Nenhuma categoria definida pelo dono do projeto.'}</span></div>`}
     ${activeDoc && cats.map(cat=>{
       const v = valOf(cat.id);
       return html`<div class="field" key=${cat.id}>
@@ -1111,13 +1227,13 @@ function CategoriesPanel({ cats, values, activeDoc, onSet, onAdd, onUpd, onDel }
         <${CategoryValue} cat=${cat} v=${v} onSet=${val=>onSet(cat.id,val)} />
       </div>`;
     })}
-    <details style="margin-top:10px">
+    ${canEditSchema && html`<details style="margin-top:10px">
       <summary style="cursor:pointer;font-size:12.5px;color:var(--ink-soft)">Gerenciar esquema de categorias</summary>
       <div style="margin-top:10px">
         ${cats.map(cat=>html`<${CategoryEditor} key=${cat.id} cat=${cat} onUpd=${onUpd} onDel=${onDel} />`)}
         <button class="btn sm" onClick=${onAdd} style="margin-top:6px">＋ Nova categoria</button>
       </div>
-    </details>
+    </details>`}
   </div>`;
 }
 function CategoryEditor({ cat, onUpd, onDel }){
@@ -1257,12 +1373,97 @@ function CodesPanel({ codes, codeById, count, sel, selCode, setSelCode, codePath
   </div>`;
 }
 
+/* ============ RECONCILIACAO (camadas individuais -> camada final) ============
+   Agrupa as codificacoes individuais que se sobrepoem com o mesmo codigo, mostra
+   quantos codificadores concordam e permite consolidar cada grupo na camada "final". */
+function Reconcile({ activeDoc, codings, coders, codeById, codePath, cats, values, isOwner, onSetFinal, onConsolidate, onDelCoding }){
+  if(!activeDoc) return html`<div class="card"><span class="meta">Abra um documento para reconciliar.</span></div>`;
+  const indiv = codings.filter(c=>c.layer!=='final');
+  const finals = codings.filter(c=>c.layer==='final');
+  const totalCoders = new Set(indiv.map(c=>c.created_by)).size || 1;
+  const byCode = {};
+  indiv.forEach(c=>{ (byCode[c.code_id]=byCode[c.code_id]||[]).push(c); });
+  const groups = [];
+  Object.entries(byCode).forEach(([codeId,list])=>{
+    list.slice().sort((a,b)=>a.span_start-b.span_start).forEach(c=>{
+      const cur = groups.find(g=>g.codeId===codeId && c.span_start < g.end && g.start < c.span_end);
+      if(cur){ cur.start=Math.min(cur.start,c.span_start); cur.end=Math.max(cur.end,c.span_end); cur.items.push(c); }
+      else groups.push({ codeId, start:c.span_start, end:c.span_end, items:[c] });
+    });
+  });
+  groups.sort((a,b)=>a.start-b.start || a.end-b.end);
+  const finalFor = (g)=> finals.find(f=>f.code_id===g.codeId && f.span_start < g.end && g.start < f.span_end);
+  const nameOf = (id, fallback)=> (coders.find(c=>c.id===id)||{}).name || fallback || 'anônimo';
+  return html`<div class="section">
+    <p class="h">Categorias — gabarito e comparação</p>
+    <p class="hint">Cada pesquisador preenche os atributos do documento; o dono consolida o <b>gabarito</b>. ✓ = igual ao gabarito, ✗ = diferente.</p>
+    ${(cats||[]).length===0 && html`<div class="card"><span class="meta">Nenhuma categoria definida.</span></div>`}
+    ${(cats||[]).map(cat=>{
+      const finRow = (values||[]).find(v=>v.category_id===cat.id && v.layer==='final');
+      const finalVal = finRow ? finRow.value : '';
+      const indivVals = (values||[]).filter(v=>v.category_id===cat.id && (v.layer||'individual')!=='final');
+      return html`<div class="card" key=${cat.id} style="margin-bottom:8px;padding:10px 12px">
+        <div style="font-size:12.5px;font-weight:600;margin-bottom:2px">${cat.name}</div>
+        ${cat.description && html`<div class="hint" style="margin:0 0 6px">${cat.description}</div>`}
+        <div style="background:var(--teal-soft);border-radius:8px;padding:6px 10px;margin-bottom:8px">
+          <div class="row" style="gap:8px;align-items:center">
+            <span class="meta" style="color:var(--teal-deep);font-weight:600">Gabarito</span>
+            ${isOwner
+              ? html`<div style="flex:1"><${CategoryValue} cat=${cat} v=${finRow} onSet=${val=>onSetFinal(cat.id,val)} /></div>`
+              : html`<span style="font-weight:600;color:var(--teal-deep)">${finalVal||'(não consolidado)'}</span>`}
+          </div>
+        </div>
+        ${indivVals.length===0
+          ? html`<div class="meta">Ninguém respondeu ainda.</div>`
+          : indivVals.map(v=>{ const ok = finalVal!=='' && v.value===finalVal;
+              return html`<div class="row" key=${v.id||v.set_by} style="gap:8px;padding:2px 0">
+                <span style=${`color:${ok?'var(--teal)':'var(--danger)'};font-weight:700;width:14px`}>${ok?'✓':'✗'}</span>
+                <span style="flex:1;font-size:13px">${v.value||html`<span class="meta" style="font-style:italic">sem resposta</span>`}</span>
+                <span class="meta">${v.author_name||'anônimo'}</span>
+              </div>`;
+            })}
+      </div>`;
+    })}
+
+    <p class="h" style="margin-top:18px">Códigos — reconciliação</p>
+    <p class="hint">Cada grupo reúne as codificações que se sobrepõem com o mesmo código. Consolide os que devem entrar na camada <b>final</b> do projeto.${totalCoders>1?` ${totalCoders} codificadores neste documento.`:''}</p>
+    ${groups.length===0 && html`<div class="card"><span class="meta">Nenhuma codificação individual neste documento ainda.</span></div>`}
+    ${groups.map(g=>{
+      const code = codeById[g.codeId]; const col = code?codeColor(code.hue,code.depth):codeColor(0,0);
+      const coderIds = [...new Set(g.items.map(i=>i.created_by))];
+      const fin = finalFor(g);
+      const consensus = coderIds.length>=totalCoders && totalCoders>1;
+      const quote = activeDoc.content.slice(g.start,g.end);
+      return html`<div class="card" key=${g.codeId+':'+g.start} style=${`margin-bottom:8px;padding:10px 12px;${consensus?'border-color:var(--teal)':''}`}>
+        <div class="row" style="gap:7px;margin-bottom:4px">
+          <span class="swatch" style=${`background:${col.solid}`}></span>
+          <span style="flex:1;font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${codePath(g.codeId).join(' ▸ ')}</span>
+          <span class="meta">${coderIds.length} de ${totalCoders}${consensus?' · consenso':''}</span>
+        </div>
+        <div class="row" style="flex-wrap:wrap;gap:4px;margin-bottom:6px">
+          ${coderIds.map(id=>html`<span class="author" key=${id}>${nameOf(id, (g.items.find(i=>i.created_by===id)||{}).author_name)}</span>`)}
+        </div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--ink-soft);margin-bottom:8px">“${quote.slice(0,180)}”</div>
+        ${fin
+          ? html`<div class="row" style="gap:8px;align-items:center">
+              <span class="author" style="background:var(--teal-soft);color:var(--teal-deep)">✓ na camada final</span>
+              <button class="btn sm ghost" onClick=${()=>onDelCoding(fin.id)}>remover do final</button></div>`
+          : html`<button class="btn sm primary" onClick=${()=>onConsolidate(g.codeId, g.start, g.end, quote)}>Consolidar no final →</button>`}
+      </div>`;
+    })}
+  </div>`;
+}
+
 /* ============ PAINEL DE TRECHOS CODIFICADOS (visualizacao de todo o projeto) ============
    Filtra por categorias do documento e cruza ate 3 codigos por co-ocorrencia (sobreposicao
    de trechos no mesmo documento). E so visualizacao: a codificacao acontece na aba "Codificar". */
 function CodedPanel({ docs, cats, codes, codeById, codePath, allCodings, allValues, onDelCoding, onJump }){
   const [catFilter, setCatFilter] = useState({});   // category_id -> valor exigido
   const [codeSel, setCodeSel] = useState(['','','']); // ate 3 codigos cruzados
+  const [layer, setLayer] = useState('individual');   // individual | final
+
+  // separa por camada (evita misturar individuais com a camada consolidada)
+  const layerCodings = useMemo(()=> allCodings.filter(c=> layer==='final' ? c.layer==='final' : c.layer!=='final'), [allCodings, layer]);
 
   const docById = useMemo(()=>Object.fromEntries(docs.map(d=>[d.id,d])), [docs]);
   const docName = (id)=>docById[id]?.name || '';
@@ -1275,11 +1476,13 @@ function CodedPanel({ docs, cats, codes, codeById, codePath, allCodings, allValu
   const setCat = (catId,val)=> setCatFilter(f=>{ const n={...f}; if(val) n[catId]=val; else delete n[catId]; return n; });
   const setCode = (i,val)=> setCodeSel(s=>{ const n=s.slice(); n[i]=val; return n; });
 
-  // documentos que passam no filtro de categorias
+  // documentos que passam no filtro de categorias — usa o gabarito (final) quando existe,
+  // senao considera qualquer resposta individual
   const docMatches = (docId)=> Object.entries(catFilter).every(([catId,want])=>{
-    const v = allValues.find(x=>x.document_id===docId && x.category_id===catId);
-    // casa valor único ou um dos valores de uma Caixa de Seleção (multivalor)
-    return v && v.value!=null && String(v.value).split(CAT_MULTI_SEP).includes(want);
+    const rows = allValues.filter(x=>x.document_id===docId && x.category_id===catId);
+    const fin = rows.find(r=>r.layer==='final');
+    const pool = fin ? [fin.value] : rows.map(r=>r.value);
+    return pool.some(val=> val!=null && String(val).split(CAT_MULTI_SEP).includes(want));
   });
 
   const active = [...new Set(codeSel.filter(Boolean))]; // codigos cruzados, sem repetir
@@ -1289,7 +1492,7 @@ function CodedPanel({ docs, cats, codes, codeById, codePath, allCodings, allValu
     const out = [];
     const docIds = docs.filter(d=>docMatches(d.id)).map(d=>d.id);
     for(const docId of docIds){
-      const inDoc = allCodings.filter(c=>c.document_id===docId);
+      const inDoc = layerCodings.filter(c=>c.document_id===docId);
       if(active.length<=1){
         const list = active.length===1 ? inDoc.filter(c=>c.code_id===active[0]) : inDoc;
         list.forEach(c=> out.push({ key:c.id, docId, start:c.span_start, end:c.span_end, quote:c.quote, codeIds:[c.code_id], codingId:c.id }));
@@ -1316,7 +1519,7 @@ function CodedPanel({ docs, cats, codes, codeById, codePath, allCodings, allValu
       }
     }
     return out.sort((a,b)=> a.docId===b.docId ? a.start-b.start : (docName(a.docId)>docName(b.docId)?1:-1));
-  }, [docs, allCodings, allValues, catFilter, codeSel]);
+  }, [docs, layerCodings, allValues, catFilter, codeSel]);
 
   const crossing = active.length>=2;
 
@@ -1325,6 +1528,13 @@ function CodedPanel({ docs, cats, codes, codeById, codePath, allCodings, allValu
     <p class="hint">Visualização de todo o projeto. Filtre por atributos do documento e cruze até 3 códigos por co-ocorrência (trechos que se sobrepõem no mesmo documento). A codificação acontece na aba “Codificar”.</p>
 
     <div class="card" style="margin-bottom:12px">
+      <div class="row" style="gap:6px;margin-bottom:10px">
+        <span style="font-size:12.5px;min-width:120px">Camada</span>
+        <select class="opt" style="flex:1" value=${layer} onChange=${e=>setLayer(e.target.value)}>
+          <option value="individual">Individuais (todos os codificadores)</option>
+          <option value="final">Final (consolidada)</option>
+        </select>
+      </div>
       <div class="field-label">Filtrar por categorias</div>
       ${cats.length===0 ? html`<span class="meta">Nenhuma categoria definida.</span>`
         : cats.map(cat=>html`<div class="row" key=${cat.id} style="gap:6px;margin-bottom:6px">
@@ -1460,8 +1670,11 @@ function AddPaste({ onAdd }){
 }
 
 /* ============ SETTINGS ============ */
-function SettingsModal({ mode, user, onClose, onSaveCloud, onClearCloud }){
+function SettingsModal({ mode, user, project, members, isAdmin, onSetRole, onRemoveMember, onRenameProject, onDeleteProject, onClose, onSaveCloud, onClearCloud }){
   const [url,setUrl]=useState(''); const [key,setKey]=useState('');
+  const [pname,setPname]=useState(project?.name||'');
+  const list = members||[];
+  const admins = list.filter(m=>m.role==='admin').length;
   return html`<div class="modal-bg"><div class="modal">
     <h2>Conexão</h2>
     <p class="hint">Modo atual: <b>${mode==='cloud'?'nuvem (coletivo)':'local (este navegador)'}</b>.</p>
@@ -1473,7 +1686,44 @@ function SettingsModal({ mode, user, onClose, onSaveCloud, onClearCloud }){
           <button class="btn primary" disabled=${!url||!key} onClick=${()=>onSaveCloud(url.trim(),key.trim())}>Conectar e recarregar</button>
         </div>`
       : html`<div>
-          <p class="hint">Usuário: ${user?.name}. Para voltar ao modo local (sem servidor), limpe a conexão.</p>
+          <p class="hint">Usuário: ${user?.name} — você é <b>${isAdmin?'administrador':'membro'}</b> deste projeto.</p>
+
+          ${project && html`<div class="field">
+            <div class="field-label">Membros & administradores</div>
+            <p class="hint" style="margin:0 0 8px">Administradores definem o esquema de categorias e consolidam o gabarito. ${isAdmin?'Você pode promover ou rebaixar membros.':'Apenas administradores podem alterar papéis.'}</p>
+            ${list.length===0 && html`<span class="meta">Carregando membros…</span>`}
+            ${list.map(m=>{
+              const isMe = m.user_id===user?.id;
+              const isLastAdmin = m.role==='admin' && admins<=1;
+              return html`<div class="docitem" key=${m.user_id}>
+                <div style="flex:1;min-width:0">
+                  <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.display_name||'anônimo'}${isMe?' (você)':''}</div>
+                  <div class="meta">${m.role==='admin'?'administrador':'membro'}</div>
+                </div>
+                ${isAdmin && html`<button class="btn sm ghost"
+                    disabled=${m.role==='admin' && isLastAdmin}
+                    title=${m.role==='admin' && isLastAdmin ? 'O projeto precisa de ao menos um administrador' : ''}
+                    onClick=${()=>onSetRole(m.user_id, m.role==='admin'?'member':'admin')}>
+                    ${m.role==='admin'?'tornar membro':'tornar admin'}</button>`}
+                ${isMe
+                  ? html`<button class="btn sm ghost" style="color:var(--danger)" onClick=${()=>onRemoveMember(m.user_id)}>sair</button>`
+                  : isAdmin && html`<button class="icon-btn" title="Remover do projeto"
+                      disabled=${m.role==='admin' && isLastAdmin}
+                      onClick=${()=>{ if(confirm(`Remover ${m.display_name||'este membro'} do projeto?`)) onRemoveMember(m.user_id); }}>🗑</button>`}
+              </div>`;
+            })}
+          </div>`}
+
+          ${project && isAdmin && html`<div class="field">
+            <div class="field-label">Projeto</div>
+            <div class="row" style="gap:6px">
+              <input class="txtin" value=${pname} onInput=${e=>setPname(e.target.value)} placeholder="nome do projeto" />
+              <button class="btn sm" disabled=${!pname.trim()||pname===project.name} onClick=${()=>onRenameProject(pname.trim())}>renomear</button>
+            </div>
+            <button class="btn sm ghost" style="color:var(--danger);margin-top:8px" onClick=${onDeleteProject}>Excluir projeto definitivamente</button>
+          </div>`}
+
+          <p class="hint" style="margin-top:12px">Para voltar ao modo local (sem servidor), limpe a conexão.</p>
           <button class="btn ghost" onClick=${onClearCloud}>Desconectar do Supabase</button>
         </div>`}
     <div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn" onClick=${onClose}>Fechar</button></div>
