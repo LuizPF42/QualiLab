@@ -1,0 +1,1026 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>QualiLab — your own lab for qualitative research</title>
+<script>
+  // captura erros do modulo (import falho, sintaxe, runtime) e mostra na tela
+  function showFatal(msg){
+    var el=document.getElementById('app'); if(!el) return;
+    var esc=String(msg==null?'erro desconhecido':msg).replace(/[<>&]/g,function(c){return ({'<':'&lt;','>':'&gt;','&':'&amp;'})[c];});
+    el.innerHTML='<div style="font-family:system-ui,sans-serif;padding:24px;max-width:720px;margin:24px auto;color:#1A1B1E">'
+      +'<h2 style="font-family:Georgia,serif;margin:0 0 6px">QualiLab nao carregou</h2>'
+      +'<p style="color:#5C5F66;margin:0 0 12px">Houve um erro ao iniciar. O detalhe abaixo ajuda a depurar. Causas comuns: alguma biblioteca de CDN bloqueada pela rede, ou um erro de digitacao ao colar as credenciais do Supabase.</p>'
+      +'<pre style="white-space:pre-wrap;background:#F3ECD9;border:1px solid #d9c89a;border-radius:8px;padding:12px;font-size:12px;overflow:auto">'+esc+'</pre></div>';
+  }
+  window.addEventListener('error', function(e){ showFatal((e.error&&e.error.stack)||e.message||(e.filename?(e.filename+':'+e.lineno):'')||'erro'); });
+  window.addEventListener('unhandledrejection', function(e){ var r=e.reason; showFatal((r&&(r.stack||r.message))||String(r)); });
+</script>
+<style>
+  :root{
+    --paper:#F4F3EF; --surface:#FFFFFF; --ink:#1A1B1E; --ink-soft:#5C5F66; --ink-faint:#8B8E94;
+    --line:#E5E3DD; --line-soft:#EEECE6; --teal:#0F6E66; --teal-deep:#0B5650; --teal-soft:#E2EFED;
+    --amber:#8A6D1F; --amber-soft:#F3ECD9; --danger:#B23A3A;
+    --serif:"Newsreader","Iowan Old Style",Palatino,Georgia,serif;
+    --sans:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:"JetBrains Mono","SF Mono",ui-monospace,"Roboto Mono",Menlo,monospace;
+  }
+  @import url('https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;}
+  body{font-family:var(--sans);color:var(--ink);background:var(--paper);font-size:14px;}
+  #app{height:100%;}
+  ::selection{background:rgba(15,110,102,.22);}
+  button{font-family:var(--sans);cursor:pointer;}
+  input,select,textarea{font-family:var(--sans);}
+  .scroll::-webkit-scrollbar{width:10px;height:10px;}
+  .scroll::-webkit-scrollbar-thumb{background:var(--line);border-radius:8px;}
+  :focus-visible{outline:2px solid var(--teal);outline-offset:2px;}
+
+  .app{display:flex;flex-direction:column;height:100vh;}
+  header.top{background:var(--surface);border-bottom:1px solid var(--line);padding:8px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .brand{font-family:var(--serif);font-size:22px;font-weight:600;letter-spacing:-.01em;}
+  .tag{font-size:11px;color:var(--ink-faint);letter-spacing:.04em;}
+  .grow{flex:1;}
+  .pill{font-size:12px;padding:4px 10px;border-radius:99px;border:1px solid var(--line);background:var(--surface);color:var(--ink);display:inline-flex;align-items:center;gap:6px;}
+  .pill.mode-cloud{background:var(--teal-soft);border-color:rgba(15,110,102,.35);color:var(--teal-deep);}
+  .btn{font-size:13px;font-weight:500;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:7px 12px;display:inline-flex;align-items:center;gap:7px;}
+  .btn:hover{background:var(--paper);}
+  .btn.primary{background:var(--teal);color:#fff;border:none;font-weight:600;}
+  .btn.primary:hover{background:var(--teal-deep);}
+  .btn.ghost{background:transparent;}
+  .btn.sm{font-size:12px;padding:5px 9px;border-radius:7px;}
+  .icon-btn{background:transparent;border:none;color:var(--ink-soft);padding:4px;border-radius:6px;display:inline-flex;}
+  .icon-btn:hover{background:var(--line-soft);color:var(--ink);}
+
+  .split{flex:1;display:flex;min-height:0;}
+  .pane{min-width:0;display:flex;flex-direction:column;}
+  .pane.left{flex:1 1 58%;border-right:1px solid var(--line);}
+  .pane.right{flex:1 1 42%;max-width:560px;}
+  .pane-head{padding:10px 14px;border-bottom:1px solid var(--line-soft);display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--surface);}
+  .pane-body{flex:1;overflow:auto;padding:0;}
+
+  .reader{font-family:var(--serif);font-size:17px;line-height:1.8;color:var(--ink);padding:22px 26px;white-space:pre-wrap;}
+  .reader span[data-c]{border-radius:3px;padding:0 1px;cursor:default;}
+
+  .toolbar{position:sticky;top:0;z-index:5;background:var(--teal-soft);border-bottom:1px solid rgba(15,110,102,.3);padding:8px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .toolbar .q{font-family:var(--mono);font-size:12px;color:var(--ink);max-width:50%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;}
+  .seg button{border:none;background:var(--surface);padding:6px 12px;font-size:13px;color:var(--ink-soft);}
+  .seg button.on{background:var(--teal);color:#fff;font-weight:600;}
+
+  .section{padding:14px;}
+  .h{font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:8px;margin:0 0 8px;}
+  .hint{font-size:12.5px;color:var(--ink-soft);line-height:1.5;margin:0 0 10px;}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:12px;}
+  .row{display:flex;align-items:center;gap:8px;}
+  .field{margin-bottom:14px;}
+  .field-label{font-size:12.5px;font-weight:600;margin-bottom:6px;display:flex;align-items:center;gap:7px;}
+  .opt{font-size:12.5px;padding:5px 11px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);}
+  .opt.on{background:var(--teal);border-color:var(--teal);color:#fff;font-weight:600;}
+  .txtin{width:100%;font-size:13px;padding:7px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);}
+  .meta{font-size:11px;color:var(--ink-faint);}
+
+  .tree{margin-top:6px;}
+  .node{}
+  .node-row{display:flex;align-items:center;gap:7px;padding:5px 6px;border-radius:8px;}
+  .node-row:hover{background:var(--paper);}
+  .node-row.sel{background:var(--teal-soft);}
+  .node-row.appliable{cursor:pointer;}
+  .swatch{width:11px;height:11px;border-radius:3px;flex:none;}
+  .node-name{font-size:13px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .count{font-family:var(--mono);font-size:11px;color:var(--ink-faint);}
+  .caret{width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;color:var(--ink-faint);cursor:pointer;flex:none;}
+  .crumb{font-size:11px;color:var(--ink-faint);font-family:var(--mono);}
+
+  .docitem{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--line);border-radius:9px;margin-bottom:6px;background:var(--surface);}
+  .docitem.active{border-color:var(--teal);background:var(--teal-soft);}
+
+  .modal-bg{position:fixed;inset:0;background:rgba(20,20,22,.45);display:flex;align-items:center;justify-content:center;z-index:50;padding:18px;}
+  .modal{background:var(--surface);border-radius:16px;border:1px solid var(--line);max-width:460px;width:100%;padding:22px;box-shadow:0 18px 50px rgba(0,0,0,.2);}
+  .modal h2{font-family:var(--serif);font-size:22px;margin:0 0 4px;}
+
+  .empty{max-width:440px;margin:40px auto;text-align:center;color:var(--ink-soft);}
+  .empty .t{font-family:var(--serif);font-size:20px;color:var(--ink);margin:10px 0 6px;}
+
+  .author{font-size:10.5px;background:var(--line-soft);color:var(--ink-soft);border-radius:99px;padding:1px 7px;}
+  .banner{font-size:12.5px;padding:9px 12px;border-radius:9px;margin:0 14px 12px;}
+  .banner.warn{background:var(--amber-soft);border:1px solid rgba(138,109,31,.3);color:var(--amber);}
+  .banner.err{background:#F8E6E6;border:1px solid #D9A3A3;color:#8A2A2A;}
+  .exmenu{position:absolute;right:0;top:112%;z-index:41;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.14);overflow:hidden;min-width:212px;}
+  .exmenu button{display:block;width:100%;text-align:left;border:none;background:var(--surface);padding:9px 12px;font-size:13px;color:var(--ink);cursor:pointer;font-family:var(--sans);}
+  .exmenu button:hover{background:var(--paper);}
+
+  @media (max-width:900px){
+    .split{flex-direction:column;}
+    .pane.left{flex:none;height:50vh;border-right:none;border-bottom:1px solid var(--line);}
+    .pane.right{flex:none;max-width:none;height:50vh;}
+  }
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script type="module">
+import { h, render } from 'https://esm.sh/preact@10';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'https://esm.sh/preact@10/hooks';
+import htm from 'https://esm.sh/htm@3';
+
+const html = htm.bind(h);
+
+// carregamento sob demanda (uma falha aqui vira erro tratavel, nao tela em branco)
+let _pdfjs=null, _mammoth=null, _JSZip=null, _createClient=null;
+async function getPdfjs(){ if(!_pdfjs){ _pdfjs=await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.7.76/build/pdf.min.mjs'); try{ _pdfjs.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.7.76/build/pdf.worker.min.mjs'; }catch(e){} } return _pdfjs; }
+async function getMammoth(){ if(!_mammoth){ const m=await import('https://esm.sh/mammoth@1.8.0'); _mammoth=m.default||m; } return _mammoth; }
+async function getJSZip(){ if(!_JSZip){ const m=await import('https://esm.sh/jszip@3.10.1'); _JSZip=m.default||m; } return _JSZip; }
+async function getCreateClient(){ if(!_createClient){ const m=await import('https://esm.sh/@supabase/supabase-js@2'); _createClient=m.createClient; } return _createClient; }
+
+/* ============ CONFIG ============
+   Para o modo coletivo (nuvem), preencha as duas linhas abaixo com os dados do
+   seu projeto Supabase (Project Settings > API). A anon key e publica e fica
+   protegida pelas policies de RLS. Se deixar vazio, o app abre em modo local. */
+let SUPABASE_URL = "https://lpfwnzotmltztfxacahb.supabase.co";
+let SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwZnduem90bWx0enRmeGFjYWhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4NzI2OTYsImV4cCI6MjA5NzQ0ODY5Nn0.qiygh5Nyhf7I7LS5R-z5cEW_hjMGgMbPpiUviMM2ev4";
+try {
+  SUPABASE_URL = SUPABASE_URL || localStorage.getItem('lastro:url') || "";
+  SUPABASE_ANON_KEY = SUPABASE_ANON_KEY || localStorage.getItem('lastro:key') || "";
+} catch(e){}
+
+/* ============ CORES (matiz = familia, luminosidade = profundidade) ============ */
+const HUES = [210, 28, 150, 350, 268, 184, 322, 70];
+function codeColor(hue, depth){
+  const H = HUES[((hue % HUES.length)+HUES.length)%HUES.length];
+  const solidL = Math.min(70, 32 + depth*13);
+  const bgL = Math.min(94, 86 + depth*3);
+  return { solid:`hsl(${H} 58% ${solidL}%)`, tint:`hsl(${H} 55% ${bgL}%)`, H };
+}
+
+/* ============ EXTRACAO DE TEXTO ============ */
+async function extractText(file){
+  const n = (file.name||'').toLowerCase();
+  if(n.endsWith('.txt')||n.endsWith('.md')||n.endsWith('.markdown')|| (file.type||'').startsWith('text/'))
+    return await file.text();
+  if(n.endsWith('.docx')){
+    const ab = await file.arrayBuffer();
+    const r = await (await getMammoth()).extractRawText({ arrayBuffer: ab });
+    return (r && r.value) || '';
+  }
+  if(n.endsWith('.pdf')){
+    const ab = await file.arrayBuffer();
+    const pdfjsLib = await getPdfjs();
+    const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
+    const pages = [];
+    for(let p=1;p<=pdf.numPages;p++){
+      const page = await pdf.getPage(p);
+      const tc = await page.getTextContent();
+      let out = '', lastY = null;
+      tc.items.forEach(it=>{
+        if('str' in it){
+          const y = it.transform ? it.transform[5] : null;
+          if(lastY!==null && y!==null && Math.abs(y-lastY)>2 && !out.endsWith('\n')) out += '\n';
+          out += it.str + (it.hasEOL ? '\n' : ' ');
+          lastY = y;
+        }
+      });
+      pages.push(out.trim());
+    }
+    return pages.join('\n\n');
+  }
+  return await file.text();
+}
+
+/* ============ RUNS (segmentacao do texto para os grifos) ============ */
+function buildRuns(text, codings){
+  const b = new Set([0, text.length]);
+  codings.forEach(c=>{ if(c.span_start>=0 && c.span_end>c.span_start){ b.add(c.span_start); b.add(c.span_end);} });
+  const pts = [...b].filter(p=>p>=0&&p<=text.length).sort((x,y)=>x-y);
+  const runs=[];
+  for(let i=0;i<pts.length-1;i++){
+    const a=pts[i], z=pts[i+1]; if(z<=a) continue;
+    runs.push({ start:a, end:z, text:text.slice(a,z), codings:codings.filter(c=>c.span_start>=0&&c.span_start<=a&&c.span_end>=z) });
+  }
+  return runs;
+}
+
+function hslToHex(h,s,l){
+  s/=100; l/=100;
+  const k=n=>(n+h/30)%12;
+  const a=s*Math.min(l,1-l);
+  const f=n=>l-a*Math.max(-1,Math.min(k(n)-3,Math.min(9-k(n),1)));
+  const toHex=v=>Math.round(v*255).toString(16).padStart(2,'0');
+  return '#'+toHex(f(0))+toHex(f(8))+toHex(f(4));
+}
+function hueOf(hex){
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex||'');
+  if(!m) return 0;
+  const r=parseInt(m[1],16)/255, g=parseInt(m[2],16)/255, b=parseInt(m[3],16)/255;
+  const mx=Math.max(r,g,b), mn=Math.min(r,g,b), d=mx-mn;
+  let h=0;
+  if(d!==0){ if(mx===r) h=((g-b)/d)%6; else if(mx===g) h=(b-r)/d+2; else h=(r-g)/d+4; h*=60; if(h<0) h+=360; }
+  let best=0, bd=999;
+  HUES.forEach((H,i)=>{ const dd=Math.min(Math.abs(H-h),360-Math.abs(H-h)); if(dd<bd){bd=dd;best=i;} });
+  return best;
+}
+function xmlEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function stripGuid(g){ return String(g||'').replace(/[{}]/g,'').trim(); }
+
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
+
+function csvEscape(s){ s = s==null ? "" : String(s); return /[",\n\r]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; }
+function toCSV(rows){ return rows.map(r=>r.map(csvEscape).join(",")).join("\r\n"); }
+function codePathFor(codes,id){ const by={}; codes.forEach(c=>by[c.id]=c); const o=[]; let c=by[id],g=0; while(c&&g++<12){o.unshift(c.name);c=c.parent_id?by[c.parent_id]:null;} return o; }
+function download(name,text,mime){ const b=new Blob([text],{type:mime}); const u=URL.createObjectURL(b); const a=document.createElement('a'); a.href=u; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),1000); }
+
+/* ============ QDPX (REFI-QDA Project Exchange) ============
+   Compatível com ATLAS.ti, MAXQDA, NVivo, Quirkos, Taguette.
+   Mapeamento: documento -> TextSource; categoria do documento -> Variable + Case;
+   codigo -> Code (hierarquico); trecho codificado -> PlainTextSelection + Coding. */
+function buildCodeXml(code, byParent){
+  const kids = byParent[code.id] || [];
+  const hex = hslToHex(HUES[((code.hue%HUES.length)+HUES.length)%HUES.length], 58, Math.min(70,32+code.depth*13));
+  return `<Code guid="${stripGuid(code.id)}" name="${xmlEsc(code.name)}" isCodable="true" color="${hex}">`
+    + kids.map(k=>buildCodeXml(k, byParent)).join('')
+    + `</Code>`;
+}
+
+async function exportQDPX(docs, cats, allV, codes, allC, project){
+  const JSZip = await getJSZip();
+  const zip = new JSZip();
+  const srcFolder = zip.folder('sources');
+
+  // usuarios (autores distintos -> guid)
+  const authorGuid = {};
+  const ensureAuthor = (name)=>{ const n=name||'anonimo'; if(!authorGuid[n]) authorGuid[n]=uid(); return authorGuid[n]; };
+  allV.forEach(v=>ensureAuthor(v.author));
+  allC.forEach(c=>ensureAuthor(c.author_name));
+
+  // arvore de codigos
+  const byParent = {};
+  codes.forEach(c=>{ const p=c.parent_id||'__root__'; (byParent[p]=byParent[p]||[]).push(c); });
+  const topCodes = byParent['__root__']||[];
+  const codesXml = topCodes.map(c=>buildCodeXml(c, byParent)).join('');
+
+  // variaveis (categorias do documento). se "single", a lista de valores fechados
+  // entra na Description em texto legivel, e o proprio QualiLab consegue reconstrui-la na importacao.
+  const variablesXml = cats.map(c=>{
+    const desc = c.kind==='single' && (c.options||[]).length
+      ? `<Description>Valores fechados: ${xmlEsc(c.options.join(', '))}</Description>` : '';
+    return `<Variable guid="${stripGuid(c.id)}" name="${xmlEsc(c.name)}" typeOfVariable="Text">${desc}</Variable>`;
+  }).join('');
+
+  // sources (um TextSource por documento, conteudo gravado em sources/<guid>.txt)
+  let sourcesXml = '';
+  for(const d of docs){
+    srcFolder.file(`${stripGuid(d.id)}.txt`, d.content);
+    const docCodings = allC.filter(c=>c.document_id===d.id);
+    const selXml = docCodings.map(c=>{
+      const codingGuid = uid();
+      const au = ensureAuthor(c.author_name);
+      const name = (c.quote||'').slice(0,80);
+      return `<PlainTextSelection guid="${stripGuid(c.id)}" name="${xmlEsc(name)}" startPosition="${c.span_start}" endPosition="${c.span_end}" creatingUser="${au}">`
+        + `<Coding guid="${codingGuid}" creatingUser="${au}"><CodeRef targetGUID="${stripGuid(c.code_id)}"/></Coding>`
+        + `</PlainTextSelection>`;
+    }).join('');
+    sourcesXml += `<TextSource guid="${stripGuid(d.id)}" name="${xmlEsc(d.name)}" plainTextPath="internal://${stripGuid(d.id)}.txt">${selXml}</TextSource>`;
+  }
+
+  // cases (um por documento, com os valores de categoria daquele documento)
+  const casesXml = docs.map(d=>{
+    const vv = allV.filter(v=>v.document_id===d.id).map(v=>
+      `<VariableValue><VariableRef targetGUID="${stripGuid(v.category_id)}"/><TextValue>${xmlEsc(v.value)}</TextValue></VariableValue>`).join('');
+    return `<Case guid="${uid()}" name="${xmlEsc(d.name)}"><SourceRef targetGUID="${stripGuid(d.id)}"/>${vv}</Case>`;
+  }).join('');
+
+  const usersXml = Object.entries(authorGuid).map(([name,g])=>`<User guid="${g}" name="${xmlEsc(name)}"/>`).join('');
+
+  const qde = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n`
+    + `<Project xmlns="urn:QDA-XML:project:1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" `
+    + `xsi:schemaLocation="urn:QDA-XML:project:1.0 http://schema.qdasoftware.org/versions/Project/v1.0/Project.xsd" `
+    + `name="${xmlEsc(project.name||'Projeto QualiLab')}" origin="QualiLab" creationDateTime="${new Date().toISOString()}">`
+    + `<Users>${usersXml}</Users>`
+    + `<CodeBook><Codes>${codesXml}</Codes></CodeBook>`
+    + `<Variables>${variablesXml}</Variables>`
+    + `<Cases>${casesXml}</Cases>`
+    + `<Sources>${sourcesXml}</Sources>`
+    + `</Project>`;
+
+  zip.file('project.qde', qde);
+  const blob = await zip.generateAsync({ type:'blob' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = (project.name||'qualilab_projeto').replace(/[^\w\-]+/g,'_') + '.qdpx';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 1500);
+}
+
+/* leitura de .qdpx para dentro do projeto ativo */
+async function importQDPX(file, store, projectId){
+  const JSZip = await getJSZip();
+  const zip = await JSZip.loadAsync(await file.arrayBuffer());
+  const qdeEntry = Object.keys(zip.files).find(k=>/\.qde$/i.test(k));
+  if(!qdeEntry) throw new Error('Arquivo .qdpx sem project.qde');
+  const xmlText = await zip.files[qdeEntry].async('string');
+  const xml = new DOMParser().parseFromString(xmlText, 'application/xml');
+  if(xml.querySelector('parsererror')) throw new Error('XML do project.qde inválido');
+
+  const skipped = { picture:0, audio:0, video:0, pdfSemTexto:0, fonteExterna:0 };
+
+  // usuarios: guid -> nome
+  const userName = {};
+  xml.querySelectorAll('Users > User').forEach(u=>{ userName[stripGuid(u.getAttribute('guid'))] = u.getAttribute('name')||'importado'; });
+  const authorOf = (g)=> g ? (userName[stripGuid(g)]||'importado') : 'importado';
+
+  // codigos hierarquicos (recursivo); hue por familia de topo, na ordem em que aparecem
+  const newCodes = [];
+  let topHue = 0;
+  function walkCode(el, parentId, depth, hue){
+    const id = stripGuid(el.getAttribute('guid'));
+    const name = el.getAttribute('name') || 'codigo';
+    newCodes.push({ id, parent_id: parentId, name, hue, depth });
+    Array.from(el.children).filter(c=>c.tagName==='Code').forEach(c=>walkCode(c, id, depth+1, hue));
+  }
+  const codeBook = xml.querySelector('CodeBook > Codes');
+  if(codeBook){
+    Array.from(codeBook.children).filter(c=>c.tagName==='Code').forEach(c=>{ walkCode(c, null, 0, topHue % HUES.length); topHue++; });
+  }
+
+  // variaveis -> categorias (reconstroi "single" se a Description trouxer "Valores fechados: ...")
+  const newCats = [];
+  xml.querySelectorAll('Variables > Variable').forEach(v=>{
+    const id = stripGuid(v.getAttribute('guid'));
+    const name = v.getAttribute('name') || 'categoria';
+    const descEl = v.querySelector('Description');
+    const desc = descEl ? descEl.textContent : '';
+    const m = /Valores fechados:\s*(.+)/i.exec(desc||'');
+    if(m){ newCats.push({ id, name, kind:'single', options: m[1].split(',').map(s=>s.trim()).filter(Boolean) }); }
+    else { newCats.push({ id, name, kind:'text', options:[] }); }
+  });
+
+  // fontes de texto (TextSource e, quando existir, a Representation textual de um PDFSource)
+  const newDocs = [];
+  const newCodings = [];
+  async function readPlainText(srcEl){
+    const inline = srcEl.querySelector(':scope > PlainTextContent');
+    if(inline) return inline.textContent || '';
+    const path = srcEl.getAttribute('plainTextPath') || '';
+    if(path.startsWith('internal://')){
+      const fname = path.replace('internal://','');
+      const entry = Object.keys(zip.files).find(k=>k.toLowerCase().endsWith('/'+fname.toLowerCase()) || k.toLowerCase()===('sources/'+fname.toLowerCase()) || k.toLowerCase().endsWith(fname.toLowerCase()));
+      if(entry) return await zip.files[entry].async('string');
+    }
+    if(path.startsWith('relative://') || path.startsWith('absolute://')){ skipped.fonteExterna++; }
+    return null;
+  }
+  function importSelections(srcEl, docId, content){
+    srcEl.querySelectorAll(':scope > PlainTextSelection').forEach(sel=>{
+      const start = parseInt(sel.getAttribute('startPosition'),10);
+      const end = parseInt(sel.getAttribute('endPosition'),10);
+      const author = authorOf(sel.getAttribute('creatingUser'));
+      const codingEls = sel.querySelectorAll(':scope > Coding');
+      codingEls.forEach((cod,i)=>{
+        const ref = cod.querySelector('CodeRef');
+        if(!ref) return;
+        const codeId = stripGuid(ref.getAttribute('targetGUID'));
+        newCodings.push({
+          id: i===0 ? stripGuid(sel.getAttribute('guid')) : uid(),
+          document_id: docId, code_id: codeId, span_start:start, span_end:end,
+          quote: (content||'').slice(start,end), author_name: author
+        });
+      });
+    });
+  }
+
+  const sourcesEl = xml.querySelector('Sources');
+  if(sourcesEl){
+    for(const src of Array.from(sourcesEl.children)){
+      if(src.tagName==='TextSource'){
+        const id = stripGuid(src.getAttribute('guid'));
+        const name = src.getAttribute('name') || 'documento importado';
+        const content = await readPlainText(src);
+        if(content==null) continue;
+        newDocs.push({ id, name, content });
+        importSelections(src, id, content);
+      } else if(src.tagName==='PDFSource'){
+        const rep = src.querySelector(':scope > Representation');
+        if(rep){
+          const id = stripGuid(src.getAttribute('guid'));
+          const name = (src.getAttribute('name')||'pdf importado') + ' (texto extraído)';
+          const content = await readPlainText(rep);
+          if(content!=null){ newDocs.push({ id, name, content }); importSelections(rep, id, content); }
+          else skipped.pdfSemTexto++;
+        } else skipped.pdfSemTexto++;
+      } else if(src.tagName==='PictureSource'){ skipped.picture++; }
+      else if(src.tagName==='AudioSource'){ skipped.audio++; }
+      else if(src.tagName==='VideoSource'){ skipped.video++; }
+    }
+  }
+
+  // casos -> valores de categoria por documento
+  const newValues = [];
+  xml.querySelectorAll('Cases > Case').forEach(caseEl=>{
+    const srcRefs = Array.from(caseEl.querySelectorAll(':scope > SourceRef')).map(r=>stripGuid(r.getAttribute('targetGUID')));
+    const vvs = Array.from(caseEl.querySelectorAll(':scope > VariableValue'));
+    vvs.forEach(vv=>{
+      const ref = vv.querySelector('VariableRef'); if(!ref) return;
+      const catId = stripGuid(ref.getAttribute('targetGUID'));
+      const valEl = vv.querySelector('TextValue,BooleanValue,IntegerValue,FloatValue,DateValue,DateTimeValue');
+      const value = valEl ? valEl.textContent : '';
+      srcRefs.forEach(docId=>newValues.push({ document_id:docId, category_id:catId, value }));
+    });
+  });
+
+  // persiste no projeto ativo, respeitando ordem por causa de FKs
+  for(const d of newDocs) await store.addDocument(projectId, { id:d.id, name:d.name, content:d.content });
+  for(const c of newCats) await store.addCategory(projectId, { id:c.id, name:c.name, kind:c.kind, options:c.options, position:0 });
+  for(const c of newCodes) await store.addCode(projectId, { id:c.id, parent_id:c.parent_id, name:c.name, hue:c.hue, depth:c.depth, position:0 });
+  for(const v of newValues) await store.setDocValue(projectId, v.document_id, v.category_id, v.value);
+  for(const c of newCodings) await store.addCoding(projectId, { id:c.id, document_id:c.document_id, code_id:c.code_id, span_start:c.span_start, span_end:c.span_end, quote:c.quote, author_name:c.author_name });
+
+  return {
+    documentos:newDocs.length, categorias:newCats.length, codigos:newCodes.length,
+    trechos:newCodings.length, casos: xml.querySelectorAll('Cases > Case').length,
+    descartados: skipped
+  };
+}
+
+/* ============ STORE LOCAL (navegador) ============ */
+function LocalStore(){
+  let db = { documents:[], categories:[], doc_values:[], codes:[], codings:[] };
+  let name = 'pesquisador';
+  try { const raw = localStorage.getItem('lastro:local'); if(raw) db = JSON.parse(raw); } catch(e){}
+  const save = () => { try { localStorage.setItem('lastro:local', JSON.stringify(db)); } catch(e){} };
+  const P = (v)=>Promise.resolve(v);
+  return {
+    mode:'local',
+    async init(display){ name = display || name; return { id:'local-user', name }; },
+    currentUser(){ return { id:'local-user', name }; },
+    async createProject(){ return { id:'local', name:'Projeto local', code:'LOCAL' }; },
+    async joinProject(){ return { id:'local', name:'Projeto local', code:'LOCAL' }; },
+    listDocuments(){ return P(db.documents.slice()); },
+    addDocument(pid,{id,name:dn,content}){ const d={id:id||uid(),name:dn,content,created_at:new Date().toISOString()}; db.documents.push(d); save(); return P(d); },
+    deleteDocument(id){ db.documents=db.documents.filter(d=>d.id!==id); db.doc_values=db.doc_values.filter(v=>v.document_id!==id); db.codings=db.codings.filter(c=>c.document_id!==id); save(); return P(); },
+    clearProject(){ db={ documents:[], categories:[], doc_values:[], codes:[], codings:[] }; save(); return P(); },
+    listCategories(){ return P(db.categories.slice().sort((a,b)=>a.position-b.position)); },
+    addCategory(pid,cat){ const c={id:uid(),position:db.categories.length,...cat}; db.categories.push(c); save(); return P(c); },
+    updateCategory(id,patch){ db.categories=db.categories.map(c=>c.id===id?{...c,...patch}:c); save(); return P(); },
+    deleteCategory(id){ db.categories=db.categories.filter(c=>c.id!==id); db.doc_values=db.doc_values.filter(v=>v.category_id!==id); save(); return P(); },
+    getDocValues(docId){ return P(db.doc_values.filter(v=>v.document_id===docId)); },
+    setDocValue(pid,docId,catId,value){ db.doc_values=db.doc_values.filter(v=>!(v.document_id===docId&&v.category_id===catId)); if(value!=='') db.doc_values.push({id:uid(),document_id:docId,category_id:catId,value,author_name:name}); save(); return P(); },
+    listCodes(){ return P(db.codes.slice().sort((a,b)=>a.depth-b.depth||a.position-b.position)); },
+    addCode(pid,code){ const c={id:uid(),position:db.codes.length,...code}; db.codes.push(c); save(); return P(c); },
+    updateCode(id,patch){ db.codes=db.codes.map(c=>c.id===id?{...c,...patch}:c); save(); return P(); },
+    deleteCode(id){ const kill=new Set([id]); let added=true; while(added){added=false; db.codes.forEach(c=>{if(c.parent_id&&kill.has(c.parent_id)&&!kill.has(c.id)){kill.add(c.id);added=true;}});} db.codes=db.codes.filter(c=>!kill.has(c.id)); db.codings=db.codings.filter(c=>!kill.has(c.code_id)); save(); return P(); },
+    listCodings(pid,docId){ return P(db.codings.filter(c=>c.document_id===docId)); },
+    addCoding(pid,co){ const c={id:uid(),author_name:name,created_at:new Date().toISOString(),...co}; db.codings.push(c); save(); return P(c); },
+    deleteCoding(id){ db.codings=db.codings.filter(c=>c.id!==id); save(); return P(); },
+  };
+}
+
+/* ============ STORE SUPABASE (coletivo) ============ */
+function SupabaseStore(sb){
+  let user=null, name='anonimo';
+  const must = (r)=>{ if(r.error) throw r.error; return r.data; };
+  return {
+    mode:'cloud',
+    async init(display){
+      name = display || name;
+      let { data:{ session } } = await sb.auth.getSession();
+      if(!session){ const r = await sb.auth.signInAnonymously(); if(r.error) throw r.error; session = r.data.session; }
+      user = session.user;
+      return { id:user.id, name };
+    },
+    currentUser(){ return { id:user?.id, name }; },
+    async createProject(pn, display){ name=display||name; const d=must(await sb.rpc('create_project',{p_name:pn,p_display:name})); return { id:d.id, name:d.name, code:d.code }; },
+    async joinProject(code, display){ name=display||name; const d=must(await sb.rpc('join_project',{p_code:code,p_display:name})); return { id:d.id, name:d.name, code:d.code }; },
+    async listDocuments(pid){ return must(await sb.from('documents').select('*').eq('project_id',pid).order('created_at')); },
+    async addDocument(pid,{id,name:dn,content}){ const row={project_id:pid,name:dn,content,created_by:user.id}; if(id) row.id=id; return must(await sb.from('documents').insert(row).select().single()); },
+    async deleteDocument(id){ must(await sb.from('documents').delete().eq('id',id)); },
+    async clearProject(pid){
+      await sb.from('codings').delete().eq('project_id',pid);
+      await sb.from('doc_values').delete().eq('project_id',pid);
+      await sb.from('documents').delete().eq('project_id',pid);
+      await sb.from('codes').delete().eq('project_id',pid);
+      await sb.from('categories').delete().eq('project_id',pid);
+    },
+    async listCategories(pid){ return must(await sb.from('categories').select('*').eq('project_id',pid).order('position')); },
+    async addCategory(pid,cat){ return must(await sb.from('categories').insert({project_id:pid,...cat}).select().single()); },
+    async updateCategory(id,patch){ must(await sb.from('categories').update(patch).eq('id',id)); },
+    async deleteCategory(id){ must(await sb.from('categories').delete().eq('id',id)); },
+    async getDocValues(docId){ return must(await sb.from('doc_values').select('*').eq('document_id',docId)); },
+    async setDocValue(pid,docId,catId,value){
+      if(value===''){ must(await sb.from('doc_values').delete().eq('document_id',docId).eq('category_id',catId)); return; }
+      must(await sb.from('doc_values').upsert({project_id:pid,document_id:docId,category_id:catId,value,set_by:user.id,author_name:name,updated_at:new Date().toISOString()},{onConflict:'document_id,category_id'}));
+    },
+    async listCodes(pid){ return must(await sb.from('codes').select('*').eq('project_id',pid).order('depth').order('position')); },
+    async addCode(pid,code){ return must(await sb.from('codes').insert({project_id:pid,...code}).select().single()); },
+    async updateCode(id,patch){ must(await sb.from('codes').update(patch).eq('id',id)); },
+    async deleteCode(id){ must(await sb.from('codes').delete().eq('id',id)); },
+    async listCodings(pid,docId){ return must(await sb.from('codings').select('*').eq('project_id',pid).eq('document_id',docId)); },
+    async addCoding(pid,co){ return must(await sb.from('codings').insert({project_id:pid,created_by:user.id,author_name:name,...co}).select().single()); },
+    async deleteCoding(id){ must(await sb.from('codings').delete().eq('id',id)); },
+  };
+}
+
+/* ============================== APP ============================== */
+function App(){
+  const wantCloud = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
+  const [store, setStore] = useState(null);
+  const [mode, setMode] = useState(wantCloud ? 'cloud' : 'local');
+  const [phase, setPhase] = useState('boot');     // boot | gate | work
+  const [err, setErr] = useState(null);
+  const [project, setProject] = useState(null);
+  const [user, setUser] = useState(null);
+
+  const [docs, setDocs] = useState([]);
+  const [activeId, setActiveId] = useState(null);
+  const [cats, setCats] = useState([]);
+  const [values, setValues] = useState([]);
+  const [codes, setCodes] = useState([]);
+  const [codings, setCodings] = useState([]);
+
+  const [sel, setSel] = useState(null);
+  const [selCode, setSelCode] = useState(null);
+  const [rtab, setRtab] = useState('categorias');
+  const [settings, setSettings] = useState(false);
+  const [expOpen, setExpOpen] = useState(false);
+  const [busy, setBusy] = useState(null);
+  const [importMsg, setImportMsg] = useState(null);
+
+  const activeDoc = docs.find(d=>d.id===activeId) || null;
+
+  /* boot */
+  useEffect(()=>{ (async()=>{
+    try{
+      if(wantCloud){
+        const createClient = await getCreateClient();
+        const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const st = SupabaseStore(sb);
+        setStore(st);
+        const saved = (()=>{ try{return JSON.parse(localStorage.getItem('lastro:project')||'null');}catch(e){return null;} })();
+        const display = (()=>{ try{return localStorage.getItem('lastro:name')||'';}catch(e){return '';} })();
+        await st.init(display || 'anonimo');
+        setUser(st.currentUser());
+        if(saved && saved.code){
+          const p = await st.joinProject(saved.code, display||'anonimo');
+          setProject(p); setPhase('work');
+        } else { setPhase('gate'); }
+      } else {
+        const st = LocalStore(); setStore(st);
+        const display = (()=>{ try{return localStorage.getItem('lastro:name')||'pesquisador';}catch(e){return 'pesquisador';} })();
+        await st.init(display);
+        setUser(st.currentUser());
+        const p = await st.createProject(); setProject(p); setPhase('work');
+      }
+    }catch(e){ setErr(String(e.message||e)); setPhase(wantCloud?'gate':'work'); }
+  })(); }, []); // eslint-disable-line
+
+  /* carregar projeto */
+  const loadProject = useCallback(async (st, pid)=>{
+    const [d,c,k] = await Promise.all([st.listDocuments(pid), st.listCategories(pid), st.listCodes(pid)]);
+    setDocs(d); setCats(c); setCodes(k);
+    setActiveId(a => a && d.find(x=>x.id===a) ? a : (d[0]?.id || null));
+  }, []);
+  useEffect(()=>{ if(store && project && phase==='work') loadProject(store, project.id); }, [store, project, phase, loadProject]);
+
+  /* carregar doc ativo */
+  const loadDoc = useCallback(async ()=>{
+    if(!store || !project || !activeId){ setValues([]); setCodings([]); return; }
+    const [v, co] = await Promise.all([store.getDocValues(activeId), store.listCodings(project.id, activeId)]);
+    setValues(v); setCodings(co);
+  }, [store, project, activeId]);
+  useEffect(()=>{ loadDoc(); setSel(null); }, [loadDoc]);
+
+  /* polling no modo nuvem (ver colaboradores) */
+  useEffect(()=>{
+    if(mode!=='cloud' || phase!=='work' || !activeId) return;
+    const t = setInterval(()=>{ loadDoc(); }, 5000);
+    return ()=>clearInterval(t);
+  }, [mode, phase, activeId, loadDoc]);
+
+  /* ----- acoes ----- */
+  async function onUpload(fileList){
+    const files = Array.from(fileList||[]); if(!files.length) return;
+    setBusy('Lendo arquivos...');
+    for(const f of files){
+      try{ const content = await extractText(f); const doc = await store.addDocument(project.id, { name:f.name.replace(/\.[^.]+$/,''), content }); setDocs(d=>[...d,doc]); setActiveId(doc.id); }
+      catch(e){ setErr('Falha ao ler '+f.name+': '+(e.message||e)); }
+    }
+    setBusy(null);
+  }
+  async function addPasted(name, content){ const doc = await store.addDocument(project.id,{name:name||'Documento',content}); setDocs(d=>[...d,doc]); setActiveId(doc.id); }
+  async function delDoc(id){ await store.deleteDocument(id); setDocs(d=>d.filter(x=>x.id!==id)); if(activeId===id) setActiveId(docs.find(x=>x.id!==id)?.id||null); }
+
+  async function setValue(catId, value){ await store.setDocValue(project.id, activeId, catId, value); loadDoc(); }
+  async function addCategory(){ const c = await store.addCategory(project.id,{name:'Nova categoria',kind:'single',options:[],color:cats.length%HUES.length,position:cats.length}); setCats(x=>[...x,c]); }
+  async function updCategory(id,patch){ await store.updateCategory(id,patch); setCats(x=>x.map(c=>c.id===id?{...c,...patch}:c)); }
+  async function delCategory(id){ await store.deleteCategory(id); setCats(x=>x.filter(c=>c.id!==id)); setValues(v=>v.filter(x=>x.category_id!==id)); }
+
+  async function addCode(parent){
+    let hue, depth;
+    if(parent){ hue = parent.hue; depth = parent.depth+1; }
+    else { const tops = codes.filter(c=>!c.parent_id); hue = tops.length % HUES.length; depth = 0; }
+    const c = await store.addCode(project.id,{ parent_id: parent?parent.id:null, name: parent?'subcódigo':'nova família', hue, depth, position: codes.length });
+    setCodes(x=>[...x,c]); setSelCode(c.id);
+  }
+  async function updCode(id,patch){ await store.updateCode(id,patch); setCodes(x=>x.map(c=>c.id===id?{...c,...patch}:c)); }
+  async function delCode(id){ await store.deleteCode(id); loadProject(store,project.id); loadDoc(); }
+  async function applyCode(codeId){
+    if(!sel) return;
+    const c = await store.addCoding(project.id,{ document_id:activeId, code_id:codeId, span_start:sel.start, span_end:sel.end, quote:sel.quote });
+    setCodings(x=>[...x,c]); setSel(null); window.getSelection()?.removeAllRanges();
+  }
+  async function delCoding(id){ await store.deleteCoding(id); setCodings(x=>x.filter(c=>c.id!==id)); }
+
+  async function doExport(kind){
+    setExpOpen(false);
+    try{
+      const allV=[], allC=[];
+      for(const d of docs){
+        const [v,co]=await Promise.all([store.getDocValues(d.id), store.listCodings(project.id,d.id)]);
+        v.forEach(x=>allV.push({ document_id:d.id, category_id:x.category_id, value:x.value, author:x.author_name||'anonimo' }));
+        co.forEach(x=>allC.push(x));
+      }
+      const dn=(id)=>docs.find(d=>d.id===id)?.name||"";
+      if(kind==='json'){
+        const obj={ exported_at:new Date().toISOString(), project:{ name:project.name, code:project.code },
+          documents:docs.map(d=>({id:d.id,name:d.name,content:d.content})),
+          categories:cats.map(c=>({id:c.id,name:c.name,kind:c.kind,options:c.options})),
+          document_values:allV,
+          codes:codes.map(c=>({id:c.id,parent_id:c.parent_id,name:c.name,depth:c.depth,path:codePathFor(codes,c.id)})),
+          codings:allC.map(c=>({id:c.id,document_id:c.document_id,code_id:c.code_id,code_path:codePathFor(codes,c.code_id),start:c.span_start,end:c.span_end,quote:c.quote,author:c.author_name})) };
+        download('qualilab_projeto.json', JSON.stringify(obj,null,2), 'application/json');
+      } else if(kind==='trechos'){
+        const header=["documento","familia","codigo","nivel","trecho","inicio","fim","autor"];
+        const sorted=allC.slice().sort((a,b)=> a.document_id===b.document_id ? a.span_start-b.span_start : (dn(a.document_id)>dn(b.document_id)?1:-1));
+        const rows=sorted.map(c=>{ const p=codePathFor(codes,c.code_id); return [dn(c.document_id), p[0]||"", p.join(" > "), String(p.length-1), c.quote, String(c.span_start), String(c.span_end), c.author_name]; });
+        download('qualilab_trechos.csv', '\uFEFF'+toCSV([header,...rows]), 'text/csv;charset=utf-8');
+      } else if(kind==='documentos'){
+        const header=["documento",...cats.map(c=>c.name),"n_trechos"];
+        const rows=docs.map(d=>[d.name, ...cats.map(cat=>{ const v=allV.find(x=>x.document_id===d.id&&x.category_id===cat.id); return v?v.value:""; }), String(allC.filter(c=>c.document_id===d.id).length)]);
+        download('qualilab_documentos.csv', '\uFEFF'+toCSV([header,...rows]), 'text/csv;charset=utf-8');
+      } else if(kind==='qdpx'){
+        await exportQDPX(docs, cats, allV, codes, allC, project);
+      }
+    }catch(e){ setErr('Falha ao exportar: '+(e.message||e)); }
+  }
+
+  async function doImportQDPX(file){
+    setBusy('Importando .qdpx...');
+    try{
+      const r = await importQDPX(file, store, project.id);
+      await loadProject(store, project.id);
+      await loadDoc();
+      const desc = r.descartados;
+      const skippedBits = [];
+      if(desc.picture) skippedBits.push(`${desc.picture} imagem(ns)`);
+      if(desc.audio) skippedBits.push(`${desc.audio} áudio(s)`);
+      if(desc.video) skippedBits.push(`${desc.video} vídeo(s)`);
+      if(desc.pdfSemTexto) skippedBits.push(`${desc.pdfSemTexto} PDF(s) sem representação em texto`);
+      if(desc.fonteExterna) skippedBits.push(`${desc.fonteExterna} fonte(s) externa(s)`);
+      const skippedMsg = skippedBits.length ? ` Não importado(s): ${skippedBits.join(', ')}.` : '';
+      setErr(null);
+      setBusy(null);
+      setImportMsg(`Importado: ${r.documentos} documento(s), ${r.categorias} categoria(s), ${r.codigos} código(s), ${r.trechos} trecho(s) codificado(s).${skippedMsg}`);
+    }catch(e){ setBusy(null); setErr('Falha ao importar: '+(e.message||e)); }
+  }
+
+  async function doClearProject(){
+    if(!confirm('Apagar TODOS os documentos, categorias, códigos e codificações deste projeto? Esta ação não pode ser desfeita.')) return;
+    setBusy('Limpando projeto...');
+    try{
+      await store.clearProject(project.id);
+      setActiveId(null); setSel(null); setSelCode(null);
+      await loadProject(store, project.id);
+      setBusy(null); setImportMsg('Projeto limpo.');
+    }catch(e){ setBusy(null); setErr('Falha ao limpar: '+(e.message||e)); }
+  }
+
+  function onMouseUp(){
+    if(!activeDoc) return;
+    const s = window.getSelection();
+    if(!s || s.rangeCount===0 || s.isCollapsed) return;
+    const r = s.getRangeAt(0);
+    const off=(node,o)=>{ let el=node.nodeType===3?node.parentElement:node; while(el && (!el.dataset || el.dataset.start===undefined)) el=el.parentElement; return el?parseInt(el.dataset.start,10)+o:null; };
+    const a=off(r.startContainer,r.startOffset), b=off(r.endContainer,r.endOffset);
+    if(a==null||b==null) return;
+    const start=Math.min(a,b), end=Math.max(a,b);
+    const q = activeDoc.content.slice(start,end); if(q.trim().length===0) return;
+    setSel({ start, end, quote:q }); setRtab('codigos');
+  }
+
+  /* ----- maps ----- */
+  const codeById = useMemo(()=>Object.fromEntries(codes.map(c=>[c.id,c])), [codes]);
+  const codePath = useCallback((id)=>{ const out=[]; let c=codeById[id]; let guard=0; while(c&&guard++<12){ out.unshift(c.name); c=c.parent_id?codeById[c.parent_id]:null; } return out; }, [codeById]);
+  const codingCount = useMemo(()=>{ const m={}; codings.forEach(c=>{m[c.code_id]=(m[c.code_id]||0)+1;}); return m; }, [codings]);
+
+  /* =================== RENDER =================== */
+  if(phase==='boot') return html`<div class="empty"><div class="t">Carregando…</div></div>`;
+
+  if(phase==='gate') return html`<${Gate}
+    err=${err}
+    onCreate=${async (n,disp)=>{ try{ try{localStorage.setItem('lastro:name',disp);}catch(e){} const p=await store.createProject(n,disp); try{localStorage.setItem('lastro:project',JSON.stringify(p));}catch(e){} setUser(store.currentUser()); setProject(p); setPhase('work'); }catch(e){ setErr(String(e.message||e)); } }}
+    onJoin=${async (code,disp)=>{ try{ try{localStorage.setItem('lastro:name',disp);}catch(e){} const p=await store.joinProject(code,disp); try{localStorage.setItem('lastro:project',JSON.stringify(p));}catch(e){} setUser(store.currentUser()); setProject(p); setPhase('work'); }catch(e){ setErr(String(e.message||e)); } }}
+  />`;
+
+  return html`
+  <div class="app">
+    <header class="top">
+      <div class="brand">QualiLab</div>
+      <div class="tag">your own lab for qualitative research</div>
+      <div class="grow"></div>
+      ${project && html`<span class="pill ${mode==='cloud'?'mode-cloud':''}">${mode==='cloud'?'nuvem':'local'} · ${project.name}${mode==='cloud'?` · ${project.code}`:''}</span>`}
+      ${user && html`<span class="meta">${user.name}</span>`}
+      ${mode==='cloud' && html`<button class="btn sm ghost" onClick=${()=>{ try{localStorage.removeItem('lastro:project');}catch(e){} setProject(null); setPhase('gate'); }}>trocar projeto</button>`}
+      ${project && docs.length>0 && html`<div style="position:relative">
+        <button class="btn sm" onClick=${()=>setExpOpen(o=>!o)}>exportar ▾</button>
+        ${expOpen && html`<div>
+          <div onClick=${()=>setExpOpen(false)} style="position:fixed;inset:0;z-index:40"></div>
+          <div class="exmenu">
+            <button onClick=${()=>doExport('json')}>JSON (projeto)</button>
+            <button onClick=${()=>doExport('trechos')}>CSV (trechos codificados)</button>
+            <button onClick=${()=>doExport('documentos')}>CSV (atributos por documento)</button>
+            <button onClick=${()=>doExport('qdpx')}>QDPX (ATLAS.ti / MAXQDA / NVivo)</button>
+          </div>
+        </div>`}
+      </div>`}
+      ${project && html`<label class="btn sm ghost" title="Importar projeto .qdpx (REFI-QDA)">importar qdpx
+        <input type="file" accept=".qdpx" style="display:none" onChange=${e=>{ if(e.target.files[0]) doImportQDPX(e.target.files[0]); e.target.value=''; }} />
+      </label>`}
+      ${project && docs.length>0 && html`<button class="btn sm ghost" style="color:var(--danger)" onClick=${doClearProject} title="Apagar tudo deste projeto">limpar projeto</button>`}
+      <button class="btn sm ghost" onClick=${()=>setSettings(true)} title="Conexão e identidade">⚙</button>
+    </header>
+
+    ${err && html`<div class="banner err">${err} <button class="btn sm ghost" onClick=${()=>setErr(null)}>fechar</button></div>`}
+    ${importMsg && html`<div class="banner warn">${importMsg} <button class="btn sm ghost" onClick=${()=>setImportMsg(null)}>fechar</button></div>`}
+    ${busy && html`<div class="banner warn">${busy}</div>`}
+
+    <div class="split">
+      <!-- ESQUERDA: documento -->
+      <section class="pane left">
+        <div class="pane-head">
+          <select class="opt" style="max-width:260px" value=${activeId||''} onChange=${e=>setActiveId(e.target.value)}>
+            ${docs.length===0 && html`<option value="">sem documentos</option>`}
+            ${docs.map(d=>html`<option value=${d.id}>${d.name}</option>`)}
+          </select>
+          <label class="btn sm">＋ enviar
+            <input type="file" multiple accept=".txt,.md,.markdown,.pdf,.docx" style="display:none" onChange=${e=>{onUpload(e.target.files); e.target.value='';}} />
+          </label>
+          <${AddPaste} onAdd=${addPasted} />
+          <div class="grow"></div>
+          ${activeDoc && html`<button class="icon-btn" title="Remover documento" onClick=${()=>delDoc(activeDoc.id)}>🗑</button>`}
+        </div>
+
+        ${sel && html`<div class="toolbar">
+          <span style="font-weight:600;color:var(--teal-deep);font-size:12.5px">Trecho selecionado</span>
+          <span class="q">“${sel.quote}”</span>
+          <span class="meta">escolha um código à direita para aplicar</span>
+          <div class="grow"></div>
+          <button class="btn sm ghost" onClick=${()=>{setSel(null);window.getSelection()?.removeAllRanges();}}>cancelar</button>
+        </div>`}
+
+        <div class="pane-body scroll">
+          ${!activeDoc ? html`<div class="empty"><div class="t">Nenhum documento</div><div>Envie arquivos (.txt, .md, .docx, .pdf) ou cole um texto. O conteúdo é extraído e exibido aqui para codificação.</div></div>`
+          : html`<div class="reader" onMouseUp=${onMouseUp}>
+              ${buildRuns(activeDoc.content, codings).map((run,i)=>{
+                if(run.codings.length===0) return html`<span key=${i} data-start=${run.start}>${run.text}</span>`;
+                const top = run.codings[run.codings.length-1];
+                const code = codeById[top.code_id];
+                const col = code ? codeColor(code.hue, code.depth) : codeColor(0,0);
+                const title = run.codings.map(c=>codePath(c.code_id).join(' ▸ ')+' ('+c.author_name+')').join('  |  ');
+                return html`<span key=${i} data-start=${run.start} data-c="1" title=${title}
+                   style=${`background:${col.tint};border-bottom:2px solid ${col.solid}`}>${run.text}</span>`;
+              })}
+            </div>`}
+        </div>
+      </section>
+
+      <!-- DIREITA: analise -->
+      <aside class="pane right">
+        <div class="pane-head">
+          <div class="seg">
+            <button class=${rtab==='categorias'?'on':''} onClick=${()=>setRtab('categorias')}>Categorias do documento</button>
+            <button class=${rtab==='codigos'?'on':''} onClick=${()=>setRtab('codigos')}>Códigos</button>
+          </div>
+        </div>
+        <div class="pane-body scroll">
+          ${rtab==='categorias'
+            ? html`<${CategoriesPanel} cats=${cats} values=${values} activeDoc=${activeDoc}
+                 onSet=${setValue} onAdd=${addCategory} onUpd=${updCategory} onDel=${delCategory} />`
+            : html`<${CodesPanel} codes=${codes} codeById=${codeById} count=${codingCount} sel=${sel}
+                 selCode=${selCode} setSelCode=${setSelCode} codePath=${codePath}
+                 onAdd=${addCode} onDel=${delCode} onApply=${applyCode} onUpd=${updCode}
+                 codings=${codings} onDelCoding=${delCoding}
+                 store=${store} project=${project} reload=${()=>loadProject(store,project.id)} />`}
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  ${settings && html`<${SettingsModal} mode=${mode} user=${user}
+    onClose=${()=>setSettings(false)}
+    onSaveCloud=${(url,key)=>{ try{localStorage.setItem('lastro:url',url);localStorage.setItem('lastro:key',key);}catch(e){} location.reload(); }}
+    onClearCloud=${()=>{ try{localStorage.removeItem('lastro:url');localStorage.removeItem('lastro:key');localStorage.removeItem('lastro:project');}catch(e){} location.reload(); }}
+  />`}
+  `;
+}
+
+/* ============ GATE (criar / entrar em projeto) ============ */
+function Gate({ onCreate, onJoin, err }){
+  const [name,setName]=useState('');
+  const [pname,setPname]=useState('');
+  const [code,setCode]=useState('');
+  return html`<div class="modal-bg"><div class="modal">
+    <h2>Projeto coletivo</h2>
+    <p class="hint">Crie um projeto novo ou entre em um existente com o código. Várias pessoas no mesmo código codificam juntas.</p>
+    ${err && html`<div class="banner err" style="margin:0 0 12px">${err}</div>`}
+    <div class="field"><div class="field-label">Seu nome de exibição</div>
+      <input class="txtin" value=${name} onInput=${e=>setName(e.target.value)} placeholder="como você aparece nas codificações" /></div>
+    <div class="card" style="margin-bottom:12px">
+      <div class="field-label">Criar projeto</div>
+      <div class="row"><input class="txtin" value=${pname} onInput=${e=>setPname(e.target.value)} placeholder="nome do projeto" />
+        <button class="btn primary" onClick=${()=>onCreate(pname,name)}>Criar</button></div>
+    </div>
+    <div class="card">
+      <div class="field-label">Entrar com código</div>
+      <div class="row"><input class="txtin" value=${code} onInput=${e=>setCode(e.target.value)} placeholder="ex: 9F2A1C" style="text-transform:uppercase" />
+        <button class="btn" onClick=${()=>onJoin(code,name)}>Entrar</button></div>
+    </div>
+  </div></div>`;
+}
+
+/* ============ PAINEL DE CATEGORIAS (atributos do documento) ============ */
+function CategoriesPanel({ cats, values, activeDoc, onSet, onAdd, onUpd, onDel }){
+  const valOf = (catId)=> values.find(v=>v.category_id===catId);
+  return html`<div class="section">
+    <p class="h">Atributos deste documento</p>
+    <p class="hint">Cada categoria recebe um valor para o documento inteiro (não para um trecho). Defina o esquema uma vez; o valor é preenchido por documento.</p>
+    ${!activeDoc && html`<div class="card"><span class="meta">Abra um documento para preencher.</span></div>`}
+    ${activeDoc && cats.length===0 && html`<div class="card"><span class="meta">Nenhuma categoria ainda. Crie abaixo.</span></div>`}
+    ${activeDoc && cats.map(cat=>{
+      const v = valOf(cat.id);
+      return html`<div class="field" key=${cat.id}>
+        <div class="field-label">${cat.name} ${v && html`<span class="author">${v.author_name}</span>`}</div>
+        ${cat.kind==='single'
+          ? html`<div class="row" style="flex-wrap:wrap;gap:6px">
+              ${(cat.options||[]).map(o=>html`<button class="opt ${v&&v.value===o?'on':''}" onClick=${()=>onSet(cat.id, v&&v.value===o?'':o)}>${o}</button>`)}
+              ${(cat.options||[]).length===0 && html`<span class="meta">sem valores — edite o esquema abaixo</span>`}
+            </div>`
+          : html`<${DebInput} value=${v?v.value:''} onCommit=${val=>onSet(cat.id,val)} placeholder="valor descritivo" />`}
+      </div>`;
+    })}
+    <details style="margin-top:10px">
+      <summary style="cursor:pointer;font-size:12.5px;color:var(--ink-soft)">Gerenciar esquema de categorias</summary>
+      <div style="margin-top:10px">
+        ${cats.map(cat=>html`<${CategoryEditor} key=${cat.id} cat=${cat} onUpd=${onUpd} onDel=${onDel} />`)}
+        <button class="btn sm" onClick=${onAdd} style="margin-top:6px">＋ Nova categoria</button>
+      </div>
+    </details>
+  </div>`;
+}
+function CategoryEditor({ cat, onUpd, onDel }){
+  const [nv,setNv]=useState('');
+  return html`<div class="card" style="margin-bottom:8px">
+    <div class="row" style="gap:6px">
+      <input class="txtin" value=${cat.name} onInput=${e=>onUpd(cat.id,{name:e.target.value})} />
+      <select class="opt" value=${cat.kind} onChange=${e=>onUpd(cat.id,{kind:e.target.value})}>
+        <option value="single">fechada</option><option value="text">texto</option>
+      </select>
+      <button class="icon-btn" onClick=${()=>onDel(cat.id)} title="excluir">🗑</button>
+    </div>
+    ${cat.kind==='single' && html`<div style="margin-top:8px">
+      <div class="row" style="flex-wrap:wrap;gap:5px;margin-bottom:6px">
+        ${(cat.options||[]).map(o=>html`<span class="opt" style="display:inline-flex;gap:5px">${o}
+          <button class="icon-btn" style="padding:0" onClick=${()=>onUpd(cat.id,{options:cat.options.filter(x=>x!==o)})}>✕</button></span>`)}
+      </div>
+      <div class="row" style="gap:6px">
+        <input class="txtin" placeholder="adicionar valor" value=${nv} onInput=${e=>setNv(e.target.value)}
+          onKeyDown=${e=>{ if(e.key==='Enter'&&nv.trim()){ if(!(cat.options||[]).includes(nv.trim())) onUpd(cat.id,{options:[...(cat.options||[]),nv.trim()]}); setNv(''); } }} />
+        <button class="btn sm" onClick=${()=>{ if(nv.trim()&&!(cat.options||[]).includes(nv.trim())){ onUpd(cat.id,{options:[...(cat.options||[]),nv.trim()]}); setNv(''); } }}>＋</button>
+      </div>
+    </div>`}
+  </div>`;
+}
+
+/* ============ PAINEL DE CODIGOS (tags de trecho, hierarquicas) ============ */
+function CodesPanel({ codes, codeById, count, sel, selCode, setSelCode, codePath, onAdd, onDel, onApply, onUpd, codings, onDelCoding, store, project, reload }){
+  const tops = codes.filter(c=>!c.parent_id);
+  const childrenOf = (id)=>codes.filter(c=>c.parent_id===id);
+  const selected = selCode ? codeById[selCode] : null;
+  return html`<div class="section">
+    <p class="h">Códigos hierárquicos</p>
+    <p class="hint">Estrutura importa: família no topo (cor mais escura), descendo até o subcódigo (mais claro). O código novo entra como filho do código selecionado, então a organização é o caminho mais fácil.</p>
+
+    <div class="row" style="gap:6px;margin-bottom:10px">
+      <button class="btn sm" onClick=${()=>onAdd(selected)} disabled=${!selected} title=${selected?`filho de ${selected.name}`:'selecione um código'}>＋ subcódigo${selected?` de “${selected.name}”`:''}</button>
+      <button class="btn sm ghost" onClick=${()=>onAdd(null)}>＋ nova família (topo)</button>
+    </div>
+
+    ${sel && html`<div class="banner warn" style="margin:0 0 10px">Trecho selecionado. Clique em um código abaixo para aplicar.</div>`}
+
+    <div class="tree">
+      ${tops.length===0 && html`<span class="meta">Nenhum código ainda. Comece por uma família.</span>`}
+      ${tops.map(t=>html`<${TreeNode} key=${t.id} code=${t} childrenOf=${childrenOf} count=${count}
+          sel=${sel} selCode=${selCode} setSelCode=${setSelCode} onApply=${onApply} onDel=${onDel}
+          store=${store} reload=${reload} depthPad=${0} />`)}
+    </div>
+
+    ${selected && html`<div class="card" style="margin-top:12px">
+      <div class="crumb">${codePath(selected.id).join(' ▸ ')}</div>
+      <${RenameCode} code=${selected} onUpd=${onUpd} />
+    </div>`}
+
+    <p class="h" style="margin-top:18px">Trechos codificados</p>
+    ${codings.length===0 ? html`<span class="meta">Nenhum trecho neste documento.</span>`
+      : codings.slice().reverse().map(c=>{
+        const code=codeById[c.code_id]; const col=code?codeColor(code.hue,code.depth):codeColor(0,0);
+        return html`<div class="card" key=${c.id} style="margin-bottom:6px;padding:9px 11px">
+          <div class="row" style="gap:7px;margin-bottom:3px">
+            <span class="swatch" style=${`background:${col.solid}`}></span>
+            <span style="font-size:12.5px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${codePath(c.code_id).join(' ▸ ')}</span>
+            <span class="author">${c.author_name}</span>
+            <button class="icon-btn" onClick=${()=>onDelCoding(c.id)} title="remover">🗑</button>
+          </div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--ink-soft)">“${(c.quote||'').slice(0,120)}”</div>
+        </div>`;
+      })}
+  </div>`;
+}
+
+function TreeNode({ code, childrenOf, count, sel, selCode, setSelCode, onApply, onDel, store, reload, depthPad }){
+  const [open,setOpen]=useState(true);
+  const kids = childrenOf(code.id);
+  const col = codeColor(code.hue, code.depth);
+  const isSel = selCode===code.id;
+  const appliable = !!sel;
+  return html`<div class="node">
+    <div class="node-row ${isSel?'sel':''} ${appliable?'appliable':''}" style=${`padding-left:${6+depthPad*16}px`}
+      onClick=${()=> appliable ? onApply(code.id) : setSelCode(code.id) }>
+      ${kids.length>0 ? html`<span class="caret" onClick=${e=>{e.stopPropagation();setOpen(!open);}}>${open?'▾':'▸'}</span>` : html`<span class="caret"></span>`}
+      <span class="swatch" style=${`background:${col.solid}`}></span>
+      <span class="node-name" title=${code.name}>${code.name}</span>
+      ${count[code.id]?html`<span class="count">${count[code.id]}</span>`:''}
+      <button class="icon-btn" onClick=${e=>{e.stopPropagation(); if(confirm('Excluir o código e seus subcódigos e codificações?')) onDel(code.id);}} title="excluir">✕</button>
+    </div>
+    ${open && kids.map(k=>html`<${TreeNode} key=${k.id} code=${k} childrenOf=${childrenOf} count=${count}
+      sel=${sel} selCode=${selCode} setSelCode=${setSelCode} onApply=${onApply} onDel=${onDel}
+      store=${store} reload=${reload} depthPad=${depthPad+1} />`)}
+  </div>`;
+}
+function RenameCode({ code, onUpd }){
+  const [v,setV]=useState(code.name);
+  useEffect(()=>setV(code.name),[code.id]);
+  return html`<div class="row" style="gap:6px;margin-top:6px">
+    <input class="txtin" value=${v} onInput=${e=>setV(e.target.value)} />
+    <button class="btn sm" onClick=${()=>onUpd(code.id,{name:v})}>renomear</button>
+  </div>`;
+}
+
+/* inputs com debounce / colar */
+function DebInput({ value, onCommit, placeholder }){
+  const [v,setV]=useState(value||''); const t=useRef(null);
+  useEffect(()=>setV(value||''),[value]);
+  return html`<input class="txtin" placeholder=${placeholder} value=${v}
+    onInput=${e=>{ setV(e.target.value); clearTimeout(t.current); const val=e.target.value; t.current=setTimeout(()=>onCommit(val),600); }}
+    onBlur=${()=>{ clearTimeout(t.current); onCommit(v); }} />`;
+}
+function AddPaste({ onAdd }){
+  const [open,setOpen]=useState(false); const [n,setN]=useState(''); const [t,setT]=useState('');
+  if(!open) return html`<button class="btn sm ghost" onClick=${()=>setOpen(true)}>colar texto</button>`;
+  return html`<div class="modal-bg"><div class="modal">
+    <h2>Colar documento</h2>
+    <div class="field"><input class="txtin" placeholder="nome" value=${n} onInput=${e=>setN(e.target.value)} /></div>
+    <div class="field"><textarea class="txtin" rows="8" placeholder="cole o texto aqui" value=${t} onInput=${e=>setT(e.target.value)} style="font-family:var(--serif);line-height:1.6"></textarea></div>
+    <div class="row" style="justify-content:flex-end;gap:8px">
+      <button class="btn ghost" onClick=${()=>{setOpen(false);setN('');setT('');}}>cancelar</button>
+      <button class="btn primary" onClick=${()=>{ if(t.trim()){ onAdd(n,t); setOpen(false); setN(''); setT(''); } }}>Adicionar</button>
+    </div>
+  </div></div>`;
+}
+
+/* ============ SETTINGS ============ */
+function SettingsModal({ mode, user, onClose, onSaveCloud, onClearCloud }){
+  const [url,setUrl]=useState(''); const [key,setKey]=useState('');
+  return html`<div class="modal-bg"><div class="modal">
+    <h2>Conexão</h2>
+    <p class="hint">Modo atual: <b>${mode==='cloud'?'nuvem (coletivo)':'local (este navegador)'}</b>.</p>
+    ${mode==='local'
+      ? html`<div>
+          <p class="hint">Para ativar o modo coletivo, cole a URL e a anon key do seu projeto Supabase. Elas ficam salvas só neste navegador.</p>
+          <div class="field"><div class="field-label">Supabase URL</div><input class="txtin" value=${url} onInput=${e=>setUrl(e.target.value)} placeholder="https://xxxx.supabase.co" /></div>
+          <div class="field"><div class="field-label">Anon key</div><input class="txtin" value=${key} onInput=${e=>setKey(e.target.value)} placeholder="eyJhbGciOi..." /></div>
+          <button class="btn primary" disabled=${!url||!key} onClick=${()=>onSaveCloud(url.trim(),key.trim())}>Conectar e recarregar</button>
+        </div>`
+      : html`<div>
+          <p class="hint">Usuário: ${user?.name}. Para voltar ao modo local (sem servidor), limpe a conexão.</p>
+          <button class="btn ghost" onClick=${onClearCloud}>Desconectar do Supabase</button>
+        </div>`}
+    <div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn" onClick=${onClose}>Fechar</button></div>
+  </div></div>`;
+}
+
+try { render(html`<${App} />`, document.getElementById('app')); } catch(e){ showFatal((e&&e.stack)||(e&&e.message)||e); }
+</script>
+</body>
+</html>
