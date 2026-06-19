@@ -510,16 +510,35 @@ function LocalStore(){
 function SupabaseStore(sb){
   let user=null, name='anonimo';
   const must = (r)=>{ if(r.error) throw r.error; return r.data; };
+  const nameOf = (u, fallback)=> (u && u.user_metadata && u.user_metadata.name) || fallback || name;
   return {
     mode:'cloud',
+    // apenas carrega a sessao existente (se houver); nao cria sessao anonima automaticamente
     async init(display){
-      name = display || name;
+      const { data:{ session } } = await sb.auth.getSession();
+      if(session){ user = session.user; name = nameOf(user, display); return { id:user.id, name, email:user.email||null, anon:!!user.is_anonymous }; }
+      if(display) name = display;
+      return null;
+    },
+    async signIn(email, password){
+      const r = await sb.auth.signInWithPassword({ email:email.trim(), password }); if(r.error) throw r.error;
+      user = r.data.user; name = nameOf(user); return { id:user.id, name, email:user.email||null, anon:false };
+    },
+    async signUp(email, password, display){
+      const r = await sb.auth.signUp({ email:email.trim(), password, options:{ data:{ name: display||'pesquisador' } } });
+      if(r.error) throw r.error;
+      // se a confirmacao de e-mail estiver ativa, ainda nao ha sessao
+      if(r.data.session){ user = r.data.session.user; name = nameOf(user, display); return { confirmed:true, user:{ id:user.id, name, email:user.email||null, anon:false } }; }
+      return { confirmed:false };
+    },
+    async signInAnon(display){
       let { data:{ session } } = await sb.auth.getSession();
       if(!session){ const r = await sb.auth.signInAnonymously(); if(r.error) throw r.error; session = r.data.session; }
-      user = session.user;
-      return { id:user.id, name };
+      user = session.user; name = display || name;
+      return { id:user.id, name, email:null, anon:true };
     },
-    currentUser(){ return { id:user?.id, name }; },
+    async signOut(){ try{ await sb.auth.signOut(); }catch(e){} user=null; },
+    currentUser(){ return user ? { id:user.id, name, email:user.email||null, anon:!!user.is_anonymous } : null; },
     async createProject(pn, display){ name=display||name; const d=must(await sb.rpc('create_project',{p_name:pn,p_display:name})); return { id:d.id, name:d.name, code:d.code }; },
     async joinProject(code, display){ name=display||name; const d=must(await sb.rpc('join_project',{p_code:code,p_display:name})); return { id:d.id, name:d.name, code:d.code }; },
     async listDocuments(pid){ return must(await sb.from('documents').select('*').eq('project_id',pid).order('created_at')); },
@@ -566,7 +585,7 @@ function App(){
   const wantCloud = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
   const [store, setStore] = useState(null);
   const [mode, setMode] = useState(wantCloud ? 'cloud' : 'local');
-  const [phase, setPhase] = useState('boot');     // boot | gate | work
+  const [phase, setPhase] = useState('boot');     // boot | auth | gate | work
   const [err, setErr] = useState(null);
   const [project, setProject] = useState(null);
   const [user, setUser] = useState(null);
@@ -594,6 +613,17 @@ function App(){
 
   const activeDoc = docs.find(d=>d.id===activeId) || null;
 
+  /* apos autenticar (sessao existente ou login): reentra no projeto salvo ou vai pro gate */
+  async function afterAuth(st, display){
+    setUser(st.currentUser());
+    const saved = (()=>{ try{return JSON.parse(localStorage.getItem('lastro:project')||'null');}catch(e){return null;} })();
+    if(saved && saved.code){
+      try{ const p = await st.joinProject(saved.code, display||st.currentUser()?.name||'anonimo'); setProject(p); setPhase('work'); return; }
+      catch(e){ try{localStorage.removeItem('lastro:project');}catch(_){} }
+    }
+    setPhase('gate');
+  }
+
   /* boot */
   useEffect(()=>{ (async()=>{
     try{
@@ -602,14 +632,11 @@ function App(){
         const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         const st = SupabaseStore(sb);
         setStore(st);
-        const saved = (()=>{ try{return JSON.parse(localStorage.getItem('lastro:project')||'null');}catch(e){return null;} })();
         const display = (()=>{ try{return localStorage.getItem('lastro:name')||'';}catch(e){return '';} })();
-        await st.init(display || 'anonimo');
+        const sess = await st.init(display);   // null se nao houver sessao salva
+        if(!sess){ setPhase('auth'); return; } // pede login/cadastro
         setUser(st.currentUser());
-        if(saved && saved.code){
-          const p = await st.joinProject(saved.code, display||'anonimo');
-          setProject(p); setPhase('work');
-        } else { setPhase('gate'); }
+        await afterAuth(st, display);
       } else {
         const st = LocalStore(); setStore(st);
         const display = (()=>{ try{return localStorage.getItem('lastro:name')||'pesquisador';}catch(e){return 'pesquisador';} })();
@@ -617,7 +644,7 @@ function App(){
         setUser(st.currentUser());
         const p = await st.createProject(); setProject(p); setPhase('work');
       }
-    }catch(e){ setErr(String(e.message||e)); setPhase(wantCloud?'gate':'work'); }
+    }catch(e){ setErr(String(e.message||e)); setPhase(wantCloud?'auth':'work'); }
   })(); }, []); // eslint-disable-line
 
   /* carregar projeto */
@@ -795,6 +822,13 @@ function App(){
   /* =================== RENDER =================== */
   if(phase==='boot') return html`<div class="empty"><div class="t">Carregando…</div></div>`;
 
+  if(phase==='auth') return html`<${Auth}
+    err=${err}
+    onSignIn=${async (email,pw)=>{ try{ const u=await store.signIn(email,pw); try{localStorage.setItem('lastro:name',u.name);}catch(e){} setErr(null); await afterAuth(store, u.name); }catch(e){ setErr(String(e.message||e)); } }}
+    onSignUp=${async (email,pw,disp)=>{ try{ const r=await store.signUp(email,pw,disp); try{localStorage.setItem('lastro:name',disp);}catch(e){} setErr(null); if(r.confirmed){ await afterAuth(store, disp); } return r; }catch(e){ setErr(String(e.message||e)); return { error:String(e.message||e) }; } }}
+    onAnon=${async (disp)=>{ try{ const u=await store.signInAnon(disp); try{localStorage.setItem('lastro:name',disp);}catch(e){} setErr(null); await afterAuth(store, disp); }catch(e){ setErr(String(e.message||e)); } }}
+  />`;
+
   if(phase==='gate') return html`<${Gate}
     err=${err}
     onCreate=${async (n,disp)=>{ try{ try{localStorage.setItem('lastro:name',disp);}catch(e){} const p=await store.createProject(n,disp); try{localStorage.setItem('lastro:project',JSON.stringify(p));}catch(e){} setUser(store.currentUser()); setProject(p); setPhase('work'); }catch(e){ setErr(String(e.message||e)); } }}
@@ -812,8 +846,9 @@ function App(){
       </div>`}
       <div class="grow"></div>
       ${project && html`<span class="pill ${mode==='cloud'?'mode-cloud':''}">${mode==='cloud'?'nuvem':'local'} · ${project.name}${mode==='cloud'?` · ${project.code}`:''}</span>`}
-      ${user && html`<span class="meta">${user.name}</span>`}
+      ${user && html`<span class="meta" title=${user.email||''}>${user.name}${user.anon?' (visitante)':''}</span>`}
       ${mode==='cloud' && html`<button class="btn sm ghost" onClick=${()=>{ try{localStorage.removeItem('lastro:project');}catch(e){} setProject(null); setPhase('gate'); }}>trocar projeto</button>`}
+      ${mode==='cloud' && user && html`<button class="btn sm ghost" onClick=${async()=>{ try{localStorage.removeItem('lastro:project');}catch(e){} try{ await store.signOut(); }catch(e){} setProject(null); setUser(null); setDocs([]); setActiveId(null); setPhase('auth'); }}>sair</button>`}
       ${project && docs.length>0 && html`<div style="position:relative">
         <button class="btn sm" onClick=${()=>setExpOpen(o=>!o)}>exportar ▾</button>
         ${expOpen && html`<div>
@@ -930,6 +965,46 @@ function App(){
     onClearCloud=${()=>{ try{localStorage.removeItem('lastro:url');localStorage.removeItem('lastro:key');localStorage.removeItem('lastro:project');}catch(e){} location.reload(); }}
   />`}
   `;
+}
+
+/* ============ AUTH (login / cadastro por e-mail e senha) ============ */
+function Auth({ onSignIn, onSignUp, onAnon, err }){
+  const [tab,setTab]=useState('in');   // in = entrar | up = criar conta
+  const [name,setName]=useState('');
+  const [email,setEmail]=useState('');
+  const [pw,setPw]=useState('');
+  const [busy,setBusy]=useState(false);
+  const [confirmMsg,setConfirmMsg]=useState(false);
+  const submit = async ()=>{
+    setBusy(true); setConfirmMsg(false);
+    if(tab==='in'){ await onSignIn(email, pw); }
+    else { const r = await onSignUp(email, pw, name||'pesquisador'); if(r && r.confirmed===false) setConfirmMsg(true); }
+    setBusy(false);
+  };
+  return html`<div class="modal-bg"><div class="modal">
+    <h2>Acessar o QualiLab</h2>
+    <p class="hint">Entre com e-mail e senha para que seus projetos e codificações fiquem salvos na sua conta, em qualquer dispositivo.</p>
+    <div class="seg" style="margin-bottom:14px">
+      <button class=${tab==='in'?'on':''} onClick=${()=>{setTab('in');setConfirmMsg(false);}}>Entrar</button>
+      <button class=${tab==='up'?'on':''} onClick=${()=>{setTab('up');setConfirmMsg(false);}}>Criar conta</button>
+    </div>
+    ${err && html`<div class="banner err" style="margin:0 0 12px">${err}</div>`}
+    ${confirmMsg && html`<div class="banner warn" style="margin:0 0 12px">Conta criada. Verifique seu e-mail para confirmar o cadastro e depois entre.</div>`}
+    ${tab==='up' && html`<div class="field"><div class="field-label">Seu nome de exibição</div>
+      <input class="txtin" value=${name} onInput=${e=>setName(e.target.value)} placeholder="como você aparece nas codificações" /></div>`}
+    <div class="field"><div class="field-label">E-mail</div>
+      <input class="txtin" type="email" value=${email} onInput=${e=>setEmail(e.target.value)} placeholder="voce@exemplo.com"
+        onKeyDown=${e=>{ if(e.key==='Enter') submit(); }} /></div>
+    <div class="field"><div class="field-label">Senha</div>
+      <input class="txtin" type="password" value=${pw} onInput=${e=>setPw(e.target.value)} placeholder="mínimo 6 caracteres"
+        onKeyDown=${e=>{ if(e.key==='Enter') submit(); }} /></div>
+    <button class="btn primary" style="width:100%" disabled=${busy||!email||pw.length<6} onClick=${submit}>
+      ${busy?'...':(tab==='in'?'Entrar':'Criar conta')}</button>
+    <div class="row" style="justify-content:center;margin-top:14px;gap:6px">
+      <span class="meta">só testando?</span>
+      <button class="btn sm ghost" onClick=${()=>onAnon(name||'visitante')}>entrar como visitante</button>
+    </div>
+  </div></div>`;
 }
 
 /* ============ GATE (criar / entrar em projeto) ============ */
