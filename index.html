@@ -958,19 +958,17 @@ function App(){
     setUser(store.currentUser());
   }
   async function acctLeaveProject(pid){
-    if(!confirm('Sair deste projeto? Você perderá o acesso (suas codificações permanecem).')) return;
-    await store.removeMember(pid, user.id); // erros propagam para o AccountModal
+    await store.removeMember(pid, user.id);
     if(project && project.id===pid) leaveToGate();
     await loadMyProjects();
   }
   async function acctRenameProject(pid, pn){
-    await store.renameProject(pid, pn); // erros propagam para o AccountModal
+    await store.renameProject(pid, pn);
     if(project && project.id===pid){ const np={...project, name:pn}; setProject(np); try{localStorage.setItem('lastro:project',JSON.stringify(np));}catch(e){} }
     await loadMyProjects();
   }
   async function acctDeleteProject(pid){
-    if(!confirm('Excluir DEFINITIVAMENTE este projeto e todo o seu conteúdo? Não há como desfazer.')) return;
-    await store.deleteProject(pid); // erros propagam para o AccountModal
+    await store.deleteProject(pid);
     if(project && project.id===pid) leaveToGate();
     await loadMyProjects();
   }
@@ -2301,29 +2299,30 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
   const [msg,setMsg]=useState(null); const [err,setErr]=useState(null);
   const [busy,setBusy]=useState(false);
   const [editId,setEditId]=useState(null); const [editName,setEditName]=useState('');
-  const wrap = (fn)=> async (...args)=>{ setErr(null); try{ await fn(...args); }catch(e){ setErr(String(e.message||e)); } };
+  const [confirmId,setConfirmId]=useState(null); // id do projeto aguardando confirmação inline
   const list = projects||[];
 
-  const saveName = async ()=>{ setErr(null);setMsg(null);
-    try{ await onChangeName(name.trim()||'pesquisador'); setMsg('Nome atualizado.'); }catch(e){ setErr(String(e.message||e)); } };
-  const savePw = async ()=>{ setErr(null);setMsg(null);
+  const run = async (fn)=>{ setErr(null); setMsg(null); try{ await fn(); }catch(e){ setErr(String(e.message||e)); } };
+
+  const saveName = ()=>run(async()=>{ await onChangeName(name.trim()||'pesquisador'); setMsg('Nome atualizado.'); });
+  const savePw   = ()=>{
     if(pw1.length<6){ setErr('A senha precisa de ao menos 6 caracteres.'); return; }
-    if(pw1!==pw2){ setErr('As senhas não coincidem.'); return; }
+    if(pw1!==pw2)   { setErr('As senhas não coincidem.'); return; }
     setBusy(true);
-    try{ await onChangePassword(pw1); setPw1('');setPw2(''); setMsg('Senha alterada.'); }
-    catch(e){ setErr(String(e.message||e)); } setBusy(false); };
+    run(async()=>{ await onChangePassword(pw1); setPw1('');setPw2(''); setMsg('Senha alterada.'); }).finally(()=>setBusy(false));
+  };
 
   return html`<div class="modal-bg"><div class="modal" style="max-width:560px">
     <h2>Minha conta</h2>
     <p class="hint">${user?.email||'sessão de visitante'}${user?.anon?' (visitante — sem senha)':''}</p>
-    ${err && html`<div class="banner err" style="margin:0 0 12px">${err}</div>`}
+    ${err && html`<div class="banner err" style="margin:0 0 12px">${err} <button class="btn sm ghost" onClick=${()=>setErr(null)}>×</button></div>`}
     ${msg && html`<div class="banner warn" style="margin:0 0 12px">${msg}</div>`}
 
     <!-- identidade -->
     <div class="card" style="margin-bottom:12px">
       <div class="field-label">Nome de exibição</div>
       <div class="row" style="gap:6px">
-        <input class="txtin" value=${name} onInput=${e=>setName(e.target.value)} placeholder="como você aparece nas codificações" />
+        <input class="txtin" value=${name} onInput=${e=>setName(e.target.value)} />
         <button class="btn sm" disabled=${!name.trim()||name===user?.name} onClick=${saveName}>salvar</button>
       </div>
     </div>
@@ -2333,32 +2332,47 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
       <div class="field-label">Alterar senha</div>
       <div class="field"><input class="txtin" type="password" value=${pw1} onInput=${e=>setPw1(e.target.value)} placeholder="nova senha (mín. 6)" /></div>
       <div class="field" style="margin-bottom:8px"><input class="txtin" type="password" value=${pw2} onInput=${e=>setPw2(e.target.value)} placeholder="repita a nova senha" /></div>
-      <button class="btn sm primary" disabled=${busy||!pw1||!pw2} onClick=${savePw}>${busy?'...':'Alterar senha'}</button>
+      <button class="btn sm primary" disabled=${busy||!pw1||!pw2} onClick=${savePw}>${busy?'…':'Alterar senha'}</button>
     </div>`}
 
     <!-- projetos -->
     <div class="field-label" style="margin-bottom:6px">Meus projetos</div>
     ${list.length===0 && html`<div class="card"><span class="meta">Você ainda não tem projetos.</span></div>`}
-    <div style="max-height:260px;overflow:auto">
-      ${list.map(p=>{ const admin = p.role==='admin';
+    <div style="max-height:300px;overflow:auto">
+      ${list.map(p=>{ const admin = p.role==='admin'; const confirming = confirmId===p.id;
         return html`<div class="card" key=${p.code||p.id} style="margin-bottom:6px;padding:10px 12px">
           ${editId===p.id
             ? html`<div class="row" style="gap:6px">
                 <input class="txtin" value=${editName} onInput=${e=>setEditName(e.target.value)} />
-                <button class="btn sm" onClick=${wrap(async()=>{ await onRename(p.id, editName.trim()||p.name); setEditId(null); })}>salvar</button>
+                <button class="btn sm" onClick=${()=>run(async()=>{ await onRename(p.id, editName.trim()||p.name); setEditId(null); })}>salvar</button>
                 <button class="btn sm ghost" onClick=${()=>setEditId(null)}>cancelar</button>
               </div>`
-            : html`<div class="row" style="gap:8px;align-items:center">
-                <div style="flex:1;min-width:0">
-                  <div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.name||'(sem nome)'}</div>
-                  <div class="meta">código ${p.code} · ${p.mode==='individual'?'individual':'coletivo'}${admin?' · admin':''}</div>
-                </div>
-                <button class="btn sm" onClick=${()=>onOpen(p)}>abrir</button>
-                ${admin && html`<button class="icon-btn" title="renomear" onClick=${()=>{ setEditId(p.id); setEditName(p.name||''); }}>✎</button>`}
-                ${admin
-                  ? html`<button class="icon-btn" style="color:var(--danger)" title="excluir projeto" onClick=${wrap(()=>onDelete(p.id))}>🗑</button>`
-                  : html`<button class="btn sm ghost" style="color:var(--danger)" title="sair do projeto" onClick=${wrap(()=>onLeave(p.id))}>sair</button>`}
-              </div>`}
+            : confirming
+              ? html`<div>
+                  <div style="font-weight:600;margin-bottom:6px">${p.name||'(sem nome)'}</div>
+                  <div class="banner err" style="margin:0 0 8px;font-size:12.5px">
+                    ${admin ? 'Excluir definitivamente? Todo o conteúdo será perdido.' : 'Sair deste projeto? Você perderá o acesso.'}
+                  </div>
+                  <div class="row" style="gap:6px">
+                    <button class="btn sm" style="background:var(--danger);color:#fff;border:none"
+                      onClick=${()=>run(async()=>{ if(admin) await onDelete(p.id); else await onLeave(p.id); setConfirmId(null); })}>
+                      ${admin?'Excluir':'Sair'}
+                    </button>
+                    <button class="btn sm ghost" onClick=${()=>setConfirmId(null)}>cancelar</button>
+                  </div>
+                </div>`
+              : html`<div class="row" style="gap:8px;align-items:center">
+                  <div style="flex:1;min-width:0">
+                    <div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.name||'(sem nome)'}</div>
+                    <div class="meta">código ${p.code} · ${p.mode==='individual'?'individual':'coletivo'}${admin?' · admin':''}</div>
+                  </div>
+                  <button class="btn sm" onClick=${()=>onOpen(p)}>abrir</button>
+                  ${admin && html`<button class="icon-btn" title="renomear" onClick=${()=>{ setEditId(p.id); setEditName(p.name||''); }}>✎</button>`}
+                  <button class="btn sm ghost" style="color:var(--danger)"
+                    onClick=${()=>setConfirmId(p.id)}>
+                    ${admin?'🗑':'sair'}
+                  </button>
+                </div>`}
         </div>`; })}
     </div>
 
