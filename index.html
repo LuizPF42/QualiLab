@@ -733,9 +733,9 @@ function SupabaseStore(sb){
       const hasCB = Object.prototype.hasOwnProperty.call(co,'created_by');
       const row = {project_id:pid, created_by:user.id, author_name:name, ...co};
       if(hasCB && co.created_by===null) row.created_by = null;
-      return withQueue('addCoding:'+row.id, ()=>must(sb.from('codings').insert(row).select().single()));
+      return must(await sb.from('codings').insert(row).select().single());
     },
-    async deleteCoding(id){ return withQueue('delCoding:'+id, ()=>must(sb.from('codings').delete().eq('id',id))); },
+    async deleteCoding(id){ must(await sb.from('codings').delete().eq('id',id)); },
     // sincronizacao ao vivo: dispara onChange a cada alteracao em codings/doc_values do projeto
     realtime(projectId, onChange){
       const ch = sb.channel('qualilab:'+projectId)
@@ -1101,8 +1101,17 @@ function App(){
     setBusy('Importando .qdpx...');
     try{
       const r = await importQDPX(file, store, project.id);
-      await loadProject(store, project.id);
-      await loadDoc();
+      const freshDocs = await store.listDocuments(project.id);
+      // carrega o projeto completo e define explicitamente o primeiro documento
+      // (evita race condition: loadDoc usa activeId do closure, que pode ser antigo)
+      const [cats2, codes2] = await Promise.all([store.listCategories(project.id), store.listCodes(project.id)]);
+      setCats(cats2); setCodes(codes2); setDocs(freshDocs);
+      const firstId = freshDocs[0]?.id || null;
+      if(firstId){
+        setActiveId(firstId);
+        const [vals, cods] = await Promise.all([store.getDocValues(firstId), store.listCodings(project.id, firstId)]);
+        setValues(vals); setCodings(cods);
+      }
       const desc = r.descartados;
       const skippedBits = [];
       if(desc.picture) skippedBits.push(`${desc.picture} imagem(ns)`);
