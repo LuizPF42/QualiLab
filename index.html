@@ -830,6 +830,7 @@ function App(){
   /* lista "Meus Projetos" por conta (cache local, complementa o servidor) */
   const recentKey = (st)=> 'lastro:projects:'+((st||store)?.currentUser?.()?.id || 'anon');
   const getRecent = (st)=>{ try{ return JSON.parse(localStorage.getItem(recentKey(st))||'[]'); }catch(e){ return []; } };
+  const removeRecent = (p, st)=>{ try{ const k=recentKey(st||store); localStorage.setItem(k, JSON.stringify(getRecent(st||store).filter(x=>x.code!==p.code))); }catch(e){} };
   const pushRecent = (p, st)=>{ try{ const k=recentKey(st); const list=getRecent(st).filter(x=>x.code!==p.code);
     list.unshift({ id:p.id, name:p.name, code:p.code, at:Date.now() }); localStorage.setItem(k, JSON.stringify(list.slice(0,30))); }catch(e){} };
 
@@ -923,7 +924,7 @@ function App(){
     const self = userId===user?.id;
     if(self && !confirm('Sair deste projeto? Você perderá o acesso (suas codificações permanecem no projeto).')) return;
     try{ await store.removeMember(project.id, userId);
-      if(self) leaveToGate(); else await loadMembers(); }
+      if(self){ removeRecent(project); leaveToGate(); } else await loadMembers(); }
     catch(e){ setErr(String(e.message||e)); }
   }
   async function renameProject(pn){
@@ -933,7 +934,7 @@ function App(){
   }
   async function deleteProject(){
     if(!confirm('Excluir DEFINITIVAMENTE este projeto e todos os seus documentos, códigos e codificações? Esta ação não pode ser desfeita.')) return;
-    try{ await store.deleteProject(project.id); leaveToGate(); }
+    try{ await store.deleteProject(project.id); removeRecent(project); leaveToGate(); }
     catch(e){ setErr(String(e.message||e)); }
   }
 
@@ -959,6 +960,7 @@ function App(){
   }
   async function acctLeaveProject(pid){
     await store.removeMember(pid, user.id);
+    const p = myProjects.find(x=>x.id===pid); if(p) removeRecent(p);
     if(project && project.id===pid) leaveToGate();
     await loadMyProjects();
   }
@@ -969,6 +971,7 @@ function App(){
   }
   async function acctDeleteProject(pid){
     await store.deleteProject(pid);
+    const p = myProjects.find(x=>x.id===pid); if(p) removeRecent(p);
     if(project && project.id===pid) leaveToGate();
     await loadMyProjects();
   }
