@@ -786,6 +786,9 @@ function App(){
 
   const [sel, setSel] = useState(null);
   const [ctxMenu, setCtxMenu] = useState(null); // menu de contexto (botão direito) p/ aplicar código
+  const [ctxCreating, setCtxCreating] = useState(false); // mini-formulário "criar novo código" dentro do menu
+  const [ctxNewName, setCtxNewName] = useState('');
+  const [ctxNewParent, setCtxNewParent] = useState(''); // id do código-pai, ou '' para nova família
   const [selCode, setSelCode] = useState(null);
   const [rtab, setRtab] = useState('categorias');
   const [mainView, setMainView] = useState('codificar'); // codificar | reconciliar | visualizar
@@ -1046,20 +1049,31 @@ function App(){
   async function updCategory(id,patch){ await store.updateCategory(id,patch); setCats(x=>x.map(c=>c.id===id?{...c,...patch}:c)); }
   async function delCategory(id){ await store.deleteCategory(id); setCats(x=>x.filter(c=>c.id!==id)); setValues(v=>v.filter(x=>x.category_id!==id)); }
 
-  async function addCode(parent){
+  async function addCode(parent, customName){
     let hue, depth;
     if(parent){ hue = parent.hue; depth = parent.depth+1; }
     else { const tops = codes.filter(c=>!c.parent_id); hue = tops.length % HUES.length; depth = 0; }
-    const c = await store.addCode(project.id,{ parent_id: parent?parent.id:null, name: parent?'subcódigo':'nova família', hue, depth, position: codes.length });
+    const name = customName?.trim() || (parent?'subcódigo':'nova família');
+    const c = await store.addCode(project.id,{ parent_id: parent?parent.id:null, name, hue, depth, position: codes.length });
     setCodes(x=>[...x,c]); setSelCode(c.id);
+    return c;
   }
   async function updCode(id,patch){ await store.updateCode(id,patch); setCodes(x=>x.map(c=>c.id===id?{...c,...patch}:c)); }
   async function delCode(id){ await store.deleteCode(id); loadProject(store,project.id); loadDoc(); }
+  function closeCtxMenu(){ setCtxMenu(null); setCtxCreating(false); setCtxNewName(''); setCtxNewParent(''); }
+  async function ctxCreateAndApply(){
+    const name = ctxNewName.trim();
+    if(!name || !ctxMenu) return;
+    const parentObj = ctxNewParent ? codeById[ctxNewParent] : null;
+    const c = await addCode(parentObj, name);
+    await applyCode(c.id, ctxMenu.sel);
+    setCtxCreating(false); setCtxNewName(''); setCtxNewParent('');
+  }
   async function applyCode(codeId, selection){
     const s = selection || sel;
     if(!s) return;
     const c = await store.addCoding(project.id,{ document_id:activeId, code_id:codeId, span_start:s.start, span_end:s.end, quote:s.quote, layer: projectMode==='individual' ? 'final' : 'individual' });
-    setCodings(x=>[...x,c]); setSel(null); setCtxMenu(null); window.getSelection()?.removeAllRanges();
+    setCodings(x=>[...x,c]); setSel(null); closeCtxMenu(); window.getSelection()?.removeAllRanges();
   }
   // consolidacao: cria uma codificacao na camada "final" (reconciliacao manual)
   async function addFinalCoding(docId, codeId, start, end, quote){
@@ -1173,7 +1187,9 @@ function App(){
     if(!sx) return; // sem seleção: deixa o menu normal do navegador
     e.preventDefault();
     setSel(sx);
-    setCtxMenu({ x:e.clientX, y:e.clientY, sel:sx });
+    // limite direito = borda da coluna de leitura (não invade o painel da direita)
+    const boundRight = e.currentTarget.getBoundingClientRect().right;
+    setCtxMenu({ x:e.clientX, y:e.clientY, sel:sx, boundRight });
   }
 
   /* ----- maps ----- */
@@ -1394,17 +1410,39 @@ function App(){
     </div>`}
   </div>
 
-  ${ctxMenu && html`<div>
-    <div onClick=${()=>setCtxMenu(null)} onContextMenu=${e=>{e.preventDefault();setCtxMenu(null);}} style="position:fixed;inset:0;z-index:60"></div>
-    <div class="exmenu" style=${`position:fixed;left:${Math.min(ctxMenu.x, window.innerWidth-260)}px;top:${Math.min(ctxMenu.y, window.innerHeight-40)}px;z-index:61;max-height:60vh;overflow:auto;min-width:240px`}>
+  ${ctxMenu && (()=>{
+    const menuW = 240, maxMenuH = Math.round(window.innerHeight*0.6);
+    const rightLimit = (ctxMenu.boundRight||window.innerWidth) - 8;
+    const left = Math.max(8, Math.min(ctxMenu.x, rightLimit - menuW));
+    const top = Math.max(8, Math.min(ctxMenu.y, window.innerHeight - maxMenuH - 8));
+    return html`<div>
+    <div onClick=${closeCtxMenu} onContextMenu=${e=>{e.preventDefault();closeCtxMenu();}} style="position:fixed;inset:0;z-index:60"></div>
+    <div class="exmenu" style=${`position:fixed;left:${left}px;top:${top}px;z-index:61;max-height:${maxMenuH}px;overflow:auto;min-width:${menuW}px`}>
       <div style="padding:7px 12px;font-size:11px;color:var(--ink-faint);border-bottom:1px solid var(--line-soft);font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px">"${ctxMenu.sel.quote}"</div>
-      ${orderedCodes.length===0
-        ? html`<div style="padding:9px 12px;color:var(--ink-faint);font-size:12.5px">Nenhum código criado ainda. Crie um na aba "Codificar".</div>`
+      ${orderedCodes.length===0 && !ctxCreating
+        ? html`<div style="padding:9px 12px;color:var(--ink-faint);font-size:12.5px">Nenhum código criado ainda.</div>`
         : orderedCodes.map(c=>{ const col=codeColor(c.hue,c.depth); return html`<button key=${c.id} onClick=${()=>applyCode(c.id, ctxMenu.sel)} style=${`padding-left:${12+c.depth*14}px`}>
             <span class="swatch" style=${`background:${col.solid};display:inline-block;margin-right:7px;vertical-align:middle`}></span>${c.name}
           </button>`; })}
+      <div style="border-top:1px solid var(--line-soft)">
+        ${!ctxCreating
+          ? html`<button onClick=${e=>{e.stopPropagation();setCtxCreating(true);}} style="color:var(--teal);font-weight:600">+ Criar novo código</button>`
+          : html`<div style="padding:9px 12px;display:flex;flex-direction:column;gap:6px" onClick=${e=>e.stopPropagation()}>
+              <input class="txtin" autofocus placeholder="nome do código" value=${ctxNewName}
+                onInput=${e=>setCtxNewName(e.target.value)}
+                onKeyDown=${e=>{ if(e.key==='Enter') ctxCreateAndApply(); if(e.key==='Escape') setCtxCreating(false); }} />
+              <select class="opt" style="width:100%;font-size:12.5px" value=${ctxNewParent} onChange=${e=>setCtxNewParent(e.target.value)}>
+                <option value="">(nova família — nível 0)</option>
+                ${orderedCodes.map(c=>html`<option key=${c.id} value=${c.id}>subcódigo de "${c.name}"</option>`)}
+              </select>
+              <div class="row" style="gap:6px;justify-content:flex-end">
+                <button class="btn sm ghost" onClick=${()=>setCtxCreating(false)}>cancelar</button>
+                <button class="btn sm primary" disabled=${!ctxNewName.trim()} onClick=${ctxCreateAndApply}>Criar e aplicar</button>
+              </div>
+            </div>`}
+      </div>
     </div>
-  </div>`}
+  </div>`; })()}
 
   ${account && html`<${AccountModal} user=${user} projects=${myProjects}
     onClose=${()=>setAccount(false)} onChangePassword=${changePassword} onChangeName=${changeDisplayName}
