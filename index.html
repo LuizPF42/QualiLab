@@ -644,12 +644,15 @@ function SupabaseStore(sb){
     onPendingChange(cb){ _onPendingChange=cb; },
     pendingCount(){ return _pendingCount; },
     async flush(){ await flushQueue(); },
-    // apenas carrega a sessao existente (se houver); nao cria sessao anonima automaticamente
+    // retoma sessão de e-mail/senha; sessões anônimas são ignoradas (usuário volta à tela de auth)
     async init(display){
       const { data:{ session } } = await sb.auth.getSession();
-      if(session){ user = session.user; name = nameOf(user, display); return { id:user.id, name, email:user.email||null, anon:!!user.is_anonymous }; }
+      if(session && !session.user.is_anonymous){
+        user = session.user; name = nameOf(user, display);
+        return { id:user.id, name, email:user.email||null, anon:false };
+      }
       if(display) name = display;
-      return null;
+      return null; // sem sessão ou sessão anônima → tela de login
     },
     async signIn(email, password){
       const r = await sb.auth.signInWithPassword({ email:email.trim(), password }); if(r.error) throw r.error;
@@ -1202,6 +1205,7 @@ function App(){
     <${Gate}
       err=${err} user=${user} projects=${myProjects} mode=${mode} onAccount=${()=>setAccount(true)}
       onOpenFile=${()=>openFileProject(false)} onNewFile=${()=>openFileProject(true)}
+      onLogin=${async()=>{ try{ await store.signOut(); }catch(e){} setUser(null); setPhase('auth'); }}
       onOpen=${async (proj)=>{ try{ const p=await store.joinProject(proj.code, user?.name||''); try{localStorage.setItem('lastro:project',JSON.stringify(p));}catch(e){} pushRecent(p); openProject(p); setPhase('work'); }catch(e){ setErr(String(e.message||e)); } }}
       onCreate=${async (n,disp,pmode)=>{ try{ try{localStorage.setItem('lastro:name',disp);}catch(e){} const p=await store.createProject(n,disp,pmode); try{localStorage.setItem('lastro:project',JSON.stringify(p));}catch(e){} pushRecent(p); setUser(store.currentUser()); openProject(p); setPhase('work'); }catch(e){ setErr(String(e.message||e)); } }}
       onJoin=${async (code,disp)=>{ try{ try{localStorage.setItem('lastro:name',disp);}catch(e){} const p=await store.joinProject(code,disp); try{localStorage.setItem('lastro:project',JSON.stringify(p));}catch(e){} pushRecent(p); setUser(store.currentUser()); openProject(p); setPhase('work'); }catch(e){ setErr(String(e.message||e)); } }}
@@ -1438,20 +1442,23 @@ function Auth({ onSignIn, onSignUp, onAnon, err }){
         onKeyDown=${e=>{ if(e.key==='Enter') submit(); }} /></div>
     <button class="btn primary" style="width:100%" disabled=${busy||!email||pw.length<6} onClick=${submit}>
       ${busy?'...':(tab==='in'?'Entrar':'Criar conta')}</button>
-    <div class="row" style="justify-content:center;margin-top:14px;gap:6px">
-      <span class="meta">só testando?</span>
-      <button class="btn sm ghost" onClick=${()=>onAnon(name||'visitante')}>entrar como visitante</button>
+    <hr style="border:none;border-top:1px solid var(--line-soft);margin:16px 0 10px" />
+    <div style="text-align:center">
+      <span class="meta">Sem conta? </span>
+      <button class="btn sm ghost" style="font-size:12px" onClick=${()=>onAnon(name||'visitante')}>Continuar como visitante</button>
+      <p class="meta" style="margin:6px 0 0;font-size:11px">Projetos ficam vinculados a este dispositivo — sem sincronização entre aparelhos.</p>
     </div>
   </div></div>`;
 }
 
 /* ============ GATE (Meus Projetos + criar / entrar em projeto) ============ */
-function Gate({ onCreate, onJoin, onOpen, onOpenFile, onNewFile, err, user, projects, mode, onAccount }){
+function Gate({ onCreate, onJoin, onOpen, onOpenFile, onNewFile, err, user, projects, mode, onAccount, onLogin }){
   const [name,setName]=useState(user?.name||'');
   const [pname,setPname]=useState('');
   const [pmode,setPmode]=useState('individual'); // individual | collective
   const [code,setCode]=useState('');
   const list = projects||[];
+  const isAnon = user?.anon;
   const num = (p)=>{ const bits=[];
     if(p.n_documents!=null) bits.push(`${p.n_documents} documento(s)`);
     if(p.n_codings!=null) bits.push(`${p.n_codings} trecho(s)`);
@@ -1460,9 +1467,14 @@ function Gate({ onCreate, onJoin, onOpen, onOpenFile, onNewFile, err, user, proj
     <div class="row" style="align-items:baseline;gap:10px;margin-bottom:2px">
       <h2 style="margin:0">Meus projetos</h2>
       <div class="grow"></div>
-      ${mode==='cloud' && onAccount && html`<button class="btn sm ghost" onClick=${onAccount}>⚙ Minha conta</button>`}
+      ${mode==='cloud' && !isAnon && onAccount && html`<button class="btn sm ghost" onClick=${onAccount}>⚙ Minha conta</button>`}
     </div>
-    <p class="hint">Abra um projeto que você já criou ou participou, ou comece um novo. Vários pesquisadores no mesmo código codificam juntos.</p>
+    ${isAnon
+      ? html`<div class="banner warn" style="margin:0 0 10px">
+          Você está como <b>visitante</b>. Os seus projetos ficam vinculados a este dispositivo.
+          <span> </span><button class="btn sm ghost" onClick=${onLogin} style="color:var(--teal-deep);font-weight:600">Entrar com conta →</button>
+        </div>`
+      : html`<p class="hint">Abra um projeto que você já criou ou participou, ou comece um novo. Vários pesquisadores no mesmo código codificam juntos.</p>`}
     ${err && html`<div class="banner err" style="margin:0 0 12px">${err}</div>`}
 
     ${list.length>0 ? html`<div style="margin-bottom:14px;max-height:240px;overflow:auto">
