@@ -14,6 +14,8 @@ Ferramentas de análise qualitativa — ATLAS.ti, MAXQDA, NVivo — são poderos
 
 O QualiLab busca ser o mais intuitivo possível: você carrega um documento, seleciona um trecho e já codifica — sem configuração prévia. Ao mesmo tempo, oferece um esquema de categorias nativo (texto fechado, múltipla escolha, caixa de seleção, data, texto livre) que convive com a codificação de trechos de forma integrada, no mesmo ambiente. Quem precisa conciliar análise temática com coleta estruturada de atributos não precisa mais alternar entre ferramentas.
 
+As ferramentas disponíveis, pagas ou gratuitas, também não têm colaboração e pesquisa coletiva como seus objetivos primários. O QualiLab busca encontrar um bom meio termo, sendo desenvolvido para necessidades individuais e coletivas — camadas de codificação por pesquisador, reconciliação, papéis de administrador e membro, tudo nativo, sem precisar de planilha paralela ou ferramenta de terceiros para coordenar a equipe.
+
 ---
 
 ## Recursos
@@ -190,6 +192,22 @@ Todos demonstram que é possível fazer ferramentas de qualidade sem cobrar das 
 
 ---
 
+## Restrições atuais
+
+O QualiLab é um projeto em desenvolvimento ativo. Vale conhecer as limitações antes de adotar para um projeto de pesquisa importante:
+
+- **Capacidade do Supabase (modo nuvem)** — o plano gratuito do Supabase tem limites de armazenamento e processamento (na ordem de **500MB de banco de dados** e **alguns GB de tráfego mensal**, sujeitos a mudança pelo provedor — confira os valores atuais em [supabase.com/pricing](https://supabase.com/pricing)). Projetos muito grandes (muitos documentos longos, milhares de codificações) podem exigir um plano pago do Supabase ou o modo **Arquivo local**, que não tem esse limite.
+- **Sem anonimização automática** — documentos e trechos sensíveis (nomes, CPFs, dados de saúde) não são identificados ou mascarados automaticamente. A responsabilidade de anonimizar antes de subir o documento, ou de tratar a confidencialidade dos dados, é inteiramente do pesquisador.
+- **Sem recuperação de senha** — contas de e-mail não têm fluxo de "esqueci minha senha"; a troca de senha exige estar logado.
+- **Fila de escritas offline inativa** — como já indicado acima, escritas feitas sem conexão falham em vez de serem enviadas automaticamente depois.
+- **QDPX não carrega categorias por pesquisador** — é uma limitação do próprio formato REFI-QDA, não do QualiLab: o padrão não tem campo de autoria para atributos de documento (só para trechos codificados). Ao importar um `.qdpx`, todos os atributos chegam atribuídos a quem importou.
+- **Sincronização em tempo real parcial** — apenas codificações e valores de categoria sincronizam ao vivo entre colaboradores. Mudanças no esquema de categorias ou na árvore de códigos exigem recarregar a página para aparecer para outros membros.
+- **Governança do livro de códigos é binária** — qualquer membro pode criar, renomear e excluir códigos livremente (necessário para codificação colaborativa em tempo real); apenas a cor personalizada de uma família é restrita a administradores. Não há, ainda, um modo intermediário de aprovação antes de um código novo ficar visível a todos.
+- **Sem histórico de versões** — não há desfazer (undo) ou log de auditoria de alterações; exclusões de documentos, códigos e categorias são definitivas.
+- **Modo Arquivo local restrito a Chromium** — a File System Access API que sustenta esse modo só existe em Chrome e Edge; Firefox e Safari caem automaticamente para o modo local (`localStorage`).
+
+---
+
 ## Licença
 
 MIT License — livre para usar, modificar e distribuir, com ou sem fins comerciais, desde que o aviso de copyright seja mantido.
@@ -197,3 +215,15 @@ MIT License — livre para usar, modificar e distribuir, com ou sem fins comerci
 ```
 Copyright (c) 2026 Luiz Pimenta Filho
 ```
+
+---
+
+## To-dos
+
+- [ ] Incluir ferramenta para anonimização incorporada
+- [ ] Melhorar gráficos
+  - [ ] Cards "síntese" (número de documentos, tipo, códigos, etc.)
+  - [ ] Distribuição por famílias analíticas
+  - [ ] Análises textuais automatizadas (similaridade, coocorrência, redes textuais)
+  - [ ] Pipeline de publicação de relatórios próprios por pesquisador / pesquisa
+  - [ ] Integração de IA (?) — em avaliação; ferramentas de QDA costumam dividir opiniões sobre IA, o uso teria que ser opt-in e transparente
