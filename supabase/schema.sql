@@ -289,3 +289,40 @@ begin
     end if;
   end loop;
 end $$;
+
+-- ---------- memos (nota unica compartilhada: projeto, documento ou codigo) ----------
+create table if not exists public.memos (
+  id          uuid primary key default gen_random_uuid(),
+  project_id  uuid not null references public.projects(id) on delete cascade,
+  scope       text not null check (scope in ('project','document','code')),
+  target_id   uuid not null,  -- = project_id quando scope='project'; document_id ou code_id nos demais
+  content     text not null default '',
+  author_name text not null default 'anonimo',
+  updated_by  uuid,
+  updated_at  timestamptz not null default now(),
+  unique (project_id, scope, target_id)
+);
+alter table public.memos enable row level security;
+drop policy if exists memos_all on public.memos;
+create policy memos_all on public.memos for all
+  using (public.is_member(project_id)) with check (public.is_member(project_id));
+
+-- ---------- cor personalizada de codigo (somente nivel 0 / familia) ----------
+alter table public.codes add column if not exists hue_deg int;
+
+create or replace function public.codes_color_guard()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  -- so trava a cor de codigos de nivel 0 (familia); subcodigos sempre herdam, nunca escolhem
+  if new.parent_id is null and not public.is_admin(new.project_id) then
+    if (TG_OP = 'INSERT' and new.hue_deg is not null)
+       or (TG_OP = 'UPDATE' and new.hue_deg is distinct from old.hue_deg) then
+      raise exception 'Apenas administradores podem definir a cor personalizada de uma família de código';
+    end if;
+  end if;
+  return new;
+end; $$;
+
+drop trigger if exists trg_codes_color_guard on public.codes;
+create trigger trg_codes_color_guard before insert or update on public.codes
+  for each row execute function public.codes_color_guard();
