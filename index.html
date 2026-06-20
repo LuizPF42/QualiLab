@@ -957,21 +957,22 @@ function App(){
     try{ localStorage.setItem('lastro:name', newName); }catch(e){}
     setUser(store.currentUser());
   }
-  async function acctDeleteProject(pid){
-    if(!confirm('Excluir DEFINITIVAMENTE este projeto e todo o seu conteúdo? Não há como desfazer.')) return;
-    try{ await store.deleteProject(pid); if(project && project.id===pid) leaveToGate(); await loadMyProjects(); }
-    catch(e){ setErr(String(e.message||e)); }
-  }
   async function acctLeaveProject(pid){
     if(!confirm('Sair deste projeto? Você perderá o acesso (suas codificações permanecem).')) return;
-    try{ await store.removeMember(pid, user.id); if(project && project.id===pid) leaveToGate(); await loadMyProjects(); }
-    catch(e){ setErr(String(e.message||e)); }
+    await store.removeMember(pid, user.id); // erros propagam para o AccountModal
+    if(project && project.id===pid) leaveToGate();
+    await loadMyProjects();
   }
   async function acctRenameProject(pid, pn){
-    try{ await store.renameProject(pid, pn);
-      if(project && project.id===pid){ const np={...project, name:pn}; setProject(np); try{localStorage.setItem('lastro:project',JSON.stringify(np));}catch(e){} }
-      await loadMyProjects(); }
-    catch(e){ setErr(String(e.message||e)); }
+    await store.renameProject(pid, pn); // erros propagam para o AccountModal
+    if(project && project.id===pid){ const np={...project, name:pn}; setProject(np); try{localStorage.setItem('lastro:project',JSON.stringify(np));}catch(e){} }
+    await loadMyProjects();
+  }
+  async function acctDeleteProject(pid){
+    if(!confirm('Excluir DEFINITIVAMENTE este projeto e todo o seu conteúdo? Não há como desfazer.')) return;
+    await store.deleteProject(pid); // erros propagam para o AccountModal
+    if(project && project.id===pid) leaveToGate();
+    await loadMyProjects();
   }
   async function acctOpenProject(p){
     try{ const jp = await store.joinProject(p.code, user?.name||''); try{localStorage.setItem('lastro:project',JSON.stringify(jp));}catch(e){} pushRecent(jp); setAccount(false); openProject(jp); setPhase('work'); }
@@ -2300,6 +2301,7 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
   const [msg,setMsg]=useState(null); const [err,setErr]=useState(null);
   const [busy,setBusy]=useState(false);
   const [editId,setEditId]=useState(null); const [editName,setEditName]=useState('');
+  const wrap = (fn)=> async (...args)=>{ setErr(null); try{ await fn(...args); }catch(e){ setErr(String(e.message||e)); } };
   const list = projects||[];
 
   const saveName = async ()=>{ setErr(null);setMsg(null);
@@ -2343,7 +2345,7 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
           ${editId===p.id
             ? html`<div class="row" style="gap:6px">
                 <input class="txtin" value=${editName} onInput=${e=>setEditName(e.target.value)} />
-                <button class="btn sm" onClick=${async()=>{ await onRename(p.id, editName.trim()||p.name); setEditId(null); }}>salvar</button>
+                <button class="btn sm" onClick=${wrap(async()=>{ await onRename(p.id, editName.trim()||p.name); setEditId(null); })}>salvar</button>
                 <button class="btn sm ghost" onClick=${()=>setEditId(null)}>cancelar</button>
               </div>`
             : html`<div class="row" style="gap:8px;align-items:center">
@@ -2354,8 +2356,8 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
                 <button class="btn sm" onClick=${()=>onOpen(p)}>abrir</button>
                 ${admin && html`<button class="icon-btn" title="renomear" onClick=${()=>{ setEditId(p.id); setEditName(p.name||''); }}>✎</button>`}
                 ${admin
-                  ? html`<button class="icon-btn" style="color:var(--danger)" title="excluir projeto" onClick=${()=>onDelete(p.id)}>🗑</button>`
-                  : html`<button class="btn sm ghost" style="color:var(--danger)" title="sair do projeto" onClick=${()=>onLeave(p.id)}>sair</button>`}
+                  ? html`<button class="icon-btn" style="color:var(--danger)" title="excluir projeto" onClick=${wrap(()=>onDelete(p.id))}>🗑</button>`
+                  : html`<button class="btn sm ghost" style="color:var(--danger)" title="sair do projeto" onClick=${wrap(()=>onLeave(p.id))}>sair</button>`}
               </div>`}
         </div>`; })}
     </div>
