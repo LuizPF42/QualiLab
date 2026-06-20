@@ -514,11 +514,12 @@ const IDB = {
    Funciona offline, file://, ambientes air-gapped, HDs criptografados.
    Requer Chrome/Edge (File System Access API). Firefox/Safari: não disponível. */
 async function createFileStore(fileHandle, isNew){
-  let db = { _meta:{name:'Projeto',mode:'individual',displayName:'pesquisador'}, documents:[], categories:[], doc_values:[], codes:[], codings:[] };
+  let db = { _meta:{name:'Projeto',mode:'individual',displayName:'pesquisador'}, documents:[], categories:[], doc_values:[], codes:[], codings:[], memos:[] };
   if(!isNew){
     const file = await fileHandle.getFile();
     try{ const parsed=JSON.parse(await file.text()); if(parsed.documents) db=parsed; }catch(e){}
   }
+  if(!db.memos) db.memos = [];
   let name = db._meta?.displayName || 'pesquisador';
   const save = async ()=>{
     try{ db._meta.displayName=name; const w=await fileHandle.createWritable(); await w.write(JSON.stringify(db,null,2)); await w.close(); }
@@ -546,8 +547,8 @@ async function createFileStore(fileHandle, isNew){
     realtime(){ return ()=>{}; },
     listDocuments(){ return P(db.documents.slice()); },
     async addDocument(pid,{id,name:dn,content}){ const d={id:id||uid(),name:dn,content,created_at:new Date().toISOString()}; db.documents.push(d); await save(); return d; },
-    async deleteDocument(id){ db.documents=db.documents.filter(d=>d.id!==id); db.doc_values=db.doc_values.filter(v=>v.document_id!==id); db.codings=db.codings.filter(c=>c.document_id!==id); await save(); },
-    async clearProject(){ db.documents=[]; db.categories=[]; db.doc_values=[]; db.codes=[]; db.codings=[]; await save(); },
+    async deleteDocument(id){ db.documents=db.documents.filter(d=>d.id!==id); db.doc_values=db.doc_values.filter(v=>v.document_id!==id); db.codings=db.codings.filter(c=>c.document_id!==id); db.memos=db.memos.filter(m=>!(m.scope==='document'&&m.target_id===id)); await save(); },
+    async clearProject(){ db.documents=[]; db.categories=[]; db.doc_values=[]; db.codes=[]; db.codings=[]; db.memos=db.memos.filter(m=>m.scope==='project'); await save(); },
     listCategories(){ return P(db.categories.slice().sort((a,b)=>a.position-b.position)); },
     async addCategory(pid,cat){ const c={id:uid(),position:db.categories.length,...cat}; db.categories.push(c); await save(); return c; },
     async updateCategory(id,patch){ db.categories=db.categories.map(c=>c.id===id?{...c,...patch}:c); await save(); },
@@ -558,10 +559,16 @@ async function createFileStore(fileHandle, isNew){
     listCodes(){ return P(db.codes.slice().sort((a,b)=>a.depth-b.depth||a.position-b.position)); },
     async addCode(pid,code){ const c={id:uid(),position:db.codes.length,...code}; db.codes.push(c); await save(); return c; },
     async updateCode(id,patch){ db.codes=db.codes.map(c=>c.id===id?{...c,...patch}:c); await save(); },
-    async deleteCode(id){ const kill=new Set([id]); let added=true; while(added){added=false; db.codes.forEach(c=>{if(c.parent_id&&kill.has(c.parent_id)&&!kill.has(c.id)){kill.add(c.id);added=true;}});} db.codes=db.codes.filter(c=>!kill.has(c.id)); db.codings=db.codings.filter(c=>!kill.has(c.code_id)); await save(); },
+    async deleteCode(id){ const kill=new Set([id]); let added=true; while(added){added=false; db.codes.forEach(c=>{if(c.parent_id&&kill.has(c.parent_id)&&!kill.has(c.id)){kill.add(c.id);added=true;}});} db.codes=db.codes.filter(c=>!kill.has(c.id)); db.codings=db.codings.filter(c=>!kill.has(c.code_id)); db.memos=db.memos.filter(m=>!(m.scope==='code'&&kill.has(m.target_id))); await save(); },
     async listCodings(pid,docId){ return db.codings.filter(c=>c.document_id===docId); },
     async addCoding(pid,co){ const c={id:uid(),author_name:name,created_at:new Date().toISOString(),...co}; db.codings.push(c); await save(); return c; },
     async deleteCoding(id){ db.codings=db.codings.filter(c=>c.id!==id); await save(); },
+    async listMemos(){ return db.memos.slice(); },
+    async setMemo(pid, scope, targetId, content, authorName){
+      db.memos = db.memos.filter(m=>!(m.scope===scope && m.target_id===targetId));
+      if(content && content.trim()) db.memos.push({ id:uid(), project_id:pid, scope, target_id:targetId, content, author_name:authorName||name, updated_at:new Date().toISOString() });
+      await save();
+    },
   };
 }
 /* verifica suporte e reabre último arquivo */
@@ -580,15 +587,22 @@ async function reopenLastFile(){
 
 /* ============ STORE LOCAL (navegador) ============ */
 function LocalStore(){
-  let db = { documents:[], categories:[], doc_values:[], codes:[], codings:[] };
+  let db = { documents:[], categories:[], doc_values:[], codes:[], codings:[], memos:[] };
   let name = 'pesquisador';
   try { const raw = localStorage.getItem('lastro:local'); if(raw) db = JSON.parse(raw); } catch(e){}
+  if(!db.memos) db.memos = [];
   const save = () => { try { localStorage.setItem('lastro:local', JSON.stringify(db)); } catch(e){} };
   const P = (v)=>Promise.resolve(v);
   return {
     mode:'local',
     async init(display){ name = display || name; return { id:'local-user', name }; },
     currentUser(){ return { id:'local-user', name }; },
+    async listMemos(){ return db.memos.slice(); },
+    async setMemo(pid, scope, targetId, content, authorName){
+      db.memos = db.memos.filter(m=>!(m.scope===scope && m.target_id===targetId));
+      if(content && content.trim()) db.memos.push({ id:uid(), project_id:pid, scope, target_id:targetId, content, author_name:authorName||name, updated_at:new Date().toISOString() });
+      save();
+    },
     async changePassword(){ throw new Error('Sem conta no modo local'); },
     async changeDisplayName(newName){ name = newName || name; try{ localStorage.setItem('lastro:name', name); }catch(e){} },
     async createProject(pn,disp,pmode){ return { id:'local', name:pn||'Projeto local', code:'LOCAL', created_by:'local-user', mode:pmode||'individual' }; },
@@ -602,8 +616,8 @@ function LocalStore(){
     async setProjectMode(){ return P(); },
     listDocuments(){ return P(db.documents.slice()); },
     addDocument(pid,{id,name:dn,content}){ const d={id:id||uid(),name:dn,content,created_at:new Date().toISOString()}; db.documents.push(d); save(); return P(d); },
-    deleteDocument(id){ db.documents=db.documents.filter(d=>d.id!==id); db.doc_values=db.doc_values.filter(v=>v.document_id!==id); db.codings=db.codings.filter(c=>c.document_id!==id); save(); return P(); },
-    clearProject(){ db={ documents:[], categories:[], doc_values:[], codes:[], codings:[] }; save(); return P(); },
+    deleteDocument(id){ db.documents=db.documents.filter(d=>d.id!==id); db.doc_values=db.doc_values.filter(v=>v.document_id!==id); db.codings=db.codings.filter(c=>c.document_id!==id); db.memos=db.memos.filter(m=>!(m.scope==='document'&&m.target_id===id)); save(); return P(); },
+    clearProject(){ const keepMemos=(db.memos||[]).filter(m=>m.scope==='project'); db={ documents:[], categories:[], doc_values:[], codes:[], codings:[], memos:keepMemos }; save(); return P(); },
     listCategories(){ return P(db.categories.slice().sort((a,b)=>a.position-b.position)); },
     addCategory(pid,cat){ const c={id:uid(),position:db.categories.length,...cat}; db.categories.push(c); save(); return P(c); },
     updateCategory(id,patch){ db.categories=db.categories.map(c=>c.id===id?{...c,...patch}:c); save(); return P(); },
@@ -614,7 +628,7 @@ function LocalStore(){
     listCodes(){ return P(db.codes.slice().sort((a,b)=>a.depth-b.depth||a.position-b.position)); },
     addCode(pid,code){ const c={id:uid(),position:db.codes.length,...code}; db.codes.push(c); save(); return P(c); },
     updateCode(id,patch){ db.codes=db.codes.map(c=>c.id===id?{...c,...patch}:c); save(); return P(); },
-    deleteCode(id){ const kill=new Set([id]); let added=true; while(added){added=false; db.codes.forEach(c=>{if(c.parent_id&&kill.has(c.parent_id)&&!kill.has(c.id)){kill.add(c.id);added=true;}});} db.codes=db.codes.filter(c=>!kill.has(c.id)); db.codings=db.codings.filter(c=>!kill.has(c.code_id)); save(); return P(); },
+    deleteCode(id){ const kill=new Set([id]); let added=true; while(added){added=false; db.codes.forEach(c=>{if(c.parent_id&&kill.has(c.parent_id)&&!kill.has(c.id)){kill.add(c.id);added=true;}});} db.codes=db.codes.filter(c=>!kill.has(c.id)); db.codings=db.codings.filter(c=>!kill.has(c.code_id)); db.memos=db.memos.filter(m=>!(m.scope==='code'&&kill.has(m.target_id))); save(); return P(); },
     listCodings(pid,docId){ return P(db.codings.filter(c=>c.document_id===docId)); },
     addCoding(pid,co){ const c={id:uid(),author_name:name,created_at:new Date().toISOString(),...co}; db.codings.push(c); save(); return P(c); },
     deleteCoding(id){ db.codings=db.codings.filter(c=>c.id!==id); save(); return P(); },
@@ -698,13 +712,15 @@ function SupabaseStore(sb){
     async setProjectMode(pid, pmode, authorName){ must(await sb.rpc('set_project_mode',{ p_project:pid, p_mode:pmode, p_author:authorName||'pesquisador' })); },
     async listDocuments(pid){ return must(await sb.from('documents').select('*').eq('project_id',pid).order('created_at')); },
     async addDocument(pid,{id,name:dn,content}){ const row={project_id:pid,name:dn,content,created_by:user.id}; if(id) row.id=id; return must(await sb.from('documents').insert(row).select().single()); },
-    async deleteDocument(id){ must(await sb.from('documents').delete().eq('id',id)); },
+    async deleteDocument(id){ must(await sb.from('documents').delete().eq('id',id)); await sb.from('memos').delete().eq('scope','document').eq('target_id',id); },
     async clearProject(pid){
       await sb.from('codings').delete().eq('project_id',pid);
       await sb.from('doc_values').delete().eq('project_id',pid);
       await sb.from('documents').delete().eq('project_id',pid);
       await sb.from('codes').delete().eq('project_id',pid);
       await sb.from('categories').delete().eq('project_id',pid);
+      // mantem o memo do projeto; remove memos de documento/codigo (orfaos apos a limpeza)
+      await sb.from('memos').delete().eq('project_id',pid).in('scope',['document','code']);
     },
     async listCategories(pid){ return must(await sb.from('categories').select('*').eq('project_id',pid).order('position')); },
     async addCategory(pid,cat){
@@ -734,7 +750,7 @@ function SupabaseStore(sb){
     async listCodes(pid){ return must(await sb.from('codes').select('*').eq('project_id',pid).order('depth').order('position')); },
     async addCode(pid,code){ return must(await sb.from('codes').insert({project_id:pid,...code}).select().single()); },
     async updateCode(id,patch){ must(await sb.from('codes').update(patch).eq('id',id)); },
-    async deleteCode(id){ must(await sb.from('codes').delete().eq('id',id)); },
+    async deleteCode(id){ must(await sb.from('codes').delete().eq('id',id)); await sb.from('memos').delete().eq('scope','code').eq('target_id',id); },
     async listCodings(pid,docId){ return must(await sb.from('codings').select('*').eq('project_id',pid).eq('document_id',docId)); },
     async addCoding(pid,co){
       const hasCB = Object.prototype.hasOwnProperty.call(co,'created_by');
@@ -743,6 +759,18 @@ function SupabaseStore(sb){
       return must(await sb.from('codings').insert(row).select().single());
     },
     async deleteCoding(id){ must(await sb.from('codings').delete().eq('id',id)); },
+    // memos: nota unica compartilhada por alvo (projeto/documento/codigo); ultima edicao vale
+    async listMemos(pid){ try{ return must(await sb.from('memos').select('*').eq('project_id',pid)); }catch(e){ return []; } },
+    async setMemo(pid, scope, targetId, content, authorName){
+      if(!content || !content.trim()){
+        must(await sb.from('memos').delete().eq('project_id',pid).eq('scope',scope).eq('target_id',targetId));
+        return;
+      }
+      must(await sb.from('memos').upsert(
+        { project_id:pid, scope, target_id:targetId, content, author_name:authorName||'anonimo', updated_by:user?.id||null, updated_at:new Date().toISOString() },
+        { onConflict:'project_id,scope,target_id' }
+      ));
+    },
     // sincronizacao ao vivo: dispara onChange a cada alteracao em codings/doc_values do projeto
     realtime(projectId, onChange){
       const ch = sb.channel('qualilab:'+projectId)
@@ -778,6 +806,8 @@ function App(){
   // dados de todo o projeto (para a aba de visualizacao, que cruza documentos)
   const [allCodings, setAllCodings] = useState([]);
   const [allValues, setAllValues] = useState([]);
+  const [memos, setMemos] = useState([]);
+  const [memoSel, setMemoSel] = useState({ scope:'project', targetId:null }); // alvo selecionado na aba Memos
   // estado da aba Visualização (elevado para poder usar o split nativo do app)
   const [vizLayer,      setVizLayer]      = useState('individual');
   const [vizCatFilter,  setVizCatFilter]  = useState({});
@@ -1012,6 +1042,17 @@ function App(){
     setAllValues(V); setAllCodings(C);
   }, [store, project, docs]);
   useEffect(()=>{ if(phase==='work' && (mainView==='visualizar'||mainView==='graficos')) loadAll(); }, [phase, mainView, loadAll, codings]);
+
+  /* memos: nota unica por alvo (projeto/documento/codigo) */
+  const loadMemos = useCallback(async ()=>{
+    if(!store || !project || !store.listMemos){ setMemos([]); return; }
+    try{ setMemos(await store.listMemos(project.id) || []); }catch(e){ setMemos([]); }
+  }, [store, project]);
+  useEffect(()=>{ if(phase==='work' && mainView==='memos') loadMemos(); }, [phase, mainView, loadMemos]);
+  async function saveMemo(scope, targetId, content){
+    await store.setMemo(project.id, scope, targetId, content, user?.name||'anônimo');
+    await loadMemos();
+  }
 
   /* recarrega a visao atual (doc ativo + visualizacao, se aberta) — usado pelo realtime */
   const reloadRef = useRef(()=>{});
@@ -1252,6 +1293,7 @@ function App(){
         ${projectMode==='collective' && html`<button class=${mainView==='reconciliar'?'on':''} onClick=${()=>setMainView('reconciliar')}>Reconciliação</button>`}
         <button class=${mainView==='visualizar'?'on':''} onClick=${()=>setMainView('visualizar')}>Visualização</button>
         <button class=${mainView==='graficos'?'on':''} onClick=${()=>setMainView('graficos')}>Gráficos</button>
+        <button class=${mainView==='memos'?'on':''} onClick=${()=>setMainView('memos')}>Memos</button>
       </div>`}
       <div class="grow"></div>
       ${project && html`<button class="pill ${mode==='cloud'?'mode-cloud':''}" style="cursor:pointer"
@@ -1383,6 +1425,22 @@ function App(){
               codeById=${codeById} codePath=${codePath}
               allCodings=${allCodings} allValues=${allValues} />
           </div>
+        </div>
+      </section>
+    </div>`
+    : mainView==='memos' ? html`<div class="split">
+      <!-- MEMOS esquerda: navegação por alvo -->
+      <section class="pane" style="flex:0 0 270px;min-width:0;border-right:1px solid var(--line)">
+        <div class="pane-body scroll" style="padding:0">
+          <${MemoNav} project=${project} docs=${docs} codes=${codes} memos=${memos}
+            sel=${memoSel} onSel=${setMemoSel} />
+        </div>
+      </section>
+      <!-- MEMOS direita: editor -->
+      <section class="pane" style="flex:1;min-width:0;background:var(--paper)">
+        <div class="pane-body scroll" style="padding:0">
+          <${MemoEditor} sel=${memoSel} project=${project} codeById=${codeById} codePath=${codePath}
+            memos=${memos} onSave=${saveMemo} />
         </div>
       </section>
     </div>`
@@ -2060,6 +2118,114 @@ function barRows(items, color){
     <div class="count" style="width:38px;text-align:right">${it.value}</div>
   </div>`);
 }
+/* ============ MemoNav — painel esquerdo da aba Memos ============
+   Memo do projeto + lista de documentos + árvore de códigos. Visual idêntico
+   ao painel de Codificação/Visualização (mesmas classes .node-row etc). */
+function MemoNav({ project, docs, codes, memos, sel, onSel }){
+  const [docsOpen, setDocsOpen] = useState(true);
+  const [codesOpen, setCodesOpen] = useState(false);
+  const hasMemo = (scope, targetId)=> memos.some(m=>m.scope===scope && m.target_id===targetId && m.content);
+  const tops = codes.filter(c=>!c.parent_id);
+  const childrenOf = (id)=>codes.filter(c=>c.parent_id===id);
+  const isSelProject = sel.scope==='project';
+
+  return html`<div style="background:var(--surface);display:flex;flex-direction:column;height:100%">
+
+    <!-- memo do projeto -->
+    <div class="node-row ${isSelProject?'sel':''}" style="padding:8px 14px;cursor:pointer;border-bottom:1px solid var(--line-soft)"
+      onClick=${()=>onSel({scope:'project', targetId:project.id})}>
+      <span style="margin-right:4px">📋</span>
+      <span class="node-name" style="font-weight:600">Memo do projeto</span>
+      ${hasMemo('project', project.id) && html`<span class="count">●</span>`}
+    </div>
+
+    <!-- documentos -->
+    <div style="border-bottom:1px solid var(--line-soft)">
+      <div class="node-row" style="padding:6px 14px;cursor:pointer;border-radius:0" onClick=${()=>setDocsOpen(o=>!o)}>
+        <span class="caret">${docsOpen?'▾':'▸'}</span>
+        <span class="node-name" style="font-weight:600">Documentos</span>
+      </div>
+      ${docsOpen && docs.map(d=>html`<div key=${d.id} class="node-row ${sel.scope==='document'&&sel.targetId===d.id?'sel':''}"
+          style="padding:5px 14px 5px 28px;cursor:pointer" onClick=${()=>onSel({scope:'document', targetId:d.id})}>
+        <span class="node-name" style="font-size:12.5px" title=${d.name}>${d.name}</span>
+        ${hasMemo('document', d.id) && html`<span class="count">●</span>`}
+      </div>`)}
+      ${docsOpen && docs.length===0 && html`<div class="meta" style="padding:6px 28px">Nenhum documento.</div>`}
+    </div>
+
+    <!-- códigos -->
+    <div class="scroll" style="flex:1;overflow-y:auto">
+      <div class="node-row" style="padding:6px 14px;cursor:pointer;border-radius:0" onClick=${()=>setCodesOpen(o=>!o)}>
+        <span class="caret">${codesOpen?'▾':'▸'}</span>
+        <span class="node-name" style="font-weight:600">Códigos</span>
+      </div>
+      ${codesOpen && html`<div class="tree" style="padding:0 6px">
+        ${tops.length===0 && html`<div class="meta" style="padding:6px 22px">Nenhum código criado.</div>`}
+        ${tops.map(t=>html`<${MemoCodeNode} key=${t.id} code=${t} childrenOf=${childrenOf}
+          sel=${sel} onSel=${onSel} hasMemo=${hasMemo} depthPad=${0} />`)}
+      </div>`}
+    </div>
+  </div>`;
+}
+function MemoCodeNode({ code, childrenOf, sel, onSel, hasMemo, depthPad }){
+  const [open,setOpen]=useState(false);
+  const kids = childrenOf(code.id);
+  const col = codeColor(code.hue, code.depth);
+  const isSel = sel.scope==='code' && sel.targetId===code.id;
+  return html`<div class="node">
+    <div class="node-row ${isSel?'sel':''}" style=${`padding-left:${6+depthPad*16}px;cursor:pointer`}
+      onClick=${()=>onSel({scope:'code', targetId:code.id})}>
+      ${kids.length>0 ? html`<span class="caret" onClick=${e=>{e.stopPropagation();setOpen(!open);}}>${open?'▾':'▸'}</span>` : html`<span class="caret"></span>`}
+      <span class="swatch" style=${`background:${col.solid}`}></span>
+      <span class="node-name" title=${code.name}>${code.name}</span>
+      ${hasMemo('code', code.id) && html`<span class="count">●</span>`}
+    </div>
+    ${open && kids.map(k=>html`<${MemoCodeNode} key=${k.id} code=${k} childrenOf=${childrenOf}
+      sel=${sel} onSel=${onSel} hasMemo=${hasMemo} depthPad=${depthPad+1} />`)}
+  </div>`;
+}
+
+/* ============ MemoEditor — painel direito da aba Memos ============
+   Editor de texto livre com autosave (debounce), mostrando autor/data da última edição. */
+function MemoEditor({ sel, project, codeById, codePath, memos, onSave }){
+  const targetId = sel.scope==='project' ? project?.id : sel.targetId;
+  const current = memos.find(m=>m.scope===sel.scope && m.target_id===targetId);
+  const [text, setText] = useState(current?.content||'');
+  const [saving, setSaving] = useState(false);
+  const debRef = useRef(null);
+
+  useEffect(()=>{ setText(current?.content||''); }, [sel.scope, targetId]); // eslint-disable-line
+
+  if(!targetId) return html`<div class="empty">
+    <div class="t">Selecione um alvo</div>
+    <div>Escolha o projeto, um documento ou um código à esquerda para escrever um memo.</div>
+  </div>`;
+
+  const label = sel.scope==='project' ? 'Memo do projeto'
+    : sel.scope==='document' ? 'Memo do documento'
+    : 'Memo do código';
+  const subtitle = sel.scope==='code' ? codePath(targetId).join(' ▸ ') : null;
+
+  const change = (val)=>{
+    setText(val);
+    clearTimeout(debRef.current);
+    debRef.current = setTimeout(async ()=>{ setSaving(true); await onSave(sel.scope, targetId, val); setSaving(false); }, 700);
+  };
+
+  return html`<div class="section" style="max-width:760px;margin:0 auto">
+    <p class="h" style="margin-bottom:2px">${label}</p>
+    ${subtitle && html`<p class="hint" style="margin:0 0 4px">${subtitle}</p>`}
+    <p class="hint" style="margin:0 0 10px">
+      Nota única, compartilhada entre todos os pesquisadores do projeto — qualquer membro pode editar.
+      ${current && html` Última edição: <b>${current.author_name||'anônimo'}</b>${current.updated_at?` em ${new Date(current.updated_at).toLocaleString('pt-BR')}`:''}.`}
+    </p>
+    <textarea class="txtin" rows="18" style="font-family:var(--serif);font-size:16px;line-height:1.7;resize:vertical"
+      placeholder="Escreva aqui suas anotações analíticas, definições, decisões metodológicas…"
+      value=${text} onInput=${e=>change(e.target.value)}></textarea>
+    <div class="row" style="margin-top:6px"><span class="meta">${saving?'salvando…':'salvo automaticamente'}</span></div>
+  </div>`;
+}
+
 function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allValues }){
   const [layer,setLayer] = useState('individual');         // individual | final
   const closedCats = (cats||[]).filter(c=>CAT_HAS_OPTIONS(c.kind) || c.kind==='date');
