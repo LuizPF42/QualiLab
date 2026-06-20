@@ -1286,8 +1286,9 @@ function App(){
   return html`
   <div class="app">
     <header class="top">
-      <div class="brand">QualiLab</div>
-      <div class="tag">o seu laboratório de pesquisa qualitativa / your own lab for qualitative research</div>
+      <a class="brand" href="https://github.com/LuizPF42/QualiLab" target="_blank" rel="noopener"
+        title="o seu laboratório de pesquisa qualitativa / your own lab for qualitative research — ver no GitHub"
+        style="text-decoration:none">QualiLab</a>
       ${project && html`<div class="seg" style="margin-left:10px">
         <button class=${mainView==='codificar'?'on':''} onClick=${()=>setMainView('codificar')}>Codificação</button>
         ${projectMode==='collective' && html`<button class=${mainView==='reconciliar'?'on':''} onClick=${()=>setMainView('reconciliar')}>Reconciliação</button>`}
