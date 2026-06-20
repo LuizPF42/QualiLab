@@ -339,7 +339,8 @@ async function exportQDPX(docs, cats, allV, codes, allC, project){
 }
 
 /* leitura de .qdpx para dentro do projeto ativo */
-async function importQDPX(file, store, projectId){
+async function importQDPX(file, store, projectId, projectMode){
+  const codLayer = projectMode==='individual' ? 'final' : 'individual';
   const JSZip = await getJSZip();
   const zip = await JSZip.loadAsync(await file.arrayBuffer());
   const qdeEntry = Object.keys(zip.files).find(k=>/\.qde$/i.test(k));
@@ -470,9 +471,12 @@ async function importQDPX(file, store, projectId){
   for(const d of newDocs) await store.addDocument(projectId, { id:docMap[d.id], name:d.name, content:d.content });
   for(const c of newCats) await store.addCategory(projectId, { id:catMap[c.id], name:c.name, kind:c.kind, options:c.options, position:0 });
   for(const c of newCodes) await store.addCode(projectId, { id:codeMap[c.id], parent_id:c.parent_id?codeMap[c.parent_id]:null, name:c.name, hue:c.hue, depth:c.depth, position:0 });
-  for(const v of newValues){ if(docMap[v.document_id] && catMap[v.category_id]) await store.setDocValue(projectId, docMap[v.document_id], catMap[v.category_id], v.value); }
+  // em projeto individual os valores vao direto para o gabarito (final); em coletivo, como resposta individual
+  const setVal = projectMode==='individual' ? store.setFinalValue.bind(store) : store.setDocValue.bind(store);
+  for(const v of newValues){ if(docMap[v.document_id] && catMap[v.category_id]) await setVal(projectId, docMap[v.document_id], catMap[v.category_id], v.value); }
   // created_by: null => o agrupamento por codificador usa author_name (do QDPX), não o uuid de quem importou
-  for(const c of newCodings){ if(docMap[c.document_id] && codeMap[c.code_id]) await store.addCoding(projectId, { created_by:null, document_id:docMap[c.document_id], code_id:codeMap[c.code_id], span_start:c.span_start, span_end:c.span_end, quote:c.quote, author_name:c.author_name }); }
+  // layer: em projeto individual tudo vai para a camada final (sem reconciliacao); em coletivo, fica individual
+  for(const c of newCodings){ if(docMap[c.document_id] && codeMap[c.code_id]) await store.addCoding(projectId, { created_by:null, layer:codLayer, document_id:docMap[c.document_id], code_id:codeMap[c.code_id], span_start:c.span_start, span_end:c.span_end, quote:c.quote, author_name:c.author_name }); }
 
   return {
     documentos:newDocs.length, categorias:newCats.length, codigos:newCodes.length,
@@ -845,7 +849,11 @@ function App(){
   }, [store, user]); // eslint-disable-line
   useEffect(()=>{ if(phase==='gate' || account) loadMyProjects(); }, [phase, account, loadMyProjects]);
 
-  const openProject = (p)=>{ setProject(p); setProjectMode(p.mode||'collective'); };
+  const openProject = (p)=>{
+    setProject(p); setProjectMode(p.mode||'collective');
+    // projetos individuais nao tem camada "individual" relevante: tudo fica no gabarito (final)
+    setVizLayer(p.mode==='individual' ? 'final' : 'individual');
+  };
 
   /* online / offline + flush da fila de escrita ao recuperar conexão */
   useEffect(()=>{
@@ -944,6 +952,7 @@ function App(){
     try{
       await store.setProjectMode(project.id, newMode, user?.name||'pesquisador');
       const np={...project, mode:newMode}; setProject(np); setProjectMode(newMode);
+      setVizLayer(newMode==='individual' ? 'final' : 'individual');
       try{localStorage.setItem('lastro:project',JSON.stringify(np));}catch(e){}
       if(newMode==='individual' && mainView!=='codificar') setMainView('codificar');
       await loadProject(store, project.id); await loadDoc();
@@ -1105,7 +1114,7 @@ function App(){
   async function doImportQDPX(file){
     setBusy('Importando .qdpx...');
     try{
-      const r = await importQDPX(file, store, project.id);
+      const r = await importQDPX(file, store, project.id, projectMode);
       const freshDocs = await store.listDocuments(project.id);
       // carrega o projeto completo e define explicitamente o primeiro documento
       // (evita race condition: loadDoc usa activeId do closure, que pode ser antigo)
