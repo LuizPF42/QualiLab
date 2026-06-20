@@ -481,16 +481,24 @@ async function importQDPX(file, store, projectId, projectMode){
   newCats.forEach(c=> catMap[c.id]=uid());
   newCodes.forEach(c=> codeMap[c.id]=uid());
 
-  // persiste no projeto ativo, respeitando ordem por causa de FKs
-  for(const d of newDocs) await store.addDocument(projectId, { id:docMap[d.id], name:d.name, content:d.content });
-  for(const c of newCats) await store.addCategory(projectId, { id:catMap[c.id], name:c.name, kind:c.kind, options:c.options, position:0 });
-  for(const c of newCodes) await store.addCode(projectId, { id:codeMap[c.id], parent_id:c.parent_id?codeMap[c.parent_id]:null, name:c.name, hue:c.hue, depth:c.depth, position:0 });
-  // em projeto individual os valores vao direto para o gabarito (final); em coletivo, como resposta individual
-  const setVal = projectMode==='individual' ? store.setFinalValue.bind(store) : store.setDocValue.bind(store);
-  for(const v of newValues){ if(docMap[v.document_id] && catMap[v.category_id]) await setVal(projectId, docMap[v.document_id], catMap[v.category_id], v.value); }
-  // created_by: null => o agrupamento por codificador usa author_name (do QDPX), não o uuid de quem importou
-  // layer: em projeto individual tudo vai para a camada final (sem reconciliacao); em coletivo, fica individual
-  for(const c of newCodings){ if(docMap[c.document_id] && codeMap[c.code_id]) await store.addCoding(projectId, { created_by:null, layer:codLayer, document_id:docMap[c.document_id], code_id:codeMap[c.code_id], span_start:c.span_start, span_end:c.span_end, quote:c.quote, author_name:c.author_name }); }
+  // persiste no projeto ativo, respeitando ordem por causa de FKs.
+  // beginBatch/endBatch (LocalStore/FileStore): suprime o save() por item — senao
+  // cada um dos centenas de inserts re-serializa o banco inteiro no disco/localStorage,
+  // travando a aba por varios segundos. Salva uma unica vez no fim.
+  if(store.beginBatch) store.beginBatch();
+  try{
+    for(const d of newDocs) await store.addDocument(projectId, { id:docMap[d.id], name:d.name, content:d.content });
+    for(const c of newCats) await store.addCategory(projectId, { id:catMap[c.id], name:c.name, kind:c.kind, options:c.options, position:0 });
+    for(const c of newCodes) await store.addCode(projectId, { id:codeMap[c.id], parent_id:c.parent_id?codeMap[c.parent_id]:null, name:c.name, hue:c.hue, depth:c.depth, position:0 });
+    // em projeto individual os valores vao direto para o gabarito (final); em coletivo, como resposta individual
+    const setVal = projectMode==='individual' ? store.setFinalValue.bind(store) : store.setDocValue.bind(store);
+    for(const v of newValues){ if(docMap[v.document_id] && catMap[v.category_id]) await setVal(projectId, docMap[v.document_id], catMap[v.category_id], v.value); }
+    // created_by: null => o agrupamento por codificador usa author_name (do QDPX), não o uuid de quem importou
+    // layer: em projeto individual tudo vai para a camada final (sem reconciliacao); em coletivo, fica individual
+    for(const c of newCodings){ if(docMap[c.document_id] && codeMap[c.code_id]) await store.addCoding(projectId, { created_by:null, layer:codLayer, document_id:docMap[c.document_id], code_id:codeMap[c.code_id], span_start:c.span_start, span_end:c.span_end, quote:c.quote, author_name:c.author_name }); }
+  } finally {
+    if(store.endBatch) await store.endBatch();
+  }
 
   return {
     documentos:newDocs.length, categorias:newCats.length, codigos:newCodes.length,
@@ -535,7 +543,11 @@ async function createFileStore(fileHandle, isNew){
   }
   if(!db.memos) db.memos = [];
   let name = db._meta?.displayName || 'pesquisador';
+  // batching: durante importacao grande, escreve no disco uma vez no fim (senao seria
+  // um createWritable+write+close por trecho — centenas de gravacoes, travando a aba).
+  let batching = false, dirty = false;
   const save = async ()=>{
+    if(batching){ dirty = true; return; }
     try{ db._meta.displayName=name; const w=await fileHandle.createWritable(); await w.write(JSON.stringify(db,null,2)); await w.close(); }
     catch(e){ console.warn('Falha ao salvar arquivo:',e); }
   };
@@ -545,6 +557,8 @@ async function createFileStore(fileHandle, isNew){
   await IDB.saveHandle('lastro:file', fileHandle).catch(()=>{});
   return {
     mode:'file', fileName:fileHandle.name,
+    beginBatch(){ batching = true; },
+    async endBatch(){ batching = false; if(dirty){ dirty = false; await save(); } },
     async init(display){ name=display||name; return {id:'file-user',name,email:null,anon:false}; },
     currentUser(){ return {id:'file-user',name,email:null,anon:false}; },
     async changePassword(){ throw new Error('Modo arquivo: sem conta de usuário'); },
@@ -605,10 +619,15 @@ function LocalStore(){
   let name = 'pesquisador';
   try { const raw = localStorage.getItem('lastro:local'); if(raw) db = JSON.parse(raw); } catch(e){}
   if(!db.memos) db.memos = [];
-  const save = () => { try { localStorage.setItem('lastro:local', JSON.stringify(db)); } catch(e){} };
+  // batching: durante uma importacao grande, suprime o save por item (que re-serializa
+  // o banco inteiro) e grava so uma vez no fim — evita travar a aba por segundos.
+  let batching = false, dirty = false;
+  const save = () => { if(batching){ dirty = true; return; } try { localStorage.setItem('lastro:local', JSON.stringify(db)); } catch(e){} };
   const P = (v)=>Promise.resolve(v);
   return {
     mode:'local',
+    beginBatch(){ batching = true; },
+    endBatch(){ batching = false; if(dirty){ dirty = false; try { localStorage.setItem('lastro:local', JSON.stringify(db)); } catch(e){} } },
     async init(display){ name = display || name; return { id:'local-user', name }; },
     currentUser(){ return { id:'local-user', name }; },
     async listMemos(){ return db.memos.slice(); },
@@ -869,6 +888,11 @@ function App(){
 
   // codificações visíveis no leitor conforme o filtro de camada/codificador
   const visibleCodings = useMemo(()=>{
+    // projeto individual: um unico codificador, sem reconciliacao e sem seletor "Ver:".
+    // Mostra TODAS as codificacoes (qualquer camada) — senao codigos importados de .qdpx
+    // (que entram na camada 'final', mas podem estar em 'individual' por historico de modo)
+    // ficariam invisiveis no leitor. buildRuns dedup por posicao, entao nao ha risco real.
+    if(projectMode==='individual') return codings;
     if(viewCoder==='final') return codings.filter(c=>c.layer==='final');
     const indiv = codings.filter(c=>c.layer!=='final');
     if(viewCoder==='mine') return indiv.filter(c=>c.created_by===user?.id);
@@ -876,7 +900,7 @@ function App(){
     // id baseado em nome (importados de QDPX)
     if(viewCoder.startsWith('__nm__')){ const nm=viewCoder.slice(6); return indiv.filter(c=>c.author_name===nm); }
     return indiv.filter(c=>c.created_by===viewCoder);
-  }, [codings, viewCoder, user]);
+  }, [codings, viewCoder, user, projectMode]);
 
   /* lista "Meus Projetos" por conta (cache local, complementa o servidor) */
   const recentKey = (st)=> 'lastro:projects:'+((st||store)?.currentUser?.()?.id || 'anon');
@@ -1147,6 +1171,31 @@ function App(){
   }
   async function delCoding(id){ await store.deleteCoding(id); setCodings(x=>x.filter(c=>c.id!==id)); }
 
+  // salva o projeto inteiro como um arquivo .qualilab (mesmo formato do FileStore),
+  // que pode ser reaberto depois via "abrir .qualilab". Funciona em qualquer modo
+  // (local/nuvem/arquivo) — junta tudo do store e baixa como JSON.
+  async function saveQualilab(){
+    setExpOpen(false);
+    setBusy('Gerando .qualilab...');
+    try{
+      const documents = docs.map(d=>({ id:d.id, name:d.name, content:d.content, created_at:d.created_at||new Date().toISOString() }));
+      const categories = cats.map((c,i)=>({ id:c.id, position:c.position??i, name:c.name, kind:c.kind, options:c.options||[], description:c.description||'', color:c.color||0 }));
+      const codesOut = codes.map((c,i)=>({ id:c.id, position:c.position??i, parent_id:c.parent_id||null, name:c.name, hue:c.hue||0, depth:c.depth||0 }));
+      const doc_values=[], codings=[];
+      for(const d of docs){
+        const [v,co]=await Promise.all([store.getDocValues(d.id), store.listCodings(project.id, d.id)]);
+        v.forEach(x=>doc_values.push({ id:x.id||uid(), document_id:d.id, category_id:x.category_id, value:x.value, set_by:x.set_by||'file-user', author_name:x.author_name||'anonimo', layer:x.layer||'individual' }));
+        co.forEach(x=>codings.push({ id:x.id||uid(), document_id:x.document_id, code_id:x.code_id, span_start:x.span_start, span_end:x.span_end, quote:x.quote, layer:x.layer||'individual', created_by:x.created_by??null, author_name:x.author_name||'anonimo', created_at:x.created_at||new Date().toISOString() }));
+      }
+      let memos=[];
+      try{ memos = (await store.listMemos?.(project.id))||[]; }catch(e){}
+      const db = { _meta:{ id:'file-project', name:project.name||'Projeto', code:'FILE', mode:projectMode||'individual', displayName:user?.name||'pesquisador' },
+        documents, categories, doc_values, codes:codesOut, codings, memos };
+      download((project.name||'projeto').replace(/[^\w\-]+/g,'_')+'.qualilab', JSON.stringify(db,null,2), 'application/json');
+      setBusy(null);
+    }catch(e){ setBusy(null); setErr('Falha ao salvar .qualilab: '+(e.message||e)); }
+  }
+
   async function doExport(kind){
     setExpOpen(false);
     try{
@@ -1344,6 +1393,7 @@ function App(){
           </div>
         </div>`}
       </div>`}
+      ${project && html`<button class="btn sm" title="Salvar o projeto inteiro como arquivo .qualilab (reabrir aqui depois)" onClick=${saveQualilab}>salvar .qualilab</button>`}
       ${project && html`<label class="btn sm ghost" title="Importar projeto .qdpx (REFI-QDA)">importar qdpx
         <input type="file" accept=".qdpx" style="display:none" onChange=${e=>{ if(e.target.files[0]) doImportQDPX(e.target.files[0]); e.target.value=''; }} />
       </label>`}
