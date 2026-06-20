@@ -1,0 +1,164 @@
+# CLAUDE.md — guia para continuar o QualiLab
+
+Instruções para uma futura sessão do Claude trabalhar neste repositório. Leia antes de editar.
+
+---
+
+## O que é
+
+Ferramenta de análise qualitativa (QDA) que roda **inteira em um único arquivo**: [`index.html`](index.html). HTML + CSS + JavaScript juntos. Sem build, sem bundler, sem npm. As dependências vêm de CDN (`esm.sh` / `jsdelivr`) carregadas sob demanda.
+
+- **Front-end**: Preact + htm (template literals, **não** JSX).
+- **Backend opcional**: Supabase (Postgres + Auth + Realtime). Sem credenciais, roda em modo **local** (`localStorage`).
+- **Documentação de usuário + schema SQL**: [`README.md`](README.md). O bloco `<details>` do README tem o **schema completo e idempotente** — é a fonte da verdade do banco.
+
+---
+
+## Regras de ouro (gotchas que já nos morderam)
+
+1. **SÓ aspas retas (`"` `'`).** Aspas tipográficas/curvas (`"` `"` `'`) dentro de atributos quebram tudo: `class="card"` com aspa curva NÃO aplica a classe `.card`, então o elemento perde estilo (ex.: `.swatch` vira 0×0 e some). Já aconteceu de autocorreção inserir aspas curvas. Se algo "perdeu o estilo" sem motivo, **procure aspas curvas primeiro**:
+   ```powershell
+   # conta aspas curvas duplas no arquivo
+   $t=[IO.File]::ReadAllText((Resolve-Path index.html),[Text.Encoding]::UTF8)
+   ([regex]::Matches($t,[char]0x201C+'|'+[char]0x201D)).Count
+   ```
+   Para corrigir em massa: `.Replace([char]0x201C,'"').Replace([char]0x201D,'"')` e gravar com `UTF8Encoding($false)` (sem BOM).
+
+2. **htm, não JSX.** Sintaxe: `` html`<div class="x">${valor}</div>` ``. Componentes: `` html`<${Componente} prop=${v} />` ``. Listas com `key=${...}`. Não existe `className`; é `class`.
+
+3. **Reaproveite as classes CSS existentes** (definidas no `<style>` do `<head>`) em vez de reinventar inline. Copiar o visual de um componente que já funciona (ex.: `TreeNode` → `VizCodeNode`) é mais seguro do que estilizar do zero.
+
+4. **Mudou o banco? Entregue o SQL ao usuário.** Eu não rodo SQL no Supabase dele. Forneço o bloco para colar no **SQL Editor → Run**. Tudo idempotente (`if not exists`, `create or replace`, `drop policy if exists`). **Trocar a assinatura de retorno** de uma função exige `drop function if exists ...()` antes do `create`. Depois, **atualize o `README.md`** para o schema completo continuar correto.
+
+5. **Não quebre o modo local.** Toda funcionalidade de store tem implementação em `LocalStore` **e** `SupabaseStore`. Métodos novos precisam de stub no LocalStore.
+
+---
+
+## Arquitetura
+
+### Stores (padrão de abstração)
+Duas implementações do mesmo "interface", escolhidas no boot conforme haja credenciais Supabase:
+
+- **`LocalStore()`** — tudo em `localStorage` (`lastro:local`). Usuário único, sempre `admin`.
+- **`SupabaseStore(sb)`** — Postgres via supabase-js, com RLS.
+
+O `App` só fala com `store.<método>()`, nunca com Supabase direto. Métodos principais:
+
+```
+mode
+init(display) · currentUser() · signIn/signUp/signInAnon/signOut
+changePassword(pw) · changeDisplayName(name)
+createProject(name,display,mode) · joinProject(code,display) · listMyProjects()
+myRole(pid) · listMembers(pid) · setMemberRole(pid,uid,role) · removeMember(pid,uid)
+renameProject(pid,name) · deleteProject(pid) · setProjectMode(pid,mode,author)
+listDocuments · addDocument · deleteDocument · clearProject
+listCategories · addCategory · updateCategory · deleteCategory
+getDocValues(docId) · setDocValue(pid,doc,cat,val) · setFinalValue(pid,doc,cat,val)
+listCodes · addCode · updateCode · deleteCode
+listCodings(pid,docId) · addCoding(pid,co) · deleteCoding(id)
+realtime(pid,onChange)   // só SupabaseStore
+```
+
+### App
+Um componente Preact grande com todo o estado. Fases: `boot | auth | gate | work`. A "tela" de trabalho é decidida por `mainView`: `codificar | reconciliar | visualizar | graficos`.
+
+### Mapa do arquivo (aproximado, mude com cuidado)
+1. `<head>`: `showFatal` (tela de erro pré-JS, usa Georgia fixo), `:root` (variáveis de cor/fonte), classes CSS.
+2. Loaders CDN: `getPdfjs/getMammoth/getJSZip/getCreateClient`.
+3. **CONFIG**: `SUPABASE_URL` / `SUPABASE_ANON_KEY` (ver abaixo).
+4. `HUES` + `codeColor(hue,depth)` — paleta dos códigos.
+5. Constantes de categoria: `CAT_KINDS`, `CAT_HAS_OPTIONS`, `CAT_MULTI_SEP`, `NAO_INFO`, `OUTROS`, `isSpecialOpt`.
+6. `extractText`, `buildRuns`, helpers (`hslToHex`, `xmlEsc`, `csv*`, `download`…).
+7. QDPX: `buildCodeXml`, `exportQDPX`, `importQDPX`.
+8. `LocalStore`, `SupabaseStore`.
+9. `App`.
+10. Componentes: `Auth`, `Gate`, `AccountModal`, `ProjectModal`, `CategoriesPanel`, `CategoryEditor`, `CategoryValue`, `Reconcile`, `VizNav`/`VizCodeNode`/`VizExcerpts` (Visualização), `ChartsPanel`+`barRows`, `CodesPanel`/`TreeNode`/`RenameCode`, `DebInput`, `DateInput`/`parseDate`, `AddPaste`.
+
+---
+
+## Modelo de dados — camadas e papéis (conceito central)
+
+**Camada (`layer`)** existe em `codings` e em `doc_values`:
+- `individual` — trabalho de cada pesquisador (gravado com o `created_by`/`set_by` dele).
+- `final` — camada consolidada ("gabarito"). Em codings vem da Reconciliação; em doc_values só o admin escreve.
+
+`doc_values` tem unicidade **`(document_id, category_id, set_by, layer)`** — ou seja, um valor por pesquisador por categoria, mais o gabarito.
+
+**Tipo de projeto (`projects.mode`)**:
+- `collective` — camadas individuais + tela de Reconciliação + filtro "Ver:".
+- `individual` — `applyCode` e `setValue` escrevem direto em `layer='final'`; Reconciliação e "Ver:" ficam ocultos. Converter collective→individual é **destrutivo** (RPC `set_project_mode` colapsa codings num único autor e mantém só o gabarito das categorias).
+
+**Papéis (`members.role` = `admin|member`)**: `is_admin(pid)` gateia esquema de categorias (`categories_write`), gabarito (`doc_values_final`) e as RPCs de gestão. `is_owner` ainda existe mas as permissões migraram para `is_admin`.
+
+**Tipos de categoria** (`categories.kind`): `select` (Texto Fechado), `text` (Texto Aberto), `date`, `single` (Múltipla Escolha — token legado), `checkbox` (Caixa de Seleção). Opções ficam em `options` (jsonb). Os tokens `NAO_INFO`/`OUTROS` são **opções especiais** dentro de `options`, controladas por toggles no editor; multi-valor (checkbox) é juntado com `CAT_MULTI_SEP` (`' | '`). Datas são `DD/MM/AAAA` com partes opcionais (string, não ISO).
+
+---
+
+## Supabase (Auth + SQL)
+
+- **CONFIG**: `SUPABASE_URL` e `SUPABASE_ANON_KEY` estão fixos no `index.html` apontando para o projeto do autor. A anon key é **pública por design** (protegida por RLS). Para um deploy novo, troque por outras credenciais (ou deixe em branco para forçar modo local; o usuário também pode informar pela pílula → Conexão).
+- **Auth a habilitar no painel**: Providers → Email; "Allow anonymous sign-ins" (modo visitante); opcional desligar "Confirm email".
+- **RPCs** (todas `security definer`): `create_project`, `join_project`, `my_projects` (retorna `mode` e `role`), `is_admin`, `set_member_role`, `remove_member`, `rename_project`, `delete_project`, `set_project_mode`.
+- **Realtime**: `codings` e `doc_values` estão na publicação `supabase_realtime`. `store.realtime(pid,onChange)` assina e dispara recarga; há poll de reserva de 20s.
+
+---
+
+## UI — cores e fontes
+
+- **Cores** (variáveis em `:root`): a família `--teal*` guarda o **azul-marinho FGV** (nome "teal" é legado): `--teal #00427A`, `--teal-deep #002B5C`, `--teal-soft #E2ECF5`, e `--sky #1B9DD9` (azul-claro FGV). `--danger #B23A3A` para ações destrutivas. Cores dos códigos vêm de `HUES`/`codeColor` (matiz = família, luminosidade = profundidade) — **não** mexa nelas para branding.
+- **Fontes** (Google Fonts via `@import`): `--sans` **Inter** (interface), `--serif` **Newsreader** (leitura de documentos/trechos), `--mono` **JetBrains Mono** (códigos/números).
+- **Classes reutilizáveis**: `.card`, `.pill`, `.btn`/`.btn.sm`/`.btn.primary`/`.btn.ghost`, `.icon-btn`, `.opt`/`.opt.on`, `.field`/`.field-label`, `.banner.warn`/`.banner.err`, `.node`/`.node-row`/`.node-row.sel`/`.swatch`/`.caret`/`.count`/`.node-name`, `.reader`, `.modal-bg`/`.modal`, `.meta`, `.author`, `.tree`, `.pane`/`.pane-head`/`.pane-body`, `.split`.
+
+---
+
+## Telas (mainView)
+
+- **codificar** — leitor `.reader` à esquerda (grifos via `buildRuns`; botão direito = menu de contexto p/ aplicar código), painéis `CategoriesPanel` + `CodesPanel` à direita. Filtro "Ver:" (camada/codificador) só em collective+nuvem.
+- **reconciliar** — `Reconcile`: categorias (gabarito + ✓/✗ por pesquisador, admin define) e códigos (grupos sobrepostos → consolidar na camada final). Só em collective.
+- **visualizar** — master-detail: `VizNav` (camada + categorias colapsáveis + árvore de códigos) | `VizExcerpts` (trechos do código em `.card` com `.reader`, agrupados por documento, co-ocorrência opcional).
+- **graficos** — `ChartsPanel`: frequência de códigos, distribuição por categoria, heatmap código×categoria, produção/concordância por codificador. Barras em HTML/CSS (`barRows`) + tabela; **sem libs**.
+
+A **pílula do projeto** no cabeçalho abre o `ProjectModal` (hub: convite/código de acesso, tipo, membros, renomear/limpar/excluir, conexão). O **nome do usuário** abre `AccountModal` (nome, senha, gestão de todos os projetos).
+
+---
+
+## QDPX (import/export) — limitações importantes
+
+- O padrão REFI-QDA **não tem autor em `VariableValue`** → categorias por pesquisador **não** cabem no QDPX (só um valor por atributo por caso). Codificações de trecho **têm** `creatingUser`, então multi-coder funciona para trechos.
+- **Import remapeia todos os ids** para uuids novos (evita colisão de PK ao reimportar) e grava codings com **`created_by: null`** para que o agrupamento por codificador use `author_name` (e não o uuid de quem importou).
+- **Export** prefere a camada `final` (gabarito) quando existe; senão usa as individuais.
+
+---
+
+## Rodar e testar
+
+Não há build. Sirva o arquivo e abra no navegador:
+```bash
+python -m http.server 8000   # ou: npx serve .
+```
+Teste com `examples/QualiLab_demo_artificial_stress_test.qdpx` (16 docs, 90 códigos, 2332 codificações, 7 "usuários" incluindo um "Gabarito experimental"). Não há suíte de testes automatizada — verificação é manual no navegador.
+
+---
+
+## Receitas comuns
+
+- **Nova view**: adicione um botão no seg do cabeçalho (`mainView`), um branch no encadeamento `mainView==='...' ? html\`...\` : ...`, e o componente. Se precisar de dados do projeto inteiro, dispare `loadAll()` no efeito (`mainView` incluso).
+- **Novo método de store**: implemente em `SupabaseStore` **e** `LocalStore`. Se for RPC, entregue o SQL e atualize o README.
+- **Coluna nova em tabela**: `alter table ... add column if not exists ...`; deixe a store tolerante se a coluna puder faltar (ver `addCategory` que remove `description` no fallback). Atualize o README.
+- **Mudar permissão**: ajuste a policy RLS (ou o `is_admin` na função) — não confie só em esconder o botão; o servidor é a autoridade.
+
+---
+
+## Limitações conhecidas / backlog
+
+- `loadAll()` busca doc a doc em série (lento com muitos documentos). Candidato a `Promise.all` ou RPC única.
+- Mudanças de **esquema de categorias/códigos** não propagam por realtime (só `codings`/`doc_values`); o membro vê ao recarregar.
+- Sem **import JSON nativo** (o export JSON já carrega `author`/`layer` — fechar o round-trip permitiria categorias por pesquisador fora do QDPX).
+- Sem "esqueci minha senha" (reset por e-mail).
+- Categorias multi-valor no filtro da Visualização casam por valor individual; refinamentos por parte (ex.: filtrar por ano de uma data) ainda não existem.
+
+---
+
+## Preferências do autor
+
+Luiz Pimenta Filho (LabDados / FGV Direito SP). Projeto pessoal, sem responsabilidade institucional. Licença **MIT**. Inspirações creditadas no README: Taguette, Magnolia, QualCoder. Comunicação em **português**.

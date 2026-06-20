@@ -471,7 +471,8 @@ async function importQDPX(file, store, projectId){
   for(const c of newCats) await store.addCategory(projectId, { id:catMap[c.id], name:c.name, kind:c.kind, options:c.options, position:0 });
   for(const c of newCodes) await store.addCode(projectId, { id:codeMap[c.id], parent_id:c.parent_id?codeMap[c.parent_id]:null, name:c.name, hue:c.hue, depth:c.depth, position:0 });
   for(const v of newValues){ if(docMap[v.document_id] && catMap[v.category_id]) await store.setDocValue(projectId, docMap[v.document_id], catMap[v.category_id], v.value); }
-  for(const c of newCodings){ if(docMap[c.document_id] && codeMap[c.code_id]) await store.addCoding(projectId, { document_id:docMap[c.document_id], code_id:codeMap[c.code_id], span_start:c.span_start, span_end:c.span_end, quote:c.quote, author_name:c.author_name }); }
+  // created_by: null => o agrupamento por codificador usa author_name (do QDPX), não o uuid de quem importou
+  for(const c of newCodings){ if(docMap[c.document_id] && codeMap[c.code_id]) await store.addCoding(projectId, { created_by:null, document_id:docMap[c.document_id], code_id:codeMap[c.code_id], span_start:c.span_start, span_end:c.span_end, quote:c.quote, author_name:c.author_name }); }
 
   return {
     documentos:newDocs.length, categorias:newCats.length, codigos:newCodes.length,
@@ -491,14 +492,17 @@ function LocalStore(){
     mode:'local',
     async init(display){ name = display || name; return { id:'local-user', name }; },
     currentUser(){ return { id:'local-user', name }; },
-    async createProject(){ return { id:'local', name:'Projeto local', code:'LOCAL', created_by:'local-user' }; },
-    async joinProject(){ return { id:'local', name:'Projeto local', code:'LOCAL', created_by:'local-user' }; },
+    async changePassword(){ throw new Error('Sem conta no modo local'); },
+    async changeDisplayName(newName){ name = newName || name; try{ localStorage.setItem('lastro:name', name); }catch(e){} },
+    async createProject(pn,disp,pmode){ return { id:'local', name:pn||'Projeto local', code:'LOCAL', created_by:'local-user', mode:pmode||'individual' }; },
+    async joinProject(){ return { id:'local', name:'Projeto local', code:'LOCAL', created_by:'local-user', mode:'collective' }; },
     async myRole(){ return 'admin'; },
     async listMembers(){ return [{ user_id:'local-user', display_name:name, role:'admin' }]; },
     async setMemberRole(){ return P(); },
     async removeMember(){ return P(); },
     async renameProject(){ return P(); },
     async deleteProject(){ db={ documents:[], categories:[], doc_values:[], codes:[], codings:[] }; save(); return P(); },
+    async setProjectMode(){ return P(); },
     listDocuments(){ return P(db.documents.slice()); },
     addDocument(pid,{id,name:dn,content}){ const d={id:id||uid(),name:dn,content,created_at:new Date().toISOString()}; db.documents.push(d); save(); return P(d); },
     deleteDocument(id){ db.documents=db.documents.filter(d=>d.id!==id); db.doc_values=db.doc_values.filter(v=>v.document_id!==id); db.codings=db.codings.filter(c=>c.document_id!==id); save(); return P(); },
@@ -553,8 +557,10 @@ function SupabaseStore(sb){
     },
     async signOut(){ try{ await sb.auth.signOut(); }catch(e){} user=null; },
     currentUser(){ return user ? { id:user.id, name, email:user.email||null, anon:!!user.is_anonymous } : null; },
-    async createProject(pn, display){ name=display||name; const d=must(await sb.rpc('create_project',{p_name:pn,p_display:name})); return { id:d.id, name:d.name, code:d.code, created_by:d.created_by }; },
-    async joinProject(code, display){ name=display||name; const d=must(await sb.rpc('join_project',{p_code:code,p_display:name})); return { id:d.id, name:d.name, code:d.code, created_by:d.created_by }; },
+    async changePassword(newPw){ const r = await sb.auth.updateUser({ password:newPw }); if(r.error) throw r.error; },
+    async changeDisplayName(newName){ name = newName || name; const r = await sb.auth.updateUser({ data:{ name } }); if(r.error) throw r.error; if(r.data&&r.data.user) user = r.data.user; },
+    async createProject(pn, display, pmode){ name=display||name; const d=must(await sb.rpc('create_project',{p_name:pn,p_display:name})); return { id:d.id, name:d.name, code:d.code, created_by:d.created_by, mode:pmode||'collective' }; },
+    async joinProject(code, display){ name=display||name; const d=must(await sb.rpc('join_project',{p_code:code,p_display:name})); return { id:d.id, name:d.name, code:d.code, created_by:d.created_by, mode:d.mode||'collective' }; },
     // lista os projetos do usuario: tenta a RPC dedicada (com contagens), senao a tabela projects;
     // null = sem suporte no servidor (o app cai na lista local por conta)
     async listMyProjects(){
@@ -569,6 +575,7 @@ function SupabaseStore(sb){
     async removeMember(pid, userId){ must(await sb.rpc('remove_member',{ p_project:pid, p_user:userId })); },
     async renameProject(pid, pn){ must(await sb.rpc('rename_project',{ p_project:pid, p_name:pn })); },
     async deleteProject(pid){ must(await sb.rpc('delete_project',{ p_project:pid })); },
+    async setProjectMode(pid, pmode, authorName){ must(await sb.rpc('set_project_mode',{ p_project:pid, p_mode:pmode, p_author:authorName||'pesquisador' })); },
     async listDocuments(pid){ return must(await sb.from('documents').select('*').eq('project_id',pid).order('created_at')); },
     async addDocument(pid,{id,name:dn,content}){ const row={project_id:pid,name:dn,content,created_by:user.id}; if(id) row.id=id; return must(await sb.from('documents').insert(row).select().single()); },
     async deleteDocument(id){ must(await sb.from('documents').delete().eq('id',id)); },
@@ -609,7 +616,13 @@ function SupabaseStore(sb){
     async updateCode(id,patch){ must(await sb.from('codes').update(patch).eq('id',id)); },
     async deleteCode(id){ must(await sb.from('codes').delete().eq('id',id)); },
     async listCodings(pid,docId){ return must(await sb.from('codings').select('*').eq('project_id',pid).eq('document_id',docId)); },
-    async addCoding(pid,co){ return must(await sb.from('codings').insert({project_id:pid,created_by:user.id,author_name:name,...co}).select().single()); },
+    async addCoding(pid,co){
+      // se o chamador fornece created_by explicitamente (mesmo null), respeita; senao usa user.id
+      const hasCB = Object.prototype.hasOwnProperty.call(co,'created_by');
+      const row = {project_id:pid, created_by:user.id, author_name:name, ...co};
+      if(hasCB && co.created_by===null) row.created_by = null;
+      return must(await sb.from('codings').insert(row).select().single());
+    },
     async deleteCoding(id){ must(await sb.from('codings').delete().eq('id',id)); },
     // sincronizacao ao vivo: dispara onChange a cada alteracao em codings/doc_values do projeto
     realtime(projectId, onChange){
@@ -630,6 +643,7 @@ function App(){
   const [phase, setPhase] = useState('boot');     // boot | auth | gate | work
   const [err, setErr] = useState(null);
   const [project, setProject] = useState(null);
+  const [projectMode, setProjectMode] = useState('collective'); // 'individual' | 'collective'
   const [user, setUser] = useState(null);
   const [myProjects, setMyProjects] = useState([]);
 
@@ -643,6 +657,11 @@ function App(){
   // dados de todo o projeto (para a aba de visualizacao, que cruza documentos)
   const [allCodings, setAllCodings] = useState([]);
   const [allValues, setAllValues] = useState([]);
+  // estado da aba Visualização (elevado para poder usar o split nativo do app)
+  const [vizLayer,      setVizLayer]      = useState('individual');
+  const [vizCatFilter,  setVizCatFilter]  = useState({});
+  const [vizSelCode,    setVizSelCode]    = useState(null);
+  const [vizCross,      setVizCross]      = useState(['','']);
 
   const [sel, setSel] = useState(null);
   const [ctxMenu, setCtxMenu] = useState(null); // menu de contexto (botão direito) p/ aplicar código
@@ -650,7 +669,8 @@ function App(){
   const [rtab, setRtab] = useState('categorias');
   const [mainView, setMainView] = useState('codificar'); // codificar | reconciliar | visualizar
   const [viewCoder, setViewCoder] = useState('all');      // all | mine | <userId> | final
-  const [settings, setSettings] = useState(false);
+  const [account, setAccount] = useState(false);  // tela "Minha conta"
+  const [projEdit, setProjEdit] = useState(false); // editar tipo do projeto (pelo pill)
   const [expOpen, setExpOpen] = useState(false);
   const [busy, setBusy] = useState(null);
   const [importMsg, setImportMsg] = useState(null);
@@ -661,9 +681,20 @@ function App(){
   const isAdmin = role==='admin';
 
   // codificadores presentes no documento ativo (para o filtro "Ver:")
+  // usa created_by quando disponível (sessão ativa); cai em author_name para codificações
+  // importadas de QDPX que chegam sem uuid (created_by === null)
   const coders = useMemo(()=>{
-    const m = {}; codings.forEach(c=>{ if(c.created_by) m[c.created_by]=c.author_name||'anônimo'; });
-    return Object.entries(m).map(([id,nm])=>({id,name:nm}));
+    const byId = {}; const byName = {};
+    codings.filter(c=>c.layer!=='final').forEach(c=>{
+      if(c.created_by) byId[c.created_by] = c.author_name||'anônimo';
+      else if(c.author_name) byName[c.author_name] = true;
+    });
+    const fromId = Object.entries(byId).map(([id,name])=>({id, name}));
+    // inclui autores por nome que não coincidam com alguém já indexado por uuid
+    const fromName = Object.keys(byName)
+      .filter(n=>!fromId.find(x=>x.name===n))
+      .map(n=>({id:'__nm__'+n, name:n}));
+    return [...fromId, ...fromName];
   }, [codings]);
 
   // codificações visíveis no leitor conforme o filtro de camada/codificador
@@ -672,6 +703,8 @@ function App(){
     const indiv = codings.filter(c=>c.layer!=='final');
     if(viewCoder==='mine') return indiv.filter(c=>c.created_by===user?.id);
     if(viewCoder==='all') return indiv;
+    // id baseado em nome (importados de QDPX)
+    if(viewCoder.startsWith('__nm__')){ const nm=viewCoder.slice(6); return indiv.filter(c=>c.author_name===nm); }
     return indiv.filter(c=>c.created_by===viewCoder);
   }, [codings, viewCoder, user]);
 
@@ -690,14 +723,16 @@ function App(){
     else { list = local; }
     setMyProjects(list);
   }, [store, user]); // eslint-disable-line
-  useEffect(()=>{ if(phase==='gate') loadMyProjects(); }, [phase, loadMyProjects]);
+  useEffect(()=>{ if(phase==='gate' || account) loadMyProjects(); }, [phase, account, loadMyProjects]);
+
+  const openProject = (p)=>{ setProject(p); setProjectMode(p.mode||'collective'); };
 
   /* apos autenticar (sessao existente ou login): reentra no projeto salvo ou vai pro gate */
   async function afterAuth(st, display){
     setUser(st.currentUser());
     const saved = (()=>{ try{return JSON.parse(localStorage.getItem('lastro:project')||'null');}catch(e){return null;} })();
     if(saved && saved.code){
-      try{ const p = await st.joinProject(saved.code, display||st.currentUser()?.name||'anonimo'); pushRecent(p, st); setProject(p); setPhase('work'); return; }
+      try{ const p = await st.joinProject(saved.code, display||st.currentUser()?.name||'anonimo'); pushRecent(p, st); openProject(p); setPhase('work'); return; }
       catch(e){ try{localStorage.removeItem('lastro:project');}catch(_){} }
     }
     setPhase('gate');
@@ -721,7 +756,7 @@ function App(){
         const display = (()=>{ try{return localStorage.getItem('lastro:name')||'pesquisador';}catch(e){return 'pesquisador';} })();
         await st.init(display);
         setUser(st.currentUser());
-        const p = await st.createProject(); setProject(p); setPhase('work');
+        const p = await st.createProject(); openProject(p); setPhase('work');
       }
     }catch(e){ setErr(String(e.message||e)); setPhase(wantCloud?'auth':'work'); }
   })(); }, []); // eslint-disable-line
@@ -739,13 +774,13 @@ function App(){
 
   /* membros do projeto (carregado ao abrir as configurações) */
   const loadMembers = useCallback(async ()=>{ if(store && project && store.listMembers){ try{ setMembers(await store.listMembers(project.id)); }catch(e){ setMembers([]); } } }, [store, project]);
-  useEffect(()=>{ if(settings) loadMembers(); }, [settings, loadMembers]);
+  useEffect(()=>{ if(projEdit) loadMembers(); }, [projEdit, loadMembers]);
   async function changeMemberRole(userId, newRole){
     try{ await store.setMemberRole(project.id, userId, newRole); await loadMembers();
       if(userId===user?.id && store.myRole) setRole(await store.myRole(project.id)); }
     catch(e){ setErr(String(e.message||e)); }
   }
-  function leaveToGate(){ try{localStorage.removeItem('lastro:project');}catch(e){} setSettings(false); setProject(null); setDocs([]); setActiveId(null); setPhase('gate'); }
+  function leaveToGate(){ try{localStorage.removeItem('lastro:project');}catch(e){} setProjEdit(false); setProject(null); setDocs([]); setActiveId(null); setPhase('gate'); }
   async function removeMember(userId){
     const self = userId===user?.id;
     if(self && !confirm('Sair deste projeto? Você perderá o acesso (suas codificações permanecem no projeto).')) return;
@@ -761,6 +796,47 @@ function App(){
   async function deleteProject(){
     if(!confirm('Excluir DEFINITIVAMENTE este projeto e todos os seus documentos, códigos e codificações? Esta ação não pode ser desfeita.')) return;
     try{ await store.deleteProject(project.id); leaveToGate(); }
+    catch(e){ setErr(String(e.message||e)); }
+  }
+
+  async function changeProjectMode(newMode){
+    if(newMode===projectMode){ setProjEdit(false); return; }
+    setBusy(newMode==='individual' ? 'Convertendo para individual…' : 'Atualizando tipo…');
+    try{
+      await store.setProjectMode(project.id, newMode, user?.name||'pesquisador');
+      const np={...project, mode:newMode}; setProject(np); setProjectMode(newMode);
+      try{localStorage.setItem('lastro:project',JSON.stringify(np));}catch(e){}
+      if(newMode==='individual' && mainView!=='codificar') setMainView('codificar');
+      await loadProject(store, project.id); await loadDoc();
+      setProjEdit(false); setBusy(null);
+    }catch(e){ setBusy(null); setErr(String(e.message||e)); }
+  }
+
+  /* ----- ações da tela "Minha conta" (operam por id de projeto arbitrário) ----- */
+  async function changePassword(newPw){ await store.changePassword(newPw); }
+  async function changeDisplayName(newName){
+    await store.changeDisplayName(newName);
+    try{ localStorage.setItem('lastro:name', newName); }catch(e){}
+    setUser(store.currentUser());
+  }
+  async function acctDeleteProject(pid){
+    if(!confirm('Excluir DEFINITIVAMENTE este projeto e todo o seu conteúdo? Não há como desfazer.')) return;
+    try{ await store.deleteProject(pid); if(project && project.id===pid) leaveToGate(); await loadMyProjects(); }
+    catch(e){ setErr(String(e.message||e)); }
+  }
+  async function acctLeaveProject(pid){
+    if(!confirm('Sair deste projeto? Você perderá o acesso (suas codificações permanecem).')) return;
+    try{ await store.removeMember(pid, user.id); if(project && project.id===pid) leaveToGate(); await loadMyProjects(); }
+    catch(e){ setErr(String(e.message||e)); }
+  }
+  async function acctRenameProject(pid, pn){
+    try{ await store.renameProject(pid, pn);
+      if(project && project.id===pid){ const np={...project, name:pn}; setProject(np); try{localStorage.setItem('lastro:project',JSON.stringify(np));}catch(e){} }
+      await loadMyProjects(); }
+    catch(e){ setErr(String(e.message||e)); }
+  }
+  async function acctOpenProject(p){
+    try{ const jp = await store.joinProject(p.code, user?.name||''); try{localStorage.setItem('lastro:project',JSON.stringify(jp));}catch(e){} pushRecent(jp); setAccount(false); openProject(jp); setPhase('work'); }
     catch(e){ setErr(String(e.message||e)); }
   }
 
@@ -811,7 +887,11 @@ function App(){
   async function addPasted(name, content){ const doc = await store.addDocument(project.id,{name:name||'Documento',content}); setDocs(d=>[...d,doc]); setActiveId(doc.id); }
   async function delDoc(id){ await store.deleteDocument(id); setDocs(d=>d.filter(x=>x.id!==id)); if(activeId===id) setActiveId(docs.find(x=>x.id!==id)?.id||null); }
 
-  async function setValue(catId, value){ await store.setDocValue(project.id, activeId, catId, value); loadDoc(); }
+  async function setValue(catId, value){
+    if(projectMode==='individual') await store.setFinalValue(project.id, activeId, catId, value);
+    else await store.setDocValue(project.id, activeId, catId, value);
+    loadDoc();
+  }
   async function setFinalValue(catId, value){ if(!store.setFinalValue) return; await store.setFinalValue(project.id, activeId, catId, value); loadDoc(); }
   async function addCategory(){ const c = await store.addCategory(project.id,{name:'Nova categoria',kind:'single',options:[NAO_INFO],color:cats.length%HUES.length,position:cats.length}); setCats(x=>[...x,c]); }
   async function updCategory(id,patch){ await store.updateCategory(id,patch); setCats(x=>x.map(c=>c.id===id?{...c,...patch}:c)); }
@@ -829,7 +909,7 @@ function App(){
   async function applyCode(codeId, selection){
     const s = selection || sel;
     if(!s) return;
-    const c = await store.addCoding(project.id,{ document_id:activeId, code_id:codeId, span_start:s.start, span_end:s.end, quote:s.quote, layer:'individual' });
+    const c = await store.addCoding(project.id,{ document_id:activeId, code_id:codeId, span_start:s.start, span_end:s.end, quote:s.quote, layer: projectMode==='individual' ? 'final' : 'individual' });
     setCodings(x=>[...x,c]); setSel(null); setCtxMenu(null); window.getSelection()?.removeAllRanges();
   }
   // consolidacao: cria uma codificacao na camada "final" (reconciliacao manual)
@@ -874,7 +954,9 @@ function App(){
         const pick = {};
         allV.forEach(x=>{ const k=x.document_id+':'+x.category_id; const cur=pick[k];
           if(!cur || (x.layer==='final' && cur.layer!=='final')) pick[k]=x; });
-        const codForQdpx = allC.filter(c=>(c.layer||'individual')!=='final');
+        // prefere a camada final (gabarito consolidado); se nao houver, usa as individuais
+        const finalCods = allC.filter(c=>c.layer==='final');
+        const codForQdpx = finalCods.length > 0 ? finalCods : allC.filter(c=>(c.layer||'individual')!=='final');
         await exportQDPX(docs, cats, Object.values(pick), codes, codForQdpx, project);
       }
     }catch(e){ setErr('Falha ao exportar: '+(e.message||e)); }
@@ -958,12 +1040,17 @@ function App(){
     onAnon=${async (disp)=>{ try{ const u=await store.signInAnon(disp); try{localStorage.setItem('lastro:name',disp);}catch(e){} setErr(null); await afterAuth(store, disp); }catch(e){ setErr(String(e.message||e)); } }}
   />`;
 
-  if(phase==='gate') return html`<${Gate}
-    err=${err} user=${user} projects=${myProjects}
-    onOpen=${async (proj)=>{ try{ const p=await store.joinProject(proj.code, user?.name||''); try{localStorage.setItem('lastro:project',JSON.stringify(p));}catch(e){} pushRecent(p); setProject(p); setPhase('work'); }catch(e){ setErr(String(e.message||e)); } }}
-    onCreate=${async (n,disp)=>{ try{ try{localStorage.setItem('lastro:name',disp);}catch(e){} const p=await store.createProject(n,disp); try{localStorage.setItem('lastro:project',JSON.stringify(p));}catch(e){} pushRecent(p); setUser(store.currentUser()); setProject(p); setPhase('work'); }catch(e){ setErr(String(e.message||e)); } }}
-    onJoin=${async (code,disp)=>{ try{ try{localStorage.setItem('lastro:name',disp);}catch(e){} const p=await store.joinProject(code,disp); try{localStorage.setItem('lastro:project',JSON.stringify(p));}catch(e){} pushRecent(p); setUser(store.currentUser()); setProject(p); setPhase('work'); }catch(e){ setErr(String(e.message||e)); } }}
-  />`;
+  if(phase==='gate') return html`<div>
+    <${Gate}
+      err=${err} user=${user} projects=${myProjects} mode=${mode} onAccount=${()=>setAccount(true)}
+      onOpen=${async (proj)=>{ try{ const p=await store.joinProject(proj.code, user?.name||''); try{localStorage.setItem('lastro:project',JSON.stringify(p));}catch(e){} pushRecent(p); openProject(p); setPhase('work'); }catch(e){ setErr(String(e.message||e)); } }}
+      onCreate=${async (n,disp,pmode)=>{ try{ try{localStorage.setItem('lastro:name',disp);}catch(e){} const p=await store.createProject(n,disp,pmode); try{localStorage.setItem('lastro:project',JSON.stringify(p));}catch(e){} pushRecent(p); setUser(store.currentUser()); openProject(p); setPhase('work'); }catch(e){ setErr(String(e.message||e)); } }}
+      onJoin=${async (code,disp)=>{ try{ try{localStorage.setItem('lastro:name',disp);}catch(e){} const p=await store.joinProject(code,disp); try{localStorage.setItem('lastro:project',JSON.stringify(p));}catch(e){} pushRecent(p); setUser(store.currentUser()); openProject(p); setPhase('work'); }catch(e){ setErr(String(e.message||e)); } }}
+    />
+    ${account && html`<${AccountModal} user=${user} projects=${myProjects}
+      onClose=${()=>setAccount(false)} onChangePassword=${changePassword} onChangeName=${changeDisplayName}
+      onOpen=${acctOpenProject} onRename=${acctRenameProject} onDelete=${acctDeleteProject} onLeave=${acctLeaveProject} />`}
+  </div>`;
 
   return html`
   <div class="app">
@@ -972,13 +1059,18 @@ function App(){
       <div class="tag">o seu laboratório de pesquisa qualitativa / your own lab for qualitative research</div>
       ${project && html`<div class="seg" style="margin-left:10px">
         <button class=${mainView==='codificar'?'on':''} onClick=${()=>setMainView('codificar')}>Codificação</button>
-        <button class=${mainView==='reconciliar'?'on':''} onClick=${()=>setMainView('reconciliar')}>Reconciliação</button>
+        ${projectMode==='collective' && html`<button class=${mainView==='reconciliar'?'on':''} onClick=${()=>setMainView('reconciliar')}>Reconciliação</button>`}
         <button class=${mainView==='visualizar'?'on':''} onClick=${()=>setMainView('visualizar')}>Visualização</button>
         <button class=${mainView==='graficos'?'on':''} onClick=${()=>setMainView('graficos')}>Gráficos</button>
       </div>`}
       <div class="grow"></div>
-      ${project && html`<span class="pill ${mode==='cloud'?'mode-cloud':''}">${mode==='cloud'?'nuvem':'local'} · ${project.name}${mode==='cloud'?` · ${project.code}`:''}</span>`}
-      ${user && html`<span class="meta" title=${user.email||''}>${user.name}${user.anon?' (visitante)':''}</span>`}
+      ${project && html`<button class="pill ${mode==='cloud'?'mode-cloud':''}" style="cursor:pointer"
+        title="Gerenciar projeto" onClick=${()=>setProjEdit(true)}>
+        ${mode==='cloud'?'nuvem':'local'} · ${project.name}${mode==='cloud'?` · ${project.code}`:''} · ${projectMode==='individual'?'individual':'coletivo'} ▾
+      </button>`}
+      ${user && (mode==='cloud'
+        ? html`<button class="btn sm ghost" title=${'Minha conta'+(user.email?' · '+user.email:'')} onClick=${()=>setAccount(true)}>${user.name}${user.anon?' (visitante)':''}</button>`
+        : html`<span class="meta">${user.name}</span>`)}
       ${mode==='cloud' && html`<button class="btn sm ghost" onClick=${()=>{ try{localStorage.removeItem('lastro:project');}catch(e){} setProject(null); setPhase('gate'); }}>trocar projeto</button>`}
       ${mode==='cloud' && user && html`<button class="btn sm ghost" onClick=${async()=>{ try{localStorage.removeItem('lastro:project');}catch(e){} try{ await store.signOut(); }catch(e){} setProject(null); setUser(null); setDocs([]); setActiveId(null); setPhase('auth'); }}>sair</button>`}
       ${project && docs.length>0 && html`<div style="position:relative">
@@ -996,8 +1088,6 @@ function App(){
       ${project && html`<label class="btn sm ghost" title="Importar projeto .qdpx (REFI-QDA)">importar qdpx
         <input type="file" accept=".qdpx" style="display:none" onChange=${e=>{ if(e.target.files[0]) doImportQDPX(e.target.files[0]); e.target.value=''; }} />
       </label>`}
-      ${project && docs.length>0 && html`<button class="btn sm ghost" style="color:var(--danger)" onClick=${doClearProject} title="Apagar tudo deste projeto">limpar projeto</button>`}
-      <button class="btn sm ghost" onClick=${()=>setSettings(true)} title="Conexão e identidade">⚙</button>
     </header>
 
     ${err && html`<div class="banner err">${err} <button class="btn sm ghost" onClick=${()=>setErr(null)}>fechar</button></div>`}
@@ -1017,7 +1107,7 @@ function App(){
           </label>
           <${AddPaste} onAdd=${addPasted} />
           <div class="grow"></div>
-          ${mode==='cloud' && html`<label class="meta" style="display:flex;align-items:center;gap:5px">Ver:
+          ${mode==='cloud' && projectMode==='collective' && html`<label class="meta" style="display:flex;align-items:center;gap:5px">Ver:
             <select class="opt" value=${viewCoder} onChange=${e=>setViewCoder(e.target.value)}>
               <option value="all">Todas (individuais)</option>
               <option value="mine">Minhas</option>
@@ -1029,7 +1119,7 @@ function App(){
 
         ${sel && html`<div class="toolbar">
           <span style="font-weight:600;color:var(--teal-deep);font-size:12.5px">Trecho selecionado</span>
-          <span class="q">“${sel.quote}”</span>
+          <span class="q">"${sel.quote}"</span>
           <span class="meta">escolha um código à direita para aplicar</span>
           <div class="grow"></div>
           <button class="btn sm ghost" onClick=${()=>{setSel(null);window.getSelection()?.removeAllRanges();}}>cancelar</button>
@@ -1105,17 +1195,24 @@ function App(){
       </section>
     </div>`
     : html`<div class="split">
-      <!-- VISUALIZACAO: tela inteira -->
-      <section class="pane left" style="flex:1 1 100%;border-right:none;max-width:none">
-        <div class="pane-head"><span class="h" style="margin:0">Visualização — trechos codificados de todo o projeto</span></div>
-        <div class="pane-body scroll">
-          <div style="max-width:900px;margin:0 auto">
-            <${CodedPanel} docs=${docs} cats=${cats} codes=${codes}
-              codeById=${codeById} codePath=${codePath}
-              allCodings=${allCodings} allValues=${allValues}
-              onDelCoding=${async id=>{ await delCoding(id); loadAll(); }}
-              onJump=${(docId)=>{ setActiveId(docId); setMainView('codificar'); }} />
-          </div>
+      <!-- VISUALIZACAO esquerda: navegação por código -->
+      <section class="pane" style="flex:0 0 270px;min-width:0;border-right:1px solid var(--line)">
+        <div class="pane-body scroll" style="padding:0">
+          <${VizNav} cats=${cats} codes=${codes} allCodings=${allCodings} allValues=${allValues} docs=${docs}
+            layer=${vizLayer} catFilter=${vizCatFilter} selCode=${vizSelCode}
+            onLayer=${setVizLayer} onCatFilter=${setVizCatFilter} onSelCode=${setVizSelCode}
+            codePath=${codePath} codeById=${codeById} />
+        </div>
+      </section>
+      <!-- VISUALIZACAO direita: trechos legíveis -->
+      <section class="pane" style="flex:1;min-width:0;background:var(--paper)">
+        <div class="pane-body scroll" style="padding:0">
+          <${VizExcerpts} docs=${docs} codes=${codes} codeById=${codeById} codePath=${codePath}
+            allCodings=${allCodings} allValues=${allValues}
+            layer=${vizLayer} catFilter=${vizCatFilter} selCode=${vizSelCode}
+            crossCodes=${vizCross} setCrossCodes=${setVizCross}
+            onDelCoding=${async id=>{ await delCoding(id); loadAll(); }}
+            onJump=${(docId)=>{ setActiveId(docId); setMainView('codificar'); }} />
         </div>
       </section>
     </div>`}
@@ -1124,22 +1221,26 @@ function App(){
   ${ctxMenu && html`<div>
     <div onClick=${()=>setCtxMenu(null)} onContextMenu=${e=>{e.preventDefault();setCtxMenu(null);}} style="position:fixed;inset:0;z-index:60"></div>
     <div class="exmenu" style=${`position:fixed;left:${Math.min(ctxMenu.x, window.innerWidth-260)}px;top:${Math.min(ctxMenu.y, window.innerHeight-40)}px;z-index:61;max-height:60vh;overflow:auto;min-width:240px`}>
-      <div style="padding:7px 12px;font-size:11px;color:var(--ink-faint);border-bottom:1px solid var(--line-soft);font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px">“${ctxMenu.sel.quote}”</div>
+      <div style="padding:7px 12px;font-size:11px;color:var(--ink-faint);border-bottom:1px solid var(--line-soft);font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px">"${ctxMenu.sel.quote}"</div>
       ${orderedCodes.length===0
-        ? html`<div style="padding:9px 12px;color:var(--ink-faint);font-size:12.5px">Nenhum código criado ainda. Crie um na aba “Codificar”.</div>`
+        ? html`<div style="padding:9px 12px;color:var(--ink-faint);font-size:12.5px">Nenhum código criado ainda. Crie um na aba "Codificar".</div>`
         : orderedCodes.map(c=>{ const col=codeColor(c.hue,c.depth); return html`<button key=${c.id} onClick=${()=>applyCode(c.id, ctxMenu.sel)} style=${`padding-left:${12+c.depth*14}px`}>
             <span class="swatch" style=${`background:${col.solid};display:inline-block;margin-right:7px;vertical-align:middle`}></span>${c.name}
           </button>`; })}
     </div>
   </div>`}
 
-  ${settings && html`<${SettingsModal} mode=${mode} user=${user}
-    project=${project} members=${members} isAdmin=${isAdmin} onSetRole=${changeMemberRole}
-    onRemoveMember=${removeMember} onRenameProject=${renameProject} onDeleteProject=${deleteProject}
-    onClose=${()=>setSettings(false)}
+  ${account && html`<${AccountModal} user=${user} projects=${myProjects}
+    onClose=${()=>setAccount(false)} onChangePassword=${changePassword} onChangeName=${changeDisplayName}
+    onOpen=${acctOpenProject} onRename=${acctRenameProject} onDelete=${acctDeleteProject} onLeave=${acctLeaveProject} />`}
+
+  ${projEdit && html`<${ProjectModal} mode=${mode} user=${user} project=${project} projectMode=${projectMode}
+    isAdmin=${isAdmin} members=${members} hasDocs=${docs.length>0}
+    onClose=${()=>setProjEdit(false)} onSetMode=${changeProjectMode}
+    onSetRole=${changeMemberRole} onRemoveMember=${removeMember}
+    onRename=${renameProject} onClear=${()=>{ setProjEdit(false); doClearProject(); }} onDelete=${deleteProject}
     onSaveCloud=${(url,key)=>{ try{localStorage.setItem('lastro:url',url);localStorage.setItem('lastro:key',key);}catch(e){} location.reload(); }}
-    onClearCloud=${()=>{ try{localStorage.removeItem('lastro:url');localStorage.removeItem('lastro:key');localStorage.removeItem('lastro:project');}catch(e){} location.reload(); }}
-  />`}
+    onClearCloud=${()=>{ try{localStorage.removeItem('lastro:url');localStorage.removeItem('lastro:key');localStorage.removeItem('lastro:project');}catch(e){} location.reload(); }} />`}
   `;
 }
 
@@ -1184,9 +1285,10 @@ function Auth({ onSignIn, onSignUp, onAnon, err }){
 }
 
 /* ============ GATE (Meus Projetos + criar / entrar em projeto) ============ */
-function Gate({ onCreate, onJoin, onOpen, err, user, projects }){
+function Gate({ onCreate, onJoin, onOpen, err, user, projects, mode, onAccount }){
   const [name,setName]=useState(user?.name||'');
   const [pname,setPname]=useState('');
+  const [pmode,setPmode]=useState('individual'); // individual | collective
   const [code,setCode]=useState('');
   const list = projects||[];
   const num = (p)=>{ const bits=[];
@@ -1194,7 +1296,11 @@ function Gate({ onCreate, onJoin, onOpen, err, user, projects }){
     if(p.n_codings!=null) bits.push(`${p.n_codings} trecho(s)`);
     return bits.join(' · '); };
   return html`<div class="modal-bg"><div class="modal" style="max-width:520px">
-    <h2>Meus projetos</h2>
+    <div class="row" style="align-items:baseline;gap:10px;margin-bottom:2px">
+      <h2 style="margin:0">Meus projetos</h2>
+      <div class="grow"></div>
+      ${mode==='cloud' && onAccount && html`<button class="btn sm ghost" onClick=${onAccount}>⚙ Minha conta</button>`}
+    </div>
     <p class="hint">Abra um projeto que você já criou ou participou, ou comece um novo. Vários pesquisadores no mesmo código codificam juntos.</p>
     ${err && html`<div class="banner err" style="margin:0 0 12px">${err}</div>`}
 
@@ -1202,7 +1308,7 @@ function Gate({ onCreate, onJoin, onOpen, err, user, projects }){
         ${list.map(p=>html`<div class="docitem" key=${p.code||p.id} style="cursor:pointer" onClick=${()=>onOpen(p)}>
           <div style="flex:1;min-width:0">
             <div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.name||'(sem nome)'}</div>
-            <div class="meta">código ${p.code}${num(p)?` · ${num(p)}`:''}</div>
+            <div class="meta">código ${p.code} · ${p.mode==='individual'?'individual':'coletivo'}${num(p)?` · ${num(p)}`:''}</div>
           </div>
           <button class="btn sm">abrir</button>
         </div>`)}
@@ -1213,8 +1319,23 @@ function Gate({ onCreate, onJoin, onOpen, err, user, projects }){
       <input class="txtin" value=${name} onInput=${e=>setName(e.target.value)} placeholder="como você aparece nas codificações" /></div>
     <div class="card" style="margin-bottom:12px">
       <div class="field-label">Criar projeto</div>
-      <div class="row"><input class="txtin" value=${pname} onInput=${e=>setPname(e.target.value)} placeholder="nome do projeto" />
-        <button class="btn primary" onClick=${()=>onCreate(pname,name)}>Criar</button></div>
+      <div class="row" style="gap:6px;margin-bottom:8px">
+        <input class="txtin" value=${pname} onInput=${e=>setPname(e.target.value)} placeholder="nome do projeto" />
+      </div>
+      <div class="row" style="gap:8px;margin-bottom:10px">
+        <button class="opt ${pmode==='individual'?'on':''}" onClick=${()=>setPmode('individual')} style="flex:1;justify-content:center">
+          Projeto Individual
+        </button>
+        <button class="opt ${pmode==='collective'?'on':''}" onClick=${()=>setPmode('collective')} style="flex:1;justify-content:center">
+          Projeto Coletivo
+        </button>
+      </div>
+      <p class="hint" style="margin:0 0 8px;font-size:11.5px">
+        ${pmode==='individual'
+          ? 'Uso solo — cada codificação vai direto para o gabarito. Sem reconciliação.'
+          : 'Múltiplos pesquisadores codificam independentemente; admin consolida o gabarito na Reconciliação.'}
+      </p>
+      <button class="btn primary" style="width:100%" onClick=${()=>onCreate(pname,name,pmode)}>Criar</button>
     </div>
     <div class="card">
       <div class="field-label">Entrar com código</div>
@@ -1282,9 +1403,9 @@ function CategoryEditor({ cat, onUpd, onDel }){
     </div>`}
     <div class="row" style="gap:16px;margin-top:8px;flex-wrap:wrap">
       <label class="row" style="gap:5px;font-size:12.5px;cursor:pointer">
-        <input type="checkbox" checked=${hasTok(NAO_INFO)} onChange=${e=>toggleTok(NAO_INFO,e.target.checked)} /> Permitir “Não informado”</label>
+        <input type="checkbox" checked=${hasTok(NAO_INFO)} onChange=${e=>toggleTok(NAO_INFO,e.target.checked)} /> Permitir "Não informado"</label>
       ${CAT_HAS_OPTIONS(cat.kind) && html`<label class="row" style="gap:5px;font-size:12.5px;cursor:pointer">
-        <input type="checkbox" checked=${hasTok(OUTROS)} onChange=${e=>toggleTok(OUTROS,e.target.checked)} /> Permitir “Outros” (valor livre)</label>`}
+        <input type="checkbox" checked=${hasTok(OUTROS)} onChange=${e=>toggleTok(OUTROS,e.target.checked)} /> Permitir "Outros" (valor livre)</label>`}
     </div>
   </div>`;
 }
@@ -1367,7 +1488,7 @@ function CodesPanel({ codes, codeById, count, sel, selCode, setSelCode, codePath
     <p class="hint">Estrutura importa: família no topo (cor mais escura), descendo até o subcódigo (mais claro). O código novo entra como filho do código selecionado, então a organização é o caminho mais fácil.</p>
 
     <div class="row" style="gap:6px;margin-bottom:10px">
-      <button class="btn sm" onClick=${()=>onAdd(selected)} disabled=${!selected} title=${selected?`filho de ${selected.name}`:'selecione um código'}>＋ subcódigo${selected?` de “${selected.name}”`:''}</button>
+      <button class="btn sm" onClick=${()=>onAdd(selected)} disabled=${!selected} title=${selected?`filho de ${selected.name}`:'selecione um código'}>＋ subcódigo${selected?` de "${selected.name}"`:''}</button>
       <button class="btn sm ghost" onClick=${()=>onAdd(null)}>＋ nova família (topo)</button>
     </div>
 
@@ -1457,7 +1578,7 @@ function Reconcile({ activeDoc, codings, coders, codeById, codePath, cats, value
         <div class="row" style="flex-wrap:wrap;gap:4px;margin-bottom:6px">
           ${coderIds.map(id=>html`<span class="author" key=${id}>${nameOf(id, (g.items.find(i=>i.created_by===id)||{}).author_name)}</span>`)}
         </div>
-        <div style="font-family:var(--mono);font-size:11px;color:var(--ink-soft);margin-bottom:8px">“${quote.slice(0,180)}”</div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--ink-soft);margin-bottom:8px">"${quote.slice(0,180)}"</div>
         ${fin
           ? html`<div class="row" style="gap:8px;align-items:center">
               <span class="author" style="background:var(--teal-soft);color:var(--teal-deep)">✓ na camada final</span>
@@ -1468,131 +1589,203 @@ function Reconcile({ activeDoc, codings, coders, codeById, codePath, cats, value
   </div>`;
 }
 
-/* ============ PAINEL DE TRECHOS CODIFICADOS (visualizacao de todo o projeto) ============
-   Filtra por categorias do documento e cruza ate 3 codigos por co-ocorrencia (sobreposicao
-   de trechos no mesmo documento). E so visualizacao: a codificacao acontece na aba "Codificar". */
-function CodedPanel({ docs, cats, codes, codeById, codePath, allCodings, allValues, onDelCoding, onJump }){
-  const [catFilter, setCatFilter] = useState({});   // category_id -> valor exigido
-  const [codeSel, setCodeSel] = useState(['','','']); // ate 3 codigos cruzados
-  const [layer, setLayer] = useState('individual');   // individual | final
+/* ============ VizNav — painel esquerdo da Visualização ============
+   Visual idêntico ao painel de Codificação: mesmas classes CSS, sem fundo colorido. */
+function VizNav({ cats, codes, allCodings, allValues, docs, layer, catFilter, selCode,
+                  onLayer, onCatFilter, onSelCode, codePath, codeById }){
+  const [catsOpen, setCatsOpen] = useState(false);
+  const closedCats = cats.filter(c=>CAT_HAS_OPTIONS(c.kind)||c.kind==='date');
+  const tops = codes.filter(c=>!c.parent_id);
+  const childrenOf = (id)=>codes.filter(c=>c.parent_id===id);
 
-  // separa por camada (evita misturar individuais com a camada consolidada)
-  const layerCodings = useMemo(()=> allCodings.filter(c=> layer==='final' ? c.layer==='final' : c.layer!=='final'), [allCodings, layer]);
+  const layerCodings = useMemo(()=>
+    allCodings.filter(c=> layer==='final' ? c.layer==='final' : c.layer!=='final')
+  , [allCodings, layer]);
 
-  const docById = useMemo(()=>Object.fromEntries(docs.map(d=>[d.id,d])), [docs]);
-  const docName = (id)=>docById[id]?.name || '';
+  const matchingDocIds = useMemo(()=>{
+    const s=new Set();
+    docs.forEach(d=>{
+      const ok = Object.entries(catFilter).every(([catId,want])=>{
+        if(!want) return true;
+        const rows = allValues.filter(x=>x.document_id===d.id && x.category_id===catId);
+        const fin = rows.find(r=>r.layer==='final');
+        const pool = fin ? [fin.value] : rows.map(r=>r.value);
+        return pool.some(v=>v!=null && String(v).split(CAT_MULTI_SEP).includes(want));
+      });
+      if(ok) s.add(d.id);
+    });
+    return s;
+  }, [docs, allValues, catFilter]);
 
-  // valores possiveis por categoria (uniao do esquema fechado + valores presentes)
-  const valuesFor = (cat)=>{
-    const present = allValues.filter(v=>v.category_id===cat.id && v.value).map(v=>v.value);
-    return [...new Set([...(cat.options||[]), ...present])];
-  };
-  const setCat = (catId,val)=> setCatFilter(f=>{ const n={...f}; if(val) n[catId]=val; else delete n[catId]; return n; });
-  const setCode = (i,val)=> setCodeSel(s=>{ const n=s.slice(); n[i]=val; return n; });
+  const countByCode = useMemo(()=>{
+    const m={};
+    layerCodings.filter(c=>matchingDocIds.has(c.document_id)).forEach(c=>{ m[c.code_id]=(m[c.code_id]||0)+1; });
+    return m;
+  }, [layerCodings, matchingDocIds]);
 
-  // documentos que passam no filtro de categorias — usa o gabarito (final) quando existe,
-  // senao considera qualquer resposta individual
-  const docMatches = (docId)=> Object.entries(catFilter).every(([catId,want])=>{
-    const rows = allValues.filter(x=>x.document_id===docId && x.category_id===catId);
-    const fin = rows.find(r=>r.layer==='final');
-    const pool = fin ? [fin.value] : rows.map(r=>r.value);
-    return pool.some(val=> val!=null && String(val).split(CAT_MULTI_SEP).includes(want));
-  });
+  const hasFilter = Object.values(catFilter).some(Boolean);
 
-  const active = [...new Set(codeSel.filter(Boolean))]; // codigos cruzados, sem repetir
+  return html`<div style="background:var(--surface);display:flex;flex-direction:column;height:100%">
 
-  // resultados: cada item e {key, docId, start, end, quote, codeIds, codingId?}
-  const results = useMemo(()=>{
-    const out = [];
-    const docIds = docs.filter(d=>docMatches(d.id)).map(d=>d.id);
-    for(const docId of docIds){
-      const inDoc = layerCodings.filter(c=>c.document_id===docId);
-      if(active.length<=1){
-        const list = active.length===1 ? inDoc.filter(c=>c.code_id===active[0]) : inDoc;
-        list.forEach(c=> out.push({ key:c.id, docId, start:c.span_start, end:c.span_end, quote:c.quote, codeIds:[c.code_id], codingId:c.id }));
-      } else {
-        // co-ocorrencia: interseccao das combinacoes de trechos dos codigos selecionados
-        const arrs = active.map(id=>inDoc.filter(c=>c.code_id===id));
-        if(arrs.some(a=>a.length===0)) continue;
-        const seen = new Set();
-        const content = docById[docId]?.content || '';
-        const combine = (idx, accStart, accEnd)=>{
-          if(idx===arrs.length){
-            if(accStart < accEnd){
-              const k = docId+':'+accStart+':'+accEnd;
-              if(!seen.has(k)){ seen.add(k); out.push({ key:k, docId, start:accStart, end:accEnd, quote:content.slice(accStart,accEnd), codeIds:active.slice() }); }
-            }
-            return;
-          }
-          for(const c of arrs[idx]){
-            const s=Math.max(accStart, c.span_start), e=Math.min(accEnd, c.span_end);
-            if(s<e) combine(idx+1, s, e);
-          }
-        };
-        combine(0, 0, Infinity);
-      }
-    }
-    return out.sort((a,b)=> a.docId===b.docId ? a.start-b.start : (docName(a.docId)>docName(b.docId)?1:-1));
-  }, [docs, layerCodings, allValues, catFilter, codeSel]);
-
-  const crossing = active.length>=2;
-
-  return html`<div class="section">
-    <p class="h">Trechos codificados</p>
-    <p class="hint">Visualização de todo o projeto. Filtre por atributos do documento e cruze até 3 códigos por co-ocorrência (trechos que se sobrepõem no mesmo documento). A codificação acontece na aba “Codificar”.</p>
-
-    <div class="card" style="margin-bottom:12px">
-      <div class="row" style="gap:6px;margin-bottom:10px">
-        <span style="font-size:12.5px;min-width:120px">Camada</span>
-        <select class="opt" style="flex:1" value=${layer} onChange=${e=>setLayer(e.target.value)}>
-          <option value="individual">Individuais (todos os codificadores)</option>
-          <option value="final">Final (consolidada)</option>
+    <!-- camada + categorias: mesma linguagem do pane-head -->
+    <div class="pane-head" style="flex-direction:column;align-items:stretch;gap:6px;padding:10px 14px">
+      <div class="row" style="gap:8px;align-items:center">
+        <span class="field-label" style="margin:0;flex:none">Camada</span>
+        <select class="opt" style="flex:1" value=${layer} onChange=${e=>onLayer(e.target.value)}>
+          <option value="individual">Individuais (todos)</option>
+          <option value="final">Final / gabarito</option>
         </select>
       </div>
-      <div class="field-label">Filtrar por categorias</div>
-      ${cats.length===0 ? html`<span class="meta">Nenhuma categoria definida.</span>`
-        : cats.map(cat=>html`<div class="row" key=${cat.id} style="gap:6px;margin-bottom:6px">
-            <span style="font-size:12.5px;min-width:120px">${cat.name}</span>
-            <select class="opt" style="flex:1" value=${catFilter[cat.id]||''} onChange=${e=>setCat(cat.id, e.target.value)}>
+    </div>
+
+    <!-- categorias: seção colapsável idêntica ao "Gerenciar esquema" -->
+    ${closedCats.length>0 && html`<div style="border-bottom:1px solid var(--line-soft)">
+      <div class="node-row" style="padding:6px 14px;cursor:pointer;border-radius:0"
+        onClick=${()=>setCatsOpen(o=>!o)}>
+        <span class="caret">${catsOpen?'▾':'▸'}</span>
+        <span class="node-name" style="font-weight:600">Categorias</span>
+        ${hasFilter && html`<span class="pill" style="font-size:10px;padding:1px 8px">filtro ativo</span>`}
+      </div>
+      ${catsOpen && html`<div style="padding:4px 14px 12px">
+        ${closedCats.map(cat=>{ const opts=(cat.options||[]).filter(o=>!isSpecialOpt(o));
+          return html`<div key=${cat.id} class="field" style="margin-bottom:8px">
+            <div class="field-label" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title=${cat.name}>${cat.name}</div>
+            <select class="opt" style="width:100%"
+              value=${catFilter[cat.id]||''} onChange=${e=>{ const v=e.target.value; onCatFilter(f=>{ const n={...f}; if(v) n[cat.id]=v; else delete n[cat.id]; return n; }); }}>
               <option value="">(qualquer)</option>
-              ${valuesFor(cat).map(o=>html`<option value=${o}>${o}</option>`)}
+              ${opts.map(o=>html`<option value=${o}>${o}</option>`)}
             </select>
-          </div>`)}
+          </div>`; })}
+        ${hasFilter && html`<button class="btn sm ghost" style="width:100%" onClick=${()=>onCatFilter({})}>limpar filtros</button>`}
+      </div>`}
+    </div>`}
 
-      <div class="field-label" style="margin-top:12px">Cruzar códigos (co-ocorrência)</div>
-      ${[0,1,2].map(i=>html`<div class="row" key=${i} style="gap:6px;margin-bottom:6px">
-        <span style="font-size:12.5px;min-width:120px">${i===0?'Código':i===1?'+ Código':'+ Código'}</span>
-        <select class="opt" style="flex:1" value=${codeSel[i]||''} onChange=${e=>setCode(i, e.target.value)}>
-          <option value="">${i===0?'(todos)':'(nenhum)'}</option>
-          ${codes.map(c=>html`<option value=${c.id}>${codePath(c.id).join(' ▸ ')}</option>`)}
-        </select>
+    <!-- árvore de códigos (mesmas classes que o TreeNode do painel Codificar) -->
+    <div class="tree scroll" style="flex:1;overflow-y:auto;padding:4px 6px">
+      ${tops.length===0 && html`<span class="meta" style="padding:14px 8px;display:block">Nenhum código criado.</span>`}
+      ${tops.map(t=>html`<${VizCodeNode} key=${t.id} code=${t} childrenOf=${childrenOf}
+        counts=${countByCode} sel=${selCode} onSel=${onSelCode} depthPad=${0} />`)}
+    </div>
+  </div>`;
+}
+
+function VizCodeNode({ code, childrenOf, counts, sel, onSel, depthPad }){
+  const [open,setOpen]=useState(false);
+  const kids = childrenOf(code.id);
+  const col = codeColor(code.hue, code.depth);
+  const isSel = sel===code.id;
+  return html`<div class="node">
+    <div class="node-row ${isSel?'sel':''}" style=${`padding-left:${6+depthPad*16}px;cursor:pointer`}
+      onClick=${()=>onSel(code.id)}>
+      ${kids.length>0 ? html`<span class="caret" onClick=${e=>{e.stopPropagation();setOpen(!open);}}>${open?'▾':'▸'}</span>` : html`<span class="caret"></span>`}
+      <span class="swatch" style=${`background:${col.solid}`}></span>
+      <span class="node-name" title=${code.name}>${code.name}</span>
+      ${counts[code.id] ? html`<span class="count">${counts[code.id]}</span>` : ''}
+    </div>
+    ${open && kids.map(k=>html`<${VizCodeNode} key=${k.id} code=${k} childrenOf=${childrenOf}
+      counts=${counts} sel=${sel} onSel=${onSel} depthPad=${depthPad+1} />`)}
+  </div>`;
+}
+
+/* ============ VizExcerpts — painel direito da Visualização ============
+   Trechos do código selecionado, legíveis, agrupados por documento. */
+function VizExcerpts({ docs, codes, codeById, codePath, allCodings, allValues,
+                       layer, catFilter, selCode, crossCodes, setCrossCodes,
+                       onDelCoding, onJump }){
+  const layerCodings = useMemo(()=>
+    allCodings.filter(c=> layer==='final' ? c.layer==='final' : c.layer!=='final')
+  , [allCodings, layer]);
+
+  const docById = useMemo(()=>Object.fromEntries(docs.map(d=>[d.id,d])), [docs]);
+
+  const matchingDocIds = useMemo(()=>{
+    const s=new Set();
+    docs.forEach(d=>{
+      const ok = Object.entries(catFilter).every(([catId,want])=>{
+        if(!want) return true;
+        const rows = allValues.filter(x=>x.document_id===d.id && x.category_id===catId);
+        const fin = rows.find(r=>r.layer==='final');
+        const pool = fin ? [fin.value] : rows.map(r=>r.value);
+        return pool.some(v=>v!=null && String(v).split(CAT_MULTI_SEP).includes(want));
+      });
+      if(ok) s.add(d.id);
+    });
+    return s;
+  }, [docs, allValues, catFilter]);
+
+  const excerpts = useMemo(()=>{
+    if(!selCode) return [];
+    const extra = [...new Set((crossCodes||[]).filter(Boolean))];
+    return layerCodings
+      .filter(c=> c.code_id===selCode && matchingDocIds.has(c.document_id))
+      .filter(c=>{
+        if(!extra.length) return true;
+        return extra.every(xid=>
+          layerCodings.some(x=> x.document_id===c.document_id && x.code_id===xid
+            && x.span_start < c.span_end && c.span_start < x.span_end));
+      })
+      .sort((a,b)=>{
+        const na=docById[a.document_id]?.name||'', nb=docById[b.document_id]?.name||'';
+        return na>nb?1:na<nb?-1:a.span_start-b.span_start;
+      });
+  }, [selCode, crossCodes, layerCodings, matchingDocIds, docById]);
+
+  const byDoc = useMemo(()=>{
+    const g={};
+    excerpts.forEach(c=>{ (g[c.document_id]=g[c.document_id]||[]).push(c); });
+    return Object.entries(g);
+  }, [excerpts]);
+
+  const selCodeObj = selCode ? codeById[selCode] : null;
+  const crossOpts = codes.filter(c=>c.id!==selCode);
+
+  if(!selCode) return html`<div class="empty">
+    <div class="t">Selecione um código</div>
+    <div>Clique em um código à esquerda para ver os trechos codificados de todo o projeto.</div>
+  </div>`;
+
+  const col = codeColor(selCodeObj?.hue||0, selCodeObj?.depth||0);
+
+  return html`<div class="section" style="max-width:820px;margin:0 auto">
+
+    <!-- cabeçalho: caminho do código + contagem -->
+    <p class="h" style="font-size:15px;margin-bottom:4px">
+      <span class="swatch" style=${`background:${col.solid}`}></span>
+      ${codePath(selCode).join(' ▸ ')}
+      <span class="pill">${excerpts.length} trecho${excerpts.length!==1?'s':''}</span>
+    </p>
+
+    <!-- co-ocorrência -->
+    <div class="row" style="gap:7px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
+      <span class="meta">Co-ocorrência com:</span>
+      ${[0,1].map(i=>html`<select key=${i} class="opt" style="max-width:210px;font-size:12.5px"
+        value=${(crossCodes||[])[i]||''} onChange=${e=>{ const v=e.target.value; setCrossCodes(s=>{ const n=s.slice(); n[i]=v; return n; }); }}>
+        <option value="">${i===0?'(nenhum)':'e também…'}</option>
+        ${crossOpts.map(c=>html`<option value=${c.id}>${codePath(c.id).join(' ▸ ')}</option>`)}
+      </select>`)}
+      ${(crossCodes||[]).some(Boolean) && html`<button class="btn sm ghost" onClick=${()=>setCrossCodes(['',''])}>limpar</button>`}
+    </div>
+
+    ${excerpts.length===0 && html`<div class="card"><span class="meta">Nenhum trecho corresponde aos filtros.</span></div>`}
+
+    <!-- grupos por documento -->
+    ${byDoc.map(([docId, cods])=>html`<div key=${docId} style="margin-bottom:22px">
+      <div class="row" style="margin-bottom:8px;gap:7px;align-items:baseline">
+        <button class="btn sm" title="Abrir no leitor" onClick=${()=>onJump&&onJump(docId)}>${docById[docId]?.name||docId}</button>
+        <span class="count">${cods.length}</span>
+      </div>
+      ${cods.map(c=>html`<div key=${c.id} class="card"
+          style=${`margin-bottom:8px;padding:0;overflow:hidden;display:flex;border-left:3px solid ${col.solid}`}>
+        <div style="flex:1;padding:12px 14px;min-width:0">
+          <div class="reader" style="padding:0;font-size:16px;white-space:normal;margin-bottom:8px">${c.quote}</div>
+          <div class="row" style="gap:8px">
+            ${c.author_name && html`<span class="author">${c.author_name}</span>`}
+            <div class="grow"></div>
+            <button class="icon-btn" onClick=${()=>onDelCoding(c.id)} title="remover">🗑</button>
+          </div>
+        </div>
       </div>`)}
-      ${(Object.keys(catFilter).length>0 || active.length>0) && html`<button class="btn sm ghost" style="margin-top:4px"
-        onClick=${()=>{ setCatFilter({}); setCodeSel(['','','']); }}>limpar filtros</button>`}
-    </div>
-
-    <div class="row" style="justify-content:space-between;margin-bottom:8px">
-      <span class="meta">${results.length} ${crossing?'co-ocorrência(s)':'trecho(s)'}</span>
-      ${crossing && html`<span class="meta">cruzando ${active.length} códigos</span>`}
-    </div>
-
-    ${results.length===0 && html`<div class="card"><span class="meta">Nenhum trecho corresponde aos filtros.</span></div>`}
-    ${results.map(r=>{
-      const firstCode = codeById[r.codeIds[0]];
-      const col = firstCode ? codeColor(firstCode.hue, firstCode.depth) : codeColor(0,0);
-      return html`<div class="card" key=${r.key} style="margin-bottom:6px;padding:9px 11px">
-        <div class="row" style="gap:7px;margin-bottom:3px">
-          <span class="swatch" style=${`background:${col.solid}`}></span>
-          <span class="crumb" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer"
-            title=${'Abrir '+docName(r.docId)} onClick=${()=>onJump&&onJump(r.docId)}>${docName(r.docId)}</span>
-          ${r.codingId && html`<button class="icon-btn" onClick=${()=>onDelCoding(r.codingId)} title="remover">🗑</button>`}
-        </div>
-        <div class="row" style="flex-wrap:wrap;gap:4px;margin-bottom:4px">
-          ${r.codeIds.map(cid=>html`<span class="author" key=${cid}>${codePath(cid).join(' ▸ ')}</span>`)}
-        </div>
-        <div style="font-family:var(--mono);font-size:11px;color:var(--ink-soft)">“${(r.quote||'').slice(0,160)}”</div>
-      </div>`;
-    })}
+    </div>`)}
   </div>`;
 }
 
@@ -1649,13 +1842,20 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
   }, [cat, docs, cod, codes, catId, allValues]);
 
   // 4) por codificador + concordância por código
+  // "indiv" = codificações individuais (layer !== 'final')
+  // cada codificação é identificada pelo par (created_by, author_name): se created_by é null
+  // (importado via QDPX), usa author_name como chave; se não, usa o uuid para agrupar corretamente
+  // mesmo quando o author_name muda (ex.: renomeação posterior do pesquisador)
   const indiv = useMemo(()=> allCodings.filter(c=>c.layer!=='final'), [allCodings]);
+  const coderKey = (c)=> c.created_by || ('__nm__'+(c.author_name||'anônimo'));
+  const coderLabel = (c)=> c.author_name||'anônimo';
   const prodItems = useMemo(()=>{
-    const p={}; indiv.forEach(c=>{ const k=c.author_name||'anônimo'; p[k]=(p[k]||0)+1; });
-    return Object.entries(p).map(([label,value])=>({label,value})).sort((a,b)=>b.value-a.value);
+    const p={}; const lbl={};
+    indiv.forEach(c=>{ const k=coderKey(c); p[k]=(p[k]||0)+1; lbl[k]=coderLabel(c); });
+    return Object.entries(p).map(([k,value])=>({label:lbl[k]||k,value})).sort((a,b)=>b.value-a.value);
   }, [indiv]);
   const agreeItems = useMemo(()=>{
-    const m={}; indiv.forEach(c=>{ (m[c.code_id]=m[c.code_id]||new Set()).add(c.created_by||c.author_name); });
+    const m={}; indiv.forEach(c=>{ (m[c.code_id]=m[c.code_id]||new Set()).add(coderKey(c)); });
     return codes.filter(c=>m[c.id]).map(c=>({ key:c.id, label:codePath(c.id).join(' ▸ '), value:m[c.id].size, color:codeColor(c.hue,c.depth).solid }))
       .sort((a,b)=>b.value-a.value);
   }, [indiv, codes, codePath]);
@@ -1804,63 +2004,179 @@ function AddPaste({ onAdd }){
   </div></div>`;
 }
 
-/* ============ SETTINGS ============ */
-function SettingsModal({ mode, user, project, members, isAdmin, onSetRole, onRemoveMember, onRenameProject, onDeleteProject, onClose, onSaveCloud, onClearCloud }){
-  const [url,setUrl]=useState(''); const [key,setKey]=useState('');
+/* ============ HUB DO PROJETO (tipo, convite, membros, conexão, zona de perigo) ============ */
+function ProjectModal({ mode, user, project, projectMode, isAdmin, members, hasDocs,
+                        onClose, onSetMode, onSetRole, onRemoveMember, onRename, onClear, onDelete,
+                        onSaveCloud, onClearCloud }){
+  const [sel,setSel]=useState(projectMode);
   const [pname,setPname]=useState(project?.name||'');
+  const [copied,setCopied]=useState(false);
+  const [url,setUrl]=useState(''); const [key,setKey]=useState('');
   const list = members||[];
   const admins = list.filter(m=>m.role==='admin').length;
-  return html`<div class="modal-bg"><div class="modal">
-    <h2>Conexão</h2>
-    <p class="hint">Modo atual: <b>${mode==='cloud'?'nuvem (coletivo)':'local (este navegador)'}</b>.</p>
-    ${mode==='local'
-      ? html`<div>
-          <p class="hint">Para ativar o modo coletivo, cole a URL e a anon key do seu projeto Supabase. Elas ficam salvas só neste navegador.</p>
-          <div class="field"><div class="field-label">Supabase URL</div><input class="txtin" value=${url} onInput=${e=>setUrl(e.target.value)} placeholder="https://xxxx.supabase.co" /></div>
-          <div class="field"><div class="field-label">Anon key</div><input class="txtin" value=${key} onInput=${e=>setKey(e.target.value)} placeholder="eyJhbGciOi..." /></div>
-          <button class="btn primary" disabled=${!url||!key} onClick=${()=>onSaveCloud(url.trim(),key.trim())}>Conectar e recarregar</button>
-        </div>`
-      : html`<div>
-          <p class="hint">Usuário: ${user?.name} — você é <b>${isAdmin?'administrador':'membro'}</b> deste projeto.</p>
+  const toIndividual = projectMode==='collective' && sel==='individual';
+  const cloud = mode==='cloud';
+  const copyCode = async ()=>{ try{ await navigator.clipboard.writeText(project.code); setCopied(true); setTimeout(()=>setCopied(false),1500); }catch(e){} };
 
-          ${project && html`<div class="field">
-            <div class="field-label">Membros & administradores</div>
-            <p class="hint" style="margin:0 0 8px">Administradores definem o esquema de categorias e consolidam o gabarito. ${isAdmin?'Você pode promover ou rebaixar membros.':'Apenas administradores podem alterar papéis.'}</p>
-            ${list.length===0 && html`<span class="meta">Carregando membros…</span>`}
-            ${list.map(m=>{
-              const isMe = m.user_id===user?.id;
-              const isLastAdmin = m.role==='admin' && admins<=1;
-              return html`<div class="docitem" key=${m.user_id}>
+  return html`<div class="modal-bg"><div class="modal" style="max-width:560px">
+    <h2>${project?.name||'Projeto'}</h2>
+    <p class="hint">${cloud?'nuvem':'local'}${cloud?` · código ${project?.code}`:''} · ${projectMode==='individual'?'individual':'coletivo'}</p>
+
+    <!-- CONVIDAR COLABORADORES -->
+    ${cloud && html`<div class="card" style="margin-bottom:12px">
+      <div class="field-label">Convidar colaboradores</div>
+      <p class="hint" style="margin:0 0 8px">Esta é o código para acesso. Compartilhe com quem deve entrar no projeto (em <b>Meus projetos → Entrar com código</b>).</p>
+      <div class="row" style="gap:8px;align-items:center">
+        <span class="pill" style="font-family:var(--mono);font-size:16px;letter-spacing:.12em;padding:8px 14px">${project?.code}</span>
+        <button class="btn sm" onClick=${copyCode}>${copied?'copiado ✓':'copiar código'}</button>
+      </div>
+    </div>`}
+
+    <!-- TIPO DO PROJETO -->
+    <div class="card" style="margin-bottom:12px">
+      <div class="field-label">Tipo do projeto</div>
+      <div class="row" style="gap:8px;margin:6px 0">
+        <button class="opt ${sel==='individual'?'on':''}" style="flex:1;justify-content:center" disabled=${!isAdmin} onClick=${()=>setSel('individual')}>Individual</button>
+        <button class="opt ${sel==='collective'?'on':''}" style="flex:1;justify-content:center" disabled=${!isAdmin} onClick=${()=>setSel('collective')}>Coletivo</button>
+      </div>
+      <p class="hint" style="margin:0 0 6px">
+        ${sel==='individual' ? 'Uso solo — cada codificação vai direto para o gabarito; sem reconciliação.'
+                             : 'Vários pesquisadores codificam independentemente; o admin consolida o gabarito na Reconciliação.'}
+      </p>
+      ${toIndividual && html`<div class="banner err" style="margin:6px 0">
+        <b>Atenção — ação irreversível.</b> Ao converter de Coletivo para Individual:
+        <ul style="margin:6px 0 0;padding-left:18px">
+          <li>todas as codificações serão <b>colapsadas em um único codificador</b> (você), na camada final;</li>
+          <li>as categorias passarão a seguir <b>apenas o gabarito</b> — as respostas individuais não consolidadas serão <b>apagadas</b>.</li>
+        </ul>
+      </div>`}
+      ${isAdmin && sel!==projectMode && html`<button class="btn sm ${toIndividual?'':'primary'}"
+        style=${toIndividual?'background:var(--danger);color:#fff;border:none':''}
+        onClick=${()=>{ if(toIndividual && !confirm('Converter para Individual? Esta ação não pode ser desfeita.')) return; onSetMode(sel); }}>
+        ${toIndividual?'Converter para Individual':'Salvar tipo'}</button>`}
+      ${!isAdmin && html`<span class="meta">Apenas administradores alteram o tipo.</span>`}
+    </div>
+
+    <!-- MEMBROS -->
+    ${cloud && html`<div class="card" style="margin-bottom:12px">
+      <div class="field-label">Membros & administradores</div>
+      <p class="hint" style="margin:0 0 8px">Administradores definem o esquema, o gabarito e o tipo do projeto.${isAdmin?' Você pode promover, rebaixar ou remover membros.':''}</p>
+      ${list.length===0 && html`<span class="meta">Carregando membros…</span>`}
+      ${list.map(m=>{ const isMe=m.user_id===user?.id; const lastAdmin=m.role==='admin'&&admins<=1;
+        return html`<div class="docitem" key=${m.user_id}>
+          <div style="flex:1;min-width:0">
+            <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.display_name||'anônimo'}${isMe?' (você)':''}</div>
+            <div class="meta">${m.role==='admin'?'administrador':'membro'}</div>
+          </div>
+          ${isAdmin && html`<button class="btn sm ghost" disabled=${lastAdmin}
+            title=${lastAdmin?'O projeto precisa de ao menos um administrador':''}
+            onClick=${()=>onSetRole(m.user_id, m.role==='admin'?'member':'admin')}>${m.role==='admin'?'tornar membro':'tornar admin'}</button>`}
+          ${isMe
+            ? html`<button class="btn sm ghost" style="color:var(--danger)" onClick=${()=>onRemoveMember(m.user_id)}>sair</button>`
+            : isAdmin && html`<button class="icon-btn" title="Remover do projeto" disabled=${lastAdmin}
+                onClick=${()=>{ if(confirm(`Remover ${m.display_name||'este membro'}?`)) onRemoveMember(m.user_id); }}>🗑</button>`}
+        </div>`; })}
+    </div>`}
+
+    <!-- NOME + ZONA DE PERIGO (admin) -->
+    ${isAdmin && html`<div class="card" style="margin-bottom:12px">
+      <div class="field-label">Gerenciar</div>
+      <div class="row" style="gap:6px;margin-bottom:10px">
+        <input class="txtin" value=${pname} onInput=${e=>setPname(e.target.value)} placeholder="nome do projeto" />
+        <button class="btn sm" disabled=${!pname.trim()||pname===project?.name} onClick=${()=>onRename(pname.trim())}>renomear</button>
+      </div>
+      <div class="row" style="gap:8px;flex-wrap:wrap">
+        ${hasDocs && html`<button class="btn sm ghost" style="color:var(--danger)" onClick=${onClear}>limpar conteúdo</button>`}
+        <button class="btn sm ghost" style="color:var(--danger)" onClick=${onDelete}>excluir projeto</button>
+      </div>
+      <p class="hint" style="margin:8px 0 0">"Limpar conteúdo" apaga documentos, códigos e codificações, mantendo o projeto. "Excluir projeto" remove tudo, definitivamente.</p>
+    </div>`}
+
+    <!-- CONEXÃO -->
+    <details style="margin-bottom:6px">
+      <summary style="cursor:pointer;font-size:12.5px;color:var(--ink-soft)">Conexão (Supabase)</summary>
+      <div style="margin-top:10px">
+      ${cloud
+        ? html`<div><p class="hint">Conectado ao Supabase. Desconectar volta ao modo local (sem servidor).</p>
+            <button class="btn sm ghost" onClick=${onClearCloud}>Desconectar do Supabase</button></div>`
+        : html`<div><p class="hint">Para ativar o modo coletivo, informe a URL e a anon key do seu projeto Supabase (salvas só neste navegador).</p>
+            <div class="field"><div class="field-label">Supabase URL</div><input class="txtin" value=${url} onInput=${e=>setUrl(e.target.value)} placeholder="https://xxxx.supabase.co" /></div>
+            <div class="field"><div class="field-label">Anon key</div><input class="txtin" value=${key} onInput=${e=>setKey(e.target.value)} placeholder="eyJhbGciOi..." /></div>
+            <button class="btn sm primary" disabled=${!url||!key} onClick=${()=>onSaveCloud(url.trim(),key.trim())}>Conectar e recarregar</button></div>`}
+      </div>
+    </details>
+
+    <div class="row" style="justify-content:flex-end;margin-top:10px"><button class="btn" onClick=${onClose}>Fechar</button></div>
+  </div></div>`;
+}
+
+/* ============ MINHA CONTA ============ */
+function AccountModal({ user, projects, onClose, onChangePassword, onChangeName, onOpen, onRename, onDelete, onLeave }){
+  const [name,setName]=useState(user?.name||'');
+  const [pw1,setPw1]=useState(''); const [pw2,setPw2]=useState('');
+  const [msg,setMsg]=useState(null); const [err,setErr]=useState(null);
+  const [busy,setBusy]=useState(false);
+  const [editId,setEditId]=useState(null); const [editName,setEditName]=useState('');
+  const list = projects||[];
+
+  const saveName = async ()=>{ setErr(null);setMsg(null);
+    try{ await onChangeName(name.trim()||'pesquisador'); setMsg('Nome atualizado.'); }catch(e){ setErr(String(e.message||e)); } };
+  const savePw = async ()=>{ setErr(null);setMsg(null);
+    if(pw1.length<6){ setErr('A senha precisa de ao menos 6 caracteres.'); return; }
+    if(pw1!==pw2){ setErr('As senhas não coincidem.'); return; }
+    setBusy(true);
+    try{ await onChangePassword(pw1); setPw1('');setPw2(''); setMsg('Senha alterada.'); }
+    catch(e){ setErr(String(e.message||e)); } setBusy(false); };
+
+  return html`<div class="modal-bg"><div class="modal" style="max-width:560px">
+    <h2>Minha conta</h2>
+    <p class="hint">${user?.email||'sessão de visitante'}${user?.anon?' (visitante — sem senha)':''}</p>
+    ${err && html`<div class="banner err" style="margin:0 0 12px">${err}</div>`}
+    ${msg && html`<div class="banner warn" style="margin:0 0 12px">${msg}</div>`}
+
+    <!-- identidade -->
+    <div class="card" style="margin-bottom:12px">
+      <div class="field-label">Nome de exibição</div>
+      <div class="row" style="gap:6px">
+        <input class="txtin" value=${name} onInput=${e=>setName(e.target.value)} placeholder="como você aparece nas codificações" />
+        <button class="btn sm" disabled=${!name.trim()||name===user?.name} onClick=${saveName}>salvar</button>
+      </div>
+    </div>
+
+    <!-- senha (só para contas com e-mail) -->
+    ${user && !user.anon && user.email && html`<div class="card" style="margin-bottom:12px">
+      <div class="field-label">Alterar senha</div>
+      <div class="field"><input class="txtin" type="password" value=${pw1} onInput=${e=>setPw1(e.target.value)} placeholder="nova senha (mín. 6)" /></div>
+      <div class="field" style="margin-bottom:8px"><input class="txtin" type="password" value=${pw2} onInput=${e=>setPw2(e.target.value)} placeholder="repita a nova senha" /></div>
+      <button class="btn sm primary" disabled=${busy||!pw1||!pw2} onClick=${savePw}>${busy?'...':'Alterar senha'}</button>
+    </div>`}
+
+    <!-- projetos -->
+    <div class="field-label" style="margin-bottom:6px">Meus projetos</div>
+    ${list.length===0 && html`<div class="card"><span class="meta">Você ainda não tem projetos.</span></div>`}
+    <div style="max-height:260px;overflow:auto">
+      ${list.map(p=>{ const admin = p.role==='admin';
+        return html`<div class="card" key=${p.code||p.id} style="margin-bottom:6px;padding:10px 12px">
+          ${editId===p.id
+            ? html`<div class="row" style="gap:6px">
+                <input class="txtin" value=${editName} onInput=${e=>setEditName(e.target.value)} />
+                <button class="btn sm" onClick=${async()=>{ await onRename(p.id, editName.trim()||p.name); setEditId(null); }}>salvar</button>
+                <button class="btn sm ghost" onClick=${()=>setEditId(null)}>cancelar</button>
+              </div>`
+            : html`<div class="row" style="gap:8px;align-items:center">
                 <div style="flex:1;min-width:0">
-                  <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.display_name||'anônimo'}${isMe?' (você)':''}</div>
-                  <div class="meta">${m.role==='admin'?'administrador':'membro'}</div>
+                  <div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.name||'(sem nome)'}</div>
+                  <div class="meta">código ${p.code} · ${p.mode==='individual'?'individual':'coletivo'}${admin?' · admin':''}</div>
                 </div>
-                ${isAdmin && html`<button class="btn sm ghost"
-                    disabled=${m.role==='admin' && isLastAdmin}
-                    title=${m.role==='admin' && isLastAdmin ? 'O projeto precisa de ao menos um administrador' : ''}
-                    onClick=${()=>onSetRole(m.user_id, m.role==='admin'?'member':'admin')}>
-                    ${m.role==='admin'?'tornar membro':'tornar admin'}</button>`}
-                ${isMe
-                  ? html`<button class="btn sm ghost" style="color:var(--danger)" onClick=${()=>onRemoveMember(m.user_id)}>sair</button>`
-                  : isAdmin && html`<button class="icon-btn" title="Remover do projeto"
-                      disabled=${m.role==='admin' && isLastAdmin}
-                      onClick=${()=>{ if(confirm(`Remover ${m.display_name||'este membro'} do projeto?`)) onRemoveMember(m.user_id); }}>🗑</button>`}
-              </div>`;
-            })}
-          </div>`}
+                <button class="btn sm" onClick=${()=>onOpen(p)}>abrir</button>
+                ${admin && html`<button class="icon-btn" title="renomear" onClick=${()=>{ setEditId(p.id); setEditName(p.name||''); }}>✎</button>`}
+                ${admin
+                  ? html`<button class="icon-btn" style="color:var(--danger)" title="excluir projeto" onClick=${()=>onDelete(p.id)}>🗑</button>`
+                  : html`<button class="btn sm ghost" style="color:var(--danger)" title="sair do projeto" onClick=${()=>onLeave(p.id)}>sair</button>`}
+              </div>`}
+        </div>`; })}
+    </div>
 
-          ${project && isAdmin && html`<div class="field">
-            <div class="field-label">Projeto</div>
-            <div class="row" style="gap:6px">
-              <input class="txtin" value=${pname} onInput=${e=>setPname(e.target.value)} placeholder="nome do projeto" />
-              <button class="btn sm" disabled=${!pname.trim()||pname===project.name} onClick=${()=>onRenameProject(pname.trim())}>renomear</button>
-            </div>
-            <button class="btn sm ghost" style="color:var(--danger);margin-top:8px" onClick=${onDeleteProject}>Excluir projeto definitivamente</button>
-          </div>`}
-
-          <p class="hint" style="margin-top:12px">Para voltar ao modo local (sem servidor), limpe a conexão.</p>
-          <button class="btn ghost" onClick=${onClearCloud}>Desconectar do Supabase</button>
-        </div>`}
     <div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn" onClick=${onClose}>Fechar</button></div>
   </div></div>`;
 }
