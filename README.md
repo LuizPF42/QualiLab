@@ -2,7 +2,7 @@
 
 **o seu laboratório de pesquisa qualitativa / your own lab for qualitative research**
 
-QualiLab é uma ferramenta **gratuita e de código aberto** para análise qualitativa de dados. Ela roda inteira em um único arquivo `index.html` — sem instalação, sem servidor próprio, sem assinatura.
+QualiLab é uma ferramenta **gratuita e de código aberto** para análise qualitativa de dados. Roda inteira em um único arquivo `index.html` — sem instalação, sem servidor próprio, sem assinatura.
 
 > Inspirado pelo excelente trabalho do **[Taguette](https://www.taguette.org/about.html)**, do **[Magnolia](https://www.caledavis.eu/magnolia.html)** e do **[QualCoder](https://github.com/ccbogel/qualcoder)**, projetos que merecem todo o seu reconhecimento. Se você usa ou aprecia ferramentas abertas para pesquisa qualitativa, visite os projetos deles e considere contribuir — são as referências que tornaram o QualiLab possível.
 
@@ -41,7 +41,7 @@ Cada categoria pode ter descrição/instrução e habilitar as opções **"Não 
 
 - **Codificação** — leitor à esquerda com grifos coloridos; painéis de categorias e de códigos à direita. Filtro **"Ver:"** para alternar entre camadas (individual, por codificador, final).
 - **Reconciliação** — agrupa as codificações que se sobrepõem no mesmo código, mostra quantos codificadores concordam e permite **consolidar** na camada final (gabarito).
-- **Visualização** — navegação por código à esquerda; trechos do código selecionado à direita, em tipografia legível, agrupados por documento. Filtro por categoria e cruzamento por co-ocorrência.
+- **Visualização** — navegação por código à esquerda; trechos do código selecionado à direita, em tipografia legível, agrupados por documento. Filtro por categoria e cruzamento por co-ocorrência de até 2 códigos.
 - **Gráficos** — frequência de códigos, distribuição por categoria (gabarito), heatmap código × categoria, produção por codificador e concordância entre codificadores.
 
 ### Codificação colaborativa em camadas
@@ -52,55 +52,70 @@ Ao criar um projeto você escolhe:
 - **Individual** — uso solo; tudo vai direto para a camada final, sem etapa de reconciliação.
 - **Coletivo** — múltiplos pesquisadores codificam de forma independente e reconciliam depois.
 
+O tipo pode ser alterado depois pelo administrador (convertendo Coletivo → Individual de forma irreversível, colapsando todas as codificações num único autor).
+
+### Gestão de projeto e membros
+A **pílula do projeto** no cabeçalho abre o hub de gestão: código de convite para colaboradores, tipo do projeto, lista de membros com papéis (admin/membro), renomear, limpar conteúdo, excluir e configuração de conexão.
+
 ### Importação e exportação
 
 | Formato | Importa | Exporta | Notas |
 |---|:---:|:---:|---|
-| **QDPX** (REFI-QDA) | ✅ | ✅ | Interoperável com ATLAS.ti, MAXQDA, NVivo, Quirkos, Taguette, QualCoder. |
+| **QDPX** (REFI-QDA) | ✅ | ✅ | Interoperável com ATLAS.ti, MAXQDA, NVivo, Quirkos, Taguette, QualCoder. Na exportação, prefere a camada final (gabarito) quando consolidada. |
 | **CSV — trechos** | — | ✅ | Um trecho por linha, com documento, código, camada e autor. |
 | **CSV — atributos** | — | ✅ | Um documento por linha, com os valores de cada categoria. |
 | **JSON** | — | ✅ | Projeto completo com camadas e autores. |
-
-### Modo coletivo (nuvem)
-Quando configurado com um projeto **Supabase**, o QualiLab passa a oferecer:
-- Login por e-mail/senha (ou acesso como visitante)
-- Tela **Meus Projetos** com histórico
-- Sincronização **em tempo real** (Realtime) entre pesquisadores
-- Controle de papéis: **admin** (define esquema e gabarito) e **membro** (preenche e codifica)
-- Gestão completa: renomear, excluir projeto, adicionar/remover membros, promover admins
 
 ---
 
 ## Como funciona
 
-O QualiLab abre em um de dois modos:
+O QualiLab opera em três modos, escolhidos automaticamente ou pelo usuário:
 
-- **Local** — sem servidor. Dados ficam no `localStorage` do navegador. Funciona offline. Ideal para uso individual.
-- **Nuvem** — usa **Supabase** (Postgres + Auth + Realtime). Projetos, documentos, códigos e codificações ficam na conta e são compartilhados por um código de projeto.
+| Modo | Armazenamento | Indicador | Quando usar |
+|---|---|---|---|
+| **Arquivo local** | Arquivo `.qualilab` no disco | `arquivo ·` | Dados sensíveis, uso offline, ambientes sem rede |
+| **Local** | `localStorage` do navegador | `local ·` | Uso rápido sem configuração |
+| **Nuvem** | Supabase (Postgres + Auth) | `nuvem ·` | Equipes colaborativas, múltiplos dispositivos |
 
-O modo é determinado pela presença das credenciais do Supabase no arquivo ou nas configurações em tempo de execução (botão **⚙**).
+### Modo arquivo — para dados sensíveis
+
+No modo arquivo, o projeto é salvo como um arquivo `.qualilab` (JSON) **visível no sistema de arquivos** — em qualquer pasta, HD externo, volume criptografado ou servidor institucional. Zero tráfego de rede. Zero localStorage. Funciona completamente offline.
+
+- Disponível em **Chrome e Edge** (File System Access API). Firefox e Safari usam o modo local.
+- Na tela inicial, clique em **"Novo arquivo…"** ou **"Abrir arquivo…"** para começar.
+- O app reabre automaticamente o último arquivo na próxima sessão (com permissão do navegador).
+- Ideal para entrevistas clínicas, dados judiciais, pesquisas com aprovação de CEP que exijam ambiente air-gapped.
+
+### Modo nuvem — robusto a falhas de rede
+
+- Codificações e valores de categoria que falham por queda de rede vão para uma **fila local** (IndexedDB) em vez de serem perdidos.
+- O cabeçalho mostra `offline · N pendente(s)` em âmbar quando sem conexão e `sincronizando…` ao reconectar.
+- A fila é enviada automaticamente quando a conexão é restaurada.
 
 ---
 
-## Executando
+## Executando localmente
 
-Não há etapa de build. Basta servir o `index.html`:
+Não há etapa de build. Basta abrir o arquivo:
 
-```bash
-# Python
-python -m http.server 8000
-
-# Node
-npx serve .
+**Opção mais simples** — acesse diretamente em:
+```
+https://luizpf42.github.io/QualiLab
 ```
 
-Abra `http://localhost:8000`. Abrir pelo `file://` também funciona na maioria dos navegadores, mas servir via HTTP evita bloqueios de CORS.
+**Para rodar offline** com um servidor local (evita bloqueios de CORS em alguns navegadores):
+```bash
+python -m http.server 8000   # ou: npx serve .
+```
 
-As dependências (Preact, htm, pdf.js, mammoth, JSZip, supabase-js) são carregadas via CDN na primeira utilização — é necessária conexão com a internet.
+**Para dados sensíveis** — baixe o `index.html`, abra no Chrome/Edge e use o modo **Arquivo local** (sem servidor necessário).
+
+As dependências (Preact, htm, pdf.js, mammoth, JSZip, supabase-js) são carregadas via CDN na primeira utilização — conexão com a internet é necessária na primeira vez, mas depois o app funciona com o arquivo já baixado.
 
 ---
 
-## Configuração da nuvem
+## Configuração da nuvem (Supabase)
 
 Para ativar o modo coletivo é necessário um projeto **Supabase** gratuito.
 
@@ -113,7 +128,7 @@ let SUPABASE_URL  = "https://SEU-PROJETO.supabase.co";
 let SUPABASE_ANON_KEY = "SUA_ANON_KEY";
 ```
 
-A `anon key` é pública por design e fica protegida pelas políticas de RLS. Você também pode informá-la pelo botão **⚙** dentro do app.
+A `anon key` é pública por design e fica protegida pelas políticas de RLS. Você também pode informá-la em tempo de execução pela pílula do projeto → Conexão.
 
 ### 2. Banco de dados
 
@@ -136,9 +151,8 @@ Sem build, sem bundler, sem framework pesado.
 - **PDF**: [pdf.js](https://github.com/mozilla/pdf.js)
 - **DOCX**: [mammoth](https://github.com/mwilliamson/mammoth.js)
 - **QDPX**: [JSZip](https://stuk.github.io/jszip/)
+- **Armazenamento local**: File System Access API + IndexedDB (nativos do navegador)
 - **Nuvem** (opcional): [Supabase](https://supabase.com/)
-
-O app é intencionalmente **um único arquivo** (`index.html`) com HTML, CSS e JavaScript. Fácil de inspecionar, copiar, hospedar e modificar.
 
 ```
 QualiLab/
@@ -174,22 +188,4 @@ MIT License — livre para usar, modificar e distribuir, com ou sem fins comerci
 
 ```
 Copyright (c) 2026 Luiz Pimenta Filho
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
 ```
