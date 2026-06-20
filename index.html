@@ -1811,11 +1811,18 @@ function VizNav({ cats, codes, allCodings, allValues, docs, layer, catFilter, se
     return s;
   }, [docs, allValues, catFilter]);
 
+  // contagem direta por código + agregada nos ancestrais (família mostra a soma de todos os subcódigos)
   const countByCode = useMemo(()=>{
-    const m={};
-    layerCodings.filter(c=>matchingDocIds.has(c.document_id)).forEach(c=>{ m[c.code_id]=(m[c.code_id]||0)+1; });
-    return m;
-  }, [layerCodings, matchingDocIds]);
+    const direct={};
+    layerCodings.filter(c=>matchingDocIds.has(c.document_id)).forEach(c=>{ direct[c.code_id]=(direct[c.code_id]||0)+1; });
+    const parentOf = {}; codes.forEach(c=>{ parentOf[c.id]=c.parent_id; });
+    const agg = {...direct};
+    Object.entries(direct).forEach(([codeId,n])=>{
+      let p = parentOf[codeId];
+      while(p){ agg[p]=(agg[p]||0)+n; p = parentOf[p]; }
+    });
+    return agg;
+  }, [layerCodings, matchingDocIds, codes]);
 
   const hasFilter = Object.values(catFilter).some(Boolean);
 
@@ -1907,11 +1914,23 @@ function VizExcerpts({ docs, codes, codeById, codePath, allCodings, allValues,
     return s;
   }, [docs, allValues, catFilter]);
 
+  // codigo selecionado + todos os seus descendentes (familia agrega os subcodigos)
+  const selWithDescendants = useMemo(()=>{
+    if(!selCode) return new Set();
+    const ids = new Set([selCode]);
+    let added = true;
+    while(added){
+      added = false;
+      codes.forEach(c=>{ if(c.parent_id && ids.has(c.parent_id) && !ids.has(c.id)){ ids.add(c.id); added = true; } });
+    }
+    return ids;
+  }, [selCode, codes]);
+
   const excerpts = useMemo(()=>{
     if(!selCode) return [];
     const extra = [...new Set((crossCodes||[]).filter(Boolean))];
     return layerCodings
-      .filter(c=> c.code_id===selCode && matchingDocIds.has(c.document_id))
+      .filter(c=> selWithDescendants.has(c.code_id) && matchingDocIds.has(c.document_id))
       .filter(c=>{
         if(!extra.length) return true;
         return extra.every(xid=>
@@ -1922,7 +1941,7 @@ function VizExcerpts({ docs, codes, codeById, codePath, allCodings, allValues,
         const na=docById[a.document_id]?.name||'', nb=docById[b.document_id]?.name||'';
         return na>nb?1:na<nb?-1:a.span_start-b.span_start;
       });
-  }, [selCode, crossCodes, layerCodings, matchingDocIds, docById]);
+  }, [selCode, crossCodes, layerCodings, matchingDocIds, docById, selWithDescendants]);
 
   const byDoc = useMemo(()=>{
     const g={};
@@ -1968,9 +1987,18 @@ function VizExcerpts({ docs, codes, codeById, codePath, allCodings, allValues,
         <button class="btn sm" title="Abrir no leitor" onClick=${()=>onJump&&onJump(docId)}>${docById[docId]?.name||docId}</button>
         <span class="count">${cods.length}</span>
       </div>
-      ${cods.map(c=>html`<div key=${c.id} class="card"
-          style=${`margin-bottom:8px;padding:0;overflow:hidden;display:flex;border-left:3px solid ${col.solid}`}>
+      ${cods.map(c=>{
+        // quando a seleção agrega subcódigos (família), cada trecho mostra a cor/caminho do seu código específico (folha)
+        const codeObj = codeById[c.code_id];
+        const codeCol = c.code_id===selCode ? col : codeColor(codeObj?.hue??selCodeObj?.hue??0, codeObj?.depth??selCodeObj?.depth??0);
+        const showSubPath = c.code_id!==selCode;
+        return html`<div key=${c.id} class="card"
+          style=${`margin-bottom:8px;padding:0;overflow:hidden;display:flex;border-left:3px solid ${codeCol.solid}`}>
         <div style="flex:1;padding:12px 14px;min-width:0">
+          ${showSubPath && html`<div class="row" style="gap:6px;margin-bottom:6px">
+            <span class="swatch" style=${`background:${codeCol.solid}`}></span>
+            <span class="meta" style="font-weight:600">${codePath(c.code_id).join(' ▸ ')}</span>
+          </div>`}
           <div class="reader" style="padding:0;font-size:16px;white-space:normal;margin-bottom:8px">${c.quote}</div>
           <div class="row" style="gap:8px">
             ${c.author_name && html`<span class="author">${c.author_name}</span>`}
@@ -1978,7 +2006,7 @@ function VizExcerpts({ docs, codes, codeById, codePath, allCodings, allValues,
             <button class="icon-btn" onClick=${()=>onDelCoding(c.id)} title="remover">🗑</button>
           </div>
         </div>
-      </div>`)}
+      </div>`; })}
     </div>`)}
   </div>`;
 }
