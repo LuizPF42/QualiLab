@@ -150,13 +150,26 @@ try {
   SUPABASE_ANON_KEY = SUPABASE_ANON_KEY || localStorage.getItem('lastro:key') || "";
 } catch(e){}
 
-/* ============ CORES (matiz = familia, luminosidade = profundidade) ============ */
+/* ============ CORES (matiz = familia, luminosidade = profundidade) ============
+   hueDeg (opcional, 0-359): cor personalizada definida na familia (nivel 0) e
+   copiada para os descendentes na criacao/cascata. Quando ausente, usa a
+   paleta automatica (HUES[hue]). */
 const HUES = [210, 28, 150, 350, 268, 184, 322, 70];
-function codeColor(hue, depth){
-  const H = HUES[((hue % HUES.length)+HUES.length)%HUES.length];
+function codeColor(hue, depth, hueDeg){
+  const H = (hueDeg!=null) ? ((hueDeg%360)+360)%360 : HUES[((hue % HUES.length)+HUES.length)%HUES.length];
   const solidL = Math.min(70, 32 + depth*13);
   const bgL = Math.min(94, 86 + depth*3);
   return { solid:`hsl(${H} 58% ${solidL}%)`, tint:`hsl(${H} 55% ${bgL}%)`, H };
+}
+/* extrai o matiz (0-359) de um hex, sem encaixar na paleta fixa (usado p/ cor personalizada) */
+function hexToHue(hex){
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex||'');
+  if(!m) return 0;
+  const r=parseInt(m[1],16)/255, g=parseInt(m[2],16)/255, b=parseInt(m[3],16)/255;
+  const mx=Math.max(r,g,b), mn=Math.min(r,g,b), d=mx-mn;
+  let h=0;
+  if(d!==0){ if(mx===r) h=((g-b)/d)%6; else if(mx===g) h=(b-r)/d+2; else h=(r-g)/d+4; h*=60; if(h<0) h+=360; }
+  return Math.round(h);
 }
 
 /* ============ TIPOS DE CATEGORIA ============
@@ -261,7 +274,8 @@ function download(name,text,mime){ const b=new Blob([text],{type:mime}); const u
    codigo -> Code (hierarquico); trecho codificado -> PlainTextSelection + Coding. */
 function buildCodeXml(code, byParent){
   const kids = byParent[code.id] || [];
-  const hex = hslToHex(HUES[((code.hue%HUES.length)+HUES.length)%HUES.length], 58, Math.min(70,32+code.depth*13));
+  const H = (code.hue_deg!=null) ? ((code.hue_deg%360)+360)%360 : HUES[((code.hue%HUES.length)+HUES.length)%HUES.length];
+  const hex = hslToHex(H, 58, Math.min(70,32+code.depth*13));
   return `<Code guid="${stripGuid(code.id)}" name="${xmlEsc(code.name)}" isCodable="true" color="${hex}">`
     + kids.map(k=>buildCodeXml(k, byParent)).join('')
     + `</Code>`;
@@ -1091,15 +1105,24 @@ function App(){
   async function delCategory(id){ await store.deleteCategory(id); setCats(x=>x.filter(c=>c.id!==id)); setValues(v=>v.filter(x=>x.category_id!==id)); }
 
   async function addCode(parent, customName){
-    let hue, depth;
-    if(parent){ hue = parent.hue; depth = parent.depth+1; }
-    else { const tops = codes.filter(c=>!c.parent_id); hue = tops.length % HUES.length; depth = 0; }
+    let hue, depth, hueDeg;
+    if(parent){ hue = parent.hue; depth = parent.depth+1; hueDeg = parent.hue_deg ?? null; }
+    else { const tops = codes.filter(c=>!c.parent_id); hue = tops.length % HUES.length; depth = 0; hueDeg = null; }
     const name = customName?.trim() || (parent?'subcódigo':'nova família');
-    const c = await store.addCode(project.id,{ parent_id: parent?parent.id:null, name, hue, depth, position: codes.length });
+    const c = await store.addCode(project.id,{ parent_id: parent?parent.id:null, name, hue, depth, hue_deg:hueDeg, position: codes.length });
     setCodes(x=>[...x,c]); setSelCode(c.id);
     return c;
   }
   async function updCode(id,patch){ await store.updateCode(id,patch); setCodes(x=>x.map(c=>c.id===id?{...c,...patch}:c)); }
+  // cor personalizada: so o nivel 0 escolhe; a cascata propaga para todos os descendentes
+  async function setCodeColor(rootCode, hex){
+    const hueDeg = hex ? hexToHue(hex) : null;
+    const ids = new Set([rootCode.id]);
+    let added = true;
+    while(added){ added=false; codes.forEach(c=>{ if(c.parent_id && ids.has(c.parent_id) && !ids.has(c.id)){ ids.add(c.id); added=true; } }); }
+    for(const id of ids) await store.updateCode(id, { hue_deg: hueDeg });
+    setCodes(x=>x.map(c=>ids.has(c.id) ? {...c, hue_deg:hueDeg} : c));
+  }
   async function delCode(id){ await store.deleteCode(id); loadProject(store,project.id); loadDoc(); }
   function closeCtxMenu(){ setCtxMenu(null); setCtxCreating(false); setCtxNewName(''); setCtxNewParent(''); }
   async function ctxCreateAndApply(){
@@ -1367,7 +1390,7 @@ function App(){
                 if(run.codings.length===0) return html`<span key=${i} data-start=${run.start}>${run.text}</span>`;
                 const top = run.codings[run.codings.length-1];
                 const code = codeById[top.code_id];
-                const col = code ? codeColor(code.hue, code.depth) : codeColor(0,0);
+                const col = code ? codeColor(code.hue, code.depth, code.hue_deg) : codeColor(0,0);
                 const title = run.codings.map(c=>codePath(c.code_id).join(' ▸ ')+' ('+c.author_name+')').join('  |  ');
                 return html`<span key=${i} data-start=${run.start} data-c="1" title=${title}
                    style=${`background:${col.tint};border-bottom:2px solid ${col.solid}`}>${run.text}</span>`;
@@ -1390,7 +1413,7 @@ function App(){
                  onSet=${setValue} onAdd=${addCategory} onUpd=${updCategory} onDel=${delCategory} />`}
           ${rtab==='codigos' && html`<${CodesPanel} codes=${codes} codeById=${codeById} count=${codingCount} sel=${sel}
                  selCode=${selCode} setSelCode=${setSelCode} codePath=${codePath}
-                 onAdd=${addCode} onDel=${delCode} onApply=${applyCode} onUpd=${updCode}
+                 onAdd=${addCode} onDel=${delCode} onApply=${applyCode} onUpd=${updCode} onSetColor=${setCodeColor}
                  store=${store} project=${project} reload=${()=>loadProject(store,project.id)} />`}
         </div>
       </aside>
@@ -1480,7 +1503,7 @@ function App(){
       <div style="padding:7px 12px;font-size:11px;color:var(--ink-faint);border-bottom:1px solid var(--line-soft);font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px">"${ctxMenu.sel.quote}"</div>
       ${orderedCodes.length===0 && !ctxCreating
         ? html`<div style="padding:9px 12px;color:var(--ink-faint);font-size:12.5px">Nenhum código criado ainda.</div>`
-        : orderedCodes.map(c=>{ const col=codeColor(c.hue,c.depth); return html`<button key=${c.id} onClick=${()=>applyCode(c.id, ctxMenu.sel)} style=${`padding-left:${12+c.depth*14}px`}>
+        : orderedCodes.map(c=>{ const col=codeColor(c.hue,c.depth,c.hue_deg); return html`<button key=${c.id} onClick=${()=>applyCode(c.id, ctxMenu.sel)} style=${`padding-left:${12+c.depth*14}px`}>
             <span class="swatch" style=${`background:${col.solid};display:inline-block;margin-right:7px;vertical-align:middle`}></span>${c.name}
           </button>`; })}
       <div style="border-top:1px solid var(--line-soft)">
@@ -1770,7 +1793,7 @@ function CategoryValue({ cat, v, onSet }){
 }
 
 /* ============ PAINEL DE CODIGOS (tags de trecho, hierarquicas) ============ */
-function CodesPanel({ codes, codeById, count, sel, selCode, setSelCode, codePath, onAdd, onDel, onApply, onUpd, store, project, reload }){
+function CodesPanel({ codes, codeById, count, sel, selCode, setSelCode, codePath, onAdd, onDel, onApply, onUpd, onSetColor, store, project, reload }){
   const tops = codes.filter(c=>!c.parent_id);
   const childrenOf = (id)=>codes.filter(c=>c.parent_id===id);
   const selected = selCode ? codeById[selCode] : null;
@@ -1794,7 +1817,7 @@ function CodesPanel({ codes, codeById, count, sel, selCode, setSelCode, codePath
 
     ${selected && html`<div class="card" style="margin-top:12px">
       <div class="crumb">${codePath(selected.id).join(' ▸ ')}</div>
-      <${RenameCode} code=${selected} onUpd=${onUpd} />
+      <${RenameCode} code=${selected} onUpd=${onUpd} onSetColor=${onSetColor} />
     </div>`}
   </div>`;
 }
@@ -1855,7 +1878,7 @@ function Reconcile({ activeDoc, codings, coders, codeById, codePath, cats, value
     <p class="hint">Cada grupo reúne as codificações que se sobrepõem com o mesmo código. Consolide os que devem entrar na camada <b>final</b> do projeto.${totalCoders>1?` ${totalCoders} codificadores neste documento.`:''}</p>
     ${groups.length===0 && html`<div class="card"><span class="meta">Nenhuma codificação individual neste documento ainda.</span></div>`}
     ${groups.map(g=>{
-      const code = codeById[g.codeId]; const col = code?codeColor(code.hue,code.depth):codeColor(0,0);
+      const code = codeById[g.codeId]; const col = code?codeColor(code.hue,code.depth,code.hue_deg):codeColor(0,0);
       const coderIds = [...new Set(g.items.map(i=>i.created_by))];
       const fin = finalFor(g);
       const consensus = coderIds.length>=totalCoders && totalCoders>1;
@@ -1970,7 +1993,7 @@ function VizNav({ cats, codes, allCodings, allValues, docs, layer, catFilter, se
 function VizCodeNode({ code, childrenOf, counts, sel, onSel, depthPad }){
   const [open,setOpen]=useState(false);
   const kids = childrenOf(code.id);
-  const col = codeColor(code.hue, code.depth);
+  const col = codeColor(code.hue, code.depth, code.hue_deg);
   const isSel = sel===code.id;
   return html`<div class="node">
     <div class="node-row ${isSel?'sel':''}" style=${`padding-left:${6+depthPad*16}px;cursor:pointer`}
@@ -2054,7 +2077,7 @@ function VizExcerpts({ docs, codes, codeById, codePath, allCodings, allValues,
     <div>Clique em um código à esquerda para ver os trechos codificados de todo o projeto.</div>
   </div>`;
 
-  const col = codeColor(selCodeObj?.hue||0, selCodeObj?.depth||0);
+  const col = codeColor(selCodeObj?.hue||0, selCodeObj?.depth||0, selCodeObj?.hue_deg);
 
   return html`<div class="section" style="max-width:820px;margin:0 auto">
 
@@ -2087,7 +2110,7 @@ function VizExcerpts({ docs, codes, codeById, codePath, allCodings, allValues,
       ${cods.map(c=>{
         // quando a seleção agrega subcódigos (família), cada trecho mostra a cor/caminho do seu código específico (folha)
         const codeObj = codeById[c.code_id];
-        const codeCol = c.code_id===selCode ? col : codeColor(codeObj?.hue??selCodeObj?.hue??0, codeObj?.depth??selCodeObj?.depth??0);
+        const codeCol = c.code_id===selCode ? col : codeColor(codeObj?.hue??selCodeObj?.hue??0, codeObj?.depth??selCodeObj?.depth??0, codeObj?.hue_deg??selCodeObj?.hue_deg);
         const showSubPath = c.code_id!==selCode;
         return html`<div key=${c.id} class="card"
           style=${`margin-bottom:8px;padding:0;overflow:hidden;display:flex;border-left:3px solid ${codeCol.solid}`}>
@@ -2171,7 +2194,7 @@ function MemoNav({ project, docs, codes, memos, sel, onSel }){
 function MemoCodeNode({ code, childrenOf, sel, onSel, hasMemo, depthPad }){
   const [open,setOpen]=useState(false);
   const kids = childrenOf(code.id);
-  const col = codeColor(code.hue, code.depth);
+  const col = codeColor(code.hue, code.depth, code.hue_deg);
   const isSel = sel.scope==='code' && sel.targetId===code.id;
   return html`<div class="node">
     <div class="node-row ${isSel?'sel':''}" style=${`padding-left:${6+depthPad*16}px;cursor:pointer`}
@@ -2239,7 +2262,7 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
   // 1) frequência de códigos
   const freqItems = useMemo(()=>{
     const f={}; cod.forEach(c=>{ f[c.code_id]=(f[c.code_id]||0)+1; });
-    return codes.filter(c=>f[c.id]).map(c=>({ key:c.id, label:codePath(c.id).join(' ▸ '), value:f[c.id], color:codeColor(c.hue,c.depth).solid }))
+    return codes.filter(c=>f[c.id]).map(c=>({ key:c.id, label:codePath(c.id).join(' ▸ '), value:f[c.id], color:codeColor(c.hue,c.depth,c.hue_deg).solid }))
       .sort((a,b)=>b.value-a.value);
   }, [cod, codes, codePath]);
 
@@ -2283,7 +2306,7 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
   }, [indiv]);
   const agreeItems = useMemo(()=>{
     const m={}; indiv.forEach(c=>{ (m[c.code_id]=m[c.code_id]||new Set()).add(coderKey(c)); });
-    return codes.filter(c=>m[c.id]).map(c=>({ key:c.id, label:codePath(c.id).join(' ▸ '), value:m[c.id].size, color:codeColor(c.hue,c.depth).solid }))
+    return codes.filter(c=>m[c.id]).map(c=>({ key:c.id, label:codePath(c.id).join(' ▸ '), value:m[c.id].size, color:codeColor(c.hue,c.depth,c.hue_deg).solid }))
       .sort((a,b)=>b.value-a.value);
   }, [indiv, codes, codePath]);
 
@@ -2347,7 +2370,7 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
 function TreeNode({ code, childrenOf, count, sel, selCode, setSelCode, onApply, onDel, store, reload, depthPad }){
   const [open,setOpen]=useState(true);
   const kids = childrenOf(code.id);
-  const col = codeColor(code.hue, code.depth);
+  const col = codeColor(code.hue, code.depth, code.hue_deg);
   const isSel = selCode===code.id;
   const appliable = !!sel;
   return html`<div class="node">
@@ -2364,12 +2387,22 @@ function TreeNode({ code, childrenOf, count, sel, selCode, setSelCode, onApply, 
       store=${store} reload=${reload} depthPad=${depthPad+1} />`)}
   </div>`;
 }
-function RenameCode({ code, onUpd }){
+function RenameCode({ code, onUpd, onSetColor }){
   const [v,setV]=useState(code.name);
   useEffect(()=>setV(code.name),[code.id]);
-  return html`<div class="row" style="gap:6px;margin-top:6px">
-    <input class="txtin" value=${v} onInput=${e=>setV(e.target.value)} />
-    <button class="btn sm" onClick=${()=>onUpd(code.id,{name:v})}>renomear</button>
+  const col = codeColor(code.hue, code.depth, code.hue_deg);
+  const hexNow = hslToHex(col.H, 58, 32); // cor "base" (nível 0) para o seletor nativo
+  return html`<div>
+    <div class="row" style="gap:6px;margin-top:6px">
+      <input class="txtin" value=${v} onInput=${e=>setV(e.target.value)} />
+      <button class="btn sm" onClick=${()=>onUpd(code.id,{name:v})}>renomear</button>
+    </div>
+    ${code.depth===0 && html`<div class="row" style="gap:6px;margin-top:6px;align-items:center">
+      <span class="meta">Cor da família</span>
+      <input type="color" value=${hexNow} onChange=${e=>onSetColor(code, e.target.value)}
+        style="width:34px;height:30px;padding:2px;border:1px solid var(--line);border-radius:6px;cursor:pointer" title="Cor personalizada (propaga para os subcódigos)" />
+      ${code.hue_deg!=null && html`<button class="btn sm ghost" onClick=${()=>onSetColor(code, null)}>usar cor automática</button>`}
+    </div>`}
   </div>`;
 }
 
