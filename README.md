@@ -10,9 +10,9 @@ QualiLab é uma ferramenta **gratuita e de código aberto** para análise qualit
 
 ## Motivação
 
-Ferramentas de análise qualitativa — ATLAS.ti, MAXQDA, NVivo — são poderosas, mas caras e fechadas. Pesquisadoras e pesquisadores sem acesso a financiamento institucional ficam excluídos de recursos básicos para o seu trabalho.
+Ferramentas de análise qualitativa — ATLAS.ti, MAXQDA, NVivo — são poderosas, mas sofrem de três problemas combinados: são **caras e fechadas**, têm uma **curva de aprendizado íngreme** que consome horas antes de qualquer análise começar, e oferecem pouco suporte a **categorias fechadas** (atributos estruturados por documento), obrigando pesquisadores a manter planilhas paralelas para o que deveria estar integrado.
 
-O QualiLab não resolve tudo, mas oferece um ponto de partida leve e aberto: codificação hierárquica de trechos, atributos por documento, reconciliação colaborativa e exportação em formato aberto (QDPX), tudo rodando no navegador.
+O QualiLab busca ser o mais intuitivo possível: você carrega um documento, seleciona um trecho e já codifica — sem configuração prévia. Ao mesmo tempo, oferece um esquema de categorias nativo (texto fechado, múltipla escolha, caixa de seleção, data, texto livre) que convive com a codificação de trechos de forma integrada, no mesmo ambiente. Quem precisa conciliar análise temática com coleta estruturada de atributos não precisa mais alternar entre ferramentas.
 
 ---
 
