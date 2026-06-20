@@ -220,10 +220,10 @@ Copyright (c) 2026 Luiz Pimenta Filho
 
 ## To-dos
 
-- [ ] Incluir ferramenta para anonimização incorporada
+- [ ] Incluir ferramenta para anonimização automática / autotimizada
 - [ ] Melhorar gráficos
   - [ ] Cards "síntese" (número de documentos, tipo, códigos, etc.)
   - [ ] Distribuição por famílias analíticas
   - [ ] Análises textuais automatizadas (similaridade, coocorrência, redes textuais)
-  - [ ] Pipeline de publicação de relatórios próprios por pesquisador / pesquisa
-  - [ ] Integração de IA (?) — em avaliação; ferramentas de QDA costumam dividir opiniões sobre IA, o uso teria que ser opt-in e transparente
+- [ ] Pipeline de publicação de relatórios próprios por pesquisador / pesquisa
+- [ ] Integração de IA (?) — em avaliação; ferramentas de QDA costumam dividir opiniões sobre IA, o uso teria que ser opt-in e transparente
