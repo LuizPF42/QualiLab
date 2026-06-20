@@ -37,10 +37,13 @@ Ferramenta de análise qualitativa (QDA) que roda **inteira em um único arquivo
 ## Arquitetura
 
 ### Stores (padrão de abstração)
-Duas implementações do mesmo "interface", escolhidas no boot conforme haja credenciais Supabase:
+Três implementações do mesmo "interface":
 
-- **`LocalStore()`** — tudo em `localStorage` (`lastro:local`). Usuário único, sempre `admin`.
-- **`SupabaseStore(sb)`** — Postgres via supabase-js, com RLS.
+- **`LocalStore()`** — `localStorage` (`lastro:local`). Fallback sem credenciais e sem suporte a File System Access API. Limite 5MB.
+- **`createFileStore(fileHandle, isNew)`** — **File System Access API**. Salva um `.qualilab` (JSON) visível no disco. Zero rede, funciona offline/air-gapped. Só Chrome/Edge. O `fileHandle` é persistido no IndexedDB (`IDB.saveHandle`) para reabrir na próxima sessão.
+- **`SupabaseStore(sb)`** — Postgres via supabase-js, com RLS. Tem fila de escrita (`withQueue`) via IndexedDB para tolerar falhas de rede; `store.onPendingChange(cb)` notifica o App do contador de pendências; `store.flush()` é chamado ao reconectar (`window.online`).
+
+Helper `IDB` — wrapper mínimo sobre IndexedDB com dois stores: `write_queue` (fila de escritas pendentes do SupabaseStore) e `file_handles` (persistência do FileSystemFileHandle entre sessões).
 
 O `App` só fala com `store.<método>()`, nunca com Supabase direto. Métodos principais:
 

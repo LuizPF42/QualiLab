@@ -481,6 +481,99 @@ async function importQDPX(file, store, projectId){
   };
 }
 
+/* ============ IDB HELPER (IndexedDB p/ fila de escrita + handle de arquivo) ============ */
+const IDB = {
+  _db: null,
+  async open(){
+    if(this._db) return this._db;
+    return new Promise((res,rej)=>{
+      const r = indexedDB.open('qualilab_meta',1);
+      r.onupgradeneeded = e=>{
+        const d=e.target.result;
+        if(!d.objectStoreNames.contains('write_queue')) d.createObjectStore('write_queue',{keyPath:'id',autoIncrement:true});
+        if(!d.objectStoreNames.contains('file_handles')) d.createObjectStore('file_handles',{keyPath:'key'});
+      };
+      r.onsuccess = e=>{ this._db=e.target.result; res(this._db); };
+      r.onerror = ()=>rej(r.error);
+    });
+  },
+  async tx(store,mode,fn){ const db=await this.open(); return new Promise((res,rej)=>{ const t=db.transaction(store,mode); t.onerror=()=>rej(t.error); const r=fn(t.objectStore(store)); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); },
+  async enqueue(item){ return this.tx('write_queue','readwrite',s=>s.add(item)); },
+  async dequeue(id){ return this.tx('write_queue','readwrite',s=>s.delete(id)); },
+  async allQueued(){ const db=await this.open(); return new Promise((res,rej)=>{ const t=db.transaction('write_queue','readonly'); const r=t.objectStore('write_queue').getAll(); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); },
+  async saveHandle(key,handle){ return this.tx('file_handles','readwrite',s=>s.put({key,handle})); },
+  async getHandle(key){ try{ return await this.tx('file_handles','readonly',s=>s.get(key)); }catch(e){ return null; } },
+};
+
+/* ============ FILE STORE (File System Access API — arquivo .qualilab no disco) ============
+   Zero dependência de rede. O projeto é um arquivo JSON visível no sistema de arquivos.
+   Funciona offline, file://, ambientes air-gapped, HDs criptografados.
+   Requer Chrome/Edge (File System Access API). Firefox/Safari: não disponível. */
+async function createFileStore(fileHandle, isNew){
+  let db = { _meta:{name:'Projeto',mode:'individual',displayName:'pesquisador'}, documents:[], categories:[], doc_values:[], codes:[], codings:[] };
+  if(!isNew){
+    const file = await fileHandle.getFile();
+    try{ const parsed=JSON.parse(await file.text()); if(parsed.documents) db=parsed; }catch(e){}
+  }
+  let name = db._meta?.displayName || 'pesquisador';
+  const save = async ()=>{
+    try{ db._meta.displayName=name; const w=await fileHandle.createWritable(); await w.write(JSON.stringify(db,null,2)); await w.close(); }
+    catch(e){ console.warn('Falha ao salvar arquivo:',e); }
+  };
+  const P = v=>Promise.resolve(v);
+  if(isNew) await save();
+  // persiste o fileHandle no IDB para reabrir na próxima sessão
+  await IDB.saveHandle('lastro:file', fileHandle).catch(()=>{});
+  return {
+    mode:'file', fileName:fileHandle.name,
+    async init(display){ name=display||name; return {id:'file-user',name,email:null,anon:false}; },
+    currentUser(){ return {id:'file-user',name,email:null,anon:false}; },
+    async changePassword(){ throw new Error('Modo arquivo: sem conta de usuário'); },
+    async changeDisplayName(n){ name=n||name; db._meta.displayName=name; await save(); },
+    async createProject(pn){ db._meta={...db._meta,id:'file-project',name:pn||fileHandle.name.replace(/\.qualilab$/i,''),code:'FILE',mode:'individual'}; await save(); return {id:'file-project',name:db._meta.name,code:'FILE',created_by:'file-user',mode:'individual'}; },
+    async joinProject(){ return {id:'file-project',name:db._meta?.name||'Projeto',code:'FILE',created_by:'file-user',mode:db._meta?.mode||'individual'}; },
+    async listMyProjects(){ return null; },
+    async myRole(){ return 'admin'; },
+    async listMembers(){ return [{user_id:'file-user',display_name:name,role:'admin',joined_at:null}]; },
+    async setMemberRole(){}, async removeMember(){},
+    async renameProject(pid,pn){ db._meta.name=pn; await save(); },
+    async deleteProject(){ db={_meta:db._meta,documents:[],categories:[],doc_values:[],codes:[],codings:[]}; await save(); },
+    async setProjectMode(pid,pmode){ db._meta.mode=pmode; await save(); },
+    realtime(){ return ()=>{}; },
+    listDocuments(){ return P(db.documents.slice()); },
+    async addDocument(pid,{id,name:dn,content}){ const d={id:id||uid(),name:dn,content,created_at:new Date().toISOString()}; db.documents.push(d); await save(); return d; },
+    async deleteDocument(id){ db.documents=db.documents.filter(d=>d.id!==id); db.doc_values=db.doc_values.filter(v=>v.document_id!==id); db.codings=db.codings.filter(c=>c.document_id!==id); await save(); },
+    async clearProject(){ db.documents=[]; db.categories=[]; db.doc_values=[]; db.codes=[]; db.codings=[]; await save(); },
+    listCategories(){ return P(db.categories.slice().sort((a,b)=>a.position-b.position)); },
+    async addCategory(pid,cat){ const c={id:uid(),position:db.categories.length,...cat}; db.categories.push(c); await save(); return c; },
+    async updateCategory(id,patch){ db.categories=db.categories.map(c=>c.id===id?{...c,...patch}:c); await save(); },
+    async deleteCategory(id){ db.categories=db.categories.filter(c=>c.id!==id); db.doc_values=db.doc_values.filter(v=>v.category_id!==id); await save(); },
+    async getDocValues(docId){ return db.doc_values.filter(v=>v.document_id===docId); },
+    async setDocValue(pid,docId,catId,value){ db.doc_values=db.doc_values.filter(v=>!(v.document_id===docId&&v.category_id===catId&&v.layer==='final')); if(value!=='') db.doc_values.push({id:uid(),document_id:docId,category_id:catId,value,set_by:'file-user',author_name:name,layer:'final'}); await save(); },
+    async setFinalValue(pid,docId,catId,value){ db.doc_values=db.doc_values.filter(v=>!(v.document_id===docId&&v.category_id===catId&&v.layer==='final')); if(value!=='') db.doc_values.push({id:uid(),document_id:docId,category_id:catId,value,set_by:'file-user',author_name:name,layer:'final'}); await save(); },
+    listCodes(){ return P(db.codes.slice().sort((a,b)=>a.depth-b.depth||a.position-b.position)); },
+    async addCode(pid,code){ const c={id:uid(),position:db.codes.length,...code}; db.codes.push(c); await save(); return c; },
+    async updateCode(id,patch){ db.codes=db.codes.map(c=>c.id===id?{...c,...patch}:c); await save(); },
+    async deleteCode(id){ const kill=new Set([id]); let added=true; while(added){added=false; db.codes.forEach(c=>{if(c.parent_id&&kill.has(c.parent_id)&&!kill.has(c.id)){kill.add(c.id);added=true;}});} db.codes=db.codes.filter(c=>!kill.has(c.id)); db.codings=db.codings.filter(c=>!kill.has(c.code_id)); await save(); },
+    async listCodings(pid,docId){ return db.codings.filter(c=>c.document_id===docId); },
+    async addCoding(pid,co){ const c={id:uid(),author_name:name,created_at:new Date().toISOString(),...co}; db.codings.push(c); await save(); return c; },
+    async deleteCoding(id){ db.codings=db.codings.filter(c=>c.id!==id); await save(); },
+  };
+}
+/* verifica suporte e reabre último arquivo */
+const supportsFileAPI = typeof window!=='undefined' && 'showSaveFilePicker' in window;
+async function reopenLastFile(){
+  if(!supportsFileAPI) return null;
+  try{
+    const rec = await IDB.getHandle('lastro:file');
+    if(!rec) return null;
+    const perm = await rec.handle.queryPermission({mode:'readwrite'});
+    if(perm==='granted') return rec.handle;
+    const req = await rec.handle.requestPermission({mode:'readwrite'});
+    return req==='granted' ? rec.handle : null;
+  }catch(e){ return null; }
+}
+
 /* ============ STORE LOCAL (navegador) ============ */
 function LocalStore(){
   let db = { documents:[], categories:[], doc_values:[], codes:[], codings:[] };
@@ -529,8 +622,28 @@ function SupabaseStore(sb){
   let user=null, name='anonimo';
   const must = (r)=>{ if(r.error) throw r.error; return r.data; };
   const nameOf = (u, fallback)=> (u && u.user_metadata && u.user_metadata.name) || fallback || name;
+
+  /* fila de escrita: tentativas que falharam por rede ficam no IDB e são reprocessadas */
+  let _pendingCount = 0;
+  let _onPendingChange = null; // callback → App pode mostrar contador
+  const setPending = (n)=>{ _pendingCount=n; _onPendingChange?.(n); };
+  const withQueue = async (key, fn)=>{
+    try{ const r = await fn(); setPending(Math.max(0,_pendingCount-1)); return r; }
+    catch(e){
+      const isNet = !navigator.onLine || String(e?.message||'').match(/fetch|network|failed/i);
+      if(isNet){ await IDB.enqueue({key,ts:Date.now()}).catch(()=>{}); setPending(_pendingCount+1); return; }
+      throw e;
+    }
+  };
+  const flushQueue = async ()=>{
+    const items = await IDB.allQueued().catch(()=>[]);
+    for(const it of items){ try{ await it.fn?.(); await IDB.dequeue(it.id); setPending(Math.max(0,_pendingCount-1)); }catch(e){} }
+  };
   return {
     mode:'cloud',
+    onPendingChange(cb){ _onPendingChange=cb; },
+    pendingCount(){ return _pendingCount; },
+    async flush(){ await flushQueue(); },
     // apenas carrega a sessao existente (se houver); nao cria sessao anonima automaticamente
     async init(display){
       const { data:{ session } } = await sb.auth.getSession();
@@ -617,13 +730,12 @@ function SupabaseStore(sb){
     async deleteCode(id){ must(await sb.from('codes').delete().eq('id',id)); },
     async listCodings(pid,docId){ return must(await sb.from('codings').select('*').eq('project_id',pid).eq('document_id',docId)); },
     async addCoding(pid,co){
-      // se o chamador fornece created_by explicitamente (mesmo null), respeita; senao usa user.id
       const hasCB = Object.prototype.hasOwnProperty.call(co,'created_by');
       const row = {project_id:pid, created_by:user.id, author_name:name, ...co};
       if(hasCB && co.created_by===null) row.created_by = null;
-      return must(await sb.from('codings').insert(row).select().single());
+      return withQueue('addCoding:'+row.id, ()=>must(sb.from('codings').insert(row).select().single()));
     },
-    async deleteCoding(id){ must(await sb.from('codings').delete().eq('id',id)); },
+    async deleteCoding(id){ return withQueue('delCoding:'+id, ()=>must(sb.from('codings').delete().eq('id',id))); },
     // sincronizacao ao vivo: dispara onChange a cada alteracao em codings/doc_values do projeto
     realtime(projectId, onChange){
       const ch = sb.channel('qualilab:'+projectId)
@@ -640,6 +752,8 @@ function App(){
   const wantCloud = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
   const [store, setStore] = useState(null);
   const [mode, setMode] = useState(wantCloud ? 'cloud' : 'local');
+  // modo derivado inclui 'file' quando o store ativo é FileStore
+  const effectiveMode = store?.mode==='file' ? 'file' : mode;
   const [phase, setPhase] = useState('boot');     // boot | auth | gate | work
   const [err, setErr] = useState(null);
   const [project, setProject] = useState(null);
@@ -673,6 +787,8 @@ function App(){
   const [projEdit, setProjEdit] = useState(false); // editar tipo do projeto (pelo pill)
   const [expOpen, setExpOpen] = useState(false);
   const [busy, setBusy] = useState(null);
+  const [online, setOnline] = useState(navigator.onLine);
+  const [pending, setPending] = useState(0); // escritas em fila (cloud offline)
   const [importMsg, setImportMsg] = useState(null);
   const [role, setRole] = useState('member');  // papel do usuário no projeto: admin | member
   const [members, setMembers] = useState([]);   // membros do projeto (gestão de admins)
@@ -727,6 +843,16 @@ function App(){
 
   const openProject = (p)=>{ setProject(p); setProjectMode(p.mode||'collective'); };
 
+  /* online / offline + flush da fila de escrita ao recuperar conexão */
+  useEffect(()=>{
+    const goOnline = ()=>{ setOnline(true); if(store?.flush) store.flush(); };
+    const goOffline = ()=>setOnline(false);
+    window.addEventListener('online', goOnline);
+    window.addEventListener('offline', goOffline);
+    if(store?.onPendingChange) store.onPendingChange(setPending);
+    return ()=>{ window.removeEventListener('online',goOnline); window.removeEventListener('offline',goOffline); };
+  }, [store]);
+
   /* apos autenticar (sessao existente ou login): reentra no projeto salvo ou vai pro gate */
   async function afterAuth(st, display){
     setUser(st.currentUser());
@@ -752,11 +878,20 @@ function App(){
         setUser(st.currentUser());
         await afterAuth(st, display);
       } else {
-        const st = LocalStore(); setStore(st);
-        const display = (()=>{ try{return localStorage.getItem('lastro:name')||'pesquisador';}catch(e){return 'pesquisador';} })();
-        await st.init(display);
-        setUser(st.currentUser());
-        const p = await st.createProject(); openProject(p); setPhase('work');
+        // tenta reabrir o último arquivo .qualilab antes de cair no localStorage
+        const lastHandle = await reopenLastFile();
+        if(lastHandle){
+          const st = await createFileStore(lastHandle, false); setStore(st);
+          const display = (()=>{ try{return localStorage.getItem('lastro:name')||'pesquisador';}catch(e){return 'pesquisador';} })();
+          const u = await st.init(display); setUser({...u,anon:false});
+          const p = await st.joinProject(); openProject(p); setPhase('work');
+        } else {
+          const st = LocalStore(); setStore(st);
+          const display = (()=>{ try{return localStorage.getItem('lastro:name')||'pesquisador';}catch(e){return 'pesquisador';} })();
+          await st.init(display);
+          setUser(st.currentUser());
+          const p = await st.createProject(); openProject(p); setPhase('work');
+        }
       }
     }catch(e){ setErr(String(e.message||e)); setPhase(wantCloud?'auth':'work'); }
   })(); }, []); // eslint-disable-line
@@ -1040,9 +1175,24 @@ function App(){
     onAnon=${async (disp)=>{ try{ const u=await store.signInAnon(disp); try{localStorage.setItem('lastro:name',disp);}catch(e){} setErr(null); await afterAuth(store, disp); }catch(e){ setErr(String(e.message||e)); } }}
   />`;
 
+  const openFileProject = async (isNew)=>{
+    if(!supportsFileAPI) return;
+    try{
+      const fh = isNew
+        ? await window.showSaveFilePicker({ suggestedName:'projeto.qualilab', types:[{description:'QualiLab',accept:{'application/json':['.qualilab']}}] })
+        : await window.showOpenFilePicker({ types:[{description:'QualiLab',accept:{'application/json':['.qualilab']}}], multiple:false }).then(r=>r[0]);
+      const st = await createFileStore(fh, isNew); setStore(st);
+      const display = (()=>{ try{return localStorage.getItem('lastro:name')||'pesquisador';}catch(e){return 'pesquisador';} })();
+      const u = await st.init(display); setUser({...u,anon:false});
+      const p = isNew ? await st.createProject(fh.name.replace(/\.qualilab$/i,''), display) : await st.joinProject();
+      openProject(p); setPhase('work');
+    }catch(e){ if(e?.name!=='AbortError') setErr(String(e.message||e)); }
+  };
+
   if(phase==='gate') return html`<div>
     <${Gate}
       err=${err} user=${user} projects=${myProjects} mode=${mode} onAccount=${()=>setAccount(true)}
+      onOpenFile=${()=>openFileProject(false)} onNewFile=${()=>openFileProject(true)}
       onOpen=${async (proj)=>{ try{ const p=await store.joinProject(proj.code, user?.name||''); try{localStorage.setItem('lastro:project',JSON.stringify(p));}catch(e){} pushRecent(p); openProject(p); setPhase('work'); }catch(e){ setErr(String(e.message||e)); } }}
       onCreate=${async (n,disp,pmode)=>{ try{ try{localStorage.setItem('lastro:name',disp);}catch(e){} const p=await store.createProject(n,disp,pmode); try{localStorage.setItem('lastro:project',JSON.stringify(p));}catch(e){} pushRecent(p); setUser(store.currentUser()); openProject(p); setPhase('work'); }catch(e){ setErr(String(e.message||e)); } }}
       onJoin=${async (code,disp)=>{ try{ try{localStorage.setItem('lastro:name',disp);}catch(e){} const p=await store.joinProject(code,disp); try{localStorage.setItem('lastro:project',JSON.stringify(p));}catch(e){} pushRecent(p); setUser(store.currentUser()); openProject(p); setPhase('work'); }catch(e){ setErr(String(e.message||e)); } }}
@@ -1066,12 +1216,14 @@ function App(){
       <div class="grow"></div>
       ${project && html`<button class="pill ${mode==='cloud'?'mode-cloud':''}" style="cursor:pointer"
         title="Gerenciar projeto" onClick=${()=>setProjEdit(true)}>
-        ${mode==='cloud'?'nuvem':'local'} · ${project.name}${mode==='cloud'?` · ${project.code}`:''} · ${projectMode==='individual'?'individual':'coletivo'} ▾
+        ${store?.mode==='file'?'arquivo':mode==='cloud'?'nuvem':'local'} · ${project.name}${mode==='cloud'?` · ${project.code}`:''} · ${projectMode==='individual'?'individual':'coletivo'} ▾
       </button>`}
       ${user && (mode==='cloud'
         ? html`<button class="btn sm ghost" title=${'Minha conta'+(user.email?' · '+user.email:'')} onClick=${()=>setAccount(true)}>${user.name}${user.anon?' (visitante)':''}</button>`
         : html`<span class="meta">${user.name}</span>`)}
       ${mode==='cloud' && html`<button class="btn sm ghost" onClick=${()=>{ try{localStorage.removeItem('lastro:project');}catch(e){} setProject(null); setPhase('gate'); }}>trocar projeto</button>`}
+      ${mode==='cloud' && !online && html`<span class="pill" style="background:#FEF3C7;border-color:#D97706;color:#92400E;font-size:11px">offline${pending>0?` · ${pending} pendente${pending>1?'s':''}`:''}</span>`}
+      ${mode==='cloud' && online && pending>0 && html`<span class="pill" style="font-size:11px">sincronizando…</span>`}
       ${mode==='cloud' && user && html`<button class="btn sm ghost" onClick=${async()=>{ try{localStorage.removeItem('lastro:project');}catch(e){} try{ await store.signOut(); }catch(e){} setProject(null); setUser(null); setDocs([]); setActiveId(null); setPhase('auth'); }}>sair</button>`}
       ${project && docs.length>0 && html`<div style="position:relative">
         <button class="btn sm" onClick=${()=>setExpOpen(o=>!o)}>exportar ▾</button>
@@ -1285,7 +1437,7 @@ function Auth({ onSignIn, onSignUp, onAnon, err }){
 }
 
 /* ============ GATE (Meus Projetos + criar / entrar em projeto) ============ */
-function Gate({ onCreate, onJoin, onOpen, err, user, projects, mode, onAccount }){
+function Gate({ onCreate, onJoin, onOpen, onOpenFile, onNewFile, err, user, projects, mode, onAccount }){
   const [name,setName]=useState(user?.name||'');
   const [pname,setPname]=useState('');
   const [pmode,setPmode]=useState('individual'); // individual | collective
@@ -1342,6 +1494,16 @@ function Gate({ onCreate, onJoin, onOpen, err, user, projects, mode, onAccount }
       <div class="row"><input class="txtin" value=${code} onInput=${e=>setCode(e.target.value)} placeholder="ex: 9F2A1C" style="text-transform:uppercase" />
         <button class="btn" onClick=${()=>onJoin(code,name)}>Entrar</button></div>
     </div>
+
+    ${supportsFileAPI && html`<div class="card" style="border-style:dashed">
+      <div class="field-label">Arquivo local <span class="pill" style="font-size:10px;vertical-align:middle">privado</span></div>
+      <p class="hint" style="margin:0 0 8px">O projeto fica salvo como um arquivo <b>.qualilab</b> no seu computador — sem nuvem, sem rede, sem localStorage. Ideal para dados sensíveis.</p>
+      <div class="row" style="gap:8px">
+        <button class="btn sm" onClick=${onOpenFile}>Abrir arquivo…</button>
+        <button class="btn sm ghost" onClick=${onNewFile}>Novo arquivo…</button>
+      </div>
+    </div>`}
+    ${!supportsFileAPI && html`<p class="hint" style="text-align:center">Arquivo local disponível no Chrome/Edge. Use Firefox/Safari com o modo nuvem ou local.</p>`}
   </div></div>`;
 }
 
