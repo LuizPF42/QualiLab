@@ -57,6 +57,14 @@ O tipo pode ser alterado depois pelo administrador (convertendo Coletivo → Ind
 ### Gestão de projeto e membros
 A **pílula do projeto** no cabeçalho abre o hub de gestão: código de convite para colaboradores, tipo do projeto, lista de membros com papéis (admin/membro), renomear, limpar conteúdo, excluir e configuração de conexão.
 
+### Conta e login (modo nuvem)
+No modo nuvem, a tela inicial pede login por **e-mail e senha** (com cadastro direto na mesma tela) ou **"Continuar como visitante"** para testar sem criar conta — sessões de visitante ficam vinculadas ao dispositivo, sem sincronizar entre aparelhos.
+
+Clicando no seu nome no cabeçalho, a tela **Minha Conta** permite:
+- Trocar o nome de exibição (usado nas codificações).
+- Alterar a senha (contas com e-mail).
+- Ver todos os seus projetos em um só lugar, com ações diretas: abrir, renomear (admin), sair ou excluir (admin) — sem precisar entrar em cada um.
+
 ### Importação e exportação
 
 | Formato | Importa | Exporta | Notas |
@@ -87,11 +95,11 @@ No modo arquivo, o projeto é salvo como um arquivo `.qualilab` (JSON) **visíve
 - O app reabre automaticamente o último arquivo na próxima sessão (com permissão do navegador).
 - Ideal para entrevistas clínicas, dados judiciais, pesquisas com aprovação de CEP que exijam ambiente air-gapped.
 
-### Modo nuvem — robusto a falhas de rede
+### Modo nuvem — status de conexão
 
-- Codificações e valores de categoria que falham por queda de rede vão para uma **fila local** (IndexedDB) em vez de serem perdidos.
-- O cabeçalho mostra `offline · N pendente(s)` em âmbar quando sem conexão e `sincronizando…` ao reconectar.
-- A fila é enviada automaticamente quando a conexão é restaurada.
+- O cabeçalho mostra um indicador `offline` em âmbar quando a conexão cai.
+- Operações de escrita (codificar, preencher categoria) exigem rede ativa. Sem conexão, elas falham — dados já salvos não são corrompidos, mas a ação em andamento não se completa.
+- Uma fila de reenvio automático para escritas feitas offline está planejada, mas ainda não está ativa nesta versão.
 
 ---
 
