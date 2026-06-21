@@ -2486,7 +2486,7 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
 }
 
 function SchemaTreeNode({ code, childrenOf, count, selCode, setSelCode, selectedIds, onToggleSelect, onDel, depthPad }){
-  const [open,setOpen]=useState(true);
+  const [open,setOpen]=useState(false);
   const kids = childrenOf(code.id);
   const col = codeColor(code.hue, code.depth, code.hue_deg);
   const isSel = selCode===code.id;
@@ -3109,7 +3109,7 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
 }
 
 function TreeNode({ code, childrenOf, count, sel, selCode, setSelCode, onApply, onDel, store, reload, depthPad }){
-  const [open,setOpen]=useState(true);
+  const [open,setOpen]=useState(false);
   const kids = childrenOf(code.id);
   const col = codeColor(code.hue, code.depth, code.hue_deg);
   const isSel = selCode===code.id;
