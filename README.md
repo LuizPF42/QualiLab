@@ -102,6 +102,13 @@ No modo arquivo, o projeto é salvo como um arquivo `.qualilab` (JSON) **visíve
 - O app reabre automaticamente o último arquivo na próxima sessão (com permissão do navegador).
 - Ideal para entrevistas clínicas, dados judiciais, pesquisas com aprovação de CEP que exijam ambiente air-gapped.
 
+### Modo local — backup automático em pasta
+
+No modo local (`localStorage`, limite de 5-10MB), você pode ativar um **backup automático**: o app passa a manter um arquivo `backup-automatico.qualilab` sempre atualizado numa pasta do seu computador — por exemplo, a mesma pasta onde está o `index.html`. É um espelho redundante, não o armazenamento principal: continua salvando no navegador normalmente, e também escreve esse arquivo em segundo plano a cada mudança (com uma pequena pausa antes de gravar, maior em projetos grandes, pra não travar a aba).
+
+- Ative em **pílula do projeto → Backup automático em pasta → Escolher pasta…** (disponível em Chrome e Edge).
+- Se o app não conseguir salvar de verdade (`localStorage` cheio, navegador sem suporte), um aviso vermelho aparece na tela com um atalho pra baixar o projeto na hora — isso não depende do backup automático estar ativado.
+
 ### Modo nuvem — status de conexão
 
 - O cabeçalho mostra um indicador `offline` em âmbar quando a conexão cai.

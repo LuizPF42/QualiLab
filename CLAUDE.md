@@ -49,6 +49,8 @@ Três implementações do mesmo "interface":
 
 **`store.onSaveError(cb)`** (`LocalStore`/`createFileStore`, mesmo padrão de `onPendingChange`): `localStorage.setItem`/`fileHandle.createWritable()` podem falhar (quota — geralmente 5-10MB — esgotada, storage desabilitado, permissão de arquivo revogada, disco removido) e isso **sempre passou em silêncio** (`catch(e){}` vazio) — o usuário continuava trabalhando sem saber que nada mais estava sendo persistido, só descobria ao reabrir e ver os dados faltando. Agora `save()` chama `_onSaveError(e)` no catch e `_onSaveError(null)` em todo save bem-sucedido (limpa o aviso quando o problema é resolvido); o `App` assina isso (junto com `onPendingChange`, no mesmo `useEffect`) em `saveError`, e mostra um banner vermelho persistente (sem botão de fechar — só desaparece quando um save volta a funcionar) com atalho pra baixar `.qualilab` na hora.
 
+**Backup automático em pasta** (`LocalStore.enableFolderBackup()`/`disableFolderBackup()`/`onBackupStatus(cb)`, só modo local): espelho redundante do `localStorage` num arquivo `backup-automatico.qualilab` numa pasta escolhida pelo pesquisador (File System Access API — `showDirectoryPicker`, handle persistido no IDB igual ao `fileHandle` do modo arquivo). Não é o modo arquivo (que já é o disco, sempre escreve) — é um extra pra quem está em modo local e quer um arquivo visível também, sem trocar de modo. **Debounce escalado pelo tamanho do JSON** (`backupDebounceMs`: 5s/<5MB, 15s/<20MB, 30s/<50MB, 60s/≥50MB) — escrever o projeto inteiro a cada mudança travaria a aba em projetos grandes; acima de 50MB só acende `warnLarge` no status, continua tentando (sem teto que desliga). Reaproveita o `JSON.stringify(db)` já calculado pro `localStorage`, não serializa de novo. Permissão de pasta pode "expirar" entre sessões (`queryPermission` deixa de ser `'granted'`) — não tenta `requestPermission()` sem gesto do usuário (falharia silenciosamente ou pediria de novo sem contexto); só sinaliza no status pra o usuário reativar manualmente.
+
 Helper `IDB` — wrapper mínimo sobre IndexedDB com dois stores: `write_queue` (fila de escritas pendentes do SupabaseStore) e `file_handles` (persistência do FileSystemFileHandle entre sessões).
 
 O `App` só fala com `store.<método>()`, nunca com Supabase direto. Métodos principais:
@@ -67,6 +69,8 @@ listCodes · addCode · updateCode · deleteCode
 listCodings(pid,docId) · addCoding(pid,co) · deleteCoding(id)
 listMemos(pid) · setMemo(pid,scope,targetId,content,authorName)
 beginBatch() · endBatch()   // só Local/FileStore (suprime save por item)
+onSaveError(cb)             // Local/FileStore (avisa falha silenciosa de gravação)
+enableFolderBackup() · disableFolderBackup() · onBackupStatus(cb)   // só LocalStore
 realtime(pid,onChange)      // só SupabaseStore
 ```
 

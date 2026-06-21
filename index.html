@@ -973,6 +973,7 @@ async function createFileStore(fileHandle, isNew){
 }
 /* verifica suporte e reabre último arquivo */
 const supportsFileAPI = typeof window!=='undefined' && 'showSaveFilePicker' in window;
+const supportsDirAPI = typeof window!=='undefined' && 'showDirectoryPicker' in window;
 async function reopenLastFile(){
   if(!supportsFileAPI) return null;
   try{
@@ -999,17 +1000,68 @@ function LocalStore(){
   // usuario fizesse depois ficava salvo de fato. _onSaveError avisa o App pra mostrar um
   // banner persistente, em vez de descobrir so quando reabrir e os dados nao estarem la.
   let _onSaveError = null;
+
+  // backup automatico em pasta (File System Access API) — espelho redundante do localStorage
+  // numa pasta escolhida pelo pesquisador (ex.: a mesma do index.html), so modo local (modo
+  // arquivo ja E o disco, modo nuvem ja tem backup no servidor). Escrever o projeto inteiro a
+  // cada mudanca trava a aba em projetos grandes, entao o debounce escala pelo tamanho —
+  // pequeno escreve rapido, grande espera mais — em vez de tentar escrever sempre que algo
+  // muda. Acima de 50MB so avisa (warnLarge) que pode ficar lento, mas continua tentando.
+  let backupHandle = null, backupTimer = null;
+  let backupStatus = { active:false, name:null, lastOk:null, lastError:null, warnLarge:false };
+  let _onBackupStatus = null;
+  const notifyBackup = ()=> _onBackupStatus?.({...backupStatus});
+  (async ()=>{ // tenta restaurar a pasta escolhida numa sessao anterior, sem pedir de novo se a permissao ainda valer
+    try{
+      const rec = await IDB.getHandle('lastro:backupdir');
+      if(!rec) return;
+      const perm = await rec.handle.queryPermission({mode:'readwrite'});
+      if(perm==='granted'){ backupHandle = rec.handle; backupStatus = { ...backupStatus, active:true, name:rec.handle.name }; }
+      else { backupStatus = { ...backupStatus, name:rec.handle.name, lastError:'permissão perdida — reative' }; }
+      notifyBackup();
+    }catch(e){}
+  })();
+  const backupDebounceMs = (chars)=> chars>50e6 ? 60000 : chars>20e6 ? 30000 : chars>5e6 ? 15000 : 5000;
+  const writeBackup = async (json)=>{
+    if(!backupHandle) return;
+    try{
+      const fh = await backupHandle.getFileHandle('backup-automatico.qualilab', {create:true});
+      const w = await fh.createWritable(); await w.write(json); await w.close();
+      backupStatus = { ...backupStatus, lastOk:new Date().toISOString(), lastError:null, warnLarge:json.length>50e6 };
+    }catch(e){ backupStatus = { ...backupStatus, lastError:String(e.message||e) }; }
+    notifyBackup();
+  };
+  const scheduleBackup = (json)=>{ if(!backupHandle) return; clearTimeout(backupTimer); backupTimer=setTimeout(()=>writeBackup(json), backupDebounceMs(json.length)); };
+
   const save = () => {
     if(batching){ dirty = true; return; }
-    try { localStorage.setItem('lastro:local', JSON.stringify(db)); _onSaveError?.(null); }
-    catch(e){ _onSaveError?.(e); }
+    let json;
+    try { json = JSON.stringify(db); localStorage.setItem('lastro:local', json); _onSaveError?.(null); }
+    catch(e){ _onSaveError?.(e); return; }
+    scheduleBackup(json);
   };
   const P = (v)=>Promise.resolve(v);
   return {
     mode:'local',
     onSaveError(cb){ _onSaveError=cb; },
+    onBackupStatus(cb){ _onBackupStatus=cb; cb({...backupStatus}); },
+    async enableFolderBackup(){
+      const handle = await window.showDirectoryPicker({mode:'readwrite'});
+      await IDB.saveHandle('lastro:backupdir', handle);
+      backupHandle = handle;
+      backupStatus = { active:true, name:handle.name, lastOk:null, lastError:null, warnLarge:false };
+      notifyBackup();
+      await writeBackup(JSON.stringify(db));
+      return handle.name;
+    },
+    async disableFolderBackup(){
+      backupHandle = null; clearTimeout(backupTimer);
+      backupStatus = { active:false, name:null, lastOk:null, lastError:null, warnLarge:false };
+      try{ await IDB.tx('file_handles','readwrite', s=>s.delete('lastro:backupdir')); }catch(e){}
+      notifyBackup();
+    },
     beginBatch(){ batching = true; },
-    endBatch(){ batching = false; if(dirty){ dirty = false; try { localStorage.setItem('lastro:local', JSON.stringify(db)); _onSaveError?.(null); } catch(e){ _onSaveError?.(e); } } },
+    endBatch(){ batching = false; if(dirty){ dirty = false; let json; try { json=JSON.stringify(db); localStorage.setItem('lastro:local', json); _onSaveError?.(null); } catch(e){ _onSaveError?.(e); return; } scheduleBackup(json); } },
     async init(display){ name = display || name; return { id:'local-user', name }; },
     currentUser(){ return { id:'local-user', name }; },
     async listMemos(){ return db.memos.slice(); },
@@ -1264,6 +1316,7 @@ function App(){
   const [online, setOnline] = useState(navigator.onLine);
   const [pending, setPending] = useState(0); // escritas em fila (cloud offline)
   const [saveError, setSaveError] = useState(null); // ultima falha de gravacao local/arquivo (null = ok)
+  const [backupStatus, setBackupStatus] = useState({ active:false, name:null, lastOk:null, lastError:null, warnLarge:false }); // backup automatico em pasta (so LocalStore)
   const [importMsg, setImportMsg] = useState(null);
   const [role, setRole] = useState('member');  // papel do usuário no projeto: admin | member
   const [members, setMembers] = useState([]);   // membros do projeto (gestão de admins)
@@ -1336,6 +1389,7 @@ function App(){
     window.addEventListener('offline', goOffline);
     if(store?.onPendingChange) store.onPendingChange(setPending);
     if(store?.onSaveError) store.onSaveError(setSaveError);
+    if(store?.onBackupStatus) store.onBackupStatus(setBackupStatus);
     return ()=>{ window.removeEventListener('online',goOnline); window.removeEventListener('offline',goOffline); };
   }, [store]);
 
@@ -1541,6 +1595,11 @@ function App(){
     return c;
   }
   async function updCode(id,patch){ await store.updateCode(id,patch); setCodes(x=>x.map(c=>c.id===id?{...c,...patch}:c)); }
+  async function enableFolderBackup(){
+    if(!store?.enableFolderBackup) return;
+    try{ await store.enableFolderBackup(); }catch(e){ if(e?.name!=='AbortError') setErr('Não foi possível ativar o backup automático: '+(e.message||e)); }
+  }
+  async function disableFolderBackup(){ if(store?.disableFolderBackup) await store.disableFolderBackup(); }
   // cor personalizada: so o nivel 0 escolhe; a cascata propaga para todos os descendentes
   async function setCodeColor(rootCode, hex){
     if(!isAdmin){ setErr('Apenas administradores podem alterar a cor de uma família de código.'); return; }
@@ -2120,7 +2179,9 @@ function App(){
     onSetRole=${changeMemberRole} onRemoveMember=${removeMember}
     onRename=${renameProject} onClear=${()=>{ setProjEdit(false); doClearProject(); }} onDelete=${deleteProject}
     onSaveCloud=${(url,key)=>{ try{localStorage.setItem('lastro:url',url);localStorage.setItem('lastro:key',key);}catch(e){} location.reload(); }}
-    onClearCloud=${()=>{ try{localStorage.removeItem('lastro:url');localStorage.removeItem('lastro:key');localStorage.removeItem('lastro:project');}catch(e){} location.reload(); }} />`}
+    onClearCloud=${()=>{ try{localStorage.removeItem('lastro:url');localStorage.removeItem('lastro:key');localStorage.removeItem('lastro:project');}catch(e){} location.reload(); }}
+    canFolderBackup=${!!store?.enableFolderBackup} backupStatus=${backupStatus}
+    onEnableFolderBackup=${enableFolderBackup} onDisableFolderBackup=${disableFolderBackup} />`}
   `;
 }
 
@@ -3317,7 +3378,7 @@ function AddPaste({ onAdd }){
 /* ============ HUB DO PROJETO (tipo, convite, membros, conexão, zona de perigo) ============ */
 function ProjectModal({ mode, user, project, projectMode, isAdmin, members, hasDocs,
                         onClose, onSetMode, onSetRole, onRemoveMember, onRename, onClear, onDelete,
-                        onSaveCloud, onClearCloud }){
+                        onSaveCloud, onClearCloud, canFolderBackup, backupStatus, onEnableFolderBackup, onDisableFolderBackup }){
   const [sel,setSel]=useState(projectMode);
   const [pname,setPname]=useState(project?.name||'');
   const [copied,setCopied]=useState(false);
@@ -3400,6 +3461,26 @@ function ProjectModal({ mode, user, project, projectMode, isAdmin, members, hasD
         <button class="btn sm ghost" style="color:var(--danger)" onClick=${onDelete}>excluir projeto</button>
       </div>
       <p class="hint" style="margin:8px 0 0">"Limpar conteúdo" apaga documentos, códigos e codificações, mantendo o projeto. "Excluir projeto" remove tudo, definitivamente.</p>
+    </div>`}
+
+    <!-- BACKUP AUTOMÁTICO EM PASTA (só modo local) -->
+    ${canFolderBackup && html`<div class="card" style="margin-bottom:12px">
+      <div class="field-label">Backup automático em pasta</div>
+      <p class="hint" style="margin:0 0 8px">Mantém um <code>backup-automatico.qualilab</code> sempre atualizado numa pasta do seu computador (ex.: a mesma do <code>index.html</code>) — redundante ao que já fica salvo no navegador. Escreve sozinho a cada mudança, com uma pausa antes de gravar (maior quanto maior o projeto, pra não travar a aba).</p>
+      ${!backupStatus?.active
+        ? html`<button class="btn sm" onClick=${onEnableFolderBackup}>Escolher pasta…</button>`
+        : html`<div>
+            <div class="row" style="gap:8px;align-items:center;margin-bottom:6px">
+              <span class="pill" style="font-size:11px">📁 ${backupStatus.name}</span>
+              <button class="btn sm ghost" onClick=${onDisableFolderBackup}>desativar</button>
+            </div>
+            ${backupStatus.lastError
+              ? html`<p class="hint" style="color:var(--danger)">Falha ao gravar o backup: ${backupStatus.lastError}. Clique em "Escolher pasta…" de novo se a permissão tiver expirado.</p>`
+              : backupStatus.lastOk
+                ? html`<p class="hint">Último backup: ${new Date(backupStatus.lastOk).toLocaleString()}</p>`
+                : html`<p class="hint">Aguardando a primeira gravação…</p>`}
+            ${backupStatus.warnLarge && html`<p class="hint" style="color:var(--danger)">Projeto grande (+50MB) — o backup automático pode demorar e travar a aba por um instante a cada gravação. Considere também exportar manualmente de vez em quando.</p>`}
+          </div>`}
     </div>`}
 
     <!-- CONEXÃO -->
