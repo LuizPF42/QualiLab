@@ -73,7 +73,8 @@ Clicando no seu nome no cabeçalho, a tela **Minha Conta** permite:
 | Formato | Importa | Exporta | Notas |
 |---|:---:|:---:|---|
 | **`.qualilab`** (nativo) | ✅ | ✅ | Botão **"salvar .qualilab"** no cabeçalho — baixa o projeto inteiro (documentos, categorias, valores, códigos, codificações e memos) para reabrir no próprio app. Funciona em qualquer modo. |
-| **QDPX** (REFI-QDA) | ✅ | ✅ | Interoperável com ATLAS.ti, MAXQDA, NVivo, Quirkos, Taguette, QualCoder. Na exportação, prefere a camada final (gabarito) quando consolidada. |
+| **QDPX** (REFI-QDA) | ✅ | ✅ | Interoperável com ATLAS.ti, MAXQDA, NVivo, Quirkos, QualCoder. Na exportação, prefere a camada final (gabarito) quando consolidada. Ao importar um `.qdpx` de outra ferramenta (sem a convenção de tipo do QualiLab), tenta inferir categorias fechadas pelos valores repetidos — revise em "Gerenciar esquema de categorias". **Não inclui o Taguette** — ele só exporta o codebook em REFI-QDA (`.qdc`, sem documentos nem trechos). |
+| **`.sqlite3`** (Taguette) | ✅ | — | Lê o projeto nativo do Taguette direto no navegador (via [sql.js](https://github.com/sql-js/sql.js), sem servidor): documentos, tags (com hierarquia por `/` ou `.`, como o próprio Taguette documenta) e trechos codificados. O Taguette não tem atributos de documento nem autor por trecho, então isso não vem no import. |
 | **CSV — trechos** | — | ✅ | Um trecho por linha, com documento, código, camada e autor. |
 | **CSV — atributos** | — | ✅ | Um documento por linha, com os valores de cada categoria. |
 | **JSON** | — | ✅ | Projeto completo com camadas e autores. |
@@ -163,6 +164,7 @@ Sem build, sem bundler, sem framework pesado.
 - **PDF**: [pdf.js](https://github.com/mozilla/pdf.js)
 - **DOCX**: [mammoth](https://github.com/mwilliamson/mammoth.js)
 - **QDPX**: [JSZip](https://stuk.github.io/jszip/)
+- **Import Taguette (`.sqlite3`)**: [sql.js](https://github.com/sql-js/sql.js) (SQLite compilado para WASM)
 - **Armazenamento local**: File System Access API + IndexedDB (nativos do navegador)
 - **Nuvem** (opcional): [Supabase](https://supabase.com/)
 
@@ -186,7 +188,7 @@ O QualiLab foi desenvolvido por **Luiz Pimenta Filho** no âmbito do **LabDados 
 
 As principais inspirações foram:
 
-- **[Taguette](https://www.taguette.org/about.html)** — ferramenta pioneira em QDA aberto, com suporte a múltiplos formatos e exportação QDPX. Se você aprecia pesquisa aberta, visite o projeto e considere uma doação.
+- **[Taguette](https://www.taguette.org/about.html)** — ferramenta pioneira em QDA aberto, com suporte a múltiplos formatos de importação de documentos e exportação do codebook em REFI-QDA (`.qdc`). Se você aprecia pesquisa aberta, visite o projeto e considere uma doação.
 - **[Magnolia](https://www.caledavis.eu/magnolia.html)** — QDA com foco em poder e intuitividade, transcrição de áudio/vídeo e análise de surveys. Um projeto impressionante e totalmente gratuito que merece sua atenção.
 - **[QualCoder](https://github.com/ccbogel/qualcoder)** — QDA maduro e completo (codificação de texto, imagem, áudio e vídeo; relatórios e medidas de concordância), livre e de código aberto. Uma referência robusta para quem precisa de uma ferramenta de desktop full-featured.
 

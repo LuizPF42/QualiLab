@@ -71,7 +71,7 @@ Um componente Preact grande com todo o estado. Fases: `boot | auth | gate | work
 
 ### Mapa do arquivo (aproximado, mude com cuidado)
 1. `<head>`: `showFatal` (tela de erro pré-JS, usa Georgia fixo), `:root` (variáveis de cor/fonte), classes CSS.
-2. Loaders CDN: `getPdfjs/getMammoth/getJSZip/getCreateClient`.
+2. Loaders CDN: `getPdfjs/getMammoth/getJSZip/getCreateClient/getSqlJs`.
 3. **CONFIG**: `SUPABASE_URL` / `SUPABASE_ANON_KEY` (ver abaixo).
 4. `HUES` + `codeColor(hue,depth)` — paleta dos códigos.
 5. Constantes de categoria: `CAT_KINDS`, `CAT_HAS_OPTIONS`, `CAT_MULTI_SEP`, `NAO_INFO`, `OUTROS`, `isSpecialOpt`.
@@ -138,6 +138,16 @@ A **pílula do projeto** no cabeçalho abre o `ProjectModal` (hub: convite/códi
 - **Import remapeia todos os ids** para uuids novos (evita colisão de PK ao reimportar) e grava codings com **`created_by: null`** para que o agrupamento por codificador use `author_name` (e não o uuid de quem importou).
 - **Export** prefere a camada `final` (gabarito) quando existe; senão usa as individuais.
 - **Tipo de categoria (interoperabilidade)**: o próprio `exportQDPX` grava `tipo: <kind> | valores: <opções>` na `Description` da `Variable` — uma convenção nossa, não do padrão REFI-QDA. Um `.qdpx` **estrangeiro** (QualCoder, ATLAS.ti etc.) não tem isso, então `importQDPX` cai numa **heurística de cardinalidade**: olha os valores observados nos `Cases` e, se houver entre 2 e 8 valores distintos **com repetição** (`distinct < total`, ou seja, pelo menos uma resposta usada em mais de um documento), importa como Texto Fechado (`select`) com essas opções; senão, Texto Aberto. O resumo do import informa quantas categorias foram detectadas assim (revisar manualmente se necessário).
+
+## Import Taguette (`.sqlite3`) — `importTaguette`
+
+O Taguette **não** usa QDPX para o projeto completo (só o codebook, em `.qdc`); o projeto inteiro é um banco **SQLite** próprio. `importTaguette` lê esse arquivo no navegador via `getSqlJs()` (sql.js, SQLite→WASM, carregado por CDN como os outros loaders).
+
+- **Helper `all(sql)`**: usa `db.prepare(sql)` + `stmt.step()`/`stmt.getAsObject()` — **não** `db.exec(sql)[0].columns`. Em builds via esm.sh, a propriedade `columns` do resultado de `exec()` vem com nome minificado (`lc`) e falha silenciosamente (`undefined.map`); `getAsObject()` não tem esse problema. Se for tocar nessa função, mantenha o padrão `prepare`/`step`.
+- **Schema relevante** (`taguette/database/models.py` no upstream): `projects`, `documents.contents` (texto puro), `tags.path` (nome do código, hierarquia opcional via pontuação livre — o Taguette aceita qualquer caractere), `highlights` (`start_offset`/`end_offset`/`snippet`), `highlight_tags` (M:N — um trecho pode ter várias tags ao mesmo tempo, cada uma virando uma `coding` separada com o mesmo span).
+- **Hierarquia de código**: aceitamos as duas convenções que o próprio Taguette documenta, `/` e `.`; sem nenhuma das duas, o código fica plano (sem família).
+- **Sem atributos de documento e sem autor por trecho** — o Taguette não tem esses conceitos. `author_name` fica fixo como `'Taguette'`.
+- Se houver mais de um projeto no arquivo, importa o primeiro (sem seletor na UI ainda).
 
 ---
 

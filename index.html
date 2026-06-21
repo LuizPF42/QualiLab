@@ -135,11 +135,17 @@ import htm from 'https://esm.sh/htm@3';
 const html = htm.bind(h);
 
 // carregamento sob demanda (uma falha aqui vira erro tratavel, nao tela em branco)
-let _pdfjs=null, _mammoth=null, _JSZip=null, _createClient=null;
+let _pdfjs=null, _mammoth=null, _JSZip=null, _createClient=null, _SQL=null;
 async function getPdfjs(){ if(!_pdfjs){ _pdfjs=await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.7.76/build/pdf.min.mjs'); try{ _pdfjs.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.7.76/build/pdf.worker.min.mjs'; }catch(e){} } return _pdfjs; }
 async function getMammoth(){ if(!_mammoth){ const m=await import('https://esm.sh/mammoth@1.8.0'); _mammoth=m.default||m; } return _mammoth; }
 async function getJSZip(){ if(!_JSZip){ const m=await import('https://esm.sh/jszip@3.10.1'); _JSZip=m.default||m; } return _JSZip; }
 async function getCreateClient(){ if(!_createClient){ const m=await import('https://esm.sh/@supabase/supabase-js@2'); _createClient=m.createClient; } return _createClient; }
+// sql.js: SQLite compilado para WASM, p/ ler o .sqlite3 nativo do Taguette no navegador
+async function getSqlJs(){
+  if(!_SQL){ const m=await import('https://esm.sh/sql.js@1.14.0'); const initSqlJs=m.default||m;
+    _SQL = await initSqlJs({ locateFile: f=>`https://cdn.jsdelivr.net/npm/sql.js@1.14.0/dist/${f}` }); }
+  return _SQL;
+}
 
 /* ============ CONFIG ============
    Para o modo coletivo (nuvem), preencha as duas linhas abaixo com os dados do
@@ -642,6 +648,120 @@ async function importQualilab(file, store, projectId, projectMode, onProgress){
   };
 }
 
+/* ============ IMPORT .sqlite3 do TAGUETTE ============
+   O Taguette nao usa QDPX/REFI-QDA para o projeto completo (so o codebook, em .qdc) —
+   o projeto inteiro (documentos + tags + trechos) e um banco SQLite proprio. Lemos esse
+   arquivo no navegador via sql.js (SQLite compilado para WASM), sem servidor.
+   Schema relevante (taguette/database/models.py): projects, documents(contents=texto),
+   tags(path=nome com hierarquia opcional via pontuacao livre), highlights(start_offset/
+   end_offset/snippet), highlight_tags (M:N — um trecho pode ter varias tags ao mesmo tempo).
+   Sem atributos de documento e sem autor por trecho: o Taguette nao tem esses conceitos. */
+async function importTaguette(file, store, projectId, projectMode, onProgress){
+  const codLayer = projectMode==='individual' ? 'final' : 'individual';
+  const SQL = await getSqlJs();
+  const buf = new Uint8Array(await file.arrayBuffer());
+  let sdb;
+  try{ sdb = new SQL.Database(buf); }
+  catch(e){ throw new Error('Arquivo .sqlite3 inválido ou corrompido'); }
+
+  // usa Statement.getAsObject() (nao db.exec()[0].columns) — em alguns builds via CDN
+  // (esm.sh) a propriedade "columns" do resultado de exec() vem com o nome minificado,
+  // entao ler por ali falha silenciosamente; getAsObject() ja devolve linha->objeto.
+  const all = (sql)=>{
+    const stmt = sdb.prepare(sql);
+    const rows = [];
+    try{ while(stmt.step()) rows.push(stmt.getAsObject()); }
+    finally{ stmt.free(); }
+    return rows;
+  };
+
+  try{
+    const tableNames = new Set(all("SELECT name FROM sqlite_master WHERE type='table'").map(r=>r.name));
+    for(const need of ['projects','documents','tags','highlights','highlight_tags']){
+      if(!tableNames.has(need)) throw new Error(`Arquivo não parece ser um projeto do Taguette (.sqlite3) — tabela "${need}" não encontrada.`);
+    }
+
+    // se o arquivo tiver mais de um projeto, importa o primeiro (a maioria dos exports do
+    // Taguette e de um unico projeto; nao ha, ainda, escolha de qual importar na interface)
+    const projects = all('SELECT id, name FROM projects ORDER BY id');
+    if(!projects.length) throw new Error('Nenhum projeto encontrado no arquivo .sqlite3.');
+    const srcProjectId = projects[0].id;
+
+    const docsRows = all(`SELECT id, name, contents FROM documents WHERE project_id=${srcProjectId}`);
+    const tagsRows = all(`SELECT id, path FROM tags WHERE project_id=${srcProjectId}`);
+    const docIds = docsRows.map(d=>d.id);
+    const highlightsRows = docIds.length
+      ? all(`SELECT id, document_id, start_offset, end_offset, snippet FROM highlights WHERE document_id IN (${docIds.join(',')})`) : [];
+    const hlIds = highlightsRows.map(h=>h.id);
+    const linkRows = hlIds.length
+      ? all(`SELECT highlight_id, tag_id FROM highlight_tags WHERE highlight_id IN (${hlIds.join(',')})`) : [];
+
+    // documentos
+    const docMap = {};
+    const newDocs = docsRows.map(d=>{ const id=uid(); docMap[d.id]=id; return { id, name:d.name||'documento importado', content:d.contents||'' }; });
+
+    // codigos: hierarquia a partir de tags.path. O Taguette aceita QUALQUER pontuacao como
+    // separador (ex.: "tech.floss" sob "tech"); aceitamos as duas convencoes mais comuns
+    // (documentadas pelo proprio app): "/" e ".". Sem nenhuma das duas, fica um codigo plano.
+    const splitTagPath = (path)=>{
+      const p = String(path||'').trim();
+      if(p.includes('/')) return p.split('/').map(s=>s.trim()).filter(Boolean);
+      if(p.includes('.')) return p.split('.').map(s=>s.trim()).filter(Boolean);
+      return [p || 'código importado'];
+    };
+    const codeByPathKey = {}; // chave = segmentos unidos por \0, dedup de pais compartilhados
+    const newCodes = [];
+    const tagToCodeId = {}; // tag.id (sqlite) -> id do codigo-folha (nosso)
+    let topHue = 0;
+    tagsRows.forEach(t=>{
+      const segs = splitTagPath(t.path);
+      let parentId=null, hue=0;
+      segs.forEach((seg,depth)=>{
+        const key = JSON.stringify(segs.slice(0,depth+1)); // array, nao concatenacao de string — sem ambiguidade de separador
+        let node = codeByPathKey[key];
+        if(!node){
+          if(depth===0){ hue = topHue % HUES.length; topHue++; }
+          node = { id:uid(), parent_id:parentId, name:seg, hue, depth };
+          codeByPathKey[key] = node;
+          newCodes.push(node);
+        }
+        hue = node.hue; parentId = node.id;
+        if(depth===segs.length-1) tagToCodeId[t.id] = node.id;
+      });
+    });
+
+    // codificacoes: cada par (highlight, tag) gera uma coding — um trecho com 2+ tags no
+    // Taguette vira 2+ codings com o mesmo span (mesmo padrao do QDPX p/ Coding multiplo)
+    const tagsByHighlight = {};
+    linkRows.forEach(l=>{ (tagsByHighlight[l.highlight_id]=tagsByHighlight[l.highlight_id]||[]).push(l.tag_id); });
+    const newCodings = [];
+    highlightsRows.forEach(h=>{
+      const docId = docMap[h.document_id]; if(!docId) return;
+      (tagsByHighlight[h.id]||[]).forEach(tagId=>{
+        const codeId = tagToCodeId[tagId]; if(!codeId) return;
+        newCodings.push({ document_id:docId, code_id:codeId, span_start:h.start_offset, span_end:h.end_offset, quote:h.snippet||'' });
+      });
+    });
+
+    const total = newDocs.length + newCodes.length + newCodings.length;
+    const tick = makeProgressTicker(onProgress, total);
+    if(store.beginBatch) store.beginBatch();
+    try{
+      for(const d of newDocs){ await store.addDocument(projectId, d); await tick(); }
+      for(const c of newCodes){ await store.addCode(projectId, { id:c.id, parent_id:c.parent_id, name:c.name, hue:c.hue, depth:c.depth, position:0 }); await tick(); }
+      // Taguette nao registra autor por trecho — sem isso, o agrupamento por codificador
+      // (Graficos/Visualizacao) trata tudo como um unico codificador, "Taguette"
+      for(const c of newCodings){ await store.addCoding(projectId, { created_by:null, layer:codLayer, document_id:c.document_id, code_id:c.code_id, span_start:c.span_start, span_end:c.span_end, quote:c.quote, author_name:'Taguette' }); await tick(); }
+    } finally {
+      if(store.endBatch) await store.endBatch();
+    }
+
+    return { documentos:newDocs.length, codigos:newCodes.length, trechos:newCodings.length, projeto:projects[0].name||'' };
+  } finally {
+    sdb.close();
+  }
+}
+
 /* ============ IDB HELPER (IndexedDB p/ fila de escrita + handle de arquivo) ============ */
 const IDB = {
   _db: null,
@@ -997,6 +1117,7 @@ function App(){
   const [impOpen, setImpOpen] = useState(false);
   const qualilabInputRef = useRef(null);
   const qdpxInputRef = useRef(null);
+  const taguetteInputRef = useRef(null);
   const [busy, setBusy] = useState(null);
   const [progress, setProgress] = useState(null); // {done,total} durante import grande
   const [online, setOnline] = useState(navigator.onLine);
@@ -1434,6 +1555,27 @@ function App(){
     }catch(e){ setBusy(null); setProgress(null); setErr('Falha ao importar .qualilab: '+(e.message||e)); }
   }
 
+  async function doImportTaguette(file){
+    setBusy('Importando .sqlite3 (Taguette)...');
+    setProgress({done:0,total:0});
+    try{
+      const r = await importTaguette(file, store, project.id, projectMode, (done,total)=>setProgress({done,total}));
+      setProgress(null);
+      const freshDocs = await store.listDocuments(project.id);
+      const codes2 = await store.listCodes(project.id);
+      setCodes(codes2); setDocs(freshDocs);
+      const firstId = freshDocs[0]?.id || null;
+      if(firstId){
+        setActiveId(firstId);
+        const [vals, cods] = await Promise.all([store.getDocValues(firstId), store.listCodings(project.id, firstId)]);
+        setValues(vals); setCodings(cods);
+      }
+      setErr(null);
+      setBusy(null);
+      setImportMsg(`Importado de "${r.projeto}" (Taguette): ${r.documentos} documento(s), ${r.codigos} código(s), ${r.trechos} trecho(s) codificado(s). Sem atributos de documento ou autor por trecho — o Taguette não tem esses conceitos.`);
+    }catch(e){ setBusy(null); setProgress(null); setErr('Falha ao importar .sqlite3: '+(e.message||e)); }
+  }
+
   async function doClearProject(){
     if(!confirm('Apagar TODOS os documentos, categorias, códigos e codificações deste projeto? Esta ação não pode ser desfeita.')) return;
     setBusy('Limpando projeto...');
@@ -1567,11 +1709,13 @@ function App(){
           <div class="exmenu">
             <button title="Mescla um arquivo .qualilab (exportado por outra pessoa/dispositivo) neste projeto" onClick=${()=>{ setImpOpen(false); qualilabInputRef.current.click(); }}>.qualilab (projeto completo, nativo)</button>
             <button title="Importa um projeto .qdpx (REFI-QDA)" onClick=${()=>{ setImpOpen(false); qdpxInputRef.current.click(); }}>QDPX (ATLAS.ti / MAXQDA / NVivo)</button>
+            <button title="Importa o projeto completo do Taguette (documentos, tags e trechos codificados)" onClick=${()=>{ setImpOpen(false); taguetteInputRef.current.click(); }}>.sqlite3 (Taguette)</button>
           </div>
         </div>`}
       </div>`}
       <input ref=${qualilabInputRef} type="file" accept=".qualilab" style="display:none" onChange=${e=>{ if(e.target.files[0]) doImportQualilab(e.target.files[0]); e.target.value=''; }} />
       <input ref=${qdpxInputRef} type="file" accept=".qdpx" style="display:none" onChange=${e=>{ if(e.target.files[0]) doImportQDPX(e.target.files[0]); e.target.value=''; }} />
+      <input ref=${taguetteInputRef} type="file" accept=".sqlite3,.sqlite,.db" style="display:none" onChange=${e=>{ if(e.target.files[0]) doImportTaguette(e.target.files[0]); e.target.value=''; }} />
     </header>
 
     ${err && html`<div class="banner err">${err} <button class="btn sm ghost" onClick=${()=>setErr(null)}>fechar</button></div>`}
