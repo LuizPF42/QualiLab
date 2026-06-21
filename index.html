@@ -266,6 +266,19 @@ function hueOf(hex){
   HUES.forEach((H,i)=>{ const dd=Math.min(Math.abs(H-h),360-Math.abs(H-h)); if(dd<bd){bd=dd;best=i;} });
   return best;
 }
+/* hue exato (0-360) de um hex, para preservar a cor de um <Code color="#..."> importado
+   via hue_deg (cor personalizada) — diferente de hueOf(), que arredonda pro swatch mais
+   proximo da paleta (HUES) e perde a cor original. */
+function hexToHueDeg(hex){
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(String(hex||'').trim());
+  if(!m) return null;
+  const r=parseInt(m[1],16)/255, g=parseInt(m[2],16)/255, b=parseInt(m[3],16)/255;
+  const mx=Math.max(r,g,b), mn=Math.min(r,g,b), d=mx-mn;
+  if(d===0) return 0;
+  let h; if(mx===r) h=((g-b)/d)%6; else if(mx===g) h=(b-r)/d+2; else h=(r-g)/d+4;
+  h*=60; if(h<0) h+=360;
+  return Math.round(h);
+}
 function xmlEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function stripGuid(g){ return String(g||'').replace(/[{}]/g,'').trim(); }
 
@@ -287,6 +300,23 @@ function buildCodeXml(code, byParent){
   return `<Code guid="${stripGuid(code.id)}" name="${xmlEsc(code.name)}" isCodable="true" color="${hex}">`
     + kids.map(k=>buildCodeXml(k, byParent)).join('')
     + `</Code>`;
+}
+
+/* exporta so o livro de codigos (sem documentos/codificacoes — .qdc nao tem isso),
+   reusando o mesmo <Code> recursivo do QDPX. Util pra compartilhar/padronizar o esquema
+   de codigos com outra ferramenta REFI-QDA sem expor os dados do projeto. */
+function exportQDC(codes, project){
+  const byParent = {};
+  codes.forEach(c=>{ const p=c.parent_id||'__root__'; (byParent[p]=byParent[p]||[]).push(c); });
+  const topCodes = byParent['__root__']||[];
+  const codesXml = topCodes.map(c=>buildCodeXml(c, byParent)).join('');
+  const qdc = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n`
+    + `<CodeBook xmlns="urn:QDA-XML:codebook:1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" `
+    + `xsi:schemaLocation="urn:QDA-XML:codebook:1.0 http://schema.qdasoftware.org/versions/Codebook/v1.0/Codebook.xsd" `
+    + `origin="QualiLab" name="${xmlEsc(project?.name||'Projeto QualiLab')}">`
+    + `<Codes>${codesXml}</Codes>`
+    + `</CodeBook>`;
+  download((project?.name||'codebook').replace(/[^\w\-]+/g,'_')+'.qdc', qdc, 'application/xml');
 }
 
 async function exportQDPX(docs, cats, allV, codes, allC, project){
@@ -648,6 +678,45 @@ async function importQualilab(file, store, projectId, projectMode, onProgress){
   };
 }
 
+/* divide um "caminho" de hierarquia (ex.: tags.path do Taguette, ou o name de um <Code>
+   sem aninhamento real no .qdc) nos seus segmentos. Aceita as duas convencoes mais comuns
+   de separador (o Taguette documenta as duas): "/" e ".". Sem nenhuma das duas, fica um
+   codigo plano (um unico segmento). */
+function splitHierPath(path){
+  const p = String(path||'').trim();
+  if(p.includes('/')) return p.split('/').map(s=>s.trim()).filter(Boolean);
+  if(p.includes('.')) return p.split('.').map(s=>s.trim()).filter(Boolean);
+  return [p || 'código importado'];
+}
+/* constroi a arvore de codigos a partir de uma lista de linhas com um "caminho" cada
+   (getPath(row)). Dedup de pais compartilhados via JSON.stringify do array de segmentos
+   (array, nao concatenacao de string — sem ambiguidade de separador). Usado pelo import
+   do Taguette (.sqlite3, tags.path) e do .qdc quando o codebook chega sem aninhamento
+   real de <Code> (alguns exportadores, como o do proprio Taguette, fazem assim). */
+function buildCodeTreeFromPaths(rows, getPath){
+  const codeByPathKey = {};
+  const newCodes = [];
+  const codeIdByRow = new Map();
+  let topHue = 0;
+  rows.forEach(row=>{
+    const segs = splitHierPath(getPath(row));
+    let parentId=null, hue=0;
+    segs.forEach((seg,depth)=>{
+      const key = JSON.stringify(segs.slice(0,depth+1));
+      let node = codeByPathKey[key];
+      if(!node){
+        if(depth===0){ hue = topHue % HUES.length; topHue++; }
+        node = { id:uid(), parent_id:parentId, name:seg, hue, depth };
+        codeByPathKey[key] = node;
+        newCodes.push(node);
+      }
+      hue = node.hue; parentId = node.id;
+      if(depth===segs.length-1) codeIdByRow.set(row, node.id);
+    });
+  });
+  return { newCodes, codeIdByRow };
+}
+
 /* ============ IMPORT .sqlite3 do TAGUETTE ============
    O Taguette nao usa QDPX/REFI-QDA para o projeto completo (so o codebook, em .qdc) —
    o projeto inteiro (documentos + tags + trechos) e um banco SQLite proprio. Lemos esse
@@ -700,35 +769,10 @@ async function importTaguette(file, store, projectId, projectMode, onProgress){
     const docMap = {};
     const newDocs = docsRows.map(d=>{ const id=uid(); docMap[d.id]=id; return { id, name:d.name||'documento importado', content:d.contents||'' }; });
 
-    // codigos: hierarquia a partir de tags.path. O Taguette aceita QUALQUER pontuacao como
-    // separador (ex.: "tech.floss" sob "tech"); aceitamos as duas convencoes mais comuns
-    // (documentadas pelo proprio app): "/" e ".". Sem nenhuma das duas, fica um codigo plano.
-    const splitTagPath = (path)=>{
-      const p = String(path||'').trim();
-      if(p.includes('/')) return p.split('/').map(s=>s.trim()).filter(Boolean);
-      if(p.includes('.')) return p.split('.').map(s=>s.trim()).filter(Boolean);
-      return [p || 'código importado'];
-    };
-    const codeByPathKey = {}; // chave = segmentos unidos por \0, dedup de pais compartilhados
-    const newCodes = [];
+    // codigos: hierarquia a partir de tags.path (ver buildCodeTreeFromPaths/splitHierPath)
+    const { newCodes, codeIdByRow } = buildCodeTreeFromPaths(tagsRows, t=>t.path);
     const tagToCodeId = {}; // tag.id (sqlite) -> id do codigo-folha (nosso)
-    let topHue = 0;
-    tagsRows.forEach(t=>{
-      const segs = splitTagPath(t.path);
-      let parentId=null, hue=0;
-      segs.forEach((seg,depth)=>{
-        const key = JSON.stringify(segs.slice(0,depth+1)); // array, nao concatenacao de string — sem ambiguidade de separador
-        let node = codeByPathKey[key];
-        if(!node){
-          if(depth===0){ hue = topHue % HUES.length; topHue++; }
-          node = { id:uid(), parent_id:parentId, name:seg, hue, depth };
-          codeByPathKey[key] = node;
-          newCodes.push(node);
-        }
-        hue = node.hue; parentId = node.id;
-        if(depth===segs.length-1) tagToCodeId[t.id] = node.id;
-      });
-    });
+    tagsRows.forEach(t=>{ tagToCodeId[t.id] = codeIdByRow.get(t); });
 
     // codificacoes: cada par (highlight, tag) gera uma coding — um trecho com 2+ tags no
     // Taguette vira 2+ codings com o mesmo span (mesmo padrao do QDPX p/ Coding multiplo)
@@ -760,6 +804,66 @@ async function importTaguette(file, store, projectId, projectMode, onProgress){
   } finally {
     sdb.close();
   }
+}
+
+/* ============ IMPORT .qdc (REFI-QDA Codebook) ============
+   So o livro de codigos — .qdc nao tem documentos nem codificacoes, isso nao vem no
+   import. Mescla os codigos no projeto ativo. Mesmo elemento <Code> (recursivo, com
+   guid/name/color) usado dentro do <Project> do QDPX — por isso reaproveita boa parte
+   do raciocinio de importQDPX. Algumas ferramentas (ex.: o proprio Taguette) exportam
+   tudo num unico nivel, com a hierarquia codificada no "name" (ex.: "tech.floss"); nesse
+   caso (sem NENHUM <Code> aninhado no arquivo inteiro) aplica a mesma heuristica de
+   separador do import do Taguette via .sqlite3 (buildCodeTreeFromPaths/splitHierPath). */
+async function importQDC(file, store, projectId, onProgress){
+  const text = await file.text();
+  const xml = new DOMParser().parseFromString(text, 'application/xml');
+  if(xml.querySelector('parsererror')) throw new Error('XML do .qdc inválido');
+  if(!xml.querySelector('CodeBook')) throw new Error('Arquivo não parece ser um codebook REFI-QDA (.qdc) — elemento <CodeBook> não encontrado.');
+
+  const hasRealNesting = !!xml.querySelector('Code Code');
+  let newCodes = [];
+
+  if(hasRealNesting){
+    let topHue = 0;
+    function walk(el, parentId, depth, hue){
+      const id = uid();
+      const name = el.getAttribute('name') || 'código importado';
+      const colorAttr = el.getAttribute('color');
+      newCodes.push({ id, parent_id:parentId, name, hue, depth, hue_deg: colorAttr ? hexToHueDeg(colorAttr) : null });
+      Array.from(el.children).filter(c=>c.tagName==='Code').forEach(c=>walk(c, id, depth+1, hue));
+    }
+    const codesEl = xml.querySelector('CodeBook > Codes');
+    Array.from(codesEl ? codesEl.children : []).filter(c=>c.tagName==='Code').forEach(el=>{
+      walk(el, null, 0, topHue % HUES.length); topHue++;
+    });
+  } else {
+    // sem aninhamento real em lugar nenhum do arquivo: trata "name" como caminho
+    // (ex.: export flat do Taguette), igual ao import de tags.path do .sqlite3
+    const rows = Array.from(xml.querySelectorAll('CodeBook > Codes > Code')).map(el=>({
+      name: el.getAttribute('name') || 'código importado',
+      colorAttr: el.getAttribute('color'),
+    }));
+    const { newCodes: built, codeIdByRow } = buildCodeTreeFromPaths(rows, r=>r.name);
+    newCodes = built;
+    rows.forEach(r=>{
+      if(!r.colorAttr) return;
+      const node = newCodes.find(c=>c.id===codeIdByRow.get(r));
+      if(node) node.hue_deg = hexToHueDeg(r.colorAttr);
+    });
+  }
+
+  const tick = makeProgressTicker(onProgress, newCodes.length);
+  if(store.beginBatch) store.beginBatch();
+  try{
+    for(const c of newCodes){
+      await store.addCode(projectId, { id:c.id, parent_id:c.parent_id, name:c.name, hue:c.hue, depth:c.depth, hue_deg:c.hue_deg??null, position:0 });
+      await tick();
+    }
+  } finally {
+    if(store.endBatch) await store.endBatch();
+  }
+
+  return { codigos: newCodes.length };
 }
 
 /* ============ IDB HELPER (IndexedDB p/ fila de escrita + handle de arquivo) ============ */
@@ -1118,6 +1222,7 @@ function App(){
   const qualilabInputRef = useRef(null);
   const qdpxInputRef = useRef(null);
   const taguetteInputRef = useRef(null);
+  const qdcInputRef = useRef(null);
   const [busy, setBusy] = useState(null);
   const [progress, setProgress] = useState(null); // {done,total} durante import grande
   const [online, setOnline] = useState(navigator.onLine);
@@ -1576,6 +1681,20 @@ function App(){
     }catch(e){ setBusy(null); setProgress(null); setErr('Falha ao importar .sqlite3: '+(e.message||e)); }
   }
 
+  async function doImportQDC(file){
+    setBusy('Importando .qdc...');
+    setProgress({done:0,total:0});
+    try{
+      const r = await importQDC(file, store, project.id, (done,total)=>setProgress({done,total}));
+      setProgress(null);
+      const codes2 = await store.listCodes(project.id);
+      setCodes(codes2);
+      setErr(null);
+      setBusy(null);
+      setImportMsg(`Importado: ${r.codigos} código(s) do livro de códigos (.qdc). Sem documentos nem codificações — o formato não tem isso.`);
+    }catch(e){ setBusy(null); setProgress(null); setErr('Falha ao importar .qdc: '+(e.message||e)); }
+  }
+
   async function doClearProject(){
     if(!confirm('Apagar TODOS os documentos, categorias, códigos e codificações deste projeto? Esta ação não pode ser desfeita.')) return;
     setBusy('Limpando projeto...');
@@ -1699,6 +1818,7 @@ function App(){
             <button onClick=${()=>doExport('trechos')}>CSV (trechos codificados)</button>
             <button onClick=${()=>doExport('documentos')}>CSV (atributos por documento)</button>
             <button onClick=${()=>doExport('qdpx')}>QDPX (ATLAS.ti / MAXQDA / NVivo)</button>
+            <button title="Exporta só o livro de códigos, sem documentos nem codificações" onClick=${()=>{ setExpOpen(false); exportQDC(codes, project); }}>QDC (codebook REFI-QDA)</button>
           </div>
         </div>`}
       </div>`}
@@ -1710,12 +1830,14 @@ function App(){
             <button title="Mescla um arquivo .qualilab (exportado por outra pessoa/dispositivo) neste projeto" onClick=${()=>{ setImpOpen(false); qualilabInputRef.current.click(); }}>.qualilab (projeto completo, nativo)</button>
             <button title="Importa um projeto .qdpx (REFI-QDA)" onClick=${()=>{ setImpOpen(false); qdpxInputRef.current.click(); }}>QDPX (ATLAS.ti / MAXQDA / NVivo)</button>
             <button title="Importa o projeto completo do Taguette (documentos, tags e trechos codificados)" onClick=${()=>{ setImpOpen(false); taguetteInputRef.current.click(); }}>.sqlite3 (Taguette)</button>
+            <button title="Importa só o livro de códigos (.qdc) — sem documentos nem codificações" onClick=${()=>{ setImpOpen(false); qdcInputRef.current.click(); }}>.qdc (codebook REFI-QDA)</button>
           </div>
         </div>`}
       </div>`}
       <input ref=${qualilabInputRef} type="file" accept=".qualilab" style="display:none" onChange=${e=>{ if(e.target.files[0]) doImportQualilab(e.target.files[0]); e.target.value=''; }} />
       <input ref=${qdpxInputRef} type="file" accept=".qdpx" style="display:none" onChange=${e=>{ if(e.target.files[0]) doImportQDPX(e.target.files[0]); e.target.value=''; }} />
       <input ref=${taguetteInputRef} type="file" accept=".sqlite3,.sqlite,.db" style="display:none" onChange=${e=>{ if(e.target.files[0]) doImportTaguette(e.target.files[0]); e.target.value=''; }} />
+      <input ref=${qdcInputRef} type="file" accept=".qdc" style="display:none" onChange=${e=>{ if(e.target.files[0]) doImportQDC(e.target.files[0]); e.target.value=''; }} />
     </header>
 
     ${err && html`<div class="banner err">${err} <button class="btn sm ghost" onClick=${()=>setErr(null)}>fechar</button></div>`}

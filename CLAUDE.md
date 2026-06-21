@@ -145,9 +145,17 @@ O Taguette **não** usa QDPX para o projeto completo (só o codebook, em `.qdc`)
 
 - **Helper `all(sql)`**: usa `db.prepare(sql)` + `stmt.step()`/`stmt.getAsObject()` — **não** `db.exec(sql)[0].columns`. Em builds via esm.sh, a propriedade `columns` do resultado de `exec()` vem com nome minificado (`lc`) e falha silenciosamente (`undefined.map`); `getAsObject()` não tem esse problema. Se for tocar nessa função, mantenha o padrão `prepare`/`step`.
 - **Schema relevante** (`taguette/database/models.py` no upstream): `projects`, `documents.contents` (texto puro), `tags.path` (nome do código, hierarquia opcional via pontuação livre — o Taguette aceita qualquer caractere), `highlights` (`start_offset`/`end_offset`/`snippet`), `highlight_tags` (M:N — um trecho pode ter várias tags ao mesmo tempo, cada uma virando uma `coding` separada com o mesmo span).
-- **Hierarquia de código**: aceitamos as duas convenções que o próprio Taguette documenta, `/` e `.`; sem nenhuma das duas, o código fica plano (sem família).
+- **Hierarquia de código**: aceitamos as duas convenções que o próprio Taguette documenta, `/` e `.`; sem nenhuma das duas, o código fica plano (sem família). Essa lógica está em `splitHierPath`/`buildCodeTreeFromPaths` (funções de topo, reaproveitadas pelo import de `.qdc` — ver abaixo).
 - **Sem atributos de documento e sem autor por trecho** — o Taguette não tem esses conceitos. `author_name` fica fixo como `'Taguette'`.
 - Se houver mais de um projeto no arquivo, importa o primeiro (sem seletor na UI ainda).
+
+## Import/export `.qdc` (REFI-QDA Codebook) — `importQDC`/`exportQDC`
+
+`.qdc` é só o livro de códigos — sem documentos nem codificações, o formato não tem isso. Usa o mesmo elemento `<Code>` (recursivo, `guid`/`name`/`color`) que o `<Project>` do QDPX, então `exportQDC` reaproveita `buildCodeXml`.
+
+- **Import detecta se há aninhamento real**: `xml.querySelector('Code Code')`. Se houver (MAXQDA, ATLAS.ti, NVivo, o próprio QualiLab), reconstrói a árvore do XML normalmente, incluindo `color` (hex) → `hue_deg` via `hexToHueDeg` (preserva o tom exato; **não** confundir com `hueOf`, que arredonda pro swatch mais próximo da paleta `HUES` e descarta a cor original — `hueOf` existe mas não é usado aqui de propósito).
+- **Sem nenhum aninhamento no arquivo inteiro** (ex.: o próprio Taguette exporta assim — tudo num nível, hierarquia embutida no `name` como `"tech.floss"`): cai no mesmo `buildCodeTreeFromPaths` do import do Taguette via `.sqlite3`, usando `name` como o "caminho".
+- **Export**: sempre com aninhamento real (`<Code>` dentro de `<Code>`) e `color`, já que vem da nossa própria árvore — não precisa da heurística.
 
 ---
 
