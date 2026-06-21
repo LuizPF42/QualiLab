@@ -507,6 +507,75 @@ async function importQDPX(file, store, projectId, projectMode){
   };
 }
 
+/* ============ IMPORT .qualilab (mesmo formato gerado por saveQualilab) ============
+   Mescla um arquivo .qualilab no projeto ATIVO (local/arquivo/nuvem) — diferente de
+   "abrir arquivo .qualilab" (que troca o store inteiro pelo FileStore). Útil para
+   trazer um projeto exportado por outra pessoa, ou um backup, para dentro de um
+   projeto coletivo na nuvem. Ids são remapeados (evita colisão ao reimportar o mesmo
+   arquivo duas vezes), igual ao importQDPX. */
+async function importQualilab(file, store, projectId, projectMode){
+  const codLayer = projectMode==='individual' ? 'final' : 'individual';
+  let db;
+  try{ db = JSON.parse(await file.text()); }
+  catch(e){ throw new Error('Arquivo .qualilab inválido (JSON corrompido)'); }
+  if(!db || !Array.isArray(db.documents)) throw new Error('Arquivo .qualilab sem o formato esperado');
+
+  const docMap = {}, catMap = {}, codeMap = {};
+  (db.documents||[]).forEach(d=> docMap[d.id]=uid());
+  (db.categories||[]).forEach(c=> catMap[c.id]=uid());
+  (db.codes||[]).forEach(c=> codeMap[c.id]=uid());
+
+  if(store.beginBatch) store.beginBatch();
+  try{
+    for(const d of (db.documents||[])) await store.addDocument(projectId, { id:docMap[d.id], name:d.name, content:d.content });
+    const catsSorted = (db.categories||[]).slice().sort((a,b)=>(a.position??0)-(b.position??0));
+    for(let i=0;i<catsSorted.length;i++){ const c=catsSorted[i];
+      await store.addCategory(projectId, { id:catMap[c.id], name:c.name, kind:c.kind, options:c.options||[], description:c.description||'', color:c.color||0, position:i }); }
+    const codesSorted = (db.codes||[]).slice().sort((a,b)=>(a.position??0)-(b.position??0));
+    for(let i=0;i<codesSorted.length;i++){ const c=codesSorted[i];
+      await store.addCode(projectId, { id:codeMap[c.id], parent_id:c.parent_id?codeMap[c.parent_id]:null, name:c.name, hue:c.hue||0, depth:c.depth||0, position:i }); }
+
+    // doc_values: setDocValue/setFinalValue só gravam o valor "atual" (sem autor/camada
+    // arbitrários) — mesma limitação já documentada na importação de QDPX. Prefere o
+    // gabarito (final) quando existe; senão, a primeira resposta individual encontrada.
+    const setVal = projectMode==='individual' ? store.setFinalValue.bind(store) : store.setDocValue.bind(store);
+    const pickVal = {};
+    (db.doc_values||[]).forEach(v=>{
+      const k=v.document_id+':'+v.category_id; const cur=pickVal[k];
+      if(!cur || (v.layer==='final' && cur.layer!=='final')) pickVal[k]=v;
+    });
+    for(const v of Object.values(pickVal)){
+      if(docMap[v.document_id] && catMap[v.category_id]) await setVal(projectId, docMap[v.document_id], catMap[v.category_id], v.value);
+    }
+
+    // codings: created_by zerado (o uuid original não corresponde a ninguém no projeto de
+    // destino); o agrupamento por codificador passa a usar author_name, como no import QDPX.
+    for(const c of (db.codings||[])){
+      if(docMap[c.document_id] && codeMap[c.code_id]){
+        await store.addCoding(projectId, { created_by:null, layer:c.layer||codLayer, document_id:docMap[c.document_id], code_id:codeMap[c.code_id], span_start:c.span_start, span_end:c.span_end, quote:c.quote, author_name:c.author_name||'importado' });
+      }
+    }
+
+    // memos: remapeia o alvo (documento/código); memo de projeto vira o memo do projeto de destino
+    if(store.setMemo){
+      for(const m of (db.memos||[])){
+        let targetId = m.target_id;
+        if(m.scope==='document') targetId = docMap[m.target_id];
+        else if(m.scope==='code') targetId = codeMap[m.target_id];
+        else if(m.scope==='project') targetId = projectId;
+        if(targetId) await store.setMemo(projectId, m.scope, targetId, m.content, m.author_name);
+      }
+    }
+  } finally {
+    if(store.endBatch) await store.endBatch();
+  }
+
+  return {
+    documentos:(db.documents||[]).length, categorias:(db.categories||[]).length, codigos:(db.codes||[]).length,
+    trechos:(db.codings||[]).length, memos:(db.memos||[]).length
+  };
+}
+
 /* ============ IDB HELPER (IndexedDB p/ fila de escrita + handle de arquivo) ============ */
 const IDB = {
   _db: null,
@@ -1268,6 +1337,26 @@ function App(){
     }catch(e){ setBusy(null); setErr('Falha ao importar: '+(e.message||e)); }
   }
 
+  async function doImportQualilab(file){
+    setBusy('Importando .qualilab...');
+    try{
+      const r = await importQualilab(file, store, project.id, projectMode);
+      const freshDocs = await store.listDocuments(project.id);
+      const [cats2, codes2] = await Promise.all([store.listCategories(project.id), store.listCodes(project.id)]);
+      setCats(cats2); setCodes(codes2); setDocs(freshDocs);
+      const firstId = freshDocs[0]?.id || null;
+      if(firstId){
+        setActiveId(firstId);
+        const [vals, cods] = await Promise.all([store.getDocValues(firstId), store.listCodings(project.id, firstId)]);
+        setValues(vals); setCodings(cods);
+      }
+      await loadMemos();
+      setErr(null);
+      setBusy(null);
+      setImportMsg(`Importado: ${r.documentos} documento(s), ${r.categorias} categoria(s), ${r.codigos} código(s), ${r.trechos} trecho(s) codificado(s), ${r.memos} memo(s).`);
+    }catch(e){ setBusy(null); setErr('Falha ao importar .qualilab: '+(e.message||e)); }
+  }
+
   async function doClearProject(){
     if(!confirm('Apagar TODOS os documentos, categorias, códigos e codificações deste projeto? Esta ação não pode ser desfeita.')) return;
     setBusy('Limpando projeto...');
@@ -1394,6 +1483,9 @@ function App(){
         </div>`}
       </div>`}
       ${project && html`<button class="btn sm" title="Salvar o projeto inteiro como arquivo .qualilab (reabrir aqui depois)" onClick=${saveQualilab}>salvar .qualilab</button>`}
+      ${project && html`<label class="btn sm ghost" title="Importar um arquivo .qualilab para dentro deste projeto (documentos, categorias, códigos, codificações e memos)">importar .qualilab
+        <input type="file" accept=".qualilab" style="display:none" onChange=${e=>{ if(e.target.files[0]) doImportQualilab(e.target.files[0]); e.target.value=''; }} />
+      </label>`}
       ${project && html`<label class="btn sm ghost" title="Importar projeto .qdpx (REFI-QDA)">importar qdpx
         <input type="file" accept=".qdpx" style="display:none" onChange=${e=>{ if(e.target.files[0]) doImportQDPX(e.target.files[0]); e.target.value=''; }} />
       </label>`}
