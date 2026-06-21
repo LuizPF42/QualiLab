@@ -616,18 +616,33 @@ async function importQualilab(file, store, projectId, projectMode, onProgress){
     for(let i=0;i<codesSorted.length;i++){ const c=codesSorted[i];
       await store.addCode(projectId, { id:codeMap[c.id], parent_id:c.parent_id?codeMap[c.parent_id]:null, name:c.name, hue:c.hue||0, depth:c.depth||0, position:i }); await tick(); }
 
-    // doc_values: setDocValue/setFinalValue só gravam o valor "atual" (sem autor/camada
-    // arbitrários) — mesma limitação já documentada na importação de QDPX. Prefere o
-    // gabarito (final) quando existe; senão, a primeira resposta individual encontrada.
-    const setVal = projectMode==='individual' ? store.setFinalValue.bind(store) : store.setDocValue.bind(store);
-    const pickVal = {};
-    (db.doc_values||[]).forEach(v=>{
-      const k=v.document_id+':'+v.category_id; const cur=pickVal[k];
-      if(!cur || (v.layer==='final' && cur.layer!=='final')) pickVal[k]=v;
-    });
-    for(const v of Object.values(pickVal)){
-      if(docMap[v.document_id] && catMap[v.category_id]) await setVal(projectId, docMap[v.document_id], catMap[v.category_id], v.value);
-      await tick();
+    // doc_values: em destino COLETIVO, cada resposta individual do arquivo de origem (com seu
+    // proprio author_name) vira uma linha independente via addDocValue — igual addCoding ja
+    // faz com created_by:null, em vez de colapsar tudo num valor so sob a identidade de quem
+    // importa. O gabarito (layer='final') continua um por documento+categoria, escrito por
+    // ultimo via setFinalValue. Em destino INDIVIDUAL (sem multi-coder possivel), mantem o
+    // comportamento anterior: prefere o gabarito de origem, senao a 1a resposta encontrada.
+    if(projectMode==='individual'){
+      const pickVal = {};
+      (db.doc_values||[]).forEach(v=>{
+        const k=v.document_id+':'+v.category_id; const cur=pickVal[k];
+        if(!cur || (v.layer==='final' && cur.layer!=='final')) pickVal[k]=v;
+      });
+      for(const v of Object.values(pickVal)){
+        if(docMap[v.document_id] && catMap[v.category_id]) await store.setFinalValue(projectId, docMap[v.document_id], catMap[v.category_id], v.value);
+        await tick();
+      }
+    } else {
+      const finalPick = {};
+      for(const v of (db.doc_values||[])){
+        if(docMap[v.document_id] && catMap[v.category_id]){
+          if(v.layer==='final') finalPick[v.document_id+':'+v.category_id]=v;
+          else if(store.addDocValue) await store.addDocValue(projectId, { document_id:docMap[v.document_id], category_id:catMap[v.category_id], value:v.value, author_name:v.author_name||'importado', layer:'individual' });
+          else await store.setDocValue(projectId, docMap[v.document_id], catMap[v.category_id], v.value); // fallback p/ store sem addDocValue
+        }
+        await tick();
+      }
+      for(const v of Object.values(finalPick)){ await store.setFinalValue(projectId, docMap[v.document_id], catMap[v.category_id], v.value); }
     }
 
     // codings: created_by zerado (o uuid original não corresponde a ninguém no projeto de
@@ -930,6 +945,7 @@ async function createFileStore(fileHandle, isNew){
     async getDocValues(docId){ return db.doc_values.filter(v=>v.document_id===docId); },
     async setDocValue(pid,docId,catId,value){ db.doc_values=db.doc_values.filter(v=>!(v.document_id===docId&&v.category_id===catId&&v.layer==='final')); if(value!=='') db.doc_values.push({id:uid(),document_id:docId,category_id:catId,value,set_by:'file-user',author_name:name,layer:'final'}); await save(); },
     async setFinalValue(pid,docId,catId,value){ db.doc_values=db.doc_values.filter(v=>!(v.document_id===docId&&v.category_id===catId&&v.layer==='final')); if(value!=='') db.doc_values.push({id:uid(),document_id:docId,category_id:catId,value,set_by:'file-user',author_name:name,layer:'final'}); await save(); },
+    async addDocValue(pid,v){ const row={id:uid(),document_id:v.document_id,category_id:v.category_id,value:v.value,set_by:v.set_by??null,author_name:v.author_name||'anonimo',layer:v.layer||'individual'}; db.doc_values.push(row); await save(); return row; },
     listCodes(){ return P(db.codes.slice().sort((a,b)=>a.depth-b.depth||a.position-b.position)); },
     async addCode(pid,code){ const c={id:uid(),position:db.codes.length,...code}; db.codes.push(c); await save(); return c; },
     async updateCode(id,patch){ db.codes=db.codes.map(c=>c.id===id?{...c,...patch}:c); await save(); },
@@ -1004,6 +1020,10 @@ function LocalStore(){
     getDocValues(docId){ return P(db.doc_values.filter(v=>v.document_id===docId)); },
     setDocValue(pid,docId,catId,value){ db.doc_values=db.doc_values.filter(v=>!(v.document_id===docId&&v.category_id===catId&&v.set_by==='local-user'&&(v.layer||'individual')==='individual')); if(value!=='') db.doc_values.push({id:uid(),document_id:docId,category_id:catId,value,set_by:'local-user',author_name:name,layer:'individual'}); save(); return P(); },
     setFinalValue(pid,docId,catId,value){ db.doc_values=db.doc_values.filter(v=>!(v.document_id===docId&&v.category_id===catId&&v.layer==='final')); if(value!=='') db.doc_values.push({id:uid(),document_id:docId,category_id:catId,value,set_by:'local-user',author_name:name,layer:'final'}); save(); return P(); },
+    // grava uma resposta de categoria com autor arbitrario (sem dono-do-navegador) — usado
+    // pelo import de .qualilab pra preservar cada pesquisador de origem, igual ao addCoding
+    // ja faz com author_name/created_by. Nao deduplica: cada chamada e uma linha nova.
+    addDocValue(pid,v){ const row={id:uid(),document_id:v.document_id,category_id:v.category_id,value:v.value,set_by:v.set_by??null,author_name:v.author_name||'anonimo',layer:v.layer||'individual'}; db.doc_values.push(row); save(); return P(row); },
     listCodes(){ return P(db.codes.slice().sort((a,b)=>a.depth-b.depth||a.position-b.position)); },
     addCode(pid,code){ const c={id:uid(),position:db.codes.length,...code}; db.codes.push(c); save(); return P(c); },
     updateCode(id,patch){ db.codes=db.codes.map(c=>c.id===id?{...c,...patch}:c); save(); return P(); },
@@ -1125,6 +1145,14 @@ function SupabaseStore(sb){
     async setFinalValue(pid,docId,catId,value){
       if(value===''){ must(await sb.from('doc_values').delete().eq('document_id',docId).eq('category_id',catId).eq('layer','final')); return; }
       must(await sb.from('doc_values').upsert({project_id:pid,document_id:docId,category_id:catId,value,set_by:user.id,author_name:name,layer:'final',updated_at:new Date().toISOString()},{onConflict:'document_id,category_id,set_by,layer'}));
+    },
+    // grava uma resposta de categoria com autor arbitrario (set_by:null, author_name livre) —
+    // usado pelo import de .qualilab pra preservar cada pesquisador de origem como uma linha
+    // independente, igual ja fazia addCoding com created_by:null. set_by null nunca colide
+    // com a unique (document_id,category_id,set_by,layer) — Postgres trata NULL como distinto
+    // de outro NULL — entao e sempre um insert novo, nunca um upsert/merge.
+    async addDocValue(pid,v){
+      return must(await sb.from('doc_values').insert({project_id:pid,document_id:v.document_id,category_id:v.category_id,value:v.value,set_by:v.set_by??null,author_name:v.author_name||'anonimo',layer:v.layer||'individual',updated_at:new Date().toISOString()}).select().single());
     },
     async listCodes(pid){ return must(await sb.from('codes').select('*').eq('project_id',pid).order('depth').order('position')); },
     async addCode(pid,code){ return must(await sb.from('codes').insert({project_id:pid,...code}).select().single()); },

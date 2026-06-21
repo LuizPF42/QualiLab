@@ -263,11 +263,14 @@ create policy categories_select on public.categories for select using (public.is
 create policy categories_write  on public.categories for all
   using (public.is_admin(project_id)) with check (public.is_admin(project_id));
 
--- valores de categoria: membros leem; cada um escreve o seu; admin escreve o gabarito
-drop policy if exists doc_values_all    on public.doc_values;
-drop policy if exists doc_values_select on public.doc_values;
-drop policy if exists doc_values_own    on public.doc_values;
-drop policy if exists doc_values_final  on public.doc_values;
+-- valores de categoria: membros leem; cada um escreve o seu; admin escreve o gabarito;
+-- linhas importadas (set_by null) sao tratadas como um "pesquisador" separado, igual created_by
+-- null em codings — o autor de fato fica em author_name, nao em set_by.
+drop policy if exists doc_values_all      on public.doc_values;
+drop policy if exists doc_values_select   on public.doc_values;
+drop policy if exists doc_values_own      on public.doc_values;
+drop policy if exists doc_values_final    on public.doc_values;
+drop policy if exists doc_values_imported on public.doc_values;
 create policy doc_values_select on public.doc_values for select using (public.is_member(project_id));
 create policy doc_values_own on public.doc_values for all
   using (public.is_member(project_id) and set_by = auth.uid() and layer = 'individual')
@@ -275,6 +278,9 @@ create policy doc_values_own on public.doc_values for all
 create policy doc_values_final on public.doc_values for all
   using (public.is_admin(project_id) and layer = 'final')
   with check (public.is_admin(project_id) and layer = 'final');
+create policy doc_values_imported on public.doc_values for all
+  using (public.is_member(project_id) and set_by is null and layer = 'individual')
+  with check (public.is_member(project_id) and set_by is null and layer = 'individual');
 
 -- ---------- realtime ----------
 do $$

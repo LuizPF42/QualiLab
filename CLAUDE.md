@@ -58,7 +58,7 @@ myRole(pid) · listMembers(pid) · setMemberRole(pid,uid,role) · removeMember(p
 renameProject(pid,name) · deleteProject(pid) · setProjectMode(pid,mode,author)
 listDocuments · addDocument · deleteDocument · clearProject
 listCategories · addCategory · updateCategory · deleteCategory
-getDocValues(docId) · setDocValue(pid,doc,cat,val) · setFinalValue(pid,doc,cat,val)
+getDocValues(docId) · setDocValue(pid,doc,cat,val) · setFinalValue(pid,doc,cat,val) · addDocValue(pid,v)
 listCodes · addCode · updateCode · deleteCode
 listCodings(pid,docId) · addCoding(pid,co) · deleteCoding(id)
 listMemos(pid) · setMemo(pid,scope,targetId,content,authorName)
@@ -152,6 +152,7 @@ A **pílula do projeto** no cabeçalho abre o `ProjectModal` (hub: convite/códi
 - **Import remapeia todos os ids** para uuids novos (evita colisão de PK ao reimportar) e grava codings com **`created_by: null`** para que o agrupamento por codificador use `author_name` (e não o uuid de quem importou).
 - **Export** prefere a camada `final` (gabarito) quando existe; senão usa as individuais.
 - **Tipo de categoria (interoperabilidade)**: o próprio `exportQDPX` grava `tipo: <kind> | valores: <opções>` na `Description` da `Variable` — uma convenção nossa, não do padrão REFI-QDA. Um `.qdpx` **estrangeiro** (QualCoder, ATLAS.ti etc.) não tem isso, então `importQDPX` cai numa **heurística de cardinalidade**: olha os valores observados nos `Cases` e, se houver entre 2 e 8 valores distintos **com repetição** (`distinct < total`, ou seja, pelo menos uma resposta usada em mais de um documento), importa como Texto Fechado (`select`) com essas opções; senão, Texto Aberto. O resumo do import informa quantas categorias foram detectadas assim (revisar manualmente se necessário).
+- **`importQDPX` continua com 1 valor por documento+categoria** (essa é a limitação real do formato REFI-QDA, não dá pra contornar). Já **`importQualilab` preserva múltiplos pesquisadores por categoria** em destino coletivo: usa o `store.addDocValue(pid,v)` (set_by:null + author_name livre, mesmo padrão de `addCoding`/`created_by:null`) para gravar cada resposta `layer='individual'` do arquivo de origem como uma linha própria, em vez de descartar todas menos uma. O gabarito (`layer='final'`) continua único por documento+categoria, escrito por último via `setFinalValue`. Em destino **individual** (sem multi-coder possível), mantém o comportamento antigo: prefere o gabarito de origem, senão a 1ª resposta encontrada. **RLS**: existe uma policy `doc_values_imported` (`supabase/schema.sql`) liberando `set_by is null and layer='individual'` pra qualquer membro — sem ela o insert falha com "new row violates row-level security policy".
 
 ## Import Taguette (`.sqlite3`) — `importTaguette`
 
