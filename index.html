@@ -1734,7 +1734,18 @@ function App(){
   const codingCount = useMemo(()=>{ const m={}; codings.forEach(c=>{m[c.code_id]=(m[c.code_id]||0)+1;}); return m; }, [codings]);
   // frequencia GLOBAL (todo o projeto, nao so o documento aberto) — usada na aba Esquema,
   // que nao tem documento ativo; ajuda a ver o que esta sendo usado de fato ao reorganizar
-  const schemaCodingCount = useMemo(()=>{ const m={}; allCodings.forEach(c=>{m[c.code_id]=(m[c.code_id]||0)+1;}); return m; }, [allCodings]);
+  // agregada (familia soma os subcodigos), igual o countByCode do VizNav — sem isso, uma
+  // familia (Hierarquia 0) sempre aparece com 0 quando o uso real esta nos subcodigos
+  const schemaCodingCount = useMemo(()=>{
+    const direct={}; allCodings.forEach(c=>{direct[c.code_id]=(direct[c.code_id]||0)+1;});
+    const parentOf={}; codes.forEach(c=>{parentOf[c.id]=c.parent_id;});
+    const agg={...direct};
+    Object.entries(direct).forEach(([codeId,n])=>{
+      let p=parentOf[codeId];
+      while(p){ agg[p]=(agg[p]||0)+n; p=parentOf[p]; }
+    });
+    return agg;
+  }, [allCodings, codes]);
 
   /* =================== RENDER =================== */
   if(phase==='boot') return html`<div class="empty"><div class="t">Carregando…</div></div>`;
