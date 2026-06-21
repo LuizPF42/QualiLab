@@ -550,9 +550,14 @@ async function importQualilab(file, store, projectId, projectMode){
 
     // codings: created_by zerado (o uuid original não corresponde a ninguém no projeto de
     // destino); o agrupamento por codificador passa a usar author_name, como no import QDPX.
+    // Em projeto INDIVIDUAL, força tudo para a camada 'final' (sem reconciliação, mesmo
+    // invariante que o RPC set_project_mode garante ao converter collective->individual) —
+    // ignora a camada original do arquivo de origem, que pode ter sido exportado de um
+    // projeto coletivo com codificações ainda 'individual'.
     for(const c of (db.codings||[])){
       if(docMap[c.document_id] && codeMap[c.code_id]){
-        await store.addCoding(projectId, { created_by:null, layer:c.layer||codLayer, document_id:docMap[c.document_id], code_id:codeMap[c.code_id], span_start:c.span_start, span_end:c.span_end, quote:c.quote, author_name:c.author_name||'importado' });
+        const layer = projectMode==='individual' ? codLayer : (c.layer||codLayer);
+        await store.addCoding(projectId, { created_by:null, layer, document_id:docMap[c.document_id], code_id:codeMap[c.code_id], span_start:c.span_start, span_end:c.span_end, quote:c.quote, author_name:c.author_name||'importado' });
       }
     }
 
@@ -1519,10 +1524,10 @@ function App(){
           <div class="grow"></div>
           ${mode==='cloud' && projectMode==='collective' && html`<label class="meta" style="display:flex;align-items:center;gap:5px">Ver:
             <select class="opt" value=${viewCoder} onChange=${e=>setViewCoder(e.target.value)}>
-              <option value="all">Todas (individuais)</option>
+              <option value="all">Individuais (todos)</option>
               <option value="mine">Minhas</option>
               ${coders.filter(c=>c.id!==user?.id).map(c=>html`<option value=${c.id}>${c.name}</option>`)}
-              <option value="final">Camada final</option>
+              <option value="final">Final / gabarito</option>
             </select></label>`}
           ${activeDoc && html`<button class="icon-btn" title="Remover documento" onClick=${()=>delDoc(activeDoc.id)}>🗑</button>`}
         </div>
@@ -1599,7 +1604,7 @@ function App(){
           <div style="max-width:920px;margin:0 auto">
             <${ChartsPanel} docs=${docs} cats=${cats} codes=${codes}
               codeById=${codeById} codePath=${codePath}
-              allCodings=${allCodings} allValues=${allValues} />
+              allCodings=${allCodings} allValues=${allValues} projectMode=${projectMode} />
           </div>
         </div>
       </section>
@@ -1627,7 +1632,7 @@ function App(){
           <${VizNav} cats=${cats} codes=${codes} allCodings=${allCodings} allValues=${allValues} docs=${docs}
             layer=${vizLayer} catFilter=${vizCatFilter} selCode=${vizSelCode}
             onLayer=${setVizLayer} onCatFilter=${setVizCatFilter} onSelCode=${setVizSelCode}
-            codePath=${codePath} codeById=${codeById} />
+            codePath=${codePath} codeById=${codeById} projectMode=${projectMode} />
         </div>
       </section>
       <!-- VISUALIZACAO direita: trechos legíveis -->
@@ -1638,7 +1643,7 @@ function App(){
             layer=${vizLayer} catFilter=${vizCatFilter} selCode=${vizSelCode}
             crossCodes=${vizCross} setCrossCodes=${setVizCross}
             onDelCoding=${async id=>{ await delCoding(id); loadAll(); }}
-            onJump=${(docId)=>{ setActiveId(docId); setMainView('codificar'); }} />
+            onJump=${(docId)=>{ setActiveId(docId); setMainView('codificar'); }} projectMode=${projectMode} />
         </div>
       </section>
     </div>`}
@@ -2058,15 +2063,19 @@ function Reconcile({ activeDoc, codings, coders, codeById, codePath, cats, value
 /* ============ VizNav — painel esquerdo da Visualização ============
    Visual idêntico ao painel de Codificação: mesmas classes CSS, sem fundo colorido. */
 function VizNav({ cats, codes, allCodings, allValues, docs, layer, catFilter, selCode,
-                  onLayer, onCatFilter, onSelCode, codePath, codeById }){
+                  onLayer, onCatFilter, onSelCode, codePath, codeById, projectMode }){
   const [catsOpen, setCatsOpen] = useState(false);
   const closedCats = cats.filter(c=>CAT_HAS_OPTIONS(c.kind)||c.kind==='date');
   const tops = codes.filter(c=>!c.parent_id);
   const childrenOf = (id)=>codes.filter(c=>c.parent_id===id);
 
+  // projeto individual: sem reconciliação, todas as codificações já nascem na camada
+  // 'final' — não há o que escolher, então nem mostra o seletor (uniforme com o leitor,
+  // que também ignora a camada nesse modo — ver visibleCodings).
   const layerCodings = useMemo(()=>
-    allCodings.filter(c=> layer==='final' ? c.layer==='final' : c.layer!=='final')
-  , [allCodings, layer]);
+    projectMode==='individual' ? allCodings
+      : allCodings.filter(c=> layer==='final' ? c.layer==='final' : c.layer!=='final')
+  , [allCodings, layer, projectMode]);
 
   const matchingDocIds = useMemo(()=>{
     const s=new Set();
@@ -2101,7 +2110,7 @@ function VizNav({ cats, codes, allCodings, allValues, docs, layer, catFilter, se
   return html`<div style="background:var(--surface);display:flex;flex-direction:column;height:100%">
 
     <!-- camada + categorias: mesma linguagem do pane-head -->
-    <div class="pane-head" style="flex-direction:column;align-items:stretch;gap:6px;padding:10px 14px">
+    ${projectMode!=='individual' && html`<div class="pane-head" style="flex-direction:column;align-items:stretch;gap:6px;padding:10px 14px">
       <div class="row" style="gap:8px;align-items:center">
         <span class="field-label" style="margin:0;flex:none">Camada</span>
         <select class="opt" style="flex:1" value=${layer} onChange=${e=>onLayer(e.target.value)}>
@@ -2109,7 +2118,7 @@ function VizNav({ cats, codes, allCodings, allValues, docs, layer, catFilter, se
           <option value="final">Final / gabarito</option>
         </select>
       </div>
-    </div>
+    </div>`}
 
     <!-- categorias: seção colapsável idêntica ao "Gerenciar esquema" -->
     ${closedCats.length>0 && html`<div style="border-bottom:1px solid var(--line-soft)">
@@ -2164,10 +2173,11 @@ function VizCodeNode({ code, childrenOf, counts, sel, onSel, depthPad }){
    Trechos do código selecionado, legíveis, agrupados por documento. */
 function VizExcerpts({ docs, codes, codeById, codePath, allCodings, allValues,
                        layer, catFilter, selCode, crossCodes, setCrossCodes,
-                       onDelCoding, onJump }){
+                       onDelCoding, onJump, projectMode }){
   const layerCodings = useMemo(()=>
-    allCodings.filter(c=> layer==='final' ? c.layer==='final' : c.layer!=='final')
-  , [allCodings, layer]);
+    projectMode==='individual' ? allCodings
+      : allCodings.filter(c=> layer==='final' ? c.layer==='final' : c.layer!=='final')
+  , [allCodings, layer, projectMode]);
 
   const docById = useMemo(()=>Object.fromEntries(docs.map(d=>[d.id,d])), [docs]);
 
@@ -2402,14 +2412,18 @@ function MemoEditor({ sel, project, codeById, codePath, memos, onSave }){
   </div>`;
 }
 
-function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allValues }){
+function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allValues, projectMode }){
+  const isIndividual = projectMode==='individual';
   const [layer,setLayer] = useState('individual');         // individual | final
   const closedCats = (cats||[]).filter(c=>CAT_HAS_OPTIONS(c.kind) || c.kind==='date');
   const [catId,setCatId] = useState(closedCats[0]?.id || '');
   useEffect(()=>{ if(!closedCats.find(c=>c.id===catId)) setCatId(closedCats[0]?.id || ''); }, [cats]); // eslint-disable-line
   const cat = (cats||[]).find(c=>c.id===catId) || null;
 
-  const cod = useMemo(()=> allCodings.filter(c=> layer==='final' ? c.layer==='final' : c.layer!=='final'), [allCodings, layer]);
+  // projeto individual: sem reconciliação, todas as codificações já nascem na camada
+  // 'final' — não há camada a escolher (mesmo raciocínio do VizNav/VizExcerpts).
+  const cod = useMemo(()=> isIndividual ? allCodings
+    : allCodings.filter(c=> layer==='final' ? c.layer==='final' : c.layer!=='final'), [allCodings, layer, isIndividual]);
 
   // 1) frequência de códigos
   const freqItems = useMemo(()=>{
@@ -2420,7 +2434,8 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
 
   // valor consolidado (gabarito) de um documento para uma categoria
   const finalVal = (docId)=>{ const f=allValues.find(v=>v.document_id===docId && v.category_id===catId && v.layer==='final'); return f?f.value:null; };
-  const splitVals = (val)=> val==null ? ['(não consolidado)'] : String(val).split(CAT_MULTI_SEP).filter(Boolean);
+  // rótulo neutro: vale para os dois modos (em individual não existe "consolidação" a esperar)
+  const splitVals = (val)=> val==null ? ['(sem valor)'] : String(val).split(CAT_MULTI_SEP).filter(Boolean);
 
   // 2) distribuição de documentos por valor da categoria
   const distItems = useMemo(()=>{
@@ -2467,11 +2482,11 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
 
   return html`<div class="section">
     <div class="row" style="gap:14px;flex-wrap:wrap;margin-bottom:6px">
-      <label class="row" style="gap:6px;font-size:12.5px">Camada das codificações:
+      ${!isIndividual && html`<label class="row" style="gap:6px;font-size:12.5px">Camada das codificações:
         <select class="opt" value=${layer} onChange=${e=>setLayer(e.target.value)}>
           <option value="individual">Individuais (todos)</option>
-          <option value="final">Final (consolidada)</option>
-        </select></label>
+          <option value="final">Final / gabarito</option>
+        </select></label>`}
       ${closedCats.length>0 && html`<label class="row" style="gap:6px;font-size:12.5px">Categoria:
         <select class="opt" value=${catId} onChange=${e=>setCatId(e.target.value)}>
           ${closedCats.map(c=>html`<option value=${c.id}>${c.name}</option>`)}
@@ -2507,15 +2522,15 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
           </table>`}
     </div>
 
-    <p class="h" style="margin-top:18px">Produção por codificador</p>
+    ${!isIndividual && html`<p class="h" style="margin-top:18px">Produção por codificador</p>
     <div class="card">
       ${prodItems.length===0 ? html`<span class="meta">Nenhuma codificação individual.</span>` : barRows(prodItems, 'var(--amber)')}
-    </div>
+    </div>`}
 
-    <p class="h" style="margin-top:18px">Concordância por código (nº de codificadores)</p>
+    ${!isIndividual && html`<p class="h" style="margin-top:18px">Concordância por código (nº de codificadores)</p>
     <div class="card">
       ${agreeItems.length===0 ? html`<span class="meta">Nenhuma codificação individual.</span>` : barRows(agreeItems)}
-    </div>
+    </div>`}
   </div>`;
 }
 
