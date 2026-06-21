@@ -111,6 +111,8 @@
   .banner{font-size:12.5px;padding:9px 12px;border-radius:9px;margin:0 14px 12px;}
   .banner.warn{background:var(--amber-soft);border:1px solid rgba(138,109,31,.3);color:var(--amber);}
   .banner.err{background:#F8E6E6;border:1px solid #D9A3A3;color:#8A2A2A;}
+  .progress-track{height:6px;border-radius:4px;background:rgba(138,109,31,.18);margin-top:7px;overflow:hidden;}
+  .progress-fill{height:100%;background:var(--amber);border-radius:4px;transition:width .15s linear;}
   .exmenu{position:absolute;right:0;top:112%;z-index:41;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.14);overflow:hidden;min-width:212px;}
   .exmenu button{display:block;width:100%;text-align:left;border:none;background:var(--surface);padding:9px 12px;font-size:13px;color:var(--ink);cursor:pointer;font-family:var(--sans);}
   .exmenu button:hover{background:var(--paper);}
@@ -353,7 +355,22 @@ async function exportQDPX(docs, cats, allV, codes, allC, project){
 }
 
 /* leitura de .qdpx para dentro do projeto ativo */
-async function importQDPX(file, store, projectId, projectMode){
+/* devolve o controle ao navegador a cada N itens (em vez de so a cada microtask) —
+   sem isso, uma importacao de milhares de itens com store em lote (beginBatch) nunca
+   cede a vez para repintura, e a aba parece travada até o fim (so reage com F5). */
+function makeProgressTicker(onProgress, total){
+  const every = Math.max(10, Math.floor(total/60)); // ~60 atualizacoes da barra, nao uma por item
+  let done = 0;
+  return async ()=>{
+    done++;
+    if(done % every === 0 || done === total){
+      onProgress?.(done, total);
+      await new Promise(r=>setTimeout(r, 0));
+    }
+  };
+}
+
+async function importQDPX(file, store, projectId, projectMode, onProgress){
   const codLayer = projectMode==='individual' ? 'final' : 'individual';
   const JSZip = await getJSZip();
   const zip = await JSZip.loadAsync(await file.arrayBuffer());
@@ -485,17 +502,19 @@ async function importQDPX(file, store, projectId, projectMode){
   // beginBatch/endBatch (LocalStore/FileStore): suprime o save() por item — senao
   // cada um dos centenas de inserts re-serializa o banco inteiro no disco/localStorage,
   // travando a aba por varios segundos. Salva uma unica vez no fim.
+  const total = newDocs.length + newCats.length + newCodes.length + newValues.length + newCodings.length;
+  const tick = makeProgressTicker(onProgress, total);
   if(store.beginBatch) store.beginBatch();
   try{
-    for(const d of newDocs) await store.addDocument(projectId, { id:docMap[d.id], name:d.name, content:d.content });
-    for(const c of newCats) await store.addCategory(projectId, { id:catMap[c.id], name:c.name, kind:c.kind, options:c.options, position:0 });
-    for(const c of newCodes) await store.addCode(projectId, { id:codeMap[c.id], parent_id:c.parent_id?codeMap[c.parent_id]:null, name:c.name, hue:c.hue, depth:c.depth, position:0 });
+    for(const d of newDocs){ await store.addDocument(projectId, { id:docMap[d.id], name:d.name, content:d.content }); await tick(); }
+    for(const c of newCats){ await store.addCategory(projectId, { id:catMap[c.id], name:c.name, kind:c.kind, options:c.options, position:0 }); await tick(); }
+    for(const c of newCodes){ await store.addCode(projectId, { id:codeMap[c.id], parent_id:c.parent_id?codeMap[c.parent_id]:null, name:c.name, hue:c.hue, depth:c.depth, position:0 }); await tick(); }
     // em projeto individual os valores vao direto para o gabarito (final); em coletivo, como resposta individual
     const setVal = projectMode==='individual' ? store.setFinalValue.bind(store) : store.setDocValue.bind(store);
-    for(const v of newValues){ if(docMap[v.document_id] && catMap[v.category_id]) await setVal(projectId, docMap[v.document_id], catMap[v.category_id], v.value); }
+    for(const v of newValues){ if(docMap[v.document_id] && catMap[v.category_id]) await setVal(projectId, docMap[v.document_id], catMap[v.category_id], v.value); await tick(); }
     // created_by: null => o agrupamento por codificador usa author_name (do QDPX), não o uuid de quem importou
     // layer: em projeto individual tudo vai para a camada final (sem reconciliacao); em coletivo, fica individual
-    for(const c of newCodings){ if(docMap[c.document_id] && codeMap[c.code_id]) await store.addCoding(projectId, { created_by:null, layer:codLayer, document_id:docMap[c.document_id], code_id:codeMap[c.code_id], span_start:c.span_start, span_end:c.span_end, quote:c.quote, author_name:c.author_name }); }
+    for(const c of newCodings){ if(docMap[c.document_id] && codeMap[c.code_id]) await store.addCoding(projectId, { created_by:null, layer:codLayer, document_id:docMap[c.document_id], code_id:codeMap[c.code_id], span_start:c.span_start, span_end:c.span_end, quote:c.quote, author_name:c.author_name }); await tick(); }
   } finally {
     if(store.endBatch) await store.endBatch();
   }
@@ -513,7 +532,7 @@ async function importQDPX(file, store, projectId, projectMode){
    trazer um projeto exportado por outra pessoa, ou um backup, para dentro de um
    projeto coletivo na nuvem. Ids são remapeados (evita colisão ao reimportar o mesmo
    arquivo duas vezes), igual ao importQDPX. */
-async function importQualilab(file, store, projectId, projectMode){
+async function importQualilab(file, store, projectId, projectMode, onProgress){
   const codLayer = projectMode==='individual' ? 'final' : 'individual';
   let db;
   try{ db = JSON.parse(await file.text()); }
@@ -525,15 +544,19 @@ async function importQualilab(file, store, projectId, projectMode){
   (db.categories||[]).forEach(c=> catMap[c.id]=uid());
   (db.codes||[]).forEach(c=> codeMap[c.id]=uid());
 
+  const total = (db.documents||[]).length + (db.categories||[]).length + (db.codes||[]).length
+    + (db.doc_values||[]).length + (db.codings||[]).length + (db.memos||[]).length;
+  const tick = makeProgressTicker(onProgress, total);
+
   if(store.beginBatch) store.beginBatch();
   try{
-    for(const d of (db.documents||[])) await store.addDocument(projectId, { id:docMap[d.id], name:d.name, content:d.content });
+    for(const d of (db.documents||[])){ await store.addDocument(projectId, { id:docMap[d.id], name:d.name, content:d.content }); await tick(); }
     const catsSorted = (db.categories||[]).slice().sort((a,b)=>(a.position??0)-(b.position??0));
     for(let i=0;i<catsSorted.length;i++){ const c=catsSorted[i];
-      await store.addCategory(projectId, { id:catMap[c.id], name:c.name, kind:c.kind, options:c.options||[], description:c.description||'', color:c.color||0, position:i }); }
+      await store.addCategory(projectId, { id:catMap[c.id], name:c.name, kind:c.kind, options:c.options||[], description:c.description||'', color:c.color||0, position:i }); await tick(); }
     const codesSorted = (db.codes||[]).slice().sort((a,b)=>(a.position??0)-(b.position??0));
     for(let i=0;i<codesSorted.length;i++){ const c=codesSorted[i];
-      await store.addCode(projectId, { id:codeMap[c.id], parent_id:c.parent_id?codeMap[c.parent_id]:null, name:c.name, hue:c.hue||0, depth:c.depth||0, position:i }); }
+      await store.addCode(projectId, { id:codeMap[c.id], parent_id:c.parent_id?codeMap[c.parent_id]:null, name:c.name, hue:c.hue||0, depth:c.depth||0, position:i }); await tick(); }
 
     // doc_values: setDocValue/setFinalValue só gravam o valor "atual" (sem autor/camada
     // arbitrários) — mesma limitação já documentada na importação de QDPX. Prefere o
@@ -546,6 +569,7 @@ async function importQualilab(file, store, projectId, projectMode){
     });
     for(const v of Object.values(pickVal)){
       if(docMap[v.document_id] && catMap[v.category_id]) await setVal(projectId, docMap[v.document_id], catMap[v.category_id], v.value);
+      await tick();
     }
 
     // codings: created_by zerado (o uuid original não corresponde a ninguém no projeto de
@@ -559,6 +583,7 @@ async function importQualilab(file, store, projectId, projectMode){
         const layer = projectMode==='individual' ? codLayer : (c.layer||codLayer);
         await store.addCoding(projectId, { created_by:null, layer, document_id:docMap[c.document_id], code_id:codeMap[c.code_id], span_start:c.span_start, span_end:c.span_end, quote:c.quote, author_name:c.author_name||'importado' });
       }
+      await tick();
     }
 
     // memos: remapeia o alvo (documento/código); memo de projeto vira o memo do projeto de destino
@@ -569,6 +594,7 @@ async function importQualilab(file, store, projectId, projectMode){
         else if(m.scope==='code') targetId = codeMap[m.target_id];
         else if(m.scope==='project') targetId = projectId;
         if(targetId) await store.setMemo(projectId, m.scope, targetId, m.content, m.author_name);
+        await tick();
       }
     }
   } finally {
@@ -937,6 +963,7 @@ function App(){
   const qualilabInputRef = useRef(null);
   const qdpxInputRef = useRef(null);
   const [busy, setBusy] = useState(null);
+  const [progress, setProgress] = useState(null); // {done,total} durante import grande
   const [online, setOnline] = useState(navigator.onLine);
   const [pending, setPending] = useState(0); // escritas em fila (cloud offline)
   const [importMsg, setImportMsg] = useState(null);
@@ -1318,8 +1345,10 @@ function App(){
 
   async function doImportQDPX(file){
     setBusy('Importando .qdpx...');
+    setProgress({done:0,total:0});
     try{
-      const r = await importQDPX(file, store, project.id, projectMode);
+      const r = await importQDPX(file, store, project.id, projectMode, (done,total)=>setProgress({done,total}));
+      setProgress(null);
       const freshDocs = await store.listDocuments(project.id);
       // carrega o projeto completo e define explicitamente o primeiro documento
       // (evita race condition: loadDoc usa activeId do closure, que pode ser antigo)
@@ -1342,13 +1371,15 @@ function App(){
       setErr(null);
       setBusy(null);
       setImportMsg(`Importado: ${r.documentos} documento(s), ${r.categorias} categoria(s), ${r.codigos} código(s), ${r.trechos} trecho(s) codificado(s).${skippedMsg}`);
-    }catch(e){ setBusy(null); setErr('Falha ao importar: '+(e.message||e)); }
+    }catch(e){ setBusy(null); setProgress(null); setErr('Falha ao importar: '+(e.message||e)); }
   }
 
   async function doImportQualilab(file){
     setBusy('Importando .qualilab...');
+    setProgress({done:0,total:0});
     try{
-      const r = await importQualilab(file, store, project.id, projectMode);
+      const r = await importQualilab(file, store, project.id, projectMode, (done,total)=>setProgress({done,total}));
+      setProgress(null);
       const freshDocs = await store.listDocuments(project.id);
       const [cats2, codes2] = await Promise.all([store.listCategories(project.id), store.listCodes(project.id)]);
       setCats(cats2); setCodes(codes2); setDocs(freshDocs);
@@ -1362,7 +1393,7 @@ function App(){
       setErr(null);
       setBusy(null);
       setImportMsg(`Importado: ${r.documentos} documento(s), ${r.categorias} categoria(s), ${r.codigos} código(s), ${r.trechos} trecho(s) codificado(s), ${r.memos} memo(s).`);
-    }catch(e){ setBusy(null); setErr('Falha ao importar .qualilab: '+(e.message||e)); }
+    }catch(e){ setBusy(null); setProgress(null); setErr('Falha ao importar .qualilab: '+(e.message||e)); }
   }
 
   async function doClearProject(){
@@ -1507,7 +1538,10 @@ function App(){
 
     ${err && html`<div class="banner err">${err} <button class="btn sm ghost" onClick=${()=>setErr(null)}>fechar</button></div>`}
     ${importMsg && html`<div class="banner warn">${importMsg} <button class="btn sm ghost" onClick=${()=>setImportMsg(null)}>fechar</button></div>`}
-    ${busy && html`<div class="banner warn">${busy}</div>`}
+    ${busy && html`<div class="banner warn">
+      ${busy}${progress?.total>0 ? ` ${progress.done}/${progress.total}` : ''}
+      ${progress?.total>0 && html`<div class="progress-track"><div class="progress-fill" style=${`width:${Math.min(100,Math.round(100*progress.done/progress.total))}%`}></div></div>`}
+    </div>`}
 
     ${mainView==='codificar' ? html`<div class="split">
       <!-- ESQUERDA: documento -->
