@@ -126,12 +126,12 @@ Não há etapa de build. Basta abrir o arquivo:
 https://luizpf42.github.io/QualiLab
 ```
 
-**Para rodar offline** com um servidor local (evita bloqueios de CORS em alguns navegadores):
+**Para usar offline** — baixe o `index.html` e dê duplo clique pra abrir direto no navegador (`file://`), **sem precisar de servidor**: ele só importa bibliotecas externas via URL `https://` (nunca por caminho de arquivo local), então não bate no bloqueio clássico de módulo ES via `file://`. Em Chrome/Edge dá pra usar inclusive o modo **Arquivo local**, que salva o projeto como `.qualilab` visível no disco, ao lado do `index.html`.
+
+**Se ainda assim algo não carregar** (extensão de segurança, política de navegador corporativo, ou outro navegador com bloqueio mais estrito de `file://`), sirva por um servidor local como alternativa:
 ```bash
 python -m http.server 8000   # ou: npx serve .
 ```
-
-**Para dados sensíveis** — baixe o `index.html`, abra no Chrome/Edge e use o modo **Arquivo local** (sem servidor necessário).
 
 As dependências (Preact, htm, pdf.js, mammoth, JSZip, supabase-js) são carregadas via CDN na primeira utilização — conexão com a internet é necessária na primeira vez, mas depois o app funciona com o arquivo já baixado.
 
