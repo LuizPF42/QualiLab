@@ -1213,6 +1213,7 @@ function App(){
   const [ctxNewParent, setCtxNewParent] = useState(''); // id do código-pai, ou '' para nova família
   const [selCode, setSelCode] = useState(null);
   const [rtab, setRtab] = useState('categorias');
+  const [esquemaTab, setEsquemaTab] = useState('codigos'); // codigos | categorias — sub-paginas da aba Esquema
   const [mainView, setMainView] = useState('codificar'); // codificar | reconciliar | visualizar
   const [viewCoder, setViewCoder] = useState('all');      // all | mine | <userId> | final
   const [account, setAccount] = useState(false);  // tela "Minha conta"
@@ -1444,7 +1445,7 @@ function App(){
     }
     setAllValues(V); setAllCodings(C);
   }, [store, project, docs]);
-  useEffect(()=>{ if(phase==='work' && (mainView==='visualizar'||mainView==='graficos')) loadAll(); }, [phase, mainView, loadAll, codings]);
+  useEffect(()=>{ if(phase==='work' && (mainView==='visualizar'||mainView==='graficos'||mainView==='esquema')) loadAll(); }, [phase, mainView, loadAll, codings]);
 
   /* memos: nota unica por alvo (projeto/documento/codigo) */
   const loadMemos = useCallback(async ()=>{
@@ -1744,6 +1745,9 @@ function App(){
   }, [codes]);
   const codePath = useCallback((id)=>{ const out=[]; let c=codeById[id]; let guard=0; while(c&&guard++<12){ out.unshift(c.name); c=c.parent_id?codeById[c.parent_id]:null; } return out; }, [codeById]);
   const codingCount = useMemo(()=>{ const m={}; codings.forEach(c=>{m[c.code_id]=(m[c.code_id]||0)+1;}); return m; }, [codings]);
+  // frequencia GLOBAL (todo o projeto, nao so o documento aberto) — usada na aba Esquema,
+  // que nao tem documento ativo; ajuda a ver o que esta sendo usado de fato ao reorganizar
+  const schemaCodingCount = useMemo(()=>{ const m={}; allCodings.forEach(c=>{m[c.code_id]=(m[c.code_id]||0)+1;}); return m; }, [allCodings]);
 
   /* =================== RENDER =================== */
   if(phase==='boot') return html`<div class="empty"><div class="t">Carregando…</div></div>`;
@@ -1795,6 +1799,7 @@ function App(){
         <button class=${mainView==='visualizar'?'on':''} onClick=${()=>setMainView('visualizar')}>Visualização</button>
         <button class=${mainView==='graficos'?'on':''} onClick=${()=>setMainView('graficos')}>Gráficos</button>
         <button class=${mainView==='memos'?'on':''} onClick=${()=>setMainView('memos')}>Memos</button>
+        <button class=${mainView==='esquema'?'on':''} onClick=${()=>setMainView('esquema')}>Esquema</button>
       </div>`}
       <div class="grow"></div>
       ${project && html`<button class="pill ${mode==='cloud'?'mode-cloud':''}" style="cursor:pointer"
@@ -1960,6 +1965,39 @@ function App(){
         <div class="pane-body scroll" style="padding:0">
           <${MemoEditor} sel=${memoSel} project=${project} codeById=${codeById} codePath=${codePath}
             memos=${memos} onSave=${saveMemo} />
+        </div>
+      </section>
+    </div>`
+    : mainView==='esquema' ? html`<div class="split">
+      <!-- ESQUEMA: tela inteira, sem documento aberto -->
+      <section class="pane left" style="flex:1 1 100%;border-right:none;max-width:none">
+        <div class="pane-head">
+          <div class="seg">
+            <button class=${esquemaTab==='codigos'?'on':''} onClick=${()=>setEsquemaTab('codigos')}>Códigos</button>
+            <button class=${esquemaTab==='categorias'?'on':''} onClick=${()=>setEsquemaTab('categorias')}>Categorias</button>
+          </div>
+        </div>
+        <div class="pane-body scroll">
+          <div style="max-width:760px;margin:0 auto">
+            ${esquemaTab==='codigos' && html`<${CodesPanel} codes=${codes} codeById=${codeById} count=${schemaCodingCount} sel=${null}
+                   selCode=${selCode} setSelCode=${setSelCode} codePath=${codePath}
+                   onAdd=${addCode} onDel=${delCode} onApply=${()=>{}} onUpd=${updCode} onSetColor=${setCodeColor} isAdmin=${isAdmin}
+                   store=${store} project=${project} reload=${()=>loadProject(store,project.id)} />`}
+            ${esquemaTab==='categorias' && html`<div class="section">
+              <p class="h">Esquema de categorias</p>
+              <p class="hint">Cada categoria recebe um valor por documento (preenchido na aba Codificação). Aqui você só define os campos: nome, tipo e opções.</p>
+              ${cats.length===0 && html`<div class="card"><span class="meta">${isAdmin?'Nenhuma categoria ainda. Crie abaixo.':'Nenhuma categoria definida pelo dono do projeto.'}</span></div>`}
+              ${isAdmin
+                ? html`<div>
+                    ${cats.map(cat=>html`<${CategoryEditor} key=${cat.id} cat=${cat} onUpd=${updCategory} onDel=${delCategory} />`)}
+                    <button class="btn sm" onClick=${addCategory} style="margin-top:6px">＋ Nova categoria</button>
+                  </div>`
+                : cats.map(cat=>html`<div class="card" key=${cat.id} style="margin-bottom:8px">
+                    <div class="field-label">${cat.name}</div>
+                    ${cat.description && html`<p class="hint" style="margin:4px 0 0">${cat.description}</p>`}
+                  </div>`)}
+            </div>`}
+          </div>
         </div>
       </section>
     </div>`

@@ -127,6 +127,7 @@ Um componente Preact grande com todo o estado. Fases: `boot | auth | gate | work
 - **visualizar** — master-detail: `VizNav` (camada + categorias colapsáveis + árvore de códigos) | `VizExcerpts` (trechos do código em `.card` com `.reader`, agrupados por documento, co-ocorrência opcional).
 - **graficos** — `ChartsPanel`: frequência de códigos, distribuição por categoria, heatmap código×categoria, produção/concordância por codificador. Barras em HTML/CSS (`barRows`) + tabela; **sem libs**.
 - **memos** — master-detail: `MemoNav` (projeto/documento/código) | `MemoEditor` (nota única por alvo, autosave, compartilhada entre membros).
+- **esquema** — tela inteira, sem documento aberto, com sub-abas (`esquemaTab`): `codigos` (reaproveita `CodesPanel`, com `sel=null`/`onApply` no-op já que não há trecho selecionado, e frequência **global** via `schemaCodingCount` em vez do `codingCount` por documento) e `categorias` (reaproveita `CategoryEditor`, sem o trecho de preencher valor do documento que `CategoriesPanel` tem). Visão expandida e **aditiva** — o painel lateral de Codificação continua igual, intencionalmente duplicado (decisão consciente: menos mudança de hábito > menos duplicação).
 
 A **pílula do projeto** no cabeçalho abre o `ProjectModal` (hub: convite/código de acesso, tipo, membros, renomear/limpar/excluir, conexão). O **nome do usuário** abre `AccountModal` (nome, senha, gestão de todos os projetos). O botão **"salvar .qualilab"** no cabeçalho chama `saveQualilab()` (download do projeto inteiro em qualquer modo).
 
