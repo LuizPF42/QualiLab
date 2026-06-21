@@ -39,12 +39,13 @@ Cada documento pode receber atributos com cinco tipos de campo:
 
 Cada categoria pode ter descrição/instrução e habilitar as opções **"Não informado"** e **"Outros"** (valor livre). O esquema é definido pelos administradores do projeto; os membros apenas preenchem.
 
-### Quatro telas principais
+### Telas principais
 
 - **Codificação** — leitor à esquerda com grifos coloridos; painéis de categorias e de códigos à direita. Filtro **"Ver:"** para alternar entre camadas (individual, por codificador, final).
 - **Reconciliação** — agrupa as codificações que se sobrepõem no mesmo código, mostra quantos codificadores concordam e permite **consolidar** na camada final (gabarito).
 - **Visualização** — navegação por código à esquerda; trechos do código selecionado à direita, em tipografia legível, agrupados por documento. Filtro por categoria e cruzamento por co-ocorrência de até 2 códigos.
 - **Gráficos** — frequência de códigos, distribuição por categoria (gabarito), heatmap código × categoria, produção por codificador e concordância entre codificadores.
+- **Memos** — nota analítica única por alvo (projeto, documento ou código), compartilhada entre os pesquisadores e editável por qualquer membro.
 
 ### Codificação colaborativa em camadas
 Cada codificação registra o autor. O trabalho de cada pesquisador é independente (`layer = individual`); a equipe consolida uma **camada final** na tela de Reconciliação. O mesmo modelo vale para as respostas de categoria: cada pesquisador preenche a sua; o administrador define o gabarito.
@@ -71,6 +72,7 @@ Clicando no seu nome no cabeçalho, a tela **Minha Conta** permite:
 
 | Formato | Importa | Exporta | Notas |
 |---|:---:|:---:|---|
+| **`.qualilab`** (nativo) | ✅ | ✅ | Botão **"salvar .qualilab"** no cabeçalho — baixa o projeto inteiro (documentos, categorias, valores, códigos, codificações e memos) para reabrir no próprio app. Funciona em qualquer modo. |
 | **QDPX** (REFI-QDA) | ✅ | ✅ | Interoperável com ATLAS.ti, MAXQDA, NVivo, Quirkos, Taguette, QualCoder. Na exportação, prefere a camada final (gabarito) quando consolidada. |
 | **CSV — trechos** | — | ✅ | Um trecho por linha, com documento, código, camada e autor. |
 | **CSV — atributos** | — | ✅ | Um documento por linha, com os valores de cada categoria. |

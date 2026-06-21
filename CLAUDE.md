@@ -10,7 +10,7 @@ Ferramenta de análise qualitativa (QDA) que roda **inteira em um único arquivo
 
 - **Front-end**: Preact + htm (template literals, **não** JSX).
 - **Backend opcional**: Supabase (Postgres + Auth + Realtime). Sem credenciais, roda em modo **local** (`localStorage`).
-- **Documentação de usuário + schema SQL**: [`README.md`](README.md). O bloco `<details>` do README tem o **schema completo e idempotente** — é a fonte da verdade do banco.
+- **Schema SQL**: a fonte da verdade do banco é [`supabase/schema.sql`](supabase/schema.sql) (idempotente). Mudou o banco? Atualize esse arquivo **e** o README.
 
 ---
 
@@ -28,7 +28,7 @@ Ferramenta de análise qualitativa (QDA) que roda **inteira em um único arquivo
 
 3. **Reaproveite as classes CSS existentes** (definidas no `<style>` do `<head>`) em vez de reinventar inline. Copiar o visual de um componente que já funciona (ex.: `TreeNode` → `VizCodeNode`) é mais seguro do que estilizar do zero.
 
-4. **Mudou o banco? Entregue o SQL ao usuário.** Eu não rodo SQL no Supabase dele. Forneço o bloco para colar no **SQL Editor → Run**. Tudo idempotente (`if not exists`, `create or replace`, `drop policy if exists`). **Trocar a assinatura de retorno** de uma função exige `drop function if exists ...()` antes do `create`. Depois, **atualize o `README.md`** para o schema completo continuar correto.
+4. **Mudou o banco? Entregue o SQL ao usuário e atualize `supabase/schema.sql`.** Eu não rodo SQL no Supabase dele. Forneço o bloco para colar no **SQL Editor → Run**. Tudo idempotente (`if not exists`, `create or replace`, `drop policy if exists`). **Trocar a assinatura de retorno** de uma função exige `drop function if exists ...()` antes do `create`. A fonte da verdade é [`supabase/schema.sql`](supabase/schema.sql) — mantenha-o completo; atualize o `README.md` se a doc de usuário também mudar.
 
 5. **Não quebre o modo local.** Toda funcionalidade de store tem implementação em `LocalStore` **e** `SupabaseStore`. Métodos novos precisam de stub no LocalStore.
 
@@ -42,6 +42,8 @@ Três implementações do mesmo "interface":
 - **`LocalStore()`** — `localStorage` (`lastro:local`). Fallback sem credenciais e sem suporte a File System Access API. Limite 5MB.
 - **`createFileStore(fileHandle, isNew)`** — **File System Access API**. Salva um `.qualilab` (JSON) visível no disco. Zero rede, funciona offline/air-gapped. Só Chrome/Edge. O `fileHandle` é persistido no IndexedDB (`IDB.saveHandle`) para reabrir na próxima sessão.
 - **`SupabaseStore(sb)`** — Postgres via supabase-js, com RLS. Tem fila de escrita (`withQueue`) via IndexedDB para tolerar falhas de rede; `store.onPendingChange(cb)` notifica o App do contador de pendências; `store.flush()` é chamado ao reconectar (`window.online`).
+
+**Batching (LocalStore e FileStore):** `store.beginBatch()` / `store.endBatch()` suprimem o `save()` por item e gravam **uma vez** no fim. Essencial em importação grande (`.qdpx`): sem isso, cada um dos centenas de inserts re-serializa o banco inteiro no disco/localStorage e a aba trava por segundos. `importQDPX` envolve toda a persistência em `beginBatch()`…`finally{ endBatch() }`. SupabaseStore não tem (inserts são chamadas de rede); o `importQDPX` guarda com `if(store.beginBatch)`.
 
 Helper `IDB` — wrapper mínimo sobre IndexedDB com dois stores: `write_queue` (fila de escritas pendentes do SupabaseStore) e `file_handles` (persistência do FileSystemFileHandle entre sessões).
 
@@ -59,11 +61,13 @@ listCategories · addCategory · updateCategory · deleteCategory
 getDocValues(docId) · setDocValue(pid,doc,cat,val) · setFinalValue(pid,doc,cat,val)
 listCodes · addCode · updateCode · deleteCode
 listCodings(pid,docId) · addCoding(pid,co) · deleteCoding(id)
-realtime(pid,onChange)   // só SupabaseStore
+listMemos(pid) · setMemo(pid,scope,targetId,content,authorName)
+beginBatch() · endBatch()   // só Local/FileStore (suprime save por item)
+realtime(pid,onChange)      // só SupabaseStore
 ```
 
 ### App
-Um componente Preact grande com todo o estado. Fases: `boot | auth | gate | work`. A "tela" de trabalho é decidida por `mainView`: `codificar | reconciliar | visualizar | graficos`.
+Um componente Preact grande com todo o estado. Fases: `boot | auth | gate | work`. A "tela" de trabalho é decidida por `mainView`: `codificar | reconciliar | visualizar | graficos | memos`.
 
 ### Mapa do arquivo (aproximado, mude com cuidado)
 1. `<head>`: `showFatal` (tela de erro pré-JS, usa Georgia fixo), `:root` (variáveis de cor/fonte), classes CSS.
@@ -74,8 +78,8 @@ Um componente Preact grande com todo o estado. Fases: `boot | auth | gate | work
 6. `extractText`, `buildRuns`, helpers (`hslToHex`, `xmlEsc`, `csv*`, `download`…).
 7. QDPX: `buildCodeXml`, `exportQDPX`, `importQDPX`.
 8. `LocalStore`, `SupabaseStore`.
-9. `App`.
-10. Componentes: `Auth`, `Gate`, `AccountModal`, `ProjectModal`, `CategoriesPanel`, `CategoryEditor`, `CategoryValue`, `Reconcile`, `VizNav`/`VizCodeNode`/`VizExcerpts` (Visualização), `ChartsPanel`+`barRows`, `CodesPanel`/`TreeNode`/`RenameCode`, `DebInput`, `DateInput`/`parseDate`, `AddPaste`.
+9. `App` (inclui `saveQualilab()` — baixa o `.qualilab` com tudo, inclusive memos).
+10. Componentes: `Auth`, `Gate`, `AccountModal`, `ProjectModal`, `CategoriesPanel`, `CategoryEditor`, `CategoryValue`, `Reconcile`, `VizNav`/`VizCodeNode`/`VizExcerpts` (Visualização), `ChartsPanel`+`barRows`, `CodesPanel`/`TreeNode`/`RenameCode`, `MemoNav`/`MemoEditor` (Memos), `DebInput`, `DateInput`/`parseDate`, `AddPaste`.
 
 ---
 
@@ -90,6 +94,7 @@ Um componente Preact grande com todo o estado. Fases: `boot | auth | gate | work
 **Tipo de projeto (`projects.mode`)**:
 - `collective` — camadas individuais + tela de Reconciliação + filtro "Ver:".
 - `individual` — `applyCode` e `setValue` escrevem direto em `layer='final'`; Reconciliação e "Ver:" ficam ocultos. Converter collective→individual é **destrutivo** (RPC `set_project_mode` colapsa codings num único autor e mantém só o gabarito das categorias).
+  - **Gotcha (já corrigido):** como o seletor "Ver:" fica oculto aqui, `visibleCodings` **mostra todas as codificações** quando `projectMode==='individual'` (`return codings`), em vez de filtrar por camada. Sem isso, codings importados de `.qdpx` (que entram em `final`, mas podem estar em `individual` por histórico de modo) ficariam **invisíveis** no leitor. `buildRuns` deduplica por posição.
 
 **Papéis (`members.role` = `admin|member`)**: `is_admin(pid)` gateia esquema de categorias (`categories_write`), gabarito (`doc_values_final`) e as RPCs de gestão. `is_owner` ainda existe mas as permissões migraram para `is_admin`.
 
@@ -103,6 +108,7 @@ Um componente Preact grande com todo o estado. Fases: `boot | auth | gate | work
 - **Auth a habilitar no painel**: Providers → Email; "Allow anonymous sign-ins" (modo visitante); opcional desligar "Confirm email".
 - **RPCs** (todas `security definer`): `create_project`, `join_project`, `my_projects` (retorna `mode` e `role`), `is_admin`, `set_member_role`, `remove_member`, `rename_project`, `delete_project`, `set_project_mode`.
 - **Realtime**: `codings` e `doc_values` estão na publicação `supabase_realtime`. `store.realtime(pid,onChange)` assina e dispara recarga; há poll de reserva de 20s.
+- **Tabela `memos`**: nota única por `(project_id, scope, target_id)`, com RLS por membro (qualquer membro do projeto lê e escreve).
 
 ---
 
@@ -120,8 +126,9 @@ Um componente Preact grande com todo o estado. Fases: `boot | auth | gate | work
 - **reconciliar** — `Reconcile`: categorias (gabarito + ✓/✗ por pesquisador, admin define) e códigos (grupos sobrepostos → consolidar na camada final). Só em collective.
 - **visualizar** — master-detail: `VizNav` (camada + categorias colapsáveis + árvore de códigos) | `VizExcerpts` (trechos do código em `.card` com `.reader`, agrupados por documento, co-ocorrência opcional).
 - **graficos** — `ChartsPanel`: frequência de códigos, distribuição por categoria, heatmap código×categoria, produção/concordância por codificador. Barras em HTML/CSS (`barRows`) + tabela; **sem libs**.
+- **memos** — master-detail: `MemoNav` (projeto/documento/código) | `MemoEditor` (nota única por alvo, autosave, compartilhada entre membros).
 
-A **pílula do projeto** no cabeçalho abre o `ProjectModal` (hub: convite/código de acesso, tipo, membros, renomear/limpar/excluir, conexão). O **nome do usuário** abre `AccountModal` (nome, senha, gestão de todos os projetos).
+A **pílula do projeto** no cabeçalho abre o `ProjectModal` (hub: convite/código de acesso, tipo, membros, renomear/limpar/excluir, conexão). O **nome do usuário** abre `AccountModal` (nome, senha, gestão de todos os projetos). O botão **"salvar .qualilab"** no cabeçalho chama `saveQualilab()` (download do projeto inteiro em qualquer modo).
 
 ---
 
@@ -146,7 +153,7 @@ Teste com `examples/QualiLab_demo_artificial_stress_test.qdpx` (16 docs, 90 cód
 ## Receitas comuns
 
 - **Nova view**: adicione um botão no seg do cabeçalho (`mainView`), um branch no encadeamento `mainView==='...' ? html\`...\` : ...`, e o componente. Se precisar de dados do projeto inteiro, dispare `loadAll()` no efeito (`mainView` incluso).
-- **Novo método de store**: implemente em `SupabaseStore` **e** `LocalStore`. Se for RPC, entregue o SQL e atualize o README.
+- **Novo método de store**: implemente nos **três** stores — `SupabaseStore`, `LocalStore` **e** `createFileStore`. Se for RPC, entregue o SQL e atualize o `schema.sql` + README. (Ex.: `listMemos`/`setMemo` existem nos três.)
 - **Coluna nova em tabela**: `alter table ... add column if not exists ...`; deixe a store tolerante se a coluna puder faltar (ver `addCategory` que remove `description` no fallback). Atualize o README.
 - **Mudar permissão**: ajuste a policy RLS (ou o `is_admin` na função) — não confie só em esconder o botão; o servidor é a autoridade.
 
