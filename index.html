@@ -1887,7 +1887,7 @@ function App(){
       <!-- ESQUERDA: documento -->
       <section class="pane left">
         <div class="pane-head">
-          <select class="opt" style="max-width:260px" value=${activeId||''} onChange=${e=>setActiveId(e.target.value)}>
+          <select class="opt" style="max-width:840px" value=${activeId||''} onChange=${e=>setActiveId(e.target.value)}>
             ${docs.length===0 && html`<option value="">sem documentos</option>`}
             ${docs.map(d=>html`<option value=${d.id}>${d.name}</option>`)}
           </select>
@@ -1909,7 +1909,7 @@ function App(){
         ${sel && html`<div class="toolbar">
           <span style="font-weight:600;color:var(--teal-deep);font-size:12.5px">Trecho selecionado</span>
           <span class="q">"${sel.quote}"</span>
-          <span class="meta">escolha um código à direita para aplicar</span>
+          <span class="meta">escolha um código à direita para aplicar, <b>ou clique com o botão direito</b></span>
           <div class="grow"></div>
           <button class="btn sm ghost" onClick=${()=>{setSel(null);window.getSelection()?.removeAllRanges();}}>cancelar</button>
         </div>`}
@@ -1954,7 +1954,7 @@ function App(){
       <section class="pane left" style="flex:1 1 100%;border-right:none;max-width:none">
         <div class="pane-head">
           <span class="h" style="margin:0">Reconciliação</span>
-          <select class="opt" style="max-width:260px;margin-left:10px" value=${activeId||''} onChange=${e=>setActiveId(e.target.value)}>
+          <select class="opt" style="max-width:840px;margin-left:10px" value=${activeId||''} onChange=${e=>setActiveId(e.target.value)}>
             ${docs.length===0 && html`<option value="">sem documentos</option>`}
             ${docs.map(d=>html`<option value=${d.id}>${d.name}</option>`)}
           </select>
@@ -2055,18 +2055,18 @@ function App(){
   </div>
 
   ${ctxMenu && (()=>{
-    const menuW = 240, maxMenuH = Math.round(window.innerHeight*0.6);
+    const menuW = 280, maxMenuH = Math.round(window.innerHeight*0.6);
     const rightLimit = (ctxMenu.boundRight||window.innerWidth) - 8;
     const left = Math.max(8, Math.min(ctxMenu.x, rightLimit - menuW));
     const top = Math.max(8, Math.min(ctxMenu.y, window.innerHeight - maxMenuH - 8));
     return html`<div>
     <div onClick=${closeCtxMenu} onContextMenu=${e=>{e.preventDefault();closeCtxMenu();}} style="position:fixed;inset:0;z-index:60"></div>
-    <div class="exmenu" style=${`position:fixed;left:${left}px;top:${top}px;z-index:61;max-height:${maxMenuH}px;overflow:auto;min-width:${menuW}px`}>
-      <div style="padding:7px 12px;font-size:11px;color:var(--ink-faint);border-bottom:1px solid var(--line-soft);font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px">"${ctxMenu.sel.quote}"</div>
+    <div class="exmenu" style=${`position:fixed;left:${left}px;top:${top}px;z-index:61;max-height:${maxMenuH}px;overflow:auto;width:${menuW}px`}>
+      <div style="padding:7px 12px;font-size:11px;color:var(--ink-faint);border-bottom:1px solid var(--line-soft);font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">"${ctxMenu.sel.quote}"</div>
       ${orderedCodes.length===0 && !ctxCreating
         ? html`<div style="padding:9px 12px;color:var(--ink-faint);font-size:12.5px">Nenhum código criado ainda.</div>`
-        : orderedCodes.map(c=>{ const col=codeColor(c.hue,c.depth,c.hue_deg); return html`<button key=${c.id} onClick=${()=>applyCode(c.id, ctxMenu.sel)} style=${`padding-left:${12+c.depth*14}px`}>
-            <span class="swatch" style=${`background:${col.solid};display:inline-block;margin-right:7px;vertical-align:middle`}></span>${c.name}
+        : orderedCodes.map(c=>{ const col=codeColor(c.hue,c.depth,c.hue_deg); return html`<button key=${c.id} onClick=${()=>applyCode(c.id, ctxMenu.sel)} style=${`padding-left:${12+c.depth*14}px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;width:100%;box-sizing:border-box`} title=${c.name}>
+            <span class="swatch" style=${`background:${col.solid};display:inline-block;margin-right:7px;vertical-align:middle;flex-shrink:0`}></span>${c.name}
           </button>`; })}
       <div style="border-top:1px solid var(--line-soft)">
         ${!ctxCreating

@@ -41,7 +41,8 @@ Cada categoria pode ter descrição/instrução e habilitar as opções **"Não 
 
 ### Telas principais
 
-- **Codificação** — leitor à esquerda com grifos coloridos; painéis de categorias e de códigos à direita. Filtro **"Ver:"** para alternar entre camadas (individual, por codificador, final).
+- **Codificação** — leitor à esquerda com grifos coloridos; painéis de categorias e de códigos à direita. Filtro **"Ver:"** para alternar entre camadas (individual, por codificador, final) — afeta tanto os grifos no texto quanto as respostas de categoria exibidas: ver a resposta de outro pesquisador ou o gabarito é só leitura (editar fica restrito à sua própria resposta, pra não sobrescrever a de outra pessoa por engano).
+- **Esquema** — tela em branco (sem documento aberto) pra organizar o livro de códigos e o esquema de categorias de uma vez: reorganização em lote de códigos (agrupar, mesclar, promover a Hierarquia 0) e edição das categorias.
 - **Reconciliação** — agrupa as codificações que se sobrepõem no mesmo código, mostra quantos codificadores concordam e permite **consolidar** na camada final (gabarito).
 - **Visualização** — navegação por código à esquerda; trechos do código selecionado à direita, em tipografia legível, agrupados por documento. Filtro por categoria e cruzamento por co-ocorrência de até 2 códigos.
 - **Gráficos** — frequência de códigos, distribuição por categoria (gabarito), heatmap código × categoria, produção por codificador e concordância entre codificadores.
@@ -72,7 +73,7 @@ Clicando no seu nome no cabeçalho, a tela **Minha Conta** permite:
 
 | Formato | Importa | Exporta | Notas |
 |---|:---:|:---:|---|
-| **`.qualilab`** (nativo) | ✅ | ✅ | Botão **"salvar .qualilab"** no cabeçalho — baixa o projeto inteiro (documentos, categorias, valores, códigos, codificações e memos) para reabrir no próprio app. Funciona em qualquer modo. |
+| **`.qualilab`** (nativo) | ✅ | ✅ | Botão **"salvar .qualilab"** no cabeçalho — baixa o projeto inteiro (documentos, categorias, valores, códigos, codificações e memos) para reabrir no próprio app. Funciona em qualquer modo. Ao **importar para um projeto coletivo já em uso**, preserva a resposta de categoria de cada pesquisador de origem (não só uma); o gabarito do arquivo entra como gabarito do projeto de destino. |
 | **QDPX** (REFI-QDA) | ✅ | ✅ | Interoperável com ATLAS.ti, MAXQDA, NVivo, Quirkos, QualCoder. Na exportação, prefere a camada final (gabarito) quando consolidada. Ao importar um `.qdpx` de outra ferramenta (sem a convenção de tipo do QualiLab), tenta inferir categorias fechadas pelos valores repetidos — revise em "Gerenciar esquema de categorias". **Não inclui o Taguette** — ele só exporta o codebook em REFI-QDA (`.qdc`, sem documentos nem trechos). |
 | **`.sqlite3`** (Taguette) | ✅ | — | Lê o projeto nativo do Taguette direto no navegador (via [sql.js](https://github.com/sql-js/sql.js), sem servidor): documentos, tags (com hierarquia por `/` ou `.`, como o próprio Taguette documenta) e trechos codificados. O Taguette não tem atributos de documento nem autor por trecho, então isso não vem no import. |
 | **QDC** (codebook REFI-QDA) | ✅ | ✅ | Só o livro de códigos (sem documentos nem trechos — o formato não tem isso). Compatível com o codebook exportado por qualquer ferramenta REFI-QDA, incluindo o Taguette; se a hierarquia não vier em `<Code>` aninhado, tenta reconstruir pelo nome (`/` ou `.`), igual ao import do `.sqlite3`. |

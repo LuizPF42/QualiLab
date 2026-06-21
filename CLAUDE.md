@@ -32,6 +32,8 @@ Ferramenta de análise qualitativa (QDA) que roda **inteira em um único arquivo
 
 5. **Não quebre o modo local.** Toda funcionalidade de store tem implementação em `LocalStore` **e** `SupabaseStore`. Métodos novos precisam de stub no LocalStore.
 
+6. **Popup/menu posicionado por JS (`ctxMenu` em `App`) precisa de largura fixa, não só calculada.** O cálculo de `left`/`top` usa uma largura assumida (`menuW`) pra não vazar da tela; se o elemento real crescer pra caber conteúdo (nome de código longo, `min-width` sem `max-width`/`width`), o cálculo erra e o menu estoura a borda. Sempre trave `width:${menuW}px` (não `min-width`) no elemento e trunque o conteúdo interno com `text-overflow:ellipsis` em vez de deixar crescer.
+
 ---
 
 ## Arquitetura
