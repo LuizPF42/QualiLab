@@ -1,0 +1,133 @@
+{
+  "_meta": {
+    "id": "file-project",
+    "name": "Teste Sintético — Todas as Features",
+    "code": "TEST",
+    "mode": "collective",
+    "displayName": "Admin"
+  },
+  "documents": [
+    {
+      "id": "doc-1",
+      "name": "ENT-01 — Entrevista com pesquisadora",
+      "content": "Entrevista com pesquisadora sobre métodos. Ela descreveu o roteiro semiestruturado usado nas entrevistas e mencionou preocupações de LGPD quanto ao consentimento dos participantes. Ao final, destacou um achado inesperado sobre anonimização de dados sensíveis."
+    },
+    {
+      "id": "doc-2",
+      "name": "OBS-01 — Nota de campo da observação",
+      "content": "Nota de campo da observação em laboratório. O pesquisador observou a rotina da equipe e anotou aspectos éticos relacionados ao consentimento informado. Não houve menção a LGPD neste registro, mas o achado sobre cultura organizacional foi relevante."
+    },
+    {
+      "id": "doc-3",
+      "name": "DOC-01 — Protocolo do comitê de ética",
+      "content": "Documento administrativo descrevendo o protocolo de anonimização adotado pelo comitê de ética. O texto cita o consentimento livre e esclarecido e referencia brevemente a entrevista piloto realizada antes da coleta principal."
+    }
+  ],
+  "categories": [
+    {
+      "id": "cat-tipo",
+      "name": "Tipo de fonte",
+      "kind": "select",
+      "options": ["Entrevista", "Nota de campo", "Documento administrativo", "Não informado"],
+      "description": "Testa kind=select com Não informado",
+      "color": 0,
+      "position": 0
+    },
+    {
+      "id": "cat-resumo",
+      "name": "Resumo livre",
+      "kind": "text",
+      "options": [],
+      "description": "Testa kind=text e caracteres especiais",
+      "color": 1,
+      "position": 1
+    },
+    {
+      "id": "cat-data",
+      "name": "Data de referência",
+      "kind": "date",
+      "options": [],
+      "description": "Testa kind=date com data completa e parcial (mês/ano)",
+      "color": 2,
+      "position": 2
+    },
+    {
+      "id": "cat-posicao",
+      "name": "Posição sobre o tema",
+      "kind": "single",
+      "options": ["Favorável", "Contrário", "Ambivalente", "Outros", "Não informado"],
+      "description": "Testa kind=single (múltipla escolha) com Outros (texto livre)",
+      "color": 3,
+      "position": 3
+    },
+    {
+      "id": "cat-palavras",
+      "name": "Palavras-chave",
+      "kind": "checkbox",
+      "options": ["LGPD", "Metodologia", "Ética", "Outros", "Não informado"],
+      "description": "Testa kind=checkbox (multi-valor, separador ' | ') com Outros",
+      "color": 4,
+      "position": 4
+    },
+    {
+      "id": "cat-vazia",
+      "name": "Categoria sem opções (edge case)",
+      "kind": "select",
+      "options": [],
+      "description": "Sem opções cadastradas — deve mostrar 'sem valores, edite o esquema abaixo'",
+      "color": 5,
+      "position": 5
+    }
+  ],
+  "doc_values": [
+    { "id": "v1",  "document_id": "doc-1", "category_id": "cat-tipo",     "value": "Entrevista",                  "set_by": "user-admin", "author_name": "Admin", "layer": "final" },
+    { "id": "v2",  "document_id": "doc-1", "category_id": "cat-tipo",     "value": "Entrevista",                  "set_by": "user-ana",   "author_name": "Ana",   "layer": "individual" },
+    { "id": "v3",  "document_id": "doc-1", "category_id": "cat-tipo",     "value": "Documento administrativo",    "set_by": "user-bruno", "author_name": "Bruno", "layer": "individual" },
+    { "id": "v4",  "document_id": "doc-2", "category_id": "cat-tipo",     "value": "Nota de campo",               "set_by": "user-admin", "author_name": "Admin", "layer": "final" },
+    { "id": "v5",  "document_id": "doc-3", "category_id": "cat-tipo",     "value": "Documento administrativo",    "set_by": "user-admin", "author_name": "Admin", "layer": "final" },
+
+    { "id": "v6",  "document_id": "doc-1", "category_id": "cat-resumo",   "value": "Entrevista cobre metodologia, LGPD e um achado inesperado sobre anonimização.", "set_by": "user-admin", "author_name": "Admin", "layer": "final" },
+    { "id": "v7",  "document_id": "doc-2", "category_id": "cat-resumo",   "value": "Não informado",               "set_by": "user-ana",   "author_name": "Ana",   "layer": "individual" },
+    { "id": "v8",  "document_id": "doc-3", "category_id": "cat-resumo",   "value": "Resumo com \"aspas\", reticências… e acentos: ç, ã, õ.", "set_by": "user-admin", "author_name": "Admin", "layer": "final" },
+
+    { "id": "v9",  "document_id": "doc-1", "category_id": "cat-data",     "value": "15/03/2026",                  "set_by": "user-admin", "author_name": "Admin", "layer": "final" },
+    { "id": "v10", "document_id": "doc-2", "category_id": "cat-data",     "value": "03/2026",                     "set_by": "user-admin", "author_name": "Admin", "layer": "final" },
+
+    { "id": "v11", "document_id": "doc-1", "category_id": "cat-posicao",  "value": "Favorável",                   "set_by": "user-admin", "author_name": "Admin", "layer": "final" },
+    { "id": "v12", "document_id": "doc-2", "category_id": "cat-posicao",  "value": "Neutro com reservas",         "set_by": "user-bruno", "author_name": "Bruno", "layer": "individual" },
+    { "id": "v13", "document_id": "doc-3", "category_id": "cat-posicao",  "value": "Não informado",               "set_by": "user-admin", "author_name": "Admin", "layer": "final" },
+
+    { "id": "v14", "document_id": "doc-1", "category_id": "cat-palavras", "value": "LGPD | Metodologia",          "set_by": "user-admin", "author_name": "Admin", "layer": "final" },
+    { "id": "v15", "document_id": "doc-2", "category_id": "cat-palavras", "value": "Ética | Vigilância",          "set_by": "user-bruno", "author_name": "Bruno", "layer": "individual" },
+    { "id": "v16", "document_id": "doc-3", "category_id": "cat-palavras", "value": "Não informado",               "set_by": "user-admin", "author_name": "Admin", "layer": "final" }
+  ],
+  "codes": [
+    { "id": "code-a0",   "parent_id": null,      "name": "Metodologia",              "hue": 0, "depth": 0, "position": 0 },
+    { "id": "code-a1",   "parent_id": "code-a0", "name": "Entrevista",               "hue": 0, "depth": 1, "position": 1 },
+    { "id": "code-a1-1", "parent_id": "code-a1", "name": "Roteiro semiestruturado",  "hue": 0, "depth": 2, "position": 2 },
+    { "id": "code-a2",   "parent_id": "code-a0", "name": "Observação",               "hue": 0, "depth": 1, "position": 3 },
+    { "id": "code-b0",   "parent_id": null,      "name": "Ética e LGPD",             "hue": 1, "depth": 0, "position": 4, "hue_deg": 210 },
+    { "id": "code-b1",   "parent_id": "code-b0", "name": "Consentimento",            "hue": 1, "depth": 1, "position": 5, "hue_deg": 210 },
+    { "id": "code-b2",   "parent_id": "code-b0", "name": "Anonimização",             "hue": 1, "depth": 1, "position": 6, "hue_deg": 210 },
+    { "id": "code-c0",   "parent_id": null,      "name": "Achados",                  "hue": 2, "depth": 0, "position": 7 }
+  ],
+  "codings": [
+    { "id": "c1",  "document_id": "doc-1", "code_id": "code-a1-1", "span_start": 59,  "span_end": 82,  "quote": "roteiro semiestruturado",            "layer": "individual", "author_name": "Ana" },
+    { "id": "c2",  "document_id": "doc-1", "code_id": "code-a1-1", "span_start": 59,  "span_end": 82,  "quote": "roteiro semiestruturado",            "layer": "individual", "author_name": "Bruno" },
+    { "id": "c3",  "document_id": "doc-1", "code_id": "code-b0",   "span_start": 133, "span_end": 137, "quote": "LGPD",                               "layer": "individual", "author_name": "Ana" },
+    { "id": "c4",  "document_id": "doc-1", "code_id": "code-b1",   "span_start": 148, "span_end": 179, "quote": "consentimento dos participantes",     "layer": "individual", "author_name": "Ana" },
+    { "id": "c5",  "document_id": "doc-1", "code_id": "code-b2",   "span_start": 148, "span_end": 179, "quote": "consentimento dos participantes",     "layer": "individual", "author_name": "Bruno" },
+    { "id": "c6",  "document_id": "doc-1", "code_id": "code-c0",   "span_start": 203, "span_end": 220, "quote": "achado inesperado",                  "layer": "final",       "author_name": "Admin" },
+    { "id": "c7",  "document_id": "doc-2", "code_id": "code-a2",   "span_start": 17,  "span_end": 42,  "quote": "observação em laboratório",          "layer": "individual", "author_name": "Bruno" },
+    { "id": "c8",  "document_id": "doc-2", "code_id": "code-b1",   "span_start": 127, "span_end": 150, "quote": "consentimento informado",            "layer": "individual", "author_name": "Ana" },
+    { "id": "c9",  "document_id": "doc-2", "code_id": "code-c0",   "span_start": 198, "span_end": 233, "quote": "achado sobre cultura organizacional", "layer": "individual", "author_name": "Bruno" },
+    { "id": "c10", "document_id": "doc-3", "code_id": "code-b2",   "span_start": 39,  "span_end": 64,  "quote": "protocolo de anonimização",          "layer": "individual", "author_name": "Ana" },
+    { "id": "c11", "document_id": "doc-3", "code_id": "code-b0",   "span_start": 78,  "span_end": 93,  "quote": "comitê de ética",                    "layer": "individual", "author_name": "Bruno" },
+    { "id": "c12", "document_id": "doc-3", "code_id": "code-a0",   "span_start": 170, "span_end": 187, "quote": "entrevista piloto",                  "layer": "individual", "author_name": "Ana" }
+  ],
+  "memos": [
+    { "scope": "project",  "target_id": "file-project", "content": "Projeto sintético para testar todas as features do QualiLab: tipos de categoria (select/text/date/single/checkbox, com Não informado e Outros), hierarquia de códigos em 3 níveis, cor customizada de família, múltiplos codificadores, camadas individual/final e conflito de reconciliação.", "author_name": "Admin" },
+    { "scope": "document", "target_id": "doc-1",        "content": "Documento usado para testar conflito de codificação: Ana e Bruno aplicaram códigos diferentes (Consentimento vs. Anonimização) no mesmo trecho 'consentimento dos participantes'.", "author_name": "Admin" },
+    { "scope": "code",     "target_id": "code-b0",      "content": "Família usada para testar a agregação do contador na aba Esquema (soma dos subcódigos Consentimento e Anonimização) e a cor customizada (hue_deg=210).", "author_name": "Admin" }
+  ]
+}
