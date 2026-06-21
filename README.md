@@ -222,6 +222,7 @@ Copyright (c) 2026 Luiz Pimenta Filho
 
 ## To-dos
 
+- [ ] Migrar para um supabase (ou outro backend) mais robusto
 - [ ] Incluir ferramenta para anonimização automática / autotimizada
 - [ ] Melhorar gráficos
   - [ ] Cards "síntese" (número de documentos, tipo, códigos, etc.)
