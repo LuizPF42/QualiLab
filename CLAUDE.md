@@ -127,7 +127,20 @@ Um componente Preact grande com todo o estado. Fases: `boot | auth | gate | work
 - **visualizar** — master-detail: `VizNav` (camada + categorias colapsáveis + árvore de códigos) | `VizExcerpts` (trechos do código em `.card` com `.reader`, agrupados por documento, co-ocorrência opcional).
 - **graficos** — `ChartsPanel`: frequência de códigos, distribuição por categoria, heatmap código×categoria, produção/concordância por codificador. Barras em HTML/CSS (`barRows`) + tabela; **sem libs**.
 - **memos** — master-detail: `MemoNav` (projeto/documento/código) | `MemoEditor` (nota única por alvo, autosave, compartilhada entre membros).
-- **esquema** — tela inteira, sem documento aberto, com sub-abas (`esquemaTab`): `codigos` (reaproveita `CodesPanel`, com `sel=null`/`onApply` no-op já que não há trecho selecionado, e frequência **global** via `schemaCodingCount` em vez do `codingCount` por documento) e `categorias` (reaproveita `CategoryEditor`, sem o trecho de preencher valor do documento que `CategoriesPanel` tem). Visão expandida e **aditiva** — o painel lateral de Codificação continua igual, intencionalmente duplicado (decisão consciente: menos mudança de hábito > menos duplicação).
+- **esquema** — tela inteira, sem documento aberto, com sub-abas (`esquemaTab`): `categorias` (reaproveita `CategoryEditor`, sem o trecho de preencher valor do documento que `CategoriesPanel` tem) e `codigos` (componente próprio `SchemaCodesView` — **não** é o `CodesPanel`/`TreeNode` da tela de Codificação, que ficam intocados de propósito). Visão expandida e **aditiva**: o painel lateral de Codificação continua igual, intencionalmente duplicado (decisão consciente: menos mudança de hábito > menos duplicação).
+
+### Reorganização em lote de códigos (`SchemaCodesView`)
+
+Pensada pra quem termina a codificação aberta (grounded theory) com centenas de códigos soltos, todos no mesmo nível. Duas colunas: árvore com checkbox por código (`SchemaTreeNode`, paralelo ao `TreeNode` mas com seleção múltipla — propositalmente um componente separado, não uma flag a mais no `TreeNode`) + um painel de ações que muda conforme a seleção (`schemaSel`, estado local do componente, perdido ao trocar de sub-aba — não precisa persistir):
+
+- **1 código** (clique simples na linha, não no checkbox) → painel com `RenameCode` + botão **"Promover a Hierarquia 0"** (só aparece se `parent_id` não for nulo).
+- **2+ marcados** (checkbox) → `SchemaBulkPanel`, com duas ações:
+  - **Agrupar** — os marcados continuam separados, só passam a ser filhos de um código (existente, escolhido num `<select>`, ou recém-criado via `onAdd(null, nome)`, que já nasce em Hierarquia 0). Adota a cor (`hue`/`hue_deg`) do pai.
+  - **Mesclar** — escolhe um sobrevivente (sugestão = o mais frequente, recalculada a cada mudança de seleção via `useEffect` em `[selectedIds]` — **não** usar `useState(sorted[0])` sozinho pra isso: só roda na 1ª montagem do painel, então marcar um 3º código mais frequente *depois* do painel já estar aberto não atualizaria a sugestão; foi um bug real, pego em teste). Reatribui as codificações dos demais ao sobrevivente e os exclui. Irreversível — confirma antes.
+- **`reparentSubtree(codeId, newParentId, newDepth, adoptColor)`**: sempre que um código muda de pai, recalcula a profundidade (e, se `adoptColor`, a cor) de toda a subárvore recursivamente — `code.depth` é lido direto por `codeColor()` pra luminosidade do swatch, então fica errado se não for atualizado junto.
+- **Merge preserva filhos**: antes de excluir um código mesclado, os filhos diretos dele são reparentados pro sobrevivente — senão `store.deleteCode` (que já apaga em cascata) destruiria esses filhos sem querer.
+- **Sem `updateCoding` nos stores**: mesclar codificações é feito via `addCoding` (pro novo `code_id`) + `deleteCoding` (a original), não uma atualização in-place.
+- **Proteção contra ciclo**: ao agrupar, pula qualquer código que seria movido para dentro do seu próprio descendente (`isDescendantOf`).
 
 A **pílula do projeto** no cabeçalho abre o `ProjectModal` (hub: convite/código de acesso, tipo, membros, renomear/limpar/excluir, conexão). O **nome do usuário** abre `AccountModal` (nome, senha, gestão de todos os projetos). O botão **"salvar .qualilab"** no cabeçalho chama `saveQualilab()` (download do projeto inteiro em qualquer modo).
 
