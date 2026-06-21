@@ -152,6 +152,14 @@ Pensada pra quem termina a codificação aberta (grounded theory) com centenas d
 - **Sem `updateCoding` nos stores**: mesclar codificações é feito via `addCoding` (pro novo `code_id`) + `deleteCoding` (a original), não uma atualização in-place.
 - **Proteção contra ciclo**: ao agrupar, pula qualquer código que seria movido para dentro do seu próprio descendente (`isDescendantOf`).
 
+### Reordenar por arrastar (drag-and-drop nativo, sem lib)
+
+Categorias e códigos só nasciam anexados no fim (`position: lista.length`) — não tinha jeito de reordenar até agora. HTML5 Drag and Drop nativo (`draggable`/`dragstart`/`dragover`/`drop`), sem dependência nova.
+
+- **Categorias**: `DraggableCategoryList` (novo componente, antes do `CategoryEditor`) — envolve cada `CategoryEditor` com um handle `.drag-handle` (⠿) arrastável. Aparece nos **dois lugares** que listam categorias (`CategoriesPanel` → "Gerenciar esquema" e a aba Esquema → Categorias), porque os dois já reaproveitavam o mesmo `CategoryEditor`; não há a mesma separação que existe pra códigos (`SchemaCodesView` vs. `CodesPanel`/`TreeNode`). Estado do arrasto (`dragCatId`/`setDragCatId`) e a função `reorderCategories(draggedId,targetId)` ficam no `App`, passados como prop pros dois — como só 1 dos dois fica visível por vez, reaproveitar o mesmo estado é seguro. `reorderCategories` é flat (categoria não tem hierarquia): pega a lista ordenada por `position`, tira o arrastado do lugar antigo, insere no lugar do alvo, grava `position` de quem mudou.
+- **Códigos**: só na aba Esquema (`SchemaTreeNode`/`SchemaCodesView`) — **de propósito não** está em `CodesPanel`/`TreeNode` (tela de Codificação), que ficam intocados pela mesma razão de sempre (menos mudança de hábito). `reorderSiblings(draggedId,targetId)` em `SchemaCodesView` só reordena **entre irmãos** (mesmo `parent_id`) — arrastar pra um código de outro pai é ignorado em silêncio (mudar de pai é o que "Agrupar" já faz, de propósito separado). Não funciona na lista filtrada por busca (`filtered` é plana, sem agrupamento de irmãos visível).
+- Em ambos: handle dedicado (`.drag-handle`, `cursor:grab`) em vez do item inteiro ser arrastável — evita conflito com clique-pra-selecionar/inputs de texto dentro da linha. `onDrop` só dispara o reorder se o id de origem ≠ destino; resto é silencioso (sem mensagem de erro pra um drop inválido).
+
 A **pílula do projeto** no cabeçalho abre o `ProjectModal` (hub: convite/código de acesso, tipo, membros, renomear/limpar/excluir, conexão). O **nome do usuário** abre `AccountModal` (nome, senha, gestão de todos os projetos). O botão **"salvar .qualilab"** no cabeçalho chama `saveQualilab()` (download do projeto inteiro em qualquer modo).
 
 ---

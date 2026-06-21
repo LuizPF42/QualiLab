@@ -116,6 +116,7 @@
   .exmenu{position:absolute;right:0;top:112%;z-index:41;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.14);overflow:hidden;min-width:212px;}
   .exmenu button{display:block;width:100%;text-align:left;border:none;background:var(--surface);padding:9px 12px;font-size:13px;color:var(--ink);cursor:pointer;font-family:var(--sans);}
   .exmenu button:hover{background:var(--paper);}
+  .drag-handle{cursor:grab;color:var(--ink-faint);padding:0 4px;user-select:none;flex-shrink:0}
 
   @media (max-width:900px){
     .split{flex-direction:column;}
@@ -1278,6 +1279,7 @@ function App(){
   const [docs, setDocs] = useState([]);
   const [activeId, setActiveId] = useState(null);
   const [cats, setCats] = useState([]);
+  const [dragCatId, setDragCatId] = useState(null); // drag-and-drop pra reordenar categorias (mesmo estado serve pros dois lugares que listam CategoryEditor)
   const [values, setValues] = useState([]);
   const [codes, setCodes] = useState([]);
   const [codings, setCodings] = useState([]);
@@ -1584,6 +1586,17 @@ function App(){
   async function addCategory(){ const c = await store.addCategory(project.id,{name:'Nova categoria',kind:'single',options:[NAO_INFO],color:cats.length%HUES.length,position:cats.length}); setCats(x=>[...x,c]); }
   async function updCategory(id,patch){ await store.updateCategory(id,patch); setCats(x=>x.map(c=>c.id===id?{...c,...patch}:c)); }
   async function delCategory(id){ await store.deleteCategory(id); setCats(x=>x.filter(c=>c.id!==id)); setValues(v=>v.filter(x=>x.category_id!==id)); }
+  // reordena categorias por drag-and-drop: move draggedId pra posicao de targetId,
+  // empurrando as demais — so muda position, nunca a hierarquia (categoria e flat).
+  async function reorderCategories(draggedId, targetId){
+    if(draggedId===targetId) return;
+    const ordered = cats.slice().sort((a,b)=>(a.position??0)-(b.position??0));
+    const from = ordered.findIndex(c=>c.id===draggedId), to = ordered.findIndex(c=>c.id===targetId);
+    if(from<0 || to<0) return;
+    ordered.splice(to, 0, ordered.splice(from,1)[0]);
+    for(let i=0;i<ordered.length;i++){ if(ordered[i].position!==i) await store.updateCategory(ordered[i].id,{position:i}); }
+    setCats(ordered.map((c,i)=>({...c,position:i})));
+  }
 
   async function addCode(parent, customName){
     let hue, depth, hueDeg;
@@ -2022,7 +2035,8 @@ function App(){
         <div class="pane-body scroll">
           ${rtab==='categorias' && html`<${CategoriesPanel} cats=${cats} values=${values} activeDoc=${activeDoc}
                  canEditSchema=${isAdmin} userId=${user?.id} projectMode=${projectMode} viewCoder=${viewCoder}
-                 onSet=${setValue} onAdd=${addCategory} onUpd=${updCategory} onDel=${delCategory} />`}
+                 onSet=${setValue} onAdd=${addCategory} onUpd=${updCategory} onDel=${delCategory}
+                 dragCatId=${dragCatId} setDragCatId=${setDragCatId} onReorder=${reorderCategories} />`}
           ${rtab==='codigos' && html`<${CodesPanel} codes=${codes} codeById=${codeById} count=${codingCount} sel=${sel}
                  selCode=${selCode} setSelCode=${setSelCode} codePath=${codePath}
                  onAdd=${addCode} onDel=${delCode} onApply=${applyCode} onUpd=${updCode} onSetColor=${setCodeColor} isAdmin=${isAdmin}
@@ -2100,7 +2114,8 @@ function App(){
             ${cats.length===0 && html`<div class="card"><span class="meta">${isAdmin?'Nenhuma categoria ainda. Crie abaixo.':'Nenhuma categoria definida pelo dono do projeto.'}</span></div>`}
             ${isAdmin
               ? html`<div>
-                  ${cats.map(cat=>html`<${CategoryEditor} key=${cat.id} cat=${cat} onUpd=${updCategory} onDel=${delCategory} />`)}
+                  <${DraggableCategoryList} cats=${cats} onUpd=${updCategory} onDel=${delCategory}
+                    dragCatId=${dragCatId} setDragCatId=${setDragCatId} onReorder=${reorderCategories} />
                   <button class="btn sm" onClick=${addCategory} style="margin-top:6px">＋ Nova categoria</button>
                 </div>`
               : cats.map(cat=>html`<div class="card" key=${cat.id} style="margin-bottom:8px">
@@ -2305,7 +2320,7 @@ function Gate({ onCreate, onJoin, onOpen, onOpenFile, onNewFile, err, user, proj
 }
 
 /* ============ PAINEL DE CATEGORIAS (atributos do documento) ============ */
-function CategoriesPanel({ cats, values, activeDoc, canEditSchema, userId, projectMode, viewCoder, onSet, onAdd, onUpd, onDel }){
+function CategoriesPanel({ cats, values, activeDoc, canEditSchema, userId, projectMode, viewCoder, onSet, onAdd, onUpd, onDel, dragCatId, setDragCatId, onReorder }){
   // individual: setValue grava direto em layer='final' (sem multi-coder) — mostra o gabarito,
   // sempre editavel (so existe 1 "pesquisador").
   // coletivo: segue o MESMO filtro "Ver:" que o leitor usa pra codings, mas um campo de
@@ -2346,10 +2361,26 @@ function CategoriesPanel({ cats, values, activeDoc, canEditSchema, userId, proje
     ${canEditSchema && html`<details style="margin-top:10px">
       <summary style="cursor:pointer;font-size:12.5px;color:var(--ink-soft)">Gerenciar esquema de categorias</summary>
       <div style="margin-top:10px">
-        ${cats.map(cat=>html`<${CategoryEditor} key=${cat.id} cat=${cat} onUpd=${onUpd} onDel=${onDel} />`)}
+        <${DraggableCategoryList} cats=${cats} onUpd=${onUpd} onDel=${onDel}
+          dragCatId=${dragCatId} setDragCatId=${setDragCatId} onReorder=${onReorder} />
         <button class="btn sm" onClick=${onAdd} style="margin-top:6px">＋ Nova categoria</button>
       </div>
     </details>`}
+  </div>`;
+}
+/* lista de categorias com reordenacao por arrastar (drag-and-drop nativo, sem lib) — usado
+   tanto em CategoriesPanel quanto na aba Esquema, mesmos dragCatId/onReorder vindos do App
+   (so 1 dessas vistas fica visivel por vez, entao reaproveitar o mesmo estado e seguro). */
+function DraggableCategoryList({ cats, onUpd, onDel, dragCatId, setDragCatId, onReorder }){
+  return html`<div>
+    ${cats.map(cat=>html`<div key=${cat.id} class="row" style=${`gap:6px;align-items:flex-start;${dragCatId===cat.id?'opacity:.4':''}`}
+        onDragOver=${e=>e.preventDefault()}
+        onDrop=${e=>{ e.preventDefault(); if(dragCatId && dragCatId!==cat.id) onReorder(dragCatId, cat.id); setDragCatId(null); }}>
+        <span class="drag-handle" draggable="true" title="arrastar para reordenar"
+          onDragStart=${e=>{ e.dataTransfer.effectAllowed='move'; setDragCatId(cat.id); }}
+          onDragEnd=${()=>setDragCatId(null)}>⠿</span>
+        <div style="flex:1;min-width:0"><${CategoryEditor} cat=${cat} onUpd=${onUpd} onDel=${onDel} /></div>
+      </div>`)}
   </div>`;
 }
 function CategoryEditor({ cat, onUpd, onDel }){
@@ -2513,11 +2544,27 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
   const [query, setQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [busy, setBusy] = useState(false);
+  const [dragId, setDragId] = useState(null); // drag-and-drop pra reordenar codigos entre irmaos (mesmo parent_id)
 
   const tops = codes.filter(c=>!c.parent_id);
   const childrenOf = (id)=>codes.filter(c=>c.parent_id===id);
   const toggleSelect = (id)=> setSelectedIds(s=>{ const n=new Set(s); n.has(id)?n.delete(id):n.add(id); return n; });
   const clearSelection = ()=> setSelectedIds(new Set());
+
+  // reordena so entre irmaos (mesmo parent_id) — mudar de pai e feito por "Agrupar", nao por
+  // arrastar aqui. Se draggedId/targetId tiverem pais diferentes, ignora silenciosamente.
+  async function reorderSiblings(draggedId, targetId){
+    if(draggedId===targetId) return;
+    const dragged = codeById[draggedId], target = codeById[targetId];
+    if(!dragged || !target || dragged.parent_id!==target.parent_id) return;
+    const siblings = codes.filter(c=>c.parent_id===dragged.parent_id).slice().sort((a,b)=>(a.position??0)-(b.position??0));
+    const from = siblings.findIndex(c=>c.id===draggedId), to = siblings.findIndex(c=>c.id===targetId);
+    if(from<0 || to<0) return;
+    siblings.splice(to, 0, siblings.splice(from,1)[0]);
+    setBusy(true);
+    try{ for(let i=0;i<siblings.length;i++){ if(siblings[i].position!==i) await store.updateCode(siblings[i].id,{position:i}); } await reload(); }
+    finally{ setBusy(false); }
+  }
 
   const q = query.trim().toLowerCase();
   const filtered = q ? codes.filter(c=>c.name.toLowerCase().includes(q)) : null;
@@ -2612,7 +2659,8 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
         <div class="tree">
           ${tops.length===0 && html`<span class="meta">Nenhum código ainda. Comece por uma família.</span>`}
           ${!filtered && tops.map(t=>html`<${SchemaTreeNode} key=${t.id} code=${t} childrenOf=${childrenOf} count=${count}
-              selCode=${selCode} setSelCode=${setSelCode} selectedIds=${selectedIds} onToggleSelect=${toggleSelect} onDel=${onDel} depthPad=${0} />`)}
+              selCode=${selCode} setSelCode=${setSelCode} selectedIds=${selectedIds} onToggleSelect=${toggleSelect} onDel=${onDel} depthPad=${0}
+              dragId=${dragId} setDragId=${setDragId} onReorder=${reorderSiblings} />`)}
           ${filtered && filtered.length===0 && html`<span class="meta">Nenhum código com esse nome.</span>`}
           ${filtered && filtered.map(c=>html`<div class="node-row ${selCode===c.id?'sel':''}" key=${c.id} onClick=${()=>setSelCode(c.id)}>
               <input type="checkbox" checked=${selectedIds.has(c.id)} onClick=${e=>e.stopPropagation()} onChange=${()=>toggleSelect(c.id)} style="margin-right:2px" />
@@ -2642,13 +2690,19 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
   </div>`;
 }
 
-function SchemaTreeNode({ code, childrenOf, count, selCode, setSelCode, selectedIds, onToggleSelect, onDel, depthPad }){
+function SchemaTreeNode({ code, childrenOf, count, selCode, setSelCode, selectedIds, onToggleSelect, onDel, depthPad, dragId, setDragId, onReorder }){
   const [open,setOpen]=useState(false);
   const kids = childrenOf(code.id);
   const col = codeColor(code.hue, code.depth, code.hue_deg);
   const isSel = selCode===code.id;
   return html`<div class="node">
-    <div class="node-row ${isSel?'sel':''}" style=${`padding-left:${6+depthPad*16}px`} onClick=${()=>setSelCode(code.id)}>
+    <div class="node-row ${isSel?'sel':''}" style=${`padding-left:${6+depthPad*16}px;${dragId===code.id?'opacity:.4':''}`} onClick=${()=>setSelCode(code.id)}
+      onDragOver=${e=>e.preventDefault()}
+      onDrop=${e=>{ e.preventDefault(); e.stopPropagation(); if(dragId && dragId!==code.id) onReorder(dragId, code.id); setDragId(null); }}>
+      <span class="drag-handle" draggable="true" title="arrastar para reordenar entre irmãos"
+        onClick=${e=>e.stopPropagation()}
+        onDragStart=${e=>{ e.stopPropagation(); e.dataTransfer.effectAllowed='move'; setDragId(code.id); }}
+        onDragEnd=${()=>setDragId(null)}>⠿</span>
       ${kids.length>0 ? html`<span class="caret" onClick=${e=>{e.stopPropagation();setOpen(!open);}}>${open?'▾':'▸'}</span>` : html`<span class="caret"></span>`}
       <input type="checkbox" checked=${selectedIds.has(code.id)} onClick=${e=>e.stopPropagation()} onChange=${()=>onToggleSelect(code.id)} style="margin-right:2px" />
       <span class="swatch" style=${`background:${col.solid}`}></span>
@@ -2657,7 +2711,8 @@ function SchemaTreeNode({ code, childrenOf, count, selCode, setSelCode, selected
       <button class="icon-btn" onClick=${e=>{e.stopPropagation(); if(confirm('Excluir o código e seus subcódigos e codificações?')) onDel(code.id);}} title="excluir">✕</button>
     </div>
     ${open && kids.map(k=>html`<${SchemaTreeNode} key=${k.id} code=${k} childrenOf=${childrenOf} count=${count}
-      selCode=${selCode} setSelCode=${setSelCode} selectedIds=${selectedIds} onToggleSelect=${onToggleSelect} onDel=${onDel} depthPad=${depthPad+1} />`)}
+      selCode=${selCode} setSelCode=${setSelCode} selectedIds=${selectedIds} onToggleSelect=${onToggleSelect} onDel=${onDel} depthPad=${depthPad+1}
+      dragId=${dragId} setDragId=${setDragId} onReorder=${onReorder} />`)}
   </div>`;
 }
 
