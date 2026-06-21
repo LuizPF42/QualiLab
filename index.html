@@ -928,6 +928,9 @@ function App(){
   const [account, setAccount] = useState(false);  // tela "Minha conta"
   const [projEdit, setProjEdit] = useState(false); // editar tipo do projeto (pelo pill)
   const [expOpen, setExpOpen] = useState(false);
+  const [impOpen, setImpOpen] = useState(false);
+  const qualilabInputRef = useRef(null);
+  const qdpxInputRef = useRef(null);
   const [busy, setBusy] = useState(null);
   const [online, setOnline] = useState(navigator.onLine);
   const [pending, setPending] = useState(0); // escritas em fila (cloud offline)
@@ -1475,6 +1478,7 @@ function App(){
         ${expOpen && html`<div>
           <div onClick=${()=>setExpOpen(false)} style="position:fixed;inset:0;z-index:40"></div>
           <div class="exmenu">
+            <button title="Baixa o projeto inteiro (documentos, categorias, códigos, codificações e memos) para reabrir/importar depois no próprio QualiLab" onClick=${()=>{ setExpOpen(false); saveQualilab(); }}>.qualilab (projeto completo, nativo)</button>
             <button onClick=${()=>doExport('json')}>JSON (projeto)</button>
             <button onClick=${()=>doExport('trechos')}>CSV (trechos codificados)</button>
             <button onClick=${()=>doExport('documentos')}>CSV (atributos por documento)</button>
@@ -1482,13 +1486,18 @@ function App(){
           </div>
         </div>`}
       </div>`}
-      ${project && html`<button class="btn sm" title="Salvar o projeto inteiro como arquivo .qualilab (reabrir aqui depois)" onClick=${saveQualilab}>salvar .qualilab</button>`}
-      ${project && html`<label class="btn sm ghost" title="Importar um arquivo .qualilab para dentro deste projeto (documentos, categorias, códigos, codificações e memos)">importar .qualilab
-        <input type="file" accept=".qualilab" style="display:none" onChange=${e=>{ if(e.target.files[0]) doImportQualilab(e.target.files[0]); e.target.value=''; }} />
-      </label>`}
-      ${project && html`<label class="btn sm ghost" title="Importar projeto .qdpx (REFI-QDA)">importar qdpx
-        <input type="file" accept=".qdpx" style="display:none" onChange=${e=>{ if(e.target.files[0]) doImportQDPX(e.target.files[0]); e.target.value=''; }} />
-      </label>`}
+      ${project && html`<div style="position:relative">
+        <button class="btn sm ghost" onClick=${()=>setImpOpen(o=>!o)}>importar ▾</button>
+        ${impOpen && html`<div>
+          <div onClick=${()=>setImpOpen(false)} style="position:fixed;inset:0;z-index:40"></div>
+          <div class="exmenu">
+            <button title="Mescla um arquivo .qualilab (exportado por outra pessoa/dispositivo) neste projeto" onClick=${()=>{ setImpOpen(false); qualilabInputRef.current.click(); }}>.qualilab (projeto completo, nativo)</button>
+            <button title="Importa um projeto .qdpx (REFI-QDA)" onClick=${()=>{ setImpOpen(false); qdpxInputRef.current.click(); }}>QDPX (ATLAS.ti / MAXQDA / NVivo)</button>
+          </div>
+        </div>`}
+      </div>`}
+      <input ref=${qualilabInputRef} type="file" accept=".qualilab" style="display:none" onChange=${e=>{ if(e.target.files[0]) doImportQualilab(e.target.files[0]); e.target.value=''; }} />
+      <input ref=${qdpxInputRef} type="file" accept=".qdpx" style="display:none" onChange=${e=>{ if(e.target.files[0]) doImportQDPX(e.target.files[0]); e.target.value=''; }} />
     </header>
 
     ${err && html`<div class="banner err">${err} <button class="btn sm ghost" onClick=${()=>setErr(null)}>fechar</button></div>`}
