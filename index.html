@@ -912,10 +912,14 @@ async function createFileStore(fileHandle, isNew){
   // batching: durante importacao grande, escreve no disco uma vez no fim (senao seria
   // um createWritable+write+close por trecho — centenas de gravacoes, travando a aba).
   let batching = false, dirty = false;
+  // write() pode falhar (permissao revogada, disco/volume removido, sem espaco) e isso
+  // passava so pro console — o usuario continuava editando sem saber que nada mais estava
+  // sendo escrito no arquivo. _onSaveError avisa o App pra mostrar um banner persistente.
+  let _onSaveError = null;
   const save = async ()=>{
     if(batching){ dirty = true; return; }
-    try{ db._meta.displayName=name; const w=await fileHandle.createWritable(); await w.write(JSON.stringify(db,null,2)); await w.close(); }
-    catch(e){ console.warn('Falha ao salvar arquivo:',e); }
+    try{ db._meta.displayName=name; const w=await fileHandle.createWritable(); await w.write(JSON.stringify(db,null,2)); await w.close(); _onSaveError?.(null); }
+    catch(e){ console.warn('Falha ao salvar arquivo:',e); _onSaveError?.(e); }
   };
   const P = v=>Promise.resolve(v);
   if(isNew) await save();
@@ -923,6 +927,7 @@ async function createFileStore(fileHandle, isNew){
   await IDB.saveHandle('lastro:file', fileHandle).catch(()=>{});
   return {
     mode:'file', fileName:fileHandle.name,
+    onSaveError(cb){ _onSaveError=cb; },
     beginBatch(){ batching = true; },
     async endBatch(){ batching = false; if(dirty){ dirty = false; await save(); } },
     async init(display){ name=display||name; return {id:'file-user',name,email:null,anon:false}; },
@@ -989,12 +994,22 @@ function LocalStore(){
   // batching: durante uma importacao grande, suprime o save por item (que re-serializa
   // o banco inteiro) e grava so uma vez no fim — evita travar a aba por segundos.
   let batching = false, dirty = false;
-  const save = () => { if(batching){ dirty = true; return; } try { localStorage.setItem('lastro:local', JSON.stringify(db)); } catch(e){} };
+  // localStorage.setItem pode falhar (quota — geralmente 5-10MB — ou storage desabilitado)
+  // e isso passava em silencio: o app continuava parecendo funcionar, mas nada do que o
+  // usuario fizesse depois ficava salvo de fato. _onSaveError avisa o App pra mostrar um
+  // banner persistente, em vez de descobrir so quando reabrir e os dados nao estarem la.
+  let _onSaveError = null;
+  const save = () => {
+    if(batching){ dirty = true; return; }
+    try { localStorage.setItem('lastro:local', JSON.stringify(db)); _onSaveError?.(null); }
+    catch(e){ _onSaveError?.(e); }
+  };
   const P = (v)=>Promise.resolve(v);
   return {
     mode:'local',
+    onSaveError(cb){ _onSaveError=cb; },
     beginBatch(){ batching = true; },
-    endBatch(){ batching = false; if(dirty){ dirty = false; try { localStorage.setItem('lastro:local', JSON.stringify(db)); } catch(e){} } },
+    endBatch(){ batching = false; if(dirty){ dirty = false; try { localStorage.setItem('lastro:local', JSON.stringify(db)); _onSaveError?.(null); } catch(e){ _onSaveError?.(e); } } },
     async init(display){ name = display || name; return { id:'local-user', name }; },
     currentUser(){ return { id:'local-user', name }; },
     async listMemos(){ return db.memos.slice(); },
@@ -1248,6 +1263,7 @@ function App(){
   const [progress, setProgress] = useState(null); // {done,total} durante import grande
   const [online, setOnline] = useState(navigator.onLine);
   const [pending, setPending] = useState(0); // escritas em fila (cloud offline)
+  const [saveError, setSaveError] = useState(null); // ultima falha de gravacao local/arquivo (null = ok)
   const [importMsg, setImportMsg] = useState(null);
   const [role, setRole] = useState('member');  // papel do usuário no projeto: admin | member
   const [members, setMembers] = useState([]);   // membros do projeto (gestão de admins)
@@ -1319,6 +1335,7 @@ function App(){
     window.addEventListener('online', goOnline);
     window.addEventListener('offline', goOffline);
     if(store?.onPendingChange) store.onPendingChange(setPending);
+    if(store?.onSaveError) store.onSaveError(setSaveError);
     return ()=>{ window.removeEventListener('online',goOnline); window.removeEventListener('offline',goOffline); };
   }, [store]);
 
@@ -1876,6 +1893,11 @@ function App(){
       <input ref=${qdcInputRef} type="file" accept=".qdc" style="display:none" onChange=${e=>{ if(e.target.files[0]) doImportQDC(e.target.files[0]); e.target.value=''; }} />
     </header>
 
+    ${saveError && html`<div class="banner err">
+      <b>Atenção: as últimas alterações NÃO foram salvas</b> ${mode==='local' ? '(armazenamento do navegador cheio ou indisponível).' : '(falha ao gravar o arquivo — verifique se o disco/pasta ainda está acessível).'}
+      Continuar trabalhando sem resolver isso arrisca perder o que vier depois. Baixe um backup agora:
+      <button class="btn sm" onClick=${saveQualilab}>baixar .qualilab</button>
+    </div>`}
     ${err && html`<div class="banner err">${err} <button class="btn sm ghost" onClick=${()=>setErr(null)}>fechar</button></div>`}
     ${importMsg && html`<div class="banner warn">${importMsg} <button class="btn sm ghost" onClick=${()=>setImportMsg(null)}>fechar</button></div>`}
     ${busy && html`<div class="banner warn">

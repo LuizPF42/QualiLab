@@ -47,6 +47,8 @@ Três implementações do mesmo "interface":
 
 **Batching (LocalStore e FileStore):** `store.beginBatch()` / `store.endBatch()` suprimem o `save()` por item e gravam **uma vez** no fim. Essencial em importação grande (`.qdpx`): sem isso, cada um dos centenas de inserts re-serializa o banco inteiro no disco/localStorage e a aba trava por segundos. `importQDPX` envolve toda a persistência em `beginBatch()`…`finally{ endBatch() }`. SupabaseStore não tem (inserts são chamadas de rede); o `importQDPX` guarda com `if(store.beginBatch)`.
 
+**`store.onSaveError(cb)`** (`LocalStore`/`createFileStore`, mesmo padrão de `onPendingChange`): `localStorage.setItem`/`fileHandle.createWritable()` podem falhar (quota — geralmente 5-10MB — esgotada, storage desabilitado, permissão de arquivo revogada, disco removido) e isso **sempre passou em silêncio** (`catch(e){}` vazio) — o usuário continuava trabalhando sem saber que nada mais estava sendo persistido, só descobria ao reabrir e ver os dados faltando. Agora `save()` chama `_onSaveError(e)` no catch e `_onSaveError(null)` em todo save bem-sucedido (limpa o aviso quando o problema é resolvido); o `App` assina isso (junto com `onPendingChange`, no mesmo `useEffect`) em `saveError`, e mostra um banner vermelho persistente (sem botão de fechar — só desaparece quando um save volta a funcionar) com atalho pra baixar `.qualilab` na hora.
+
 Helper `IDB` — wrapper mínimo sobre IndexedDB com dois stores: `write_queue` (fila de escritas pendentes do SupabaseStore) e `file_handles` (persistência do FileSystemFileHandle entre sessões).
 
 O `App` só fala com `store.<método>()`, nunca com Supabase direto. Métodos principais:
@@ -204,6 +206,7 @@ Teste com `examples/QualiLab_demo_artificial_stress_test.qdpx` (16 docs, 90 cód
 - Sem **import JSON nativo** (o export JSON já carrega `author`/`layer` — fechar o round-trip permitiria categorias por pesquisador fora do QDPX).
 - Sem "esqueci minha senha" (reset por e-mail).
 - Categorias multi-valor no filtro da Visualização casam por valor individual; refinamentos por parte (ex.: filtrar por ano de uma data) ainda não existem.
+- `LocalStore` ainda usa `localStorage` (limite 5-10MB). Candidato a migrar pra IndexedDB — funciona em Safari igual, sem o teto baixo. O banner de `onSaveError` cobre o aviso reativo (avisa quando o save falha); falta um indicador **proativo** de uso (ex.: "X% do limite") pra avisar antes de chegar lá.
 
 ---
 
