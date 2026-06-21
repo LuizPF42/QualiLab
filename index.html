@@ -402,8 +402,12 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
   }
 
   // variaveis -> categorias (reconstroi o tipo a partir de "tipo: ..." e "valores: ..."
-  // na Description; aceita o formato legado "Valores fechados: ...")
+  // na Description; aceita o formato legado "Valores fechados: ..."). Esses marcadores
+  // sao uma convencao propria do QualiLab (gravada por exportQDPX) — um .qdpx "estrangeiro"
+  // (ex.: QualCoder, ATLAS.ti) nao os tem. Para esses, o tipo fica indefinido aqui e e
+  // decidido mais abaixo por heuristica, depois que os valores de cada caso sao lidos.
   const newCats = [];
+  const foreignCatIds = new Set(); // sem a convencao propria -> tipo decidido por heuristica
   const KNOWN_KINDS = new Set(CAT_KINDS.map(k=>k.id));
   xml.querySelectorAll('Variables > Variable').forEach(v=>{
     const id = stripGuid(v.getAttribute('guid'));
@@ -413,8 +417,11 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
     const mVals = /(?:valores|Valores fechados):\s*(.+)/i.exec(desc||'');
     const options = mVals ? mVals[1].split(',').map(s=>s.trim()).filter(Boolean) : [];
     const mTipo = /tipo:\s*([a-z]+)/i.exec(desc||'');
-    let kind = mTipo && KNOWN_KINDS.has(mTipo[1].toLowerCase()) ? mTipo[1].toLowerCase()
-             : (mVals ? 'single' : ((v.getAttribute('typeOfVariable')||'').toLowerCase()==='date' ? 'date' : 'text'));
+    let kind;
+    if(mTipo && KNOWN_KINDS.has(mTipo[1].toLowerCase())) kind = mTipo[1].toLowerCase();
+    else if(mVals) kind = 'single';
+    else if((v.getAttribute('typeOfVariable')||'').toLowerCase()==='date') kind = 'date';
+    else { kind = 'text'; foreignCatIds.add(id); }
     newCats.push({ id, name, kind, options });
   });
 
@@ -491,6 +498,34 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
     });
   });
 
+  // heuristica de interoperabilidade (.qdpx estrangeiro, sem a convencao tipo:/valores:
+  // do QualiLab): poucas respostas distintas E REPETIDAS entre documentos sugerem lista
+  // fechada (ex.: "Caso", "Turma", "Tribunal"); respostas todas diferentes sugerem texto
+  // livre (ex.: resumo, observacoes), mesmo que o numero absoluto de respostas seja baixo
+  // (poucos documentos importados). Por isso exige distinct < total — sem repeticao
+  // nenhuma, nao ha evidencia real de que o campo seja uma lista fechada.
+  let catsFechadasDetectadas = 0;
+  if(foreignCatIds.size){
+    const totalByCat = {}, distinctByCat = {};
+    newValues.forEach(v=>{
+      if(!foreignCatIds.has(v.category_id)) return;
+      const val = (v.value||'').trim();
+      if(!val) return;
+      totalByCat[v.category_id] = (totalByCat[v.category_id]||0) + 1;
+      (distinctByCat[v.category_id] = distinctByCat[v.category_id] || new Set()).add(val);
+    });
+    newCats.forEach(c=>{
+      if(!foreignCatIds.has(c.id)) return;
+      const distinct = distinctByCat[c.id];
+      const total = totalByCat[c.id] || 0;
+      if(distinct && distinct.size>=2 && distinct.size<=8 && distinct.size<total){
+        c.kind = 'select';
+        c.options = [...distinct].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+        catsFechadasDetectadas++;
+      }
+    });
+  }
+
   // gera ids novos para evitar colisao com dados ja existentes (ex.: reimportar o mesmo .qdpx),
   // remapeando todas as referencias internas (parent_id, document_id, category_id, code_id)
   const docMap = {}, catMap = {}, codeMap = {};
@@ -522,7 +557,7 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
   return {
     documentos:newDocs.length, categorias:newCats.length, codigos:newCodes.length,
     trechos:newCodings.length, casos: xml.querySelectorAll('Cases > Case').length,
-    descartados: skipped
+    descartados: skipped, categoriasFechadasDetectadas: catsFechadasDetectadas
   };
 }
 
@@ -1368,9 +1403,12 @@ function App(){
       if(desc.pdfSemTexto) skippedBits.push(`${desc.pdfSemTexto} PDF(s) sem representação em texto`);
       if(desc.fonteExterna) skippedBits.push(`${desc.fonteExterna} fonte(s) externa(s)`);
       const skippedMsg = skippedBits.length ? ` Não importado(s): ${skippedBits.join(', ')}.` : '';
+      const fechadasMsg = r.categoriasFechadasDetectadas>0
+        ? ` ${r.categoriasFechadasDetectadas} categoria(s) detectada(s) como fechada(s) automaticamente (poucos valores distintos) — revise em "Gerenciar esquema de categorias".`
+        : '';
       setErr(null);
       setBusy(null);
-      setImportMsg(`Importado: ${r.documentos} documento(s), ${r.categorias} categoria(s), ${r.codigos} código(s), ${r.trechos} trecho(s) codificado(s).${skippedMsg}`);
+      setImportMsg(`Importado: ${r.documentos} documento(s), ${r.categorias} categoria(s), ${r.codigos} código(s), ${r.trechos} trecho(s) codificado(s).${skippedMsg}${fechadasMsg}`);
     }catch(e){ setBusy(null); setProgress(null); setErr('Falha ao importar: '+(e.message||e)); }
   }
 

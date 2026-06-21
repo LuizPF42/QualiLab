@@ -137,6 +137,7 @@ A **pílula do projeto** no cabeçalho abre o `ProjectModal` (hub: convite/códi
 - O padrão REFI-QDA **não tem autor em `VariableValue`** → categorias por pesquisador **não** cabem no QDPX (só um valor por atributo por caso). Codificações de trecho **têm** `creatingUser`, então multi-coder funciona para trechos.
 - **Import remapeia todos os ids** para uuids novos (evita colisão de PK ao reimportar) e grava codings com **`created_by: null`** para que o agrupamento por codificador use `author_name` (e não o uuid de quem importou).
 - **Export** prefere a camada `final` (gabarito) quando existe; senão usa as individuais.
+- **Tipo de categoria (interoperabilidade)**: o próprio `exportQDPX` grava `tipo: <kind> | valores: <opções>` na `Description` da `Variable` — uma convenção nossa, não do padrão REFI-QDA. Um `.qdpx` **estrangeiro** (QualCoder, ATLAS.ti etc.) não tem isso, então `importQDPX` cai numa **heurística de cardinalidade**: olha os valores observados nos `Cases` e, se houver entre 2 e 8 valores distintos **com repetição** (`distinct < total`, ou seja, pelo menos uma resposta usada em mais de um documento), importa como Texto Fechado (`select`) com essas opções; senão, Texto Aberto. O resumo do import informa quantas categorias foram detectadas assim (revisar manualmente se necessário).
 
 ---
 
