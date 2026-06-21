@@ -1940,7 +1940,7 @@ function App(){
         </div>
         <div class="pane-body scroll">
           ${rtab==='categorias' && html`<${CategoriesPanel} cats=${cats} values=${values} activeDoc=${activeDoc}
-                 canEditSchema=${isAdmin} userId=${user?.id}
+                 canEditSchema=${isAdmin} userId=${user?.id} projectMode=${projectMode} viewCoder=${viewCoder}
                  onSet=${setValue} onAdd=${addCategory} onUpd=${updCategory} onDel=${delCategory} />`}
           ${rtab==='codigos' && html`<${CodesPanel} codes=${codes} codeById=${codeById} count=${codingCount} sel=${sel}
                  selCode=${selCode} setSelCode=${setSelCode} codePath=${codePath}
@@ -2222,12 +2222,34 @@ function Gate({ onCreate, onJoin, onOpen, onOpenFile, onNewFile, err, user, proj
 }
 
 /* ============ PAINEL DE CATEGORIAS (atributos do documento) ============ */
-function CategoriesPanel({ cats, values, activeDoc, canEditSchema, userId, onSet, onAdd, onUpd, onDel }){
-  // valor individual do usuario atual (cada pesquisador responde o seu)
-  const valOf = (catId)=> values.find(v=>v.category_id===catId && (v.layer||'individual')!=='final' && (v.set_by==null || v.set_by===userId));
+function CategoriesPanel({ cats, values, activeDoc, canEditSchema, userId, projectMode, viewCoder, onSet, onAdd, onUpd, onDel }){
+  // individual: setValue grava direto em layer='final' (sem multi-coder) — mostra o gabarito,
+  // sempre editavel (so existe 1 "pesquisador").
+  // coletivo: segue o MESMO filtro "Ver:" que o leitor usa pra codings, mas um campo de
+  // categoria so cabe UM valor por vez — diferente dos grifos no texto, que podem sobrepor
+  // varios. Por isso 'all' (Individuais/todos, no leitor = sobrepoe todo mundo) NAO pode
+  // significar "minha resposta" aqui: sem um pesquisador especifico escolhido nao ha como
+  // "calcular" qual resposta mostrar, entao cai no gabarito se existir (so leitura) — so 'mine'
+  // (resposta do PROPRIO usuario, sem ambiguidade) e editavel. Ver a resposta de outro
+  // pesquisador ou o gabarito tambem fica somente leitura — editar ali so escreveria sob a
+  // identidade de quem esta logado (setDocValue sempre usa o uid do usuario atual), entao
+  // "corrigir" o que aparece sobrescreveria a PROPRIA resposta do usuario atual por engano,
+  // nao a da pessoa exibida. O gabarito se edita na Reconciliação (onSetFinal), nao aqui.
+  const isOwnView = projectMode==='individual' || viewCoder==='mine';
+  const valOf = (catId)=>{
+    const final = ()=> values.find(v=>v.category_id===catId && v.layer==='final');
+    if(projectMode==='individual') return final();
+    if(viewCoder==='final' || viewCoder==='all') return final(); // 'all': sem 1 resposta so p/ mostrar, cai no gabarito
+    const indiv = values.filter(v=>v.category_id===catId && (v.layer||'individual')!=='final');
+    if(viewCoder==='mine') return indiv.find(v=>v.set_by===userId);
+    if(viewCoder.startsWith('__nm__')){ const nm=viewCoder.slice(6); return indiv.find(v=>v.author_name===nm); }
+    return indiv.find(v=>v.set_by===viewCoder);
+  };
+  const viewLabel = viewCoder==='final' ? 'Final / gabarito' : viewCoder==='all' ? 'Final / gabarito (sem 1 resposta individual só pra mostrar com "todos")' : viewCoder.startsWith('__nm__') ? viewCoder.slice(6) : 'outro pesquisador';
   return html`<div class="section">
     <p class="h">Atributos deste documento</p>
     <p class="hint">Cada categoria recebe um valor para o documento inteiro (não para um trecho). O esquema é definido pelo dono do projeto; o valor é preenchido por documento.</p>
+    ${!isOwnView && html`<div class="banner warn" style="margin:0 0 10px">Mostrando: ${viewLabel} — somente leitura. Troque o filtro "Ver:" para "Minhas" pra editar a sua própria resposta.</div>`}
     ${!activeDoc && html`<div class="card"><span class="meta">Abra um documento para preencher.</span></div>`}
     ${activeDoc && cats.length===0 && html`<div class="card"><span class="meta">${canEditSchema?'Nenhuma categoria ainda. Crie abaixo.':'Nenhuma categoria definida pelo dono do projeto.'}</span></div>`}
     ${activeDoc && cats.map(cat=>{
@@ -2235,7 +2257,7 @@ function CategoriesPanel({ cats, values, activeDoc, canEditSchema, userId, onSet
       return html`<div class="field" key=${cat.id}>
         <div class="field-label">${cat.name} ${v && html`<span class="author">${v.author_name}</span>`}</div>
         ${cat.description && html`<p class="hint" style="margin:-2px 0 7px">${cat.description}</p>`}
-        <${CategoryValue} cat=${cat} v=${v} onSet=${val=>onSet(cat.id,val)} />
+        <${CategoryValue} cat=${cat} v=${v} onSet=${val=>onSet(cat.id,val)} readOnly=${!isOwnView} />
       </div>`;
     })}
     ${canEditSchema && html`<details style="margin-top:10px">
@@ -2289,7 +2311,7 @@ function CategoryEditor({ cat, onUpd, onDel }){
 /* ============ VALOR DE UMA CATEGORIA (por documento) ============
    "Não informado" e "Outros" sao opcoes dentro da categoria (tokens em options).
    Escolher "Outros" abre um campo de texto livre cujo conteudo vira o valor. */
-function CategoryValue({ cat, v, onSet }){
+function CategoryValue({ cat, v, onSet, readOnly }){
   const [editingOther,setEditingOther]=useState(false);
   const opts = cat.options||[];
   const hasNA = opts.includes(NAO_INFO);
@@ -2300,12 +2322,14 @@ function CategoryValue({ cat, v, onSet }){
   const noVals = realOpts.length===0 && !hasNA && !hasOther
     ? html`<span class="meta">sem valores — edite o esquema abaixo</span>` : '';
 
-  if(cat.kind==='date') return html`<${DateInput} value=${value} onCommit=${onSet} />`;
+  if(cat.kind==='date') return html`<${DateInput} value=${value} onCommit=${onSet} disabled=${readOnly} />`;
 
   if(cat.kind==='text'){
     return html`<div>
-      ${hasNA && html`<button class="opt ${isNA?'on':''}" style="margin-bottom:6px" onClick=${()=>onSet(isNA?'':NAO_INFO)}>Não informado</button>`}
-      ${!isNA && html`<${DebInput} value=${value} onCommit=${onSet} placeholder="valor descritivo" />`}
+      ${hasNA && html`<button class="opt ${isNA?'on':''}" disabled=${readOnly} style="margin-bottom:6px" onClick=${()=>onSet(isNA?'':NAO_INFO)}>Não informado</button>`}
+      ${!isNA && (readOnly
+        ? html`<span class="opt" style="display:inline-block;cursor:default">${value||html`<span class="meta" style="font-style:italic">sem resposta</span>`}</span>`
+        : html`<${DebInput} value=${value} onCommit=${onSet} placeholder="valor descritivo" />`)}
     </div>`;
   }
 
@@ -2318,10 +2342,12 @@ function CategoryValue({ cat, v, onSet }){
     const setOther = (txt)=>{ const keep = selv.filter(s=>realOpts.includes(s)); setSel(txt.trim()?[...keep,txt.trim()]:keep); };
     return html`<div class="row" style="flex-wrap:wrap;gap:6px">
         ${noVals}
-        ${realOpts.map(o=>html`<button class="opt ${selv.includes(o)?'on':''}" onClick=${()=>toggle(o)}>${selv.includes(o)?'☑':'☐'} ${o}</button>`)}
-        ${hasOther && html`<button class="opt ${showOther?'on':''}" onClick=${()=>setEditingOther(x=>!x)}>${showOther?'☑':'☐'} Outros</button>`}
-        ${hasNA && html`<button class="opt ${isNA?'on':''}" onClick=${()=>onSet(isNA?'':NAO_INFO)}>${isNA?'☑':'☐'} Não informado</button>`}
-        ${showOther && html`<${DebInput} value=${customs[0]||''} onCommit=${setOther} placeholder="qual?" />`}
+        ${realOpts.map(o=>html`<button class="opt ${selv.includes(o)?'on':''}" disabled=${readOnly} onClick=${()=>toggle(o)}>${selv.includes(o)?'☑':'☐'} ${o}</button>`)}
+        ${hasOther && (customs.length>0 || !readOnly) && html`<button class="opt ${showOther?'on':''}" disabled=${readOnly} onClick=${()=>setEditingOther(x=>!x)}>${showOther?'☑':'☐'} Outros</button>`}
+        ${hasNA && html`<button class="opt ${isNA?'on':''}" disabled=${readOnly} onClick=${()=>onSet(isNA?'':NAO_INFO)}>${isNA?'☑':'☐'} Não informado</button>`}
+        ${showOther && (readOnly
+          ? html`<span class="opt" style="display:inline-block;cursor:default">${customs[0]||''}</span>`
+          : html`<${DebInput} value=${customs[0]||''} onCommit=${setOther} placeholder="qual?" />`)}
       </div>`;
   }
 
@@ -2332,14 +2358,16 @@ function CategoryValue({ cat, v, onSet }){
   if(cat.kind==='select'){
     const selVal = showOther ? '__other__' : (isNA ? NAO_INFO : (realOpts.includes(value)?value:''));
     return html`<div>
-      <select class="opt" style="min-width:180px" value=${selVal} onChange=${e=>{ const val=e.target.value;
+      <select class="opt" disabled=${readOnly} style="min-width:180px" value=${selVal} onChange=${e=>{ const val=e.target.value;
           if(val==='__other__'){ setEditingOther(true); onSet(''); } else { setEditingOther(false); onSet(val); } }}>
         <option value="">(sem valor)</option>
         ${realOpts.map(o=>html`<option value=${o}>${o}</option>`)}
         ${hasOther && html`<option value="__other__">Outros…</option>`}
         ${hasNA && html`<option value=${NAO_INFO}>Não informado</option>`}
       </select>
-      ${showOther && html`<div style="margin-top:6px"><${DebInput} value=${isCustom?value:''} onCommit=${onSet} placeholder="qual?" /></div>`}
+      ${showOther && html`<div style="margin-top:6px">${readOnly
+        ? html`<span class="opt" style="display:inline-block;cursor:default">${isCustom?value:''}</span>`
+        : html`<${DebInput} value=${isCustom?value:''} onCommit=${onSet} placeholder="qual?" />`}</div>`}
       ${noVals && html`<div style="margin-top:4px">${noVals}</div>`}
     </div>`;
   }
@@ -2347,10 +2375,12 @@ function CategoryValue({ cat, v, onSet }){
   // single = Múltipla Escolha (botões)
   return html`<div class="row" style="flex-wrap:wrap;gap:6px;align-items:center">
       ${noVals}
-      ${realOpts.map(o=>html`<button class="opt ${(!isCustom && value===o)?'on':''}" onClick=${()=>{ setEditingOther(false); onSet(value===o?'':o); }}>${o}</button>`)}
-      ${hasOther && html`<button class="opt ${showOther?'on':''}" onClick=${()=>setEditingOther(true)}>Outros</button>`}
-      ${hasNA && html`<button class="opt ${isNA?'on':''}" onClick=${()=>{ setEditingOther(false); onSet(isNA?'':NAO_INFO); }}>Não informado</button>`}
-      ${showOther && html`<${DebInput} value=${isCustom?value:''} onCommit=${onSet} placeholder="qual?" />`}
+      ${realOpts.map(o=>html`<button class="opt ${(!isCustom && value===o)?'on':''}" disabled=${readOnly} onClick=${()=>{ setEditingOther(false); onSet(value===o?'':o); }}>${o}</button>`)}
+      ${hasOther && (isCustom || !readOnly) && html`<button class="opt ${showOther?'on':''}" disabled=${readOnly} onClick=${()=>setEditingOther(true)}>Outros</button>`}
+      ${hasNA && html`<button class="opt ${isNA?'on':''}" disabled=${readOnly} onClick=${()=>{ setEditingOther(false); onSet(isNA?'':NAO_INFO); }}>Não informado</button>`}
+      ${showOther && (readOnly
+        ? html`<span class="opt" style="display:inline-block;cursor:default">${isCustom?value:''}</span>`
+        : html`<${DebInput} value=${isCustom?value:''} onCommit=${onSet} placeholder="qual?" />`)}
     </div>`;
 }
 
@@ -3205,10 +3235,10 @@ function RenameCode({ code, onUpd, onSetColor, isAdmin }){
 }
 
 /* inputs com debounce / colar */
-function DebInput({ value, onCommit, placeholder }){
+function DebInput({ value, onCommit, placeholder, disabled }){
   const [v,setV]=useState(value||''); const t=useRef(null);
   useEffect(()=>setV(value||''),[value]);
-  return html`<input class="txtin" placeholder=${placeholder} value=${v}
+  return html`<input class="txtin" placeholder=${placeholder} value=${v} disabled=${!!disabled}
     onInput=${e=>{ setV(e.target.value); clearTimeout(t.current); const val=e.target.value; t.current=setTimeout(()=>onCommit(val),600); }}
     onBlur=${()=>{ clearTimeout(t.current); onCommit(v); }} />`;
 }
@@ -3222,7 +3252,7 @@ function parseDate(val){
   const m = /^(\d{0,2})\/(\d{0,2})\/(\d{0,4})$/.exec(val);
   return m ? { d:m[1], mo:m[2], y:m[3] } : { d:'', mo:'', y:'' };
 }
-function DateInput({ value, onCommit }){
+function DateInput({ value, onCommit, disabled }){
   const [p,setP]=useState(parseDate(value)); const t=useRef(null);
   useEffect(()=>setP(parseDate(value)),[value]);
   const build = (q)=> (q.d||q.mo||q.y) ? `${q.d}/${q.mo}/${q.y}` : '';
@@ -3232,17 +3262,17 @@ function DateInput({ value, onCommit }){
   const informada = !!(p.d||p.mo||p.y);
   return html`<div>
     <div class="row" style="gap:8px;margin-bottom:8px">
-      <button class="opt ${informada?'':'on'}" title="Marca a data como não informada (limpa os campos)"
+      <button class="opt ${informada?'':'on'}" disabled=${!!disabled} title="Marca a data como não informada (limpa os campos)"
         onClick=${()=>{ const q={d:'',mo:'',y:''}; setP(q); clearTimeout(t.current); onCommit(''); }}>Não informada</button>
     </div>
     <div class="row" style="gap:6px;align-items:center">
-      <input class="txtin" style="width:60px;text-align:center" inputmode="numeric" placeholder="DD" maxlength="2"
+      <input class="txtin" style="width:60px;text-align:center" inputmode="numeric" placeholder="DD" maxlength="2" disabled=${!!disabled}
         value=${p.d} onInput=${e=>set('d',e.target.value,2)} onBlur=${flush} />
       <span class="meta">/</span>
-      <input class="txtin" style="width:60px;text-align:center" inputmode="numeric" placeholder="MM" maxlength="2"
+      <input class="txtin" style="width:60px;text-align:center" inputmode="numeric" placeholder="MM" maxlength="2" disabled=${!!disabled}
         value=${p.mo} onInput=${e=>set('mo',e.target.value,2)} onBlur=${flush} />
       <span class="meta">/</span>
-      <input class="txtin" style="width:78px;text-align:center" inputmode="numeric" placeholder="AAAA" maxlength="4"
+      <input class="txtin" style="width:78px;text-align:center" inputmode="numeric" placeholder="AAAA" maxlength="4" disabled=${!!disabled}
         value=${p.y} onInput=${e=>set('y',e.target.value,4)} onBlur=${flush} />
     </div>
     <div class="meta" style="margin-top:6px">Deixe em branco as partes que o documento não informa.</div>
