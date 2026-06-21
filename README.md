@@ -24,7 +24,7 @@ As ferramentas disponíveis, pagas ou gratuitas, também não têm colaboração
 Importe `.txt`, `.md`, `.docx` e `.pdf`, ou cole texto diretamente. O conteúdo é extraído e exibido para leitura e codificação.
 
 ### Codificação por trechos
-Selecione qualquer trecho e aplique um código — ou clique com o **botão direito** para um menu de contexto rápido. Os códigos são **hierárquicos** (famílias → subcódigos), com cor por família e tonalidade por profundidade.
+Selecione qualquer trecho e aplique um código — ou clique com o **botão direito** para um menu de contexto rápido. Os códigos são **hierárquicos** (famílias → subcódigos), com cor por família e tonalidade por profundidade; administradores podem personalizar a cor de uma família (matiz, ou cinza), propagada para os subcódigos.
 
 ### Esquema de categorias (atributos do documento)
 Cada documento pode receber atributos com cinco tipos de campo:

@@ -164,10 +164,15 @@ try {
    paleta automatica (HUES[hue]). */
 const HUES = [210, 28, 150, 350, 268, 184, 322, 70];
 function codeColor(hue, depth, hueDeg){
-  const H = (hueDeg!=null) ? ((hueDeg%360)+360)%360 : HUES[((hue % HUES.length)+HUES.length)%HUES.length];
+  // hueDeg===-1: marcador de cinza personalizado (sem matiz, saturacao 0) — reaproveita a
+  // mesma coluna int em vez de criar campo novo no banco. Calculado por profundidade igual
+  // as cores normais, so sem matiz.
+  const isGray = hueDeg===-1;
+  const H = isGray ? 0 : (hueDeg!=null) ? ((hueDeg%360)+360)%360 : HUES[((hue % HUES.length)+HUES.length)%HUES.length];
+  const S = isGray ? 0 : 58, tintS = isGray ? 0 : 55;
   const solidL = Math.min(70, 32 + depth*13);
   const bgL = Math.min(94, 86 + depth*3);
-  return { solid:`hsl(${H} 58% ${solidL}%)`, tint:`hsl(${H} 55% ${bgL}%)`, H };
+  return { solid:`hsl(${H} ${S}% ${solidL}%)`, tint:`hsl(${H} ${tintS}% ${bgL}%)`, H, isGray };
 }
 /* extrai o matiz (0-359) de um hex, sem encaixar na paleta fixa (usado p/ cor personalizada) */
 function hexToHue(hex){
@@ -1522,7 +1527,7 @@ function App(){
   // cor personalizada: so o nivel 0 escolhe; a cascata propaga para todos os descendentes
   async function setCodeColor(rootCode, hex){
     if(!isAdmin){ setErr('Apenas administradores podem alterar a cor de uma família de código.'); return; }
-    const hueDeg = hex ? hexToHue(hex) : null;
+    const hueDeg = hex==='gray' ? -1 : hex ? hexToHue(hex) : null;
     const ids = new Set([rootCode.id]);
     let added = true;
     while(added){ added=false; codes.forEach(c=>{ if(c.parent_id && ids.has(c.parent_id) && !ids.has(c.id)){ ids.add(c.id); added=true; } }); }
@@ -3171,16 +3176,28 @@ function RenameCode({ code, onUpd, onSetColor, isAdmin }){
   const [v,setV]=useState(code.name);
   useEffect(()=>setV(code.name),[code.id]);
   const col = codeColor(code.hue, code.depth, code.hue_deg);
-  const hexNow = hslToHex(col.H, 58, 32); // cor "base" (nível 0) para o seletor nativo
+  // so o matiz (H) importa pra cor de codigo — saturacao/luminosidade sao sempre fixas por
+  // codeColor() (luminosidade varia so pela profundidade do subcodigo). Um <input type="color">
+  // deixaria escolher RGB completo, mas tudo que nao for matiz seria descartado — confunde,
+  // parece que da pra escolher claro/escuro/saturacao quando na pratica nao da. Por isso um
+  // slider de matiz (0-359), nao o retangulo de cor inteiro.
+  const [hueLive,setHueLive]=useState(col.H);
+  useEffect(()=>setHueLive(col.H),[code.id, col.H]);
+  const isGray = code.hue_deg===-1;
+  const previewHex = isGray ? '#808080' : hslToHex(hueLive, 58, 32);
   return html`<div>
     <div class="row" style="gap:6px;margin-top:6px">
       <input class="txtin" value=${v} onInput=${e=>setV(e.target.value)} />
       <button class="btn sm" onClick=${()=>onUpd(code.id,{name:v})}>renomear</button>
     </div>
-    ${code.depth===0 && isAdmin && html`<div class="row" style="gap:6px;margin-top:6px;align-items:center">
+    ${code.depth===0 && isAdmin && html`<div class="row" style="gap:8px;margin-top:6px;align-items:center">
       <span class="meta">Cor da família</span>
-      <input type="color" value=${hexNow} onChange=${e=>onSetColor(code, e.target.value)}
-        style="width:34px;height:30px;padding:2px;border:1px solid var(--line);border-radius:6px;cursor:pointer" title="Cor personalizada (propaga para os subcódigos)" />
+      <span style=${`background:${previewHex};flex-shrink:0;width:40px;height:40px;border-radius:8px;border:1px solid var(--line)`}></span>
+      <input type="range" min="0" max="359" value=${hueLive} disabled=${isGray}
+        oninput=${e=>setHueLive(parseInt(e.target.value,10))}
+        onChange=${e=>onSetColor(code, hslToHex(parseInt(e.target.value,10), 58, 32))}
+        style="flex:1;max-width:160px" title="Cor personalizada (matiz — propaga para os subcódigos)" />
+      <button class="btn sm ${isGray?'':'ghost'}" onClick=${()=>onSetColor(code, isGray ? hslToHex(hueLive,58,32) : 'gray')}>cinza</button>
       ${code.hue_deg!=null && html`<button class="btn sm ghost" onClick=${()=>onSetColor(code, null)}>usar cor automática</button>`}
     </div>`}
     ${code.depth===0 && !isAdmin && code.hue_deg!=null && html`<p class="meta" style="margin-top:6px">Cor definida pelo administrador.</p>`}
