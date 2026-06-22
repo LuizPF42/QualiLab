@@ -1,0 +1,1181 @@
+{
+  "_meta": {
+    "id": "file-project",
+    "name": "IA no Direito — Teste Sintético Realista",
+    "code": "TEST2",
+    "mode": "collective",
+    "displayName": "Admin"
+  },
+  "documents": [
+    {
+      "id": "doc-1",
+      "name": "ENT-01 — Sócia sênior, escritório Andrade & Bittencourt (São Paulo)",
+      "content": "Entrevista com Camila Andrade, sócia fundadora do escritório Andrade & Bittencourt, em São Paulo, realizada em 14 de fevereiro de 2026.\n\nEu confesso que resisti bastante no começo. Quando os associados começaram a usar ferramentas de IA generativa pra pesquisa jurídica, minha primeira reação foi de desconfiança total. Eu já vi gente citar jurisprudência que simplesmente não existe porque a ferramenta alucinou um número de processo. Isso é o tipo de erro que destrói a credibilidade de um escritório inteiro, não é brincadeira.\n\nCom o tempo fui cedendo, mas com regras bem claras. Hoje a gente usa IA pra rascunho de peças e pra resumir decisões longas, nunca pra citar fonte sem checagem humana. Os associados juniores adotaram isso muito mais rápido que os sócios da minha geração — pra eles é natural, quase como usar um corretor ortográfico. Já entre os sócios mais antigos, ainda tem muita resistência, às vezes por orgulho mesmo, de achar que computador não escreve uma petição tão bem quanto trinta anos de experiência.\n\nA questão da confidencialidade do cliente também me preocupa bastante. A gente trabalha com contratos de fusão e aquisição que envolvem informação extremamente sensível, e eu não quero nem pensar no risco de algum documento confidencial ir parar num modelo de IA qualquer sem a gente saber onde aquilo é processado. Isso trava muita decisão de adoção mais ampla aqui dentro."
+    },
+    {
+      "id": "doc-2",
+      "name": "ENT-02 — Associado júnior, escritório Andrade & Bittencourt (São Paulo)",
+      "content": "Entrevista com Thiago Salgado, associado júnior do escritório Andrade & Bittencourt, em São Paulo, realizada em 18 de fevereiro de 2026.\n\nPra mim foi bem natural. Eu já tinha usado essas ferramentas na faculdade pra estudar pra prova, então quando entrei no escritório já sabia mais ou menos o que esperar. O ganho de produtividade é gigante: uma pesquisa jurídica que levava a tarde inteira hoje eu faço o primeiro rascunho em vinte minutos e gasto o resto do tempo revisando e ajustando. Isso me deixa livre pra focar na parte estratégica do caso, que é o que realmente importa.\n\nO que eu sinto é que tem uma divisão geracional bem clara aqui dentro. A gente, os mais novos, usa isso o tempo inteiro — pesquisa, resumo de decisão, até pra organizar e-mail. Os sócios mais experientes, com raras exceções, ainda preferem fazer tudo do jeito tradicional. Eu entendo a cautela, principalmente depois daquele caso que rodou nos grupos de WhatsApp do meio jurídico de um advogado que citou uma jurisprudência inventada pela ferramenta. Isso assustou muita gente da geração mais velha, com razão.\n\nSobre treinamento: a gente não teve nenhum treinamento formal, foi tudo no improviso mesmo, trocando dica entre os colegas. Acho que o escritório ainda não tem uma política clara de uso, cada associado usa do jeito que aprendeu sozinho, o que é meio arriscado na minha opinião."
+    },
+    {
+      "id": "doc-3",
+      "name": "ENT-03 — Sócio, escritório Vasconcelos Pereira (Rio de Janeiro)",
+      "content": "Entrevista com Rodrigo Vasconcelos, sócio do escritório Vasconcelos Pereira, no Rio de Janeiro, realizada em 21 de fevereiro de 2026.\n\nA pressão pra adotar essas ferramentas não vem de dentro do escritório, vem do mercado. Os nossos clientes corporativos já perguntam diretamente se a gente usa IA generativa pra acelerar a entrega de pareceres. Um cliente chegou a comparar o preço da nossa hora técnica com a de um escritório concorrente que anuncia uso intensivo de IA pra justificar honorários menores. Isso é uma pressão competitiva real, não é só modinha de tecnologia.\n\nEu sou favorável ao uso, mas com ressalva grande na questão de confidencialidade. A gente atende um banco que exige contratualmente que nenhum documento saia da infraestrutura interna deles, então pra esse cliente específico simplesmente não cabe usar ferramenta de IA generativa de terceiro nenhuma. Pra outros clientes menos sensíveis, eu já autorizei uso pra rascunho de petição e revisão de contrato, sempre com revisão humana antes de qualquer coisa sair do escritório.\n\nSobre o risco de alucinação, eu acho que é exagerado o pânico que se criou. Sim, acontece, mas é exatamente por isso que existe revisão de um advogado sênior antes de protocolar qualquer coisa. O problema nunca foi a ferramenta errar, o problema é alguém usar sem checar depois — isso já era erro antes da IA existir, só que agora ficou mais visível."
+    },
+    {
+      "id": "doc-4",
+      "name": "ENT-04 — Estagiária, escritório Vasconcelos Pereira (Rio de Janeiro)",
+      "content": "Entrevista com Beatriz Lemos, estagiária do escritório Vasconcelos Pereira, no Rio de Janeiro, realizada em 25 de fevereiro de 2026.\n\nEu uso pra praticamente tudo, desde resumir decisão até organizar minha própria agenda de prazos. Pra quem está começando como eu, é uma ferramenta de aprendizado também: eu peço pra explicar um instituto jurídico que eu não entendi bem na faculdade, e isso me ajuda muito mais rápido do que ficar procurando em livro.\n\nMas eu também já vi colega de estágio levar bronca de sócio por entregar um rascunho cheio de erro porque confiou demais na ferramenta sem checar. Acho que falta um treinamento mais sério aqui no escritório sobre como usar isso direito — hoje é cada um aprendendo do próprio erro, e às vezes esse erro custa caro pra reputação da pessoa.\n\nEu acho que com o tempo isso vai virar parte normal da formação de advogado, tipo Excel é hoje. Mas ainda tem muito sócio mais antigo aqui que trata isso como modinha passageira, e eu não acho que vai passar, sinceramente."
+    },
+    {
+      "id": "doc-5",
+      "name": "ENT-05 — Sócia, escritório Andrade & Bittencourt — filial Brasília",
+      "content": "Entrevista com Patrícia Ferraz Nogueira, sócia responsável pela filial de Brasília do escritório Andrade & Bittencourt, realizada em 02 de março de 2026.\n\nAqui na filial de Brasília a gente trabalha muito com contencioso administrativo, então boa parte do nosso trabalho é pesquisa de jurisprudência e doutrina. A ferramenta de IA ajudou bastante a reduzir o tempo de levantamento inicial, mas eu insisto demais com a equipe sobre a importância de validar cada citação antes de colocar numa peça — já aconteceu de pegar referência incorreta gerada pela ferramenta.\n\nSinto uma resistência menor aqui do que ouço falar de outras filiais, talvez porque a equipe daqui seja mais jovem em média. Os associados mais novos adotaram isso rapidinho, e até alguns dos sócios mais experientes da nossa filial passaram a usar, embora com bem mais cautela que os mais jovens.\n\nO ponto que eu destacaria como achado mais importante da minha experiência aqui é que a adoção dessas ferramentas não é só uma questão de geração, é também uma questão de área de atuação: contencioso de massa se beneficia muito mais do que trabalho mais personalizado e estratégico, onde a ferramenta ajuda menos."
+    },
+    {
+      "id": "doc-6",
+      "name": "ENT-06 — Associado sênior, escritório Vasconcelos Pereira (Rio de Janeiro)",
+      "content": "Entrevista com Felipe Carvalho Matos, associado sênior do escritório Vasconcelos Pereira, no Rio de Janeiro, realizada em 06 de março de 2026.\n\nEu estou no meio do caminho entre as duas gerações, então vejo os dois lados. Entendo a empolgação dos mais novos com o ganho de produtividade, mas também entendo a cautela dos sócios mais experientes — afinal quem assina a petição é o advogado, não a ferramenta, então a responsabilidade pelo erro é sempre nossa.\n\nHoje eu uso bastante pra revisão de contrato e pra organizar argumento de petição mais complexa, mas evito completamente usar pra qualquer coisa envolvendo cliente do setor financeiro, porque a confidencialidade ali é levada a sério demais — já tivemos cliente que pediu cláusula contratual proibindo expressamente uso de ferramenta de IA externa no processo deles.\n\nSobre o caso da jurisprudência inventada que rodou nos grupos do meio jurídico, eu conheço o advogado envolvido, ele trabalha num escritório concorrente aqui no Rio. Foi um aprendizado caro pra ele, mas eu acho que serviu de alerta importante pra todo mundo do mercado sobre a importância de checar antes de protocolar."
+    }
+  ],
+  "categories": [
+    {
+      "id": "cat-cargo",
+      "name": "Cargo/função",
+      "kind": "select",
+      "options": [
+        "Sócio(a)",
+        "Associado(a) sênior",
+        "Associado(a) júnior",
+        "Estagiário(a)",
+        "Não informado"
+      ],
+      "description": "Testa kind=select",
+      "color": 0,
+      "position": 0
+    },
+    {
+      "id": "cat-resumo",
+      "name": "Resumo da entrevista",
+      "kind": "text",
+      "options": [],
+      "description": "Testa kind=text",
+      "color": 1,
+      "position": 1
+    },
+    {
+      "id": "cat-data",
+      "name": "Data da entrevista",
+      "kind": "date",
+      "options": [],
+      "description": "Testa kind=date",
+      "color": 2,
+      "position": 2
+    },
+    {
+      "id": "cat-posicao",
+      "name": "Posição sobre uso de IA",
+      "kind": "single",
+      "options": [
+        "Favorável",
+        "Cético",
+        "Ambivalente",
+        "Outros",
+        "Não informado"
+      ],
+      "description": "Testa kind=single com Outros",
+      "color": 3,
+      "position": 3
+    },
+    {
+      "id": "cat-areas",
+      "name": "Áreas de aplicação citadas",
+      "kind": "checkbox",
+      "options": [
+        "Pesquisa jurídica",
+        "Redação de peças",
+        "Revisão contratual",
+        "Atendimento ao cliente",
+        "Outros",
+        "Não informado"
+      ],
+      "description": "Testa kind=checkbox multi-valor",
+      "color": 4,
+      "position": 4
+    },
+    {
+      "id": "cat-vazia",
+      "name": "Categoria sem opções (edge case)",
+      "kind": "select",
+      "options": [],
+      "description": "Sem opções — deve mostrar 'sem valores'",
+      "color": 5,
+      "position": 5
+    }
+  ],
+  "doc_values": [
+    {
+      "id": "v1",
+      "document_id": "doc-1",
+      "category_id": "cat-cargo",
+      "value": "Sócio(a)",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v2",
+      "document_id": "doc-1",
+      "category_id": "cat-data",
+      "value": "14/02/2026",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v3",
+      "document_id": "doc-1",
+      "category_id": "cat-posicao",
+      "value": "Cético",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v4",
+      "document_id": "doc-1",
+      "category_id": "cat-areas",
+      "value": "Pesquisa jurídica | Redação de peças",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v5",
+      "document_id": "doc-2",
+      "category_id": "cat-cargo",
+      "value": "Associado(a) júnior",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v6",
+      "document_id": "doc-2",
+      "category_id": "cat-data",
+      "value": "18/02/2026",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v7",
+      "document_id": "doc-2",
+      "category_id": "cat-posicao",
+      "value": "Favorável",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v8",
+      "document_id": "doc-2",
+      "category_id": "cat-areas",
+      "value": "Pesquisa jurídica | Outros",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v9",
+      "document_id": "doc-3",
+      "category_id": "cat-cargo",
+      "value": "Sócio(a)",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v10",
+      "document_id": "doc-3",
+      "category_id": "cat-data",
+      "value": "21/02/2026",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v11",
+      "document_id": "doc-3",
+      "category_id": "cat-posicao",
+      "value": "Favorável",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v12",
+      "document_id": "doc-3",
+      "category_id": "cat-areas",
+      "value": "Redação de peças | Revisão contratual",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v13",
+      "document_id": "doc-4",
+      "category_id": "cat-cargo",
+      "value": "Estagiário(a)",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v14",
+      "document_id": "doc-4",
+      "category_id": "cat-data",
+      "value": "25/02/2026",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v15",
+      "document_id": "doc-4",
+      "category_id": "cat-posicao",
+      "value": "Favorável",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v16",
+      "document_id": "doc-4",
+      "category_id": "cat-areas",
+      "value": "Pesquisa jurídica | Outros",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v17",
+      "document_id": "doc-5",
+      "category_id": "cat-cargo",
+      "value": "Sócio(a)",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v18",
+      "document_id": "doc-5",
+      "category_id": "cat-data",
+      "value": "02/03/2026",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v19",
+      "document_id": "doc-5",
+      "category_id": "cat-posicao",
+      "value": "Ambivalente",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v20",
+      "document_id": "doc-5",
+      "category_id": "cat-areas",
+      "value": "Pesquisa jurídica",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v21",
+      "document_id": "doc-6",
+      "category_id": "cat-cargo",
+      "value": "Associado(a) sênior",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v22",
+      "document_id": "doc-6",
+      "category_id": "cat-data",
+      "value": "06/03/2026",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v23",
+      "document_id": "doc-6",
+      "category_id": "cat-posicao",
+      "value": "Ambivalente",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v24",
+      "document_id": "doc-6",
+      "category_id": "cat-areas",
+      "value": "Revisão contratual",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v25",
+      "document_id": "doc-1",
+      "category_id": "cat-cargo",
+      "value": "Sócio(a)",
+      "set_by": "user-marina",
+      "author_name": "Marina",
+      "layer": "individual"
+    },
+    {
+      "id": "v26",
+      "document_id": "doc-1",
+      "category_id": "cat-cargo",
+      "value": "Sócio(a)",
+      "set_by": "user-rafael",
+      "author_name": "Rafael",
+      "layer": "individual"
+    },
+    {
+      "id": "v27",
+      "document_id": "doc-1",
+      "category_id": "cat-posicao",
+      "value": "Cético",
+      "set_by": "user-marina",
+      "author_name": "Marina",
+      "layer": "individual"
+    },
+    {
+      "id": "v28",
+      "document_id": "doc-1",
+      "category_id": "cat-posicao",
+      "value": "Ambivalente",
+      "set_by": "user-rafael",
+      "author_name": "Rafael",
+      "layer": "individual"
+    },
+    {
+      "id": "v29",
+      "document_id": "doc-1",
+      "category_id": "cat-areas",
+      "value": "Pesquisa jurídica | Redação de peças",
+      "set_by": "user-marina",
+      "author_name": "Marina",
+      "layer": "individual"
+    },
+    {
+      "id": "v30",
+      "document_id": "doc-1",
+      "category_id": "cat-areas",
+      "value": "Pesquisa jurídica",
+      "set_by": "user-rafael",
+      "author_name": "Rafael",
+      "layer": "individual"
+    },
+    {
+      "id": "v31",
+      "document_id": "doc-2",
+      "category_id": "cat-cargo",
+      "value": "Associado(a) júnior",
+      "set_by": "user-marina",
+      "author_name": "Marina",
+      "layer": "individual"
+    },
+    {
+      "id": "v32",
+      "document_id": "doc-2",
+      "category_id": "cat-cargo",
+      "value": "Associado(a) sênior",
+      "set_by": "user-rafael",
+      "author_name": "Rafael",
+      "layer": "individual"
+    },
+    {
+      "id": "v33",
+      "document_id": "doc-2",
+      "category_id": "cat-posicao",
+      "value": "Favorável",
+      "set_by": "user-marina",
+      "author_name": "Marina",
+      "layer": "individual"
+    },
+    {
+      "id": "v34",
+      "document_id": "doc-2",
+      "category_id": "cat-posicao",
+      "value": "Favorável",
+      "set_by": "user-rafael",
+      "author_name": "Rafael",
+      "layer": "individual"
+    },
+    {
+      "id": "v35",
+      "document_id": "doc-2",
+      "category_id": "cat-areas",
+      "value": "Pesquisa jurídica | Outros",
+      "set_by": "user-marina",
+      "author_name": "Marina",
+      "layer": "individual"
+    },
+    {
+      "id": "v36",
+      "document_id": "doc-3",
+      "category_id": "cat-cargo",
+      "value": "Sócio(a)",
+      "set_by": "user-marina",
+      "author_name": "Marina",
+      "layer": "individual"
+    },
+    {
+      "id": "v37",
+      "document_id": "doc-3",
+      "category_id": "cat-cargo",
+      "value": "Sócio(a)",
+      "set_by": "user-rafael",
+      "author_name": "Rafael",
+      "layer": "individual"
+    },
+    {
+      "id": "v38",
+      "document_id": "doc-3",
+      "category_id": "cat-posicao",
+      "value": "Favorável",
+      "set_by": "user-marina",
+      "author_name": "Marina",
+      "layer": "individual"
+    },
+    {
+      "id": "v39",
+      "document_id": "doc-3",
+      "category_id": "cat-posicao",
+      "value": "Favorável",
+      "set_by": "user-rafael",
+      "author_name": "Rafael",
+      "layer": "individual"
+    },
+    {
+      "id": "v40",
+      "document_id": "doc-3",
+      "category_id": "cat-areas",
+      "value": "Redação de peças | Revisão contratual",
+      "set_by": "user-marina",
+      "author_name": "Marina",
+      "layer": "individual"
+    },
+    {
+      "id": "v41",
+      "document_id": "doc-3",
+      "category_id": "cat-areas",
+      "value": "Redação de peças | Revisão contratual",
+      "set_by": "user-rafael",
+      "author_name": "Rafael",
+      "layer": "individual"
+    },
+    {
+      "id": "v42",
+      "document_id": "doc-4",
+      "category_id": "cat-cargo",
+      "value": "Estagiário(a)",
+      "set_by": "user-marina",
+      "author_name": "Marina",
+      "layer": "individual"
+    },
+    {
+      "id": "v43",
+      "document_id": "doc-4",
+      "category_id": "cat-cargo",
+      "value": "Estagiário(a)",
+      "set_by": "user-rafael",
+      "author_name": "Rafael",
+      "layer": "individual"
+    },
+    {
+      "id": "v44",
+      "document_id": "doc-4",
+      "category_id": "cat-posicao",
+      "value": "Ambivalente",
+      "set_by": "user-marina",
+      "author_name": "Marina",
+      "layer": "individual"
+    },
+    {
+      "id": "v45",
+      "document_id": "doc-4",
+      "category_id": "cat-posicao",
+      "value": "Favorável",
+      "set_by": "user-rafael",
+      "author_name": "Rafael",
+      "layer": "individual"
+    },
+    {
+      "id": "v46",
+      "document_id": "doc-4",
+      "category_id": "cat-areas",
+      "value": "Pesquisa jurídica",
+      "set_by": "user-marina",
+      "author_name": "Marina",
+      "layer": "individual"
+    },
+    {
+      "id": "v47",
+      "document_id": "doc-4",
+      "category_id": "cat-areas",
+      "value": "Pesquisa jurídica | Outros",
+      "set_by": "user-rafael",
+      "author_name": "Rafael",
+      "layer": "individual"
+    },
+    {
+      "id": "v48",
+      "document_id": "doc-5",
+      "category_id": "cat-cargo",
+      "value": "Sócio(a)",
+      "set_by": "user-marina",
+      "author_name": "Marina",
+      "layer": "individual"
+    },
+    {
+      "id": "v49",
+      "document_id": "doc-5",
+      "category_id": "cat-cargo",
+      "value": "Sócio(a)",
+      "set_by": "user-rafael",
+      "author_name": "Rafael",
+      "layer": "individual"
+    },
+    {
+      "id": "v50",
+      "document_id": "doc-5",
+      "category_id": "cat-posicao",
+      "value": "Ambivalente",
+      "set_by": "user-marina",
+      "author_name": "Marina",
+      "layer": "individual"
+    },
+    {
+      "id": "v51",
+      "document_id": "doc-5",
+      "category_id": "cat-posicao",
+      "value": "Cético",
+      "set_by": "user-rafael",
+      "author_name": "Rafael",
+      "layer": "individual"
+    },
+    {
+      "id": "v52",
+      "document_id": "doc-5",
+      "category_id": "cat-areas",
+      "value": "Pesquisa jurídica",
+      "set_by": "user-marina",
+      "author_name": "Marina",
+      "layer": "individual"
+    },
+    {
+      "id": "v53",
+      "document_id": "doc-5",
+      "category_id": "cat-areas",
+      "value": "Pesquisa jurídica",
+      "set_by": "user-rafael",
+      "author_name": "Rafael",
+      "layer": "individual"
+    },
+    {
+      "id": "v54",
+      "document_id": "doc-6",
+      "category_id": "cat-cargo",
+      "value": "Associado(a) sênior",
+      "set_by": "user-rafael",
+      "author_name": "Rafael",
+      "layer": "individual"
+    },
+    {
+      "id": "v55",
+      "document_id": "doc-6",
+      "category_id": "cat-posicao",
+      "value": "Ambivalente",
+      "set_by": "user-rafael",
+      "author_name": "Rafael",
+      "layer": "individual"
+    },
+    {
+      "id": "v56",
+      "document_id": "doc-6",
+      "category_id": "cat-areas",
+      "value": "Revisão contratual",
+      "set_by": "user-rafael",
+      "author_name": "Rafael",
+      "layer": "individual"
+    },
+    {
+      "id": "v57",
+      "document_id": "doc-1",
+      "category_id": "cat-resumo",
+      "value": "Sócia cética por experiência de citação inventada; defende uso restrito e regrado, preocupação forte com confidencialidade em M&A.",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v58",
+      "document_id": "doc-3",
+      "category_id": "cat-resumo",
+      "value": "Sócio favorável, motivado por pressão competitiva de clientes; condiciona uso a contratos sem restrição de confidencialidade.",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v59",
+      "document_id": "doc-6",
+      "category_id": "cat-resumo",
+      "value": "Associado sênior em posição intermediária entre as duas gerações; reconhece responsabilidade do advogado mesmo com uso de IA.",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    }
+  ],
+  "codes": [
+    {
+      "id": "code-a0",
+      "parent_id": null,
+      "name": "Adoção e motivação",
+      "hue": 0,
+      "depth": 0,
+      "position": 0,
+      "hue_deg": 210
+    },
+    {
+      "id": "code-a1",
+      "parent_id": "code-a0",
+      "name": "Ganhos de produtividade",
+      "hue": 0,
+      "depth": 1,
+      "position": 1,
+      "hue_deg": 210
+    },
+    {
+      "id": "code-a2",
+      "parent_id": "code-a0",
+      "name": "Pressão competitiva do mercado",
+      "hue": 0,
+      "depth": 1,
+      "position": 2,
+      "hue_deg": 210
+    },
+    {
+      "id": "code-b0",
+      "parent_id": null,
+      "name": "Riscos e resistência",
+      "hue": 1,
+      "depth": 0,
+      "position": 3,
+      "hue_deg": 350
+    },
+    {
+      "id": "code-b1",
+      "parent_id": "code-b0",
+      "name": "Medo de alucinação/erro",
+      "hue": 1,
+      "depth": 1,
+      "position": 4,
+      "hue_deg": 350
+    },
+    {
+      "id": "code-b2",
+      "parent_id": "code-b0",
+      "name": "Resistência de sócios seniores",
+      "hue": 1,
+      "depth": 1,
+      "position": 5,
+      "hue_deg": 350
+    },
+    {
+      "id": "code-b3",
+      "parent_id": "code-b0",
+      "name": "Confidencialidade do cliente",
+      "hue": 1,
+      "depth": 1,
+      "position": 6,
+      "hue_deg": 350
+    },
+    {
+      "id": "code-c0",
+      "parent_id": null,
+      "name": "Mudança cultural",
+      "hue": 2,
+      "depth": 0,
+      "position": 7,
+      "hue_deg": -1
+    },
+    {
+      "id": "code-c1",
+      "parent_id": "code-c0",
+      "name": "Divisão geracional",
+      "hue": 2,
+      "depth": 1,
+      "position": 8,
+      "hue_deg": -1
+    },
+    {
+      "id": "code-c2",
+      "parent_id": "code-c0",
+      "name": "Treinamento e capacitação",
+      "hue": 2,
+      "depth": 1,
+      "position": 9,
+      "hue_deg": -1
+    },
+    {
+      "id": "code-d0",
+      "parent_id": null,
+      "name": "Achados",
+      "hue": 3,
+      "depth": 0,
+      "position": 10
+    },
+    {
+      "id": "code-e0",
+      "parent_id": null,
+      "name": "Censura",
+      "hue": 4,
+      "depth": 0,
+      "position": 11,
+      "hue_deg": -2,
+      "is_redaction": true
+    },
+    {
+      "id": "code-e1",
+      "parent_id": "code-e0",
+      "name": "Nomes",
+      "hue": 4,
+      "depth": 1,
+      "position": 12,
+      "hue_deg": -2,
+      "is_redaction": true
+    },
+    {
+      "id": "code-e2",
+      "parent_id": "code-e0",
+      "name": "Localização/empresa",
+      "hue": 4,
+      "depth": 1,
+      "position": 13,
+      "hue_deg": -2,
+      "is_redaction": true
+    }
+  ],
+  "codings": [
+    {
+      "id": "c1",
+      "document_id": "doc-1",
+      "code_id": "code-e1",
+      "span_start": 15,
+      "span_end": 29,
+      "quote": "Camila Andrade",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c2",
+      "document_id": "doc-1",
+      "code_id": "code-e2",
+      "span_start": 61,
+      "span_end": 82,
+      "quote": "Andrade & Bittencourt",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c3",
+      "document_id": "doc-1",
+      "code_id": "code-e2",
+      "span_start": 87,
+      "span_end": 96,
+      "quote": "São Paulo",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c4",
+      "document_id": "doc-1",
+      "code_id": "code-b1",
+      "span_start": 335,
+      "span_end": 383,
+      "quote": "citar jurisprudência que simplesmente não existe",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c5",
+      "document_id": "doc-1",
+      "code_id": "code-b1",
+      "span_start": 335,
+      "span_end": 383,
+      "quote": "citar jurisprudência que simplesmente não existe",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c6",
+      "document_id": "doc-1",
+      "code_id": "code-b2",
+      "span_start": 882,
+      "span_end": 937,
+      "quote": "ainda tem muita resistência, às vezes por orgulho mesmo",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c7",
+      "document_id": "doc-1",
+      "code_id": "code-c1",
+      "span_start": 700,
+      "span_end": 785,
+      "quote": "Os associados juniores adotaram isso muito mais rápido que os sócios da minha geração",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c8",
+      "document_id": "doc-1",
+      "code_id": "code-b3",
+      "span_start": 1230,
+      "span_end": 1293,
+      "quote": "risco de algum documento confidencial ir parar num modelo de IA",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c9",
+      "document_id": "doc-1",
+      "code_id": "code-d0",
+      "span_start": 1352,
+      "span_end": 1404,
+      "quote": "trava muita decisão de adoção mais ampla aqui dentro",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c10",
+      "document_id": "doc-2",
+      "code_id": "code-e1",
+      "span_start": 15,
+      "span_end": 29,
+      "quote": "Thiago Salgado",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c11",
+      "document_id": "doc-2",
+      "code_id": "code-a1",
+      "span_start": 343,
+      "span_end": 441,
+      "quote": "uma pesquisa jurídica que levava a tarde inteira hoje eu faço o primeiro rascunho em vinte minutos",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c12",
+      "document_id": "doc-2",
+      "code_id": "code-c1",
+      "span_start": 603,
+      "span_end": 651,
+      "quote": "tem uma divisão geracional bem clara aqui dentro",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c13",
+      "document_id": "doc-2",
+      "code_id": "code-c1",
+      "span_start": 603,
+      "span_end": 651,
+      "quote": "tem uma divisão geracional bem clara aqui dentro",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c14",
+      "document_id": "doc-2",
+      "code_id": "code-b1",
+      "span_start": 965,
+      "span_end": 1031,
+      "quote": "um advogado que citou uma jurisprudência inventada pela ferramenta",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c15",
+      "document_id": "doc-2",
+      "code_id": "code-c2",
+      "span_start": 1113,
+      "span_end": 1178,
+      "quote": "a gente não teve nenhum treinamento formal, foi tudo no improviso",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c16",
+      "document_id": "doc-3",
+      "code_id": "code-e1",
+      "span_start": 15,
+      "span_end": 34,
+      "quote": "Rodrigo Vasconcelos",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c17",
+      "document_id": "doc-3",
+      "code_id": "code-e2",
+      "span_start": 56,
+      "span_end": 75,
+      "quote": "Vasconcelos Pereira",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c18",
+      "document_id": "doc-3",
+      "code_id": "code-e2",
+      "span_start": 80,
+      "span_end": 94,
+      "quote": "Rio de Janeiro",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c19",
+      "document_id": "doc-3",
+      "code_id": "code-a2",
+      "span_start": 223,
+      "span_end": 308,
+      "quote": "Os nossos clientes corporativos já perguntam diretamente se a gente usa IA generativa",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c20",
+      "document_id": "doc-3",
+      "code_id": "code-b3",
+      "span_start": 713,
+      "span_end": 766,
+      "quote": "nenhum documento saia da infraestrutura interna deles",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c21",
+      "document_id": "doc-3",
+      "code_id": "code-b3",
+      "span_start": 713,
+      "span_end": 766,
+      "quote": "nenhum documento saia da infraestrutura interna deles",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c22",
+      "document_id": "doc-3",
+      "code_id": "code-b1",
+      "span_start": 1247,
+      "span_end": 1330,
+      "quote": "O problema nunca foi a ferramenta errar, o problema é alguém usar sem checar depois",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c23",
+      "document_id": "doc-4",
+      "code_id": "code-e1",
+      "span_start": 15,
+      "span_end": 28,
+      "quote": "Beatriz Lemos",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c24",
+      "document_id": "doc-4",
+      "code_id": "code-a1",
+      "span_start": 387,
+      "span_end": 451,
+      "quote": "isso me ajuda muito mais rápido do que ficar procurando em livro",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c25",
+      "document_id": "doc-4",
+      "code_id": "code-c2",
+      "span_start": 610,
+      "span_end": 689,
+      "quote": "falta um treinamento mais sério aqui no escritório sobre como usar isso direito",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c26",
+      "document_id": "doc-4",
+      "code_id": "code-c1",
+      "span_start": 893,
+      "span_end": 970,
+      "quote": "ainda tem muito sócio mais antigo aqui que trata isso como modinha passageira",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c27",
+      "document_id": "doc-4",
+      "code_id": "code-c1",
+      "span_start": 893,
+      "span_end": 959,
+      "quote": "ainda tem muito sócio mais antigo aqui que trata isso como modinha",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c28",
+      "document_id": "doc-5",
+      "code_id": "code-e1",
+      "span_start": 15,
+      "span_end": 39,
+      "quote": "Patrícia Ferraz Nogueira",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c29",
+      "document_id": "doc-5",
+      "code_id": "code-e2",
+      "span_start": 97,
+      "span_end": 118,
+      "quote": "Andrade & Bittencourt",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c30",
+      "document_id": "doc-5",
+      "code_id": "code-e2",
+      "span_start": 74,
+      "span_end": 82,
+      "quote": "Brasília",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c31",
+      "document_id": "doc-5",
+      "code_id": "code-b1",
+      "span_start": 498,
+      "span_end": 563,
+      "quote": "já aconteceu de pegar referência incorreta gerada pela ferramenta",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c32",
+      "document_id": "doc-5",
+      "code_id": "code-c1",
+      "span_start": 691,
+      "span_end": 739,
+      "quote": "Os associados mais novos adotaram isso rapidinho",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c33",
+      "document_id": "doc-5",
+      "code_id": "code-d0",
+      "span_start": 1052,
+      "span_end": 1145,
+      "quote": "contencioso de massa se beneficia muito mais do que trabalho mais personalizado e estratégico",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c34",
+      "document_id": "doc-6",
+      "code_id": "code-e1",
+      "span_start": 15,
+      "span_end": 36,
+      "quote": "Felipe Carvalho Matos",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c35",
+      "document_id": "doc-6",
+      "code_id": "code-e2",
+      "span_start": 69,
+      "span_end": 88,
+      "quote": "Vasconcelos Pereira",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c36",
+      "document_id": "doc-6",
+      "code_id": "code-b2",
+      "span_start": 354,
+      "span_end": 406,
+      "quote": "quem assina a petição é o advogado, não a ferramenta",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c37",
+      "document_id": "doc-6",
+      "code_id": "code-b3",
+      "span_start": 702,
+      "span_end": 806,
+      "quote": "já tivemos cliente que pediu cláusula contratual proibindo expressamente uso de ferramenta de IA externa",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c38",
+      "document_id": "doc-6",
+      "code_id": "code-b1",
+      "span_start": 993,
+      "span_end": 1024,
+      "quote": "Foi um aprendizado caro pra ele",
+      "layer": "individual",
+      "author_name": "Marina"
+    }
+  ],
+  "memos": [
+    {
+      "scope": "project",
+      "target_id": "file-project",
+      "author_name": "Admin",
+      "content": "Pesquisa sobre adoção de IA generativa em escritórios de advocacia brasileiros de médio/grande porte. Objetivo: mapear motivações de adoção, principais resistências e diferenças geracionais/hierárquicas na forma de uso. Entrevistas semiestruturadas com sócios, associados e estagiários de dois escritórios (Andrade & Bittencourt — SP/Brasília — e Vasconcelos Pereira — RJ). Dados sintéticos para teste de funcionalidades do QualiLab; nomes, escritórios e localidades são fictícios."
+    },
+    {
+      "scope": "document",
+      "target_id": "doc-1",
+      "author_name": "Admin",
+      "content": "Entrevista mais longa e rica em tensões — boa candidata pra ilustrar o código 'Confidencialidade do cliente' junto com 'Resistência de sócios seniores'."
+    },
+    {
+      "scope": "code",
+      "target_id": "code-b2",
+      "author_name": "Admin",
+      "content": "Padrão recorrente: resistência de sócios seniores aparece sempre associada a uma experiência concreta de erro (citação inventada), não como recusa abstrata à tecnologia. Vale explorar isso na análise com IA."
+    }
+  ]
+}
