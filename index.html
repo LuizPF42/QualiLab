@@ -155,8 +155,8 @@ async function getSqlJs(){
 let SUPABASE_URL = "https://lpfwnzotmltztfxacahb.supabase.co";
 let SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwZnduem90bWx0enRmeGFjYWhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4NzI2OTYsImV4cCI6MjA5NzQ0ODY5Nn0.qiygh5Nyhf7I7LS5R-z5cEW_hjMGgMbPpiUviMM2ev4";
 try {
-  SUPABASE_URL = SUPABASE_URL || localStorage.getItem('lastro:url') || "";
-  SUPABASE_ANON_KEY = SUPABASE_ANON_KEY || localStorage.getItem('lastro:key') || "";
+  SUPABASE_URL = SUPABASE_URL || localStorage.getItem('qualilab:url') || "";
+  SUPABASE_ANON_KEY = SUPABASE_ANON_KEY || localStorage.getItem('qualilab:key') || "";
 } catch(e){}
 
 /* ============ CORES (matiz = familia, luminosidade = profundidade) ============
@@ -926,7 +926,7 @@ async function createFileStore(fileHandle, isNew){
   const P = v=>Promise.resolve(v);
   if(isNew) await save();
   // persiste o fileHandle no IDB para reabrir na próxima sessão
-  await IDB.saveHandle('lastro:file', fileHandle).catch(()=>{});
+  await IDB.saveHandle('qualilab:file', fileHandle).catch(()=>{});
   return {
     mode:'file', fileName:fileHandle.name,
     onSaveError(cb){ _onSaveError=cb; },
@@ -979,7 +979,7 @@ const supportsDirAPI = typeof window!=='undefined' && 'showDirectoryPicker' in w
 async function reopenLastFile(){
   if(!supportsFileAPI) return null;
   try{
-    const rec = await IDB.getHandle('lastro:file');
+    const rec = await IDB.getHandle('qualilab:file');
     if(!rec) return null;
     const perm = await rec.handle.queryPermission({mode:'readwrite'});
     if(perm==='granted') return rec.handle;
@@ -992,7 +992,7 @@ async function reopenLastFile(){
 function LocalStore(){
   let db = { documents:[], categories:[], doc_values:[], codes:[], codings:[], memos:[] };
   let name = 'pesquisador';
-  try { const raw = localStorage.getItem('lastro:local'); if(raw) db = JSON.parse(raw); } catch(e){}
+  try { const raw = localStorage.getItem('qualilab:local'); if(raw) db = JSON.parse(raw); } catch(e){}
   if(!db.memos) db.memos = [];
   // batching: durante uma importacao grande, suprime o save por item (que re-serializa
   // o banco inteiro) e grava so uma vez no fim — evita travar a aba por segundos.
@@ -1015,7 +1015,7 @@ function LocalStore(){
   const notifyBackup = ()=> _onBackupStatus?.({...backupStatus});
   (async ()=>{ // tenta restaurar a pasta escolhida numa sessao anterior, sem pedir de novo se a permissao ainda valer
     try{
-      const rec = await IDB.getHandle('lastro:backupdir');
+      const rec = await IDB.getHandle('qualilab:backupdir');
       if(!rec) return;
       const perm = await rec.handle.queryPermission({mode:'readwrite'});
       if(perm==='granted'){ backupHandle = rec.handle; backupStatus = { ...backupStatus, active:true, name:rec.handle.name }; }
@@ -1038,7 +1038,7 @@ function LocalStore(){
   const save = () => {
     if(batching){ dirty = true; return; }
     let json;
-    try { json = JSON.stringify(db); localStorage.setItem('lastro:local', json); _onSaveError?.(null); }
+    try { json = JSON.stringify(db); localStorage.setItem('qualilab:local', json); _onSaveError?.(null); }
     catch(e){ _onSaveError?.(e); return; }
     scheduleBackup(json);
   };
@@ -1049,7 +1049,7 @@ function LocalStore(){
     onBackupStatus(cb){ _onBackupStatus=cb; cb({...backupStatus}); },
     async enableFolderBackup(){
       const handle = await window.showDirectoryPicker({mode:'readwrite'});
-      await IDB.saveHandle('lastro:backupdir', handle);
+      await IDB.saveHandle('qualilab:backupdir', handle);
       backupHandle = handle;
       backupStatus = { active:true, name:handle.name, lastOk:null, lastError:null, warnLarge:false };
       notifyBackup();
@@ -1059,11 +1059,11 @@ function LocalStore(){
     async disableFolderBackup(){
       backupHandle = null; clearTimeout(backupTimer);
       backupStatus = { active:false, name:null, lastOk:null, lastError:null, warnLarge:false };
-      try{ await IDB.tx('file_handles','readwrite', s=>s.delete('lastro:backupdir')); }catch(e){}
+      try{ await IDB.tx('file_handles','readwrite', s=>s.delete('qualilab:backupdir')); }catch(e){}
       notifyBackup();
     },
     beginBatch(){ batching = true; },
-    endBatch(){ batching = false; if(dirty){ dirty = false; let json; try { json=JSON.stringify(db); localStorage.setItem('lastro:local', json); _onSaveError?.(null); } catch(e){ _onSaveError?.(e); return; } scheduleBackup(json); } },
+    endBatch(){ batching = false; if(dirty){ dirty = false; let json; try { json=JSON.stringify(db); localStorage.setItem('qualilab:local', json); _onSaveError?.(null); } catch(e){ _onSaveError?.(e); return; } scheduleBackup(json); } },
     async init(display){ name = display || name; return { id:'local-user', name }; },
     currentUser(){ return { id:'local-user', name }; },
     async listMemos(){ return db.memos.slice(); },
@@ -1073,7 +1073,7 @@ function LocalStore(){
       save();
     },
     async changePassword(){ throw new Error('Sem conta no modo local'); },
-    async changeDisplayName(newName){ name = newName || name; try{ localStorage.setItem('lastro:name', name); }catch(e){} },
+    async changeDisplayName(newName){ name = newName || name; try{ localStorage.setItem('qualilab:name', name); }catch(e){} },
     async createProject(pn,disp,pmode){ return { id:'local', name:pn||'Projeto local', code:'LOCAL', created_by:'local-user', mode:pmode||'individual' }; },
     async joinProject(){ return { id:'local', name:'Projeto local', code:'LOCAL', created_by:'local-user', mode:'collective' }; },
     async myRole(){ return 'admin'; },
@@ -1361,7 +1361,7 @@ function App(){
   }, [codings, viewCoder, user, projectMode]);
 
   /* lista "Meus Projetos" por conta (cache local, complementa o servidor) */
-  const recentKey = (st)=> 'lastro:projects:'+((st||store)?.currentUser?.()?.id || 'anon');
+  const recentKey = (st)=> 'qualilab:projects:'+((st||store)?.currentUser?.()?.id || 'anon');
   const getRecent = (st)=>{ try{ return JSON.parse(localStorage.getItem(recentKey(st))||'[]'); }catch(e){ return []; } };
   const removeRecent = (p, st)=>{ try{ const k=recentKey(st||store); localStorage.setItem(k, JSON.stringify(getRecent(st||store).filter(x=>x.code!==p.code))); }catch(e){} };
   const pushRecent = (p, st)=>{ try{ const k=recentKey(st); const list=getRecent(st).filter(x=>x.code!==p.code);
@@ -1399,10 +1399,10 @@ function App(){
   /* apos autenticar (sessao existente ou login): reentra no projeto salvo ou vai pro gate */
   async function afterAuth(st, display){
     setUser(st.currentUser());
-    const saved = (()=>{ try{return JSON.parse(localStorage.getItem('lastro:project')||'null');}catch(e){return null;} })();
+    const saved = (()=>{ try{return JSON.parse(localStorage.getItem('qualilab:project')||'null');}catch(e){return null;} })();
     if(saved && saved.code){
       try{ const p = await st.joinProject(saved.code, display||st.currentUser()?.name||'anonimo'); pushRecent(p, st); openProject(p); setPhase('work'); return; }
-      catch(e){ try{localStorage.removeItem('lastro:project');}catch(_){} }
+      catch(e){ try{localStorage.removeItem('qualilab:project');}catch(_){} }
     }
     setPhase('gate');
   }
@@ -1415,7 +1415,7 @@ function App(){
         const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         const st = SupabaseStore(sb);
         setStore(st);
-        const display = (()=>{ try{return localStorage.getItem('lastro:name')||'';}catch(e){return '';} })();
+        const display = (()=>{ try{return localStorage.getItem('qualilab:name')||'';}catch(e){return '';} })();
         const sess = await st.init(display);   // null se nao houver sessao salva
         if(!sess){ setPhase('auth'); return; } // pede login/cadastro
         setUser(st.currentUser());
@@ -1425,12 +1425,12 @@ function App(){
         const lastHandle = await reopenLastFile();
         if(lastHandle){
           const st = await createFileStore(lastHandle, false); setStore(st);
-          const display = (()=>{ try{return localStorage.getItem('lastro:name')||'pesquisador';}catch(e){return 'pesquisador';} })();
+          const display = (()=>{ try{return localStorage.getItem('qualilab:name')||'pesquisador';}catch(e){return 'pesquisador';} })();
           const u = await st.init(display); setUser({...u,anon:false});
           const p = await st.joinProject(); openProject(p); setPhase('work');
         } else {
           const st = LocalStore(); setStore(st);
-          const display = (()=>{ try{return localStorage.getItem('lastro:name')||'pesquisador';}catch(e){return 'pesquisador';} })();
+          const display = (()=>{ try{return localStorage.getItem('qualilab:name')||'pesquisador';}catch(e){return 'pesquisador';} })();
           await st.init(display);
           setUser(st.currentUser());
           const p = await st.createProject(); openProject(p); setPhase('work');
@@ -1458,7 +1458,7 @@ function App(){
       if(userId===user?.id && store.myRole) setRole(await store.myRole(project.id)); }
     catch(e){ setErr(String(e.message||e)); }
   }
-  function leaveToGate(){ try{localStorage.removeItem('lastro:project');}catch(e){} setProjEdit(false); setProject(null); setDocs([]); setActiveId(null); setPhase('gate'); }
+  function leaveToGate(){ try{localStorage.removeItem('qualilab:project');}catch(e){} setProjEdit(false); setProject(null); setDocs([]); setActiveId(null); setPhase('gate'); }
   async function removeMember(userId){
     const self = userId===user?.id;
     if(self && !confirm('Sair deste projeto? Você perderá o acesso (suas codificações permanecem no projeto).')) return;
@@ -1468,7 +1468,7 @@ function App(){
   }
   async function renameProject(pn){
     try{ await store.renameProject(project.id, pn); const np={...project, name:pn};
-      setProject(np); try{localStorage.setItem('lastro:project',JSON.stringify(np));}catch(e){} }
+      setProject(np); try{localStorage.setItem('qualilab:project',JSON.stringify(np));}catch(e){} }
     catch(e){ setErr(String(e.message||e)); }
   }
   async function deleteProject(){
@@ -1484,7 +1484,7 @@ function App(){
       await store.setProjectMode(project.id, newMode, user?.name||'pesquisador');
       const np={...project, mode:newMode}; setProject(np); setProjectMode(newMode);
       setVizLayer(newMode==='individual' ? 'final' : 'individual');
-      try{localStorage.setItem('lastro:project',JSON.stringify(np));}catch(e){}
+      try{localStorage.setItem('qualilab:project',JSON.stringify(np));}catch(e){}
       if(newMode==='individual' && mainView!=='codificar') setMainView('codificar');
       await loadProject(store, project.id); await loadDoc();
       setProjEdit(false); setBusy(null);
@@ -1495,7 +1495,7 @@ function App(){
   async function changePassword(newPw){ await store.changePassword(newPw); }
   async function changeDisplayName(newName){
     await store.changeDisplayName(newName);
-    try{ localStorage.setItem('lastro:name', newName); }catch(e){}
+    try{ localStorage.setItem('qualilab:name', newName); }catch(e){}
     setUser(store.currentUser());
   }
   async function acctLeaveProject(pid){
@@ -1506,7 +1506,7 @@ function App(){
   }
   async function acctRenameProject(pid, pn){
     await store.renameProject(pid, pn);
-    if(project && project.id===pid){ const np={...project, name:pn}; setProject(np); try{localStorage.setItem('lastro:project',JSON.stringify(np));}catch(e){} }
+    if(project && project.id===pid){ const np={...project, name:pn}; setProject(np); try{localStorage.setItem('qualilab:project',JSON.stringify(np));}catch(e){} }
     await loadMyProjects();
   }
   async function acctDeleteProject(pid){
@@ -1516,7 +1516,7 @@ function App(){
     await loadMyProjects();
   }
   async function acctOpenProject(p){
-    try{ const jp = await store.joinProject(p.code, user?.name||''); try{localStorage.setItem('lastro:project',JSON.stringify(jp));}catch(e){} pushRecent(jp); setAccount(false); openProject(jp); setPhase('work'); }
+    try{ const jp = await store.joinProject(p.code, user?.name||''); try{localStorage.setItem('qualilab:project',JSON.stringify(jp));}catch(e){} pushRecent(jp); setAccount(false); openProject(jp); setPhase('work'); }
     catch(e){ setErr(String(e.message||e)); }
   }
 
@@ -1875,9 +1875,9 @@ function App(){
 
   if(phase==='auth') return html`<${Auth}
     err=${err}
-    onSignIn=${async (email,pw)=>{ try{ const u=await store.signIn(email,pw); try{localStorage.setItem('lastro:name',u.name);}catch(e){} setErr(null); await afterAuth(store, u.name); }catch(e){ setErr(String(e.message||e)); } }}
-    onSignUp=${async (email,pw,disp)=>{ try{ const r=await store.signUp(email,pw,disp); try{localStorage.setItem('lastro:name',disp);}catch(e){} setErr(null); if(r.confirmed){ await afterAuth(store, disp); } return r; }catch(e){ setErr(String(e.message||e)); return { error:String(e.message||e) }; } }}
-    onAnon=${async (disp)=>{ try{ const u=await store.signInAnon(disp); try{localStorage.setItem('lastro:name',disp);}catch(e){} setErr(null); await afterAuth(store, disp); }catch(e){ setErr(String(e.message||e)); } }}
+    onSignIn=${async (email,pw)=>{ try{ const u=await store.signIn(email,pw); try{localStorage.setItem('qualilab:name',u.name);}catch(e){} setErr(null); await afterAuth(store, u.name); }catch(e){ setErr(String(e.message||e)); } }}
+    onSignUp=${async (email,pw,disp)=>{ try{ const r=await store.signUp(email,pw,disp); try{localStorage.setItem('qualilab:name',disp);}catch(e){} setErr(null); if(r.confirmed){ await afterAuth(store, disp); } return r; }catch(e){ setErr(String(e.message||e)); return { error:String(e.message||e) }; } }}
+    onAnon=${async (disp)=>{ try{ const u=await store.signInAnon(disp); try{localStorage.setItem('qualilab:name',disp);}catch(e){} setErr(null); await afterAuth(store, disp); }catch(e){ setErr(String(e.message||e)); } }}
   />`;
 
   const openFileProject = async (isNew)=>{
@@ -1887,7 +1887,7 @@ function App(){
         ? await window.showSaveFilePicker({ suggestedName:'projeto.qualilab', types:[{description:'QualiLab',accept:{'application/json':['.qualilab']}}] })
         : await window.showOpenFilePicker({ types:[{description:'QualiLab',accept:{'application/json':['.qualilab']}}], multiple:false }).then(r=>r[0]);
       const st = await createFileStore(fh, isNew); setStore(st);
-      const display = (()=>{ try{return localStorage.getItem('lastro:name')||'pesquisador';}catch(e){return 'pesquisador';} })();
+      const display = (()=>{ try{return localStorage.getItem('qualilab:name')||'pesquisador';}catch(e){return 'pesquisador';} })();
       const u = await st.init(display); setUser({...u,anon:false});
       const p = isNew ? await st.createProject(fh.name.replace(/\.qualilab$/i,''), display) : await st.joinProject();
       openProject(p); setPhase('work');
@@ -1899,9 +1899,9 @@ function App(){
       err=${err} user=${user} projects=${myProjects} mode=${mode} onAccount=${()=>setAccount(true)}
       onOpenFile=${()=>openFileProject(false)} onNewFile=${()=>openFileProject(true)}
       onLogin=${async()=>{ try{ await store.signOut(); }catch(e){} setUser(null); setPhase('auth'); }}
-      onOpen=${async (proj)=>{ try{ const p=await store.joinProject(proj.code, user?.name||''); try{localStorage.setItem('lastro:project',JSON.stringify(p));}catch(e){} pushRecent(p); openProject(p); setPhase('work'); }catch(e){ setErr(String(e.message||e)); } }}
-      onCreate=${async (n,disp,pmode)=>{ try{ try{localStorage.setItem('lastro:name',disp);}catch(e){} const p=await store.createProject(n,disp,pmode); try{localStorage.setItem('lastro:project',JSON.stringify(p));}catch(e){} pushRecent(p); setUser(store.currentUser()); openProject(p); setPhase('work'); }catch(e){ setErr(String(e.message||e)); } }}
-      onJoin=${async (code,disp)=>{ try{ try{localStorage.setItem('lastro:name',disp);}catch(e){} const p=await store.joinProject(code,disp); try{localStorage.setItem('lastro:project',JSON.stringify(p));}catch(e){} pushRecent(p); setUser(store.currentUser()); openProject(p); setPhase('work'); }catch(e){ setErr(String(e.message||e)); } }}
+      onOpen=${async (proj)=>{ try{ const p=await store.joinProject(proj.code, user?.name||''); try{localStorage.setItem('qualilab:project',JSON.stringify(p));}catch(e){} pushRecent(p); openProject(p); setPhase('work'); }catch(e){ setErr(String(e.message||e)); } }}
+      onCreate=${async (n,disp,pmode)=>{ try{ try{localStorage.setItem('qualilab:name',disp);}catch(e){} const p=await store.createProject(n,disp,pmode); try{localStorage.setItem('qualilab:project',JSON.stringify(p));}catch(e){} pushRecent(p); setUser(store.currentUser()); openProject(p); setPhase('work'); }catch(e){ setErr(String(e.message||e)); } }}
+      onJoin=${async (code,disp)=>{ try{ try{localStorage.setItem('qualilab:name',disp);}catch(e){} const p=await store.joinProject(code,disp); try{localStorage.setItem('qualilab:project',JSON.stringify(p));}catch(e){} pushRecent(p); setUser(store.currentUser()); openProject(p); setPhase('work'); }catch(e){ setErr(String(e.message||e)); } }}
     />
     ${account && html`<${AccountModal} user=${user} projects=${myProjects}
       onClose=${()=>setAccount(false)} onChangePassword=${changePassword} onChangeName=${changeDisplayName}
@@ -1930,10 +1930,10 @@ function App(){
       ${user && (mode==='cloud'
         ? html`<button class="btn sm ghost" title=${'Minha conta'+(user.email?' · '+user.email:'')} onClick=${()=>setAccount(true)}>${user.name}${user.anon?' (visitante)':''}</button>`
         : html`<span class="meta">${user.name}</span>`)}
-      ${mode==='cloud' && html`<button class="btn sm ghost" onClick=${()=>{ try{localStorage.removeItem('lastro:project');}catch(e){} setProject(null); setPhase('gate'); }}>trocar projeto</button>`}
+      ${mode==='cloud' && html`<button class="btn sm ghost" onClick=${()=>{ try{localStorage.removeItem('qualilab:project');}catch(e){} setProject(null); setPhase('gate'); }}>trocar projeto</button>`}
       ${mode==='cloud' && !online && html`<span class="pill" style="background:#FEF3C7;border-color:#D97706;color:#92400E;font-size:11px">offline${pending>0?` · ${pending} pendente${pending>1?'s':''}`:''}</span>`}
       ${mode==='cloud' && online && pending>0 && html`<span class="pill" style="font-size:11px">sincronizando…</span>`}
-      ${mode==='cloud' && user && html`<button class="btn sm ghost" onClick=${async()=>{ try{localStorage.removeItem('lastro:project');}catch(e){} try{ await store.signOut(); }catch(e){} setProject(null); setUser(null); setDocs([]); setActiveId(null); setPhase('auth'); }}>sair</button>`}
+      ${mode==='cloud' && user && html`<button class="btn sm ghost" onClick=${async()=>{ try{localStorage.removeItem('qualilab:project');}catch(e){} try{ await store.signOut(); }catch(e){} setProject(null); setUser(null); setDocs([]); setActiveId(null); setPhase('auth'); }}>sair</button>`}
       ${project && docs.length>0 && html`<div style="position:relative">
         <button class="btn sm" onClick=${()=>setExpOpen(o=>!o)}>exportar ▾</button>
         ${expOpen && html`<div>
@@ -2194,8 +2194,8 @@ function App(){
     onClose=${()=>setProjEdit(false)} onSetMode=${changeProjectMode}
     onSetRole=${changeMemberRole} onRemoveMember=${removeMember}
     onRename=${renameProject} onClear=${()=>{ setProjEdit(false); doClearProject(); }} onDelete=${deleteProject}
-    onSaveCloud=${(url,key)=>{ try{localStorage.setItem('lastro:url',url);localStorage.setItem('lastro:key',key);}catch(e){} location.reload(); }}
-    onClearCloud=${()=>{ try{localStorage.removeItem('lastro:url');localStorage.removeItem('lastro:key');localStorage.removeItem('lastro:project');}catch(e){} location.reload(); }}
+    onSaveCloud=${(url,key)=>{ try{localStorage.setItem('qualilab:url',url);localStorage.setItem('qualilab:key',key);}catch(e){} location.reload(); }}
+    onClearCloud=${()=>{ try{localStorage.removeItem('qualilab:url');localStorage.removeItem('qualilab:key');localStorage.removeItem('qualilab:project');}catch(e){} location.reload(); }}
     canFolderBackup=${!!store?.enableFolderBackup} backupStatus=${backupStatus}
     onEnableFolderBackup=${enableFolderBackup} onDisableFolderBackup=${disableFolderBackup} />`}
   `;

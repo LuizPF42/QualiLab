@@ -24,6 +24,8 @@ Ferramenta de análise qualitativa (QDA) que roda **inteira em um único arquivo
    ```
    Para corrigir em massa: `.Replace([char]0x201C,'"').Replace([char]0x201D,'"')` e gravar com `UTF8Encoding($false)` (sem BOM).
 
+   **Mesma armadilha pra busca-e-substituição em massa via PowerShell** (`Get-Content`/`Set-Content`): sem especificar encoding correto em ambas as pontas, acentos e travessões viram mojibake (`â€"` no lugar de `—`, `Ã³` no lugar de `ó`) e `-Encoding utf8` ainda adiciona BOM. Pra substituições simples de texto (ex.: renomear um prefixo de chave em todo o arquivo), **use `sed` via Bash em vez de PowerShell** — `sed -i 's/antigo/novo/g' index.html` preserva UTF-8 sem BOM de cara, sem essa cerimônia toda. Confira sempre com `git diff` depois: se aparecer muito mais linhas alteradas do que o esperado pra uma troca simples, é sinal de mojibake.
+
 2. **htm, não JSX.** Sintaxe: `` html`<div class="x">${valor}</div>` ``. Componentes: `` html`<${Componente} prop=${v} />` ``. Listas com `key=${...}`. Não existe `className`; é `class`.
 
 3. **Reaproveite as classes CSS existentes** (definidas no `<style>` do `<head>`) em vez de reinventar inline. Copiar o visual de um componente que já funciona (ex.: `TreeNode` → `VizCodeNode`) é mais seguro do que estilizar do zero.
@@ -41,7 +43,7 @@ Ferramenta de análise qualitativa (QDA) que roda **inteira em um único arquivo
 ### Stores (padrão de abstração)
 Três implementações do mesmo "interface":
 
-- **`LocalStore()`** — `localStorage` (`lastro:local`). Fallback sem credenciais e sem suporte a File System Access API. Limite 5MB.
+- **`LocalStore()`** — `localStorage` (`qualilab:local`). Fallback sem credenciais e sem suporte a File System Access API. Limite 5MB.
 - **`createFileStore(fileHandle, isNew)`** — **File System Access API**. Salva um `.qualilab` (JSON) visível no disco. Zero rede, funciona offline/air-gapped. Só Chrome/Edge. O `fileHandle` é persistido no IndexedDB (`IDB.saveHandle`) para reabrir na próxima sessão.
 - **`SupabaseStore(sb)`** — Postgres via supabase-js, com RLS. Tem fila de escrita (`withQueue`) via IndexedDB para tolerar falhas de rede; `store.onPendingChange(cb)` notifica o App do contador de pendências; `store.flush()` é chamado ao reconectar (`window.online`).
 
