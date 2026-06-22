@@ -3359,13 +3359,13 @@ function RenameCode({ code, onUpd, onSetColor, isAdmin }){
       <input class="txtin" value=${v} onInput=${e=>setV(e.target.value)} />
       <button class="btn sm" onClick=${()=>onUpd(code.id,{name:v})}>renomear</button>
     </div>
-    ${code.depth===0 && isAdmin && html`<div class="row" style="gap:8px;margin-top:6px;align-items:center">
+    ${code.depth===0 && isAdmin && html`<div class="row" style="gap:8px;margin-top:6px;align-items:center;flex-wrap:wrap">
       <span class="meta">Cor da família</span>
       <span style=${`background:${previewHex};flex-shrink:0;width:40px;height:40px;border-radius:8px;border:1px solid var(--line)`}></span>
       <input type="range" min="0" max="359" value=${hueLive} disabled=${isGray||isBlack}
         oninput=${e=>setHueLive(parseInt(e.target.value,10))}
         onChange=${e=>onSetColor(code, hslToHex(parseInt(e.target.value,10), 58, 32))}
-        style="flex:1;max-width:160px" title="Cor personalizada (matiz — propaga para os subcódigos)" />
+        style="flex:1 1 80px;min-width:0;max-width:160px" title="Cor personalizada (matiz — propaga para os subcódigos)" />
       <button class="btn sm ${isGray?'':'ghost'}" onClick=${()=>onSetColor(code, isGray ? hslToHex(hueLive,58,32) : 'gray')}>cinza</button>
       <button class="btn sm ${isBlack?'':'ghost'}" onClick=${()=>onSetColor(code, isBlack ? hslToHex(hueLive,58,32) : 'black')}>preto</button>
       ${code.hue_deg!=null && html`<button class="btn sm ghost" onClick=${()=>onSetColor(code, null)}>usar cor automática</button>`}
