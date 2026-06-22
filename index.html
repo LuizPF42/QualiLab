@@ -24,6 +24,14 @@
     /* paleta FGV: azul-marinho (primario) + azul-celeste (acento). nomes --teal* mantidos por compatibilidade */
     --teal:#00427A; --teal-deep:#002B5C; --teal-soft:#E2ECF5; --sky:#1B9DD9;
     --amber:#8A6D1F; --amber-soft:#F3ECD9; --danger:#B23A3A;
+  }
+  [data-theme="dark"]{
+    --paper:#1C1C1E; --surface:#2C2C2E; --ink:#F0EFEB; --ink-soft:#A0A09A; --ink-faint:#6B6B6B;
+    --line:#3A3A3C; --line-soft:#2E2E30;
+    --teal:#4A9EDB; --teal-deep:#76BBEC; --teal-soft:#1A2E3F; --sky:#5BB8F5;
+    --amber:#C8A84B; --amber-soft:#2E2510; --danger:#E06060;
+  }
+  :root{
     --serif:"Newsreader","Iowan Old Style",Palatino,Georgia,serif;
     --sans:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     --mono:"JetBrains Mono","SF Mono",ui-monospace,"Roboto Mono",Menlo,monospace;
@@ -35,7 +43,7 @@
   #app{height:100%;}
   ::selection{background:rgba(0,66,122,.18);}
   button{font-family:var(--sans);cursor:pointer;}
-  input,select,textarea{font-family:var(--sans);}
+  input,select,textarea{font-family:var(--sans);background:var(--surface);color:var(--ink);}
   .scroll::-webkit-scrollbar{width:10px;height:10px;}
   .scroll::-webkit-scrollbar-thumb{background:var(--line);border-radius:8px;}
   :focus-visible{outline:2px solid var(--sky);outline-offset:2px;}
@@ -59,8 +67,10 @@
 
   .split{flex:1;display:flex;min-height:0;}
   .pane{min-width:0;display:flex;flex-direction:column;}
-  .pane.left{flex:1 1 58%;border-right:1px solid var(--line);}
-  .pane.right{flex:1 1 42%;max-width:560px;}
+  .pane.left{flex:1 1 0;min-width:200px;border-right:none;}
+  .pane.right{flex:none;min-width:180px;}
+  .pane-resize{width:5px;flex:none;background:var(--line);cursor:col-resize;transition:background .15s;}
+  .pane-resize:hover,.pane-resize.dragging{background:var(--sky);}
   .pane-head{padding:10px 14px;border-bottom:1px solid var(--line-soft);display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--surface);}
   .pane-body{flex:1;overflow:auto;padding:0;}
 
@@ -125,6 +135,9 @@
   .banner{font-size:12.5px;padding:9px 12px;border-radius:9px;margin:0 14px 12px;}
   .banner.warn{background:var(--amber-soft);border:1px solid rgba(138,109,31,.3);color:var(--amber);}
   .banner.err{background:#F8E6E6;border:1px solid #D9A3A3;color:#8A2A2A;}
+  [data-theme="dark"] .banner.err{background:#3D1A1A;border-color:#7A3A3A;color:#F08080;}
+  [data-theme="dark"] .reader-pane.theme-sepia{background:#2A2218;}
+  [data-theme="dark"] .reader-pane.theme-sepia .reader{color:#D4C9A8;}
   .progress-track{height:6px;border-radius:4px;background:rgba(138,109,31,.18);margin-top:7px;overflow:hidden;}
   .progress-fill{height:100%;background:var(--amber);border-radius:4px;transition:width .15s linear;}
   .exmenu{position:absolute;right:0;top:112%;z-index:41;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.14);overflow:hidden;min-width:212px;}
@@ -132,10 +145,23 @@
   .exmenu button:hover{background:var(--paper);}
   .drag-handle{cursor:grab;color:var(--ink-faint);padding:0 4px;user-select:none;flex-shrink:0}
 
+  /* Relatório: ao imprimir, esconde tudo menos o relatório e remove cromo da página */
+  @media print{
+    body *{visibility:hidden}
+    #report-print, #report-print *{visibility:visible}
+    /* sempre tinta escura sobre papel branco, mesmo com o app em tema escuro */
+    #report-print{position:absolute;left:0;top:0;width:100%;background:#fff;
+      --ink:#1A1B1E; --ink-soft:#5C5F66; --ink-faint:#8B8E94; --surface:#fff; --paper:#fff;
+      --line:#d8d8d2; --line-soft:#ececec; color:#1A1B1E;}
+    #report-print h1, #report-print h2{color:#1A1B1E !important;}
+    .no-print{display:none !important}
+  }
+
   @media (max-width:900px){
     .split{flex-direction:column;}
     .pane.left{flex:none;height:50vh;border-right:none;border-bottom:1px solid var(--line);}
-    .pane.right{flex:none;max-width:none;height:50vh;}
+    .pane.right{flex:none;max-width:none;width:auto!important;height:50vh;}
+    .pane-resize{display:none;}
   }
   @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
 </style>
@@ -178,7 +204,7 @@ try {
    copiada para os descendentes na criacao/cascata. Quando ausente, usa a
    paleta automatica (HUES[hue]). */
 const HUES = [210, 28, 150, 350, 268, 184, 322, 70];
-function codeColor(hue, depth, hueDeg){
+function codeColor(hue, depth, hueDeg, dark=false){
   // hueDeg===-1: marcador de cinza personalizado (sem matiz, saturacao 0). hueDeg===-2: preto
   // solido (sem matiz, sem variar por profundidade — diferente do cinza, que ainda escurece/
   // clareia com a profundidade igual as cores normais). Ambos reaproveitam a mesma coluna int
@@ -187,7 +213,8 @@ function codeColor(hue, depth, hueDeg){
   const H = (isGray||isBlack) ? 0 : (hueDeg!=null) ? ((hueDeg%360)+360)%360 : HUES[((hue % HUES.length)+HUES.length)%HUES.length];
   const S = (isGray||isBlack) ? 0 : 58, tintS = (isGray||isBlack) ? 0 : 55;
   const solidL = isBlack ? 0 : Math.min(70, 32 + depth*13);
-  const bgL = Math.min(94, 86 + depth*3);
+  // em dark mode, tint usa luminosidade baixa (fundo escuro tintado) em vez de pastel claro
+  const bgL = dark ? Math.max(18, 24 - depth*2) : Math.min(94, 86 + depth*3);
   return { solid:`hsl(${H} ${S}% ${solidL}%)`, tint:`hsl(${H} ${tintS}% ${bgL}%)`, H, isGray, isBlack };
 }
 /* extrai o matiz (0-359) de um hex, sem encaixar na paleta fixa (usado p/ cor personalizada) */
@@ -238,17 +265,69 @@ async function extractText(file){
     const pages = [];
     for(let p=1;p<=pdf.numPages;p++){
       const page = await pdf.getPage(p);
-      const tc = await page.getTextContent();
-      let out = '', lastY = null;
-      tc.items.forEach(it=>{
-        if('str' in it){
-          const y = it.transform ? it.transform[5] : null;
-          if(lastY!==null && y!==null && Math.abs(y-lastY)>2 && !out.endsWith('\n')) out += '\n';
-          out += it.str + (it.hasEOL ? '\n' : ' ');
-          lastY = y;
+      const tc = await page.getTextContent({ includeMarkedContent: false });
+
+      // Coleta itens com posição; descarta itens só-espaço (artefatos de justificação)
+      const items = tc.items
+        .filter(it => 'str' in it && it.str.trim().length > 0)
+        .map(it => ({
+          str: it.str,
+          x: it.transform[4],
+          y: it.transform[5],
+          w: it.width,
+          h: Math.abs(it.height) || 10,
+        }));
+
+      if(!items.length){ pages.push(''); continue; }
+
+      const avgH = items.reduce((s,it) => s + it.h, 0) / items.length;
+      const spaceThreshold = avgH * 0.25;
+
+      // Agrupa em linhas por Y (tolerância = 40% da altura média)
+      items.sort((a,b) => b.y - a.y || a.x - b.x);
+      const lines = [];
+      let cur = [items[0]];
+      for(let i = 1; i < items.length; i++){
+        if(Math.abs(items[i].y - cur[0].y) < avgH * 0.4){
+          cur.push(items[i]);
+        } else {
+          lines.push(cur);
+          cur = [items[i]];
         }
-      });
-      pages.push(out.trim());
+      }
+      lines.push(cur);
+      lines.forEach(l => l.sort((a,b) => a.x - b.x));
+
+      const lH = i => Math.max(...lines[i].map(it => it.h));
+
+      function lineToText(line){
+        let t = line[0].str;
+        for(let i = 1; i < line.length; i++){
+          const gap = line[i].x - (line[i-1].x + line[i-1].w);
+          if(gap > spaceThreshold && !t.endsWith(' ') && !line[i].str.startsWith(' ')) t += ' ';
+          t += line[i].str;
+        }
+        return t.trim();
+      }
+
+      // Une linhas em parágrafos: gap > 1.6× altura local = parágrafo novo; senão junta com espaço
+      const paras = [];
+      let para = lineToText(lines[0]);
+      for(let k=1;k<lines.length;k++){
+        const gapY = lines[k-1][0].y - lines[k][0].y;
+        const localH = Math.max(lH(k-1), lH(k));
+        const t = lineToText(lines[k]);
+        if(gapY > localH * 1.6){
+          paras.push(para.trim());
+          para = t;
+        } else {
+          // Trata hifenização: linha termina em hífen → remove e une direto
+          para = para.endsWith('-') ? para.slice(0,-1)+t : para+' '+t;
+        }
+      }
+      paras.push(para.trim());
+
+      pages.push(paras.join('\n\n'));
     }
     return pages.join('\n\n');
   }
@@ -643,7 +722,7 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress){
       await store.addCategory(projectId, { id:catMap[c.id], name:c.name, kind:c.kind, options:c.options||[], description:c.description||'', color:c.color||0, position:i }); await tick(); }
     const codesSorted = (db.codes||[]).slice().sort((a,b)=>(a.position??0)-(b.position??0));
     for(let i=0;i<codesSorted.length;i++){ const c=codesSorted[i];
-      await store.addCode(projectId, { id:codeMap[c.id], parent_id:c.parent_id?codeMap[c.parent_id]:null, name:c.name, hue:c.hue||0, depth:c.depth||0, position:i }); await tick(); }
+      await store.addCode(projectId, { id:codeMap[c.id], parent_id:c.parent_id?codeMap[c.parent_id]:null, name:c.name, hue:c.hue||0, depth:c.depth||0, hue_deg:c.hue_deg??null, is_redaction:!!c.is_redaction, position:i }); await tick(); }
 
     // doc_values: em destino COLETIVO, cada resposta individual do arquivo de origem (com seu
     // proprio author_name) vira uma linha independente via addDocValue — igual addCoding ja
@@ -1354,10 +1433,31 @@ function App(){
   // preferencias de leitura do .reader (zoom, largura, tema) — persistidas no localStorage,
   // sem relacao com o projeto (vale pra qualquer documento/projeto neste navegador).
   const [readerPrefs, setReaderPrefs] = useState(()=>{
-    try{ return { scale:1, width:'normal', theme:'light', ...JSON.parse(localStorage.getItem('qualilab:reader_prefs')||'{}') }; }
-    catch(e){ return { scale:1, width:'normal', theme:'light' }; }
+    try{ return { scale:1, width:'normal', theme:'light', rightW:340, ...JSON.parse(localStorage.getItem('qualilab:reader_prefs')||'{}') }; }
+    catch(e){ return { scale:1, width:'normal', theme:'light', rightW:340 }; }
   });
   useEffect(()=>{ try{ localStorage.setItem('qualilab:reader_prefs', JSON.stringify(readerPrefs)); }catch(e){} }, [readerPrefs]);
+  const [darkMode, setDarkMode] = useState(()=>{ try{ return localStorage.getItem('qualilab:dark')==='1'; }catch(e){ return false; } });
+  useEffect(()=>{
+    document.documentElement.dataset.theme = darkMode ? 'dark' : '';
+    try{ localStorage.setItem('qualilab:dark', darkMode?'1':'0'); }catch(e){}
+  }, [darkMode]);
+  function onResizeHandleMouseDown(e){
+    if(e.button!==0) return;
+    const startX = e.clientX;
+    const startW = readerPrefs.rightW;
+    const handle = e.currentTarget;
+    handle.classList.add('dragging');
+    function onMove(ev){
+      const delta = startX - ev.clientX;
+      const newW = Math.max(180, Math.min(window.innerWidth*0.6, startW + delta));
+      setReaderPrefs(p=>({...p, rightW:Math.round(newW)}));
+    }
+    function onUp(){ handle.classList.remove('dragging'); document.removeEventListener('mousemove',onMove); document.removeEventListener('mouseup',onUp); }
+    document.addEventListener('mousemove',onMove);
+    document.addEventListener('mouseup',onUp);
+    e.preventDefault();
+  }
   // busca dentro do documento aberto (independente da selecao de codigo/categoria)
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -1606,7 +1706,7 @@ function App(){
     }
     setAllValues(V); setAllCodings(C);
   }, [store, project, docs]);
-  useEffect(()=>{ if(phase==='work' && (mainView==='visualizar'||mainView==='graficos'||mainView==='esquema')) loadAll(); }, [phase, mainView, loadAll, codings]);
+  useEffect(()=>{ if(phase==='work' && (mainView==='visualizar'||mainView==='graficos'||mainView==='esquema'||mainView==='relatorio')) loadAll(); }, [phase, mainView, loadAll, codings]);
 
   /* memos: nota unica por alvo (projeto/documento/codigo) */
   const loadMemos = useCallback(async ()=>{
@@ -1691,6 +1791,19 @@ function App(){
     for(const id of ids) await store.updateCode(id, { hue_deg: hueDeg });
     setCodes(x=>x.map(c=>ids.has(c.id) ? {...c, hue_deg:hueDeg} : c));
   }
+  // censura propaga pra subarvore inteira (igual cor) — marcar uma familia como censura e
+  // os subcodigos continuarem "normais" seria inconsistente. So marcacao visual por ora,
+  // sem efeito funcional ainda (nenhuma tela de IA neste repositorio pra mascarar material).
+  async function setCodeRedaction(rootCode, value){
+    if(!isAdmin){ setErr('Apenas administradores podem marcar um código como censura.'); return; }
+    const ids = new Set([rootCode.id]);
+    let added = true;
+    while(added){ added=false; codes.forEach(c=>{ if(c.parent_id && ids.has(c.parent_id) && !ids.has(c.id)){ ids.add(c.id); added=true; } }); }
+    // ao marcar censura: força preto (hue_deg:-2); ao desmarcar: devolve cor automática (null)
+    const huePatch = value ? { hue_deg: -2 } : { hue_deg: null };
+    for(const id of ids) await store.updateCode(id, { is_redaction: value, ...huePatch });
+    setCodes(x=>x.map(c=>ids.has(c.id) ? {...c, is_redaction:value, ...huePatch} : c));
+  }
   async function delCode(id){ await store.deleteCode(id); loadProject(store,project.id); loadDoc(); }
   function closeCtxMenu(){ setCtxMenu(null); setCtxCreating(false); setCtxNewName(''); setCtxNewParent(''); }
   async function ctxCreateAndApply(){
@@ -1754,7 +1867,7 @@ function App(){
   async function buildQualilabDb(){
     const documents = docs.map(d=>({ id:d.id, name:d.name, content:d.content, created_at:d.created_at||new Date().toISOString() }));
     const categories = cats.map((c,i)=>({ id:c.id, position:c.position??i, name:c.name, kind:c.kind, options:c.options||[], description:c.description||'', color:c.color||0 }));
-    const codesOut = codes.map((c,i)=>({ id:c.id, position:c.position??i, parent_id:c.parent_id||null, name:c.name, hue:c.hue||0, depth:c.depth||0 }));
+    const codesOut = codes.map((c,i)=>({ id:c.id, position:c.position??i, parent_id:c.parent_id||null, name:c.name, hue:c.hue||0, depth:c.depth||0, hue_deg:c.hue_deg??null, is_redaction:!!c.is_redaction }));
     const doc_values=[], codings=[];
     for(const d of docs){
       const [v,co]=await Promise.all([store.getDocValues(d.id), store.listCodings(project.id, d.id)]);
@@ -2042,6 +2155,7 @@ function App(){
         <a class="brand" href="https://github.com/LuizPF42/QualiLab" target="_blank" rel="noopener"
           title="o seu laboratório de pesquisa qualitativa / your own lab for qualitative research — ver no GitHub"
           style="text-decoration:none">QualiLab</a>
+        <button class="icon-btn" title=${darkMode?'Modo claro':'Modo escuro'} onClick=${()=>setDarkMode(d=>!d)}>${darkMode?'☀':'🌙'}</button>
         ${project && html`<div class="seg" style="margin-left:10px">
           <button class=${mainView==='codificar'?'on':''} onClick=${()=>setMainView('codificar')}>Codificação</button>
           ${projectMode==='collective' && html`<button class=${mainView==='reconciliar'?'on':''} onClick=${()=>setMainView('reconciliar')}>Reconciliação</button>`}
@@ -2049,6 +2163,7 @@ function App(){
           <button class=${mainView==='graficos'?'on':''} onClick=${()=>setMainView('graficos')}>Gráficos</button>
           <button class=${mainView==='memos'?'on':''} onClick=${()=>setMainView('memos')}>Memos</button>
           <button class=${mainView==='esquema'?'on':''} onClick=${()=>setMainView('esquema')}>Esquema</button>
+          <button class=${mainView==='relatorio'?'on':''} onClick=${()=>setMainView('relatorio')}>Relatório</button>
         </div>`}
       </div>
       <div class="top-row">
@@ -2173,13 +2288,16 @@ function App(){
                 const matchAttrs = matchI>=0 ? { 'data-match': matchI } : {};
                 if(run.codings.length===0) return html`<span key=${i} data-start=${run.start} data-end=${run.end} ...${matchAttrs}
                    class=${isCurrent?'current':''}>${run.text}</span>`;
-                const top = run.codings[run.codings.length-1];
+                // censura tem prioridade visual — caixa fechada mesmo com 1 codigo so
+                const top = run.codings.find(c=>codeById[c.code_id]?.is_redaction) || run.codings[run.codings.length-1];
                 const code = codeById[top.code_id];
-                const col = code ? codeColor(code.hue, code.depth, code.hue_deg) : codeColor(0,0);
+                const col = code ? codeColor(code.hue, code.depth, code.hue_deg, darkMode) : codeColor(0,0,null,darkMode);
                 const title = run.codings.map(c=>codePath(c.code_id).join(' ▸ ')+' ('+c.author_name+')').join('  |  ');
-                // border-bottom so sinaliza "tem mais de um codigo aqui" (em vez de decorar todo
-                // trecho codificado, mesmo quando ha so 1 — o fundo tintado ja basta nesse caso).
-                const border = run.codings.length>1 ? `border-bottom:2px solid ${col.solid}` : '';
+                // border-bottom so sinaliza "tem mais de um codigo aqui"; censura sempre com
+                // border 4 lados ("tarjao") mesmo com 1 codigo — cinza/preto seriam indistinguiveis
+                // sem essa borda dado o tint claro de fundo.
+                const border = code?.is_redaction ? `border:2px solid ${col.solid}`
+                             : run.codings.length>1 ? `border-bottom:2px solid ${col.solid}` : '';
                 return html`<span key=${i} data-start=${run.start} data-end=${run.end} data-c="1" title=${title} ...${matchAttrs}
                    class=${isCurrent?'current':''}
                    style=${`background:${col.tint};${border}`}>${run.text}</span>`;
@@ -2188,8 +2306,10 @@ function App(){
         </div>
       </section>
 
+      <div class="pane-resize" onMouseDown=${onResizeHandleMouseDown}></div>
+
       <!-- DIREITA: analise -->
-      <aside class="pane right">
+      <aside class="pane right" style=${`width:${readerPrefs.rightW}px`}>
         <div class="pane-head">
           <div class="seg">
             <button class=${rtab==='categorias'?'on':''} onClick=${()=>setRtab('categorias')}>Categorias do documento</button>
@@ -2203,7 +2323,7 @@ function App(){
                  dragCatId=${dragCatId} setDragCatId=${setDragCatId} onReorder=${reorderCategories} />`}
           ${rtab==='codigos' && html`<${CodesPanel} codes=${codes} codeById=${codeById} count=${codingCount} sel=${sel}
                  selCode=${selCode} setSelCode=${setSelCode} codePath=${codePath}
-                 onAdd=${addCode} onDel=${delCode} onApply=${applyCode} onUpd=${updCode} onSetColor=${setCodeColor} isAdmin=${isAdmin}
+                 onAdd=${addCode} onDel=${delCode} onApply=${applyCode} onUpd=${updCode} onSetColor=${setCodeColor} onSetRedaction=${setCodeRedaction} isAdmin=${isAdmin}
                  store=${store} project=${project} reload=${()=>loadProject(store,project.id)} />`}
         </div>
       </aside>
@@ -2290,6 +2410,9 @@ function App(){
         </div>
       </section>`}
     </div>`
+    : mainView==='relatorio' ? html`<${ReportView} project=${project} projectMode=${projectMode}
+        docs=${docs} cats=${cats} codes=${codes} codeById=${codeById} codePath=${codePath}
+        allCodings=${allCodings} allValues=${allValues} loadAll=${loadAll} store=${store} />`
     : html`<div class="split">
       <!-- VISUALIZACAO esquerda: navegação por código -->
       <section class="pane" style="flex:0 0 270px;min-width:0;border-right:1px solid var(--line)">
@@ -2308,7 +2431,7 @@ function App(){
             layer=${vizLayer} catFilter=${vizCatFilter} selCode=${vizSelCode}
             crossCodes=${vizCross} setCrossCodes=${setVizCross}
             onDelCoding=${async id=>{ await delCoding(id); loadAll(); }}
-            onJump=${(docId)=>{ setActiveId(docId); setMainView('codificar'); }} projectMode=${projectMode} />
+            onJump=${(docId)=>{ setActiveId(docId); setMainView('codificar'); }} projectMode=${projectMode} darkMode=${darkMode} />
         </div>
       </section>
     </div>`}
@@ -2550,15 +2673,22 @@ function CategoriesPanel({ cats, values, activeDoc, canEditSchema, userId, proje
    tanto em CategoriesPanel quanto na aba Esquema, mesmos dragCatId/onReorder vindos do App
    (so 1 dessas vistas fica visivel por vez, entao reaproveitar o mesmo estado e seguro). */
 function DraggableCategoryList({ cats, onUpd, onDel, dragCatId, setDragCatId, onReorder }){
+  const [overId, setOverId] = useState(null);
+  const endDrag = ()=>{ setDragCatId(null); setOverId(null); };
   return html`<div>
-    ${cats.map(cat=>html`<div key=${cat.id} class="row" style=${`gap:6px;align-items:flex-start;${dragCatId===cat.id?'opacity:.4':''}`}
-        onDragOver=${e=>e.preventDefault()}
-        onDrop=${e=>{ e.preventDefault(); if(dragCatId && dragCatId!==cat.id) onReorder(dragCatId, cat.id); setDragCatId(null); }}>
+    ${cats.map(cat=>{
+      const dragging = dragCatId===cat.id;
+      const isTarget = overId===cat.id && dragCatId && !dragging;
+      return html`<div key=${cat.id} class="row" style=${`gap:6px;align-items:flex-start;border-radius:8px;transition:opacity .12s;${dragging?'opacity:.35':''}${isTarget?'box-shadow:0 -3px 0 0 var(--sky);margin-top:4px':''}`}
+        onDragOver=${e=>{ e.preventDefault(); if(dragCatId && dragCatId!==cat.id && overId!==cat.id) setOverId(cat.id); }}
+        onDragLeave=${e=>{ if(overId===cat.id) setOverId(null); }}
+        onDrop=${e=>{ e.preventDefault(); if(dragCatId && dragCatId!==cat.id) onReorder(dragCatId, cat.id); endDrag(); }}>
         <span class="drag-handle" draggable="true" title="arrastar para reordenar"
           onDragStart=${e=>{ e.dataTransfer.effectAllowed='move'; setDragCatId(cat.id); }}
-          onDragEnd=${()=>setDragCatId(null)}>⠿</span>
+          onDragEnd=${endDrag}>⠿</span>
         <div style="flex:1;min-width:0"><${CategoryEditor} cat=${cat} onUpd=${onUpd} onDel=${onDel} /></div>
-      </div>`)}
+      </div>`;
+    })}
   </div>`;
 }
 function CategoryEditor({ cat, onUpd, onDel }){
@@ -2677,7 +2807,7 @@ function CategoryValue({ cat, v, onSet, readOnly }){
 }
 
 /* ============ PAINEL DE CODIGOS (tags de trecho, hierarquicas) ============ */
-function CodesPanel({ codes, codeById, count, sel, selCode, setSelCode, codePath, onAdd, onDel, onApply, onUpd, onSetColor, isAdmin, store, project, reload }){
+function CodesPanel({ codes, codeById, count, sel, selCode, setSelCode, codePath, onAdd, onDel, onApply, onUpd, onSetColor, onSetRedaction, isAdmin, store, project, reload }){
   const tops = codes.filter(c=>!c.parent_id);
   const childrenOf = (id)=>codes.filter(c=>c.parent_id===id);
   const selected = selCode ? codeById[selCode] : null;
@@ -2701,7 +2831,7 @@ function CodesPanel({ codes, codeById, count, sel, selCode, setSelCode, codePath
 
     ${selected && html`<div class="card" style="margin-top:12px">
       <div class="crumb">${codePath(selected.id).join(' ▸ ')}</div>
-      <${RenameCode} code=${selected} onUpd=${onUpd} onSetColor=${onSetColor} isAdmin=${isAdmin} />
+      <${RenameCode} code=${selected} onUpd=${onUpd} onSetColor=${onSetColor} onSetRedaction=${onSetRedaction} isAdmin=${isAdmin} />
     </div>`}
   </div>`;
 }
@@ -2718,11 +2848,12 @@ function CodesPanel({ codes, codeById, count, sel, selCode, setSelCode, codePath
    Reaproveita RenameCode (definido mais abaixo, perto de TreeNode) mas NAO toca em
    CodesPanel/TreeNode — o painel da tela de Codificacao continua intocado de proposito. */
 function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, project, reload, loadAll,
-                            allCodings, selCode, setSelCode, onUpd, onSetColor, onAdd, onDel }){
+                            allCodings, selCode, setSelCode, onUpd, onSetColor, onSetRedaction, onAdd, onDel }){
   const [query, setQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [busy, setBusy] = useState(false);
   const [dragId, setDragId] = useState(null); // drag-and-drop pra reordenar codigos entre irmaos (mesmo parent_id)
+  const [overId, setOverId] = useState(null); // alvo sob o cursor durante o arrasto (indicador de destino)
 
   const tops = codes.filter(c=>!c.parent_id);
   const childrenOf = (id)=>codes.filter(c=>c.parent_id===id);
@@ -2838,7 +2969,8 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
           ${tops.length===0 && html`<span class="meta">Nenhum código ainda. Comece por uma família.</span>`}
           ${!filtered && tops.map(t=>html`<${SchemaTreeNode} key=${t.id} code=${t} childrenOf=${childrenOf} count=${count}
               selCode=${selCode} setSelCode=${setSelCode} selectedIds=${selectedIds} onToggleSelect=${toggleSelect} onDel=${onDel} depthPad=${0}
-              dragId=${dragId} setDragId=${setDragId} onReorder=${reorderSiblings} />`)}
+              dragId=${dragId} setDragId=${setDragId} overId=${overId} setOverId=${setOverId}
+              dragParentId=${dragId ? (codeById[dragId]?.parent_id ?? null) : undefined} onReorder=${reorderSiblings} />`)}
           ${filtered && filtered.length===0 && html`<span class="meta">Nenhum código com esse nome.</span>`}
           ${filtered && filtered.map(c=>html`<div class="node-row ${selCode===c.id?'sel':''}" key=${c.id} onClick=${()=>setSelCode(c.id)}>
               <input type="checkbox" checked=${selectedIds.has(c.id)} onClick=${e=>e.stopPropagation()} onChange=${()=>toggleSelect(c.id)} style="margin-right:2px" />
@@ -2858,7 +2990,7 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
             ? html`<div class="section">
                 <p class="h">Código selecionado</p>
                 <div class="crumb">${codePath(selCode).join(' ▸ ')}</div>
-                <${RenameCode} code=${codeById[selCode]} onUpd=${onUpd} onSetColor=${onSetColor} isAdmin=${isAdmin} />
+                <${RenameCode} code=${codeById[selCode]} onUpd=${onUpd} onSetColor=${onSetColor} onSetRedaction=${onSetRedaction} isAdmin=${isAdmin} />
                 ${codeById[selCode].parent_id && html`<button class="btn sm ghost" style="margin-top:10px;width:100%"
                   onClick=${()=>promoteToRoot(codeById[selCode])}>Promover a Hierarquia 0</button>`}
               </div>`
@@ -2868,29 +3000,35 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
   </div>`;
 }
 
-function SchemaTreeNode({ code, childrenOf, count, selCode, setSelCode, selectedIds, onToggleSelect, onDel, depthPad, dragId, setDragId, onReorder }){
+function SchemaTreeNode({ code, childrenOf, count, selCode, setSelCode, selectedIds, onToggleSelect, onDel, depthPad, dragId, setDragId, overId, setOverId, dragParentId, onReorder }){
   const [open,setOpen]=useState(false);
   const kids = childrenOf(code.id);
   const col = codeColor(code.hue, code.depth, code.hue_deg);
   const isSel = selCode===code.id;
+  const dragging = dragId===code.id;
+  // alvo válido só entre irmãos (mesmo parent_id) — reorderSiblings ignora o resto
+  const canDrop = dragId && dragId!==code.id && code.parent_id===dragParentId;
+  const isTarget = overId===code.id && canDrop;
+  const endDrag = ()=>{ setDragId(null); setOverId&&setOverId(null); };
   return html`<div class="node">
-    <div class="node-row ${isSel?'sel':''}" style=${`padding-left:${6+depthPad*16}px;${dragId===code.id?'opacity:.4':''}`} onClick=${()=>setSelCode(code.id)}
-      onDragOver=${e=>e.preventDefault()}
-      onDrop=${e=>{ e.preventDefault(); e.stopPropagation(); if(dragId && dragId!==code.id) onReorder(dragId, code.id); setDragId(null); }}>
+    <div class="node-row ${isSel?'sel':''}" style=${`padding-left:${6+depthPad*16}px;${dragging?'opacity:.35':''}${isTarget?'box-shadow:0 -3px 0 0 var(--sky)':''}`} onClick=${()=>setSelCode(code.id)}
+      onDragOver=${e=>{ e.preventDefault(); if(canDrop && overId!==code.id) setOverId&&setOverId(code.id); }}
+      onDragLeave=${e=>{ if(overId===code.id) setOverId&&setOverId(null); }}
+      onDrop=${e=>{ e.preventDefault(); e.stopPropagation(); if(dragId && dragId!==code.id) onReorder(dragId, code.id); endDrag(); }}>
       <span class="drag-handle" draggable="true" title="arrastar para reordenar entre irmãos"
         onClick=${e=>e.stopPropagation()}
         onDragStart=${e=>{ e.stopPropagation(); e.dataTransfer.effectAllowed='move'; setDragId(code.id); }}
-        onDragEnd=${()=>setDragId(null)}>⠿</span>
+        onDragEnd=${endDrag}>⠿</span>
       ${kids.length>0 ? html`<span class="caret" onClick=${e=>{e.stopPropagation();setOpen(!open);}}>${open?'▾':'▸'}</span>` : html`<span class="caret"></span>`}
       <input type="checkbox" checked=${selectedIds.has(code.id)} onClick=${e=>e.stopPropagation()} onChange=${()=>onToggleSelect(code.id)} style="margin-right:2px" />
       <span class="swatch" style=${`background:${col.solid}`}></span>
-      <span class="node-name" title=${code.name}>${code.name}</span>
+      <span class="node-name" title=${code.name}>${code.is_redaction?'🚫 ':''}${code.name}</span>
       ${count[code.id]?html`<span class="count">${count[code.id]}</span>`:''}
       <button class="icon-btn" onClick=${e=>{e.stopPropagation(); if(confirm('Excluir o código e seus subcódigos e codificações?')) onDel(code.id);}} title="excluir">✕</button>
     </div>
     ${open && kids.map(k=>html`<${SchemaTreeNode} key=${k.id} code=${k} childrenOf=${childrenOf} count=${count}
       selCode=${selCode} setSelCode=${setSelCode} selectedIds=${selectedIds} onToggleSelect=${onToggleSelect} onDel=${onDel} depthPad=${depthPad+1}
-      dragId=${dragId} setDragId=${setDragId} onReorder=${onReorder} />`)}
+      dragId=${dragId} setDragId=${setDragId} overId=${overId} setOverId=${setOverId} dragParentId=${dragParentId} onReorder=${onReorder} />`)}
   </div>`;
 }
 
@@ -3024,11 +3162,284 @@ function Reconcile({ activeDoc, codings, coders, codeById, codePath, cats, value
   </div>`;
 }
 
+/* ============ ReportView — aba Relatório ============
+   Montador: o pesquisador liga/desliga seções por checkbox e o relatório se monta
+   ao vivo no painel direito. Imprime só o relatório (#report-print + CSS @media print). */
+const REPORT_GROUPS = [
+  { group:'Visão geral', items:[
+    { id:'resumo',    label:'Resumo do projeto',  desc:'Nome, tipo, totais e codificadores.' },
+    { id:'docs_list', label:'Lista de documentos', desc:'Nomes dos documentos do projeto.' },
+  ]},
+  { group:'Esquema', items:[
+    { id:'cat_count',  label:'Quantas categorias',   desc:'Número total de categorias.' },
+    { id:'cat_list',   label:'Quais categorias',     desc:'Lista das categorias, com o tipo.' },
+    { id:'code_count', label:'Quantos códigos',      desc:'Número de códigos de Hierarquia 0 (raiz).' },
+    { id:'sub_count',  label:'Quantos sub-códigos',  desc:'Número de códigos com pai (subníveis).' },
+    { id:'code_list',  label:'Quais códigos',        desc:'Lista dos códigos de Hierarquia 0.' },
+    { id:'sub_list',   label:'Quais sub-códigos',    desc:'Lista dos sub-códigos, com o caminho do pai.' },
+  ]},
+  { group:'Resultados', items:[
+    { id:'freq',       label:'Frequência de códigos',     desc:'Quantas vezes cada código foi aplicado.' },
+    { id:'categorias', label:'Distribuição por categoria', desc:'Documentos por valor de cada categoria fechada.' },
+    { id:'trechos',    label:'Trechos por código',        desc:'Citações agrupadas por código e documento.' },
+    { id:'unused',     label:'Códigos não utilizados',    desc:'Códigos sem nenhuma codificação.' },
+  ]},
+];
+
+function ReportView({ project, projectMode, docs, cats, codes, codeById, codePath, allCodings, allValues, store }){
+  const [enabled, setEnabled] = useState(()=>new Set(['credito','resumo','freq']));
+  const [title, setTitle] = useState('');
+  const [layer, setLayer] = useState('final'); // final | individual — só relevante em coletivo
+  const toggle = (id)=> setEnabled(s=>{ const n=new Set(s); n.has(id)?n.delete(id):n.add(id); return n; });
+  const on = (id)=> enabled.has(id);
+  // em projeto individual tudo já é 'final'; o seletor de camada não aparece
+  const useFinal = projectMode!=='collective' || layer==='final';
+
+  // codificações da camada escolhida (gabarito final ou individuais de todos)
+  const codingsForReport = useMemo(()=>{
+    if(projectMode==='individual') return allCodings;
+    return allCodings.filter(c=> useFinal ? c.layer==='final' : c.layer!=='final');
+  }, [allCodings, projectMode, useFinal]);
+
+  const docById = useMemo(()=>Object.fromEntries(docs.map(d=>[d.id,d])), [docs]);
+  const pathOf = (id)=> codePath ? codePath(id).join(' ▸ ') : (codeById[id]?.name||id);
+  const swatch = (c)=> html`<span class="swatch" style=${`display:inline-block;vertical-align:middle;background:${codeColor(c.hue,c.depth,c.hue_deg).solid}`}></span>`;
+  const kindLabel = (k)=> (CAT_KINDS.find(x=>x.id===k)||{}).label || k;
+
+  const topCodes = useMemo(()=>codes.filter(c=>!c.parent_id), [codes]);
+  const subCodes = useMemo(()=>codes.filter(c=>c.parent_id), [codes]);
+
+  // contagem (direta) por código
+  const countMap = useMemo(()=>{
+    const m={}; codingsForReport.forEach(c=>{ m[c.code_id]=(m[c.code_id]||0)+1; }); return m;
+  }, [codingsForReport]);
+  // frequência por código, do mais usado ao menos
+  const freq = useMemo(()=>
+    codes.map(c=>({ code:c, n:countMap[c.id]||0 })).filter(x=>x.n>0).sort((a,b)=>b.n-a.n)
+  , [countMap, codes]);
+  const unusedCodes = useMemo(()=>codes.filter(c=>!countMap[c.id]), [countMap, codes]);
+  const anyEsq = ['cat_count','cat_list','code_count','sub_count','code_list','sub_list'].some(on);
+
+  // distribuição por categoria fechada: contagem de documentos por valor (usa gabarito quando há)
+  const catDist = useMemo(()=>{
+    const closed = cats.filter(c=>CAT_HAS_OPTIONS(c.kind)||c.kind==='date');
+    return closed.map(cat=>{
+      const counts={};
+      docs.forEach(d=>{
+        const rows = allValues.filter(x=>x.document_id===d.id && x.category_id===cat.id);
+        const fin = rows.find(r=>r.layer==='final');
+        // segue a camada escolhida: gabarito usa só o final; individuais usam as respostas individuais
+        const vals = useFinal ? (fin ? [fin.value] : []) : rows.filter(r=>r.layer!=='final').map(r=>r.value);
+        const seen=new Set();
+        vals.forEach(v=>{ if(v==null) return; String(v).split(CAT_MULTI_SEP).forEach(part=>{ const k=part.trim(); if(k && !seen.has(k)){ seen.add(k); counts[k]=(counts[k]||0)+1; } }); });
+      });
+      const rows = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+      return { cat, rows };
+    }).filter(x=>x.rows.length>0);
+  }, [cats, docs, allValues, useFinal]);
+
+  // trechos por código: agrupa codings por código, depois por documento
+  const trechosByCode = useMemo(()=>{
+    const byCode={};
+    codingsForReport.forEach(c=>{ (byCode[c.code_id]=byCode[c.code_id]||[]).push(c); });
+    return freq.map(({code})=>{
+      const list = byCode[code.id]||[];
+      const byDoc={};
+      list.forEach(c=>{ (byDoc[c.document_id]=byDoc[c.document_id]||[]).push(c); });
+      const docs2 = Object.entries(byDoc)
+        .map(([docId,cods])=>({ docId, name:docById[docId]?.name||docId,
+          cods:cods.slice().sort((a,b)=>a.span_start-b.span_start) }))
+        .sort((a,b)=>a.name>b.name?1:-1);
+      return { code, docs:docs2 };
+    }).filter(x=>x.docs.length>0);
+  }, [codingsForReport, freq, docById]);
+
+  const totalCodings = codingsForReport.length;
+
+  // codificadores: nomes distintos das codificações individuais (o trabalho de codificação).
+  // Só faz sentido em projeto coletivo; ordena alfabeticamente.
+  const coders = useMemo(()=>{
+    if(projectMode!=='collective') return [];
+    const s=new Set();
+    allCodings.filter(c=>c.layer!=='final').forEach(c=>{ const n=(c.author_name||'').trim(); if(n) s.add(n); });
+    return [...s].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  }, [allCodings, projectMode]);
+
+  // monta o relatório como texto simples (sem marcações .md) — para colar direto em Word/Docs
+  function buildText(){
+    const L=[]; const H=(t)=>L.push('',''+t,'');
+    L.push(title.trim()||project?.name||'Relatório');
+    L.push('Gerado em '+new Date().toLocaleDateString('pt-BR')+(projectMode==='collective'?' · Camada: '+(useFinal?'gabarito final':'individuais (todos)'):''));
+    if(on('resumo')){ H('Resumo');
+      L.push(`Projeto ${project?.name||''} (${projectMode==='collective'?'coletivo':'individual'}), com ${docs.length} documento(s), ${codes.length} código(s), ${cats.length} categoria(s) e ${totalCodings} codificação(ões).`+(on('credito')?' O projeto foi codificado por meio da ferramenta QualiLab.':''));
+      if(coders.length) L.push('', 'Codificado por: '+coders.join(', ')+'.');
+    }
+    if(on('docs_list')){ H('Documentos');
+      if(!docs.length) L.push('(nenhum documento)');
+      else docs.forEach((d,i)=> L.push(`${i+1}. ${d.name}`));
+    }
+    if(anyEsq){ H('Esquema');
+      if(on('cat_count')) L.push(`Total de ${cats.length} categoria(s).`);
+      if(on('cat_list')){ L.push(''); cats.forEach(c=> L.push(`• ${c.name} (${kindLabel(c.kind)})`)); }
+      if(on('code_count')) L.push(`${topCodes.length} código(s) de Hierarquia 0 (raiz).`);
+      if(on('sub_count')) L.push(`${subCodes.length} sub-código(s).`);
+      if(on('code_list')){ L.push('','Códigos de Hierarquia 0:'); topCodes.forEach(c=> L.push(`• ${c.name}`)); }
+      if(on('sub_list')){ L.push('','Sub-códigos:'); if(!subCodes.length) L.push('(nenhum)'); else subCodes.forEach(c=> L.push(`• ${pathOf(c.id)}`)); }
+    }
+    if(on('freq')){ H('Frequência de códigos');
+      if(!freq.length) L.push('(nenhuma codificação)');
+      else freq.forEach(({code,n})=> L.push(`• ${pathOf(code.id)}: ${n}`));
+    }
+    if(on('categorias')){ H('Distribuição por categoria');
+      if(!catDist.length) L.push('(nenhuma categoria fechada com valores)');
+      else catDist.forEach(({cat,rows})=>{ L.push('',cat.name+':');
+        rows.forEach(([val,n])=> L.push(`• ${val}: ${n}`)); });
+    }
+    if(on('trechos')){ H('Trechos por código');
+      if(!trechosByCode.length) L.push('(nenhum trecho codificado)');
+      else trechosByCode.forEach(({code,docs:ds})=>{ L.push('',pathOf(code.id));
+        ds.forEach(d=>{ L.push('',d.name+':');
+          d.cods.forEach(c=> L.push(`"${c.quote}"${c.author_name?' — '+c.author_name:''}`)); }); });
+    }
+    if(on('unused')){ H('Códigos não utilizados');
+      if(!unusedCodes.length) L.push('(todos os códigos foram utilizados)');
+      else unusedCodes.forEach(c=> L.push(`• ${pathOf(c.id)}`));
+    }
+    return L.join('\n').replace(/\n{3,}/g,'\n\n').trim()+'\n';
+  }
+  const [copied, setCopied] = useState(false);
+  async function copy(){
+    try{ await navigator.clipboard.writeText(buildText()); setCopied(true); setTimeout(()=>setCopied(false),1800); }
+    catch(e){ alert('Não foi possível copiar automaticamente. '+(e.message||'')); }
+  }
+
+  return html`<section class="pane left" style="flex:1 1 100%;border-right:none;max-width:none">
+    <div class="pane-head no-print" style="flex:none;justify-content:space-between">
+      <span class="field-label" style="margin:0">Relatório do projeto</span>
+      <div class="row" style="gap:8px">
+        <button class="btn sm" onClick=${copy} disabled=${enabled.size===0}>${copied?'Copiado ✓':'Copiar texto'}</button>
+        <button class="btn sm primary" onClick=${()=>window.print()} disabled=${enabled.size===0}>Imprimir / PDF</button>
+      </div>
+    </div>
+    <div class="pane-body scroll" style="display:flex;gap:0;align-items:flex-start">
+
+      <!-- montador (não imprime) -->
+      <aside class="no-print" style="flex:0 0 280px;position:sticky;top:0;padding:16px;border-right:1px solid var(--line)">
+        <label style="display:flex;gap:7px;align-items:center;cursor:pointer;margin:0 0 14px;font-size:12px;color:var(--ink-soft)">
+          <input type="checkbox" checked=${on('credito')} onChange=${()=>toggle('credito')} />
+          Creditar QualiLab no resumo
+        </label>
+
+        <p class="field-label" style="margin:0 0 8px">Seções do relatório</p>
+        <div class="field" style="margin-bottom:10px">
+          <div class="field-label">Título (opcional)</div>
+          <input class="txtin" placeholder=${project?.name||'Relatório'} value=${title} onInput=${e=>setTitle(e.target.value)} />
+        </div>
+        ${projectMode==='collective' && html`<div class="field" style="margin-bottom:14px">
+          <div class="field-label">Camada</div>
+          <select class="opt" style="width:100%" value=${layer} onChange=${e=>setLayer(e.target.value)}>
+            <option value="final">Gabarito final</option>
+            <option value="individual">Individuais (todos)</option>
+          </select>
+        </div>`}
+        ${REPORT_GROUPS.map(g=>html`<div key=${g.group} style="margin-bottom:12px">
+          <p class="meta" style="font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.04em;margin:0 0 4px">${g.group}</p>
+          ${g.items.map(s=>html`<label key=${s.id} class="opt ${on(s.id)?'on':''}"
+              style="display:flex;gap:8px;align-items:flex-start;width:100%;text-align:left;margin-bottom:6px;cursor:pointer;padding:8px 10px">
+            <input type="checkbox" checked=${on(s.id)} onChange=${()=>toggle(s.id)} style="margin-top:2px" />
+            <span><span style="font-weight:600;display:block">${s.label}</span>
+              <span class="meta" style="font-size:11px">${s.desc}</span></span>
+          </label>`)}
+        </div>`)}
+      </aside>
+
+      <!-- relatório montado (imprime) -->
+      <div id="report-print" style="flex:1;min-width:0;padding:24px 28px;max-width:840px">
+        <h1 style="font-family:var(--serif);font-size:24px;margin:0 0 4px">${title.trim()||project?.name||'Relatório'}</h1>
+        <p class="meta" style="margin:0 0 20px">Gerado em ${new Date().toLocaleDateString('pt-BR')}${projectMode==='collective'?' · Camada: '+(useFinal?'gabarito final':'individuais (todos)'):''}</p>
+
+        ${enabled.size===0 && html`<p class="hint no-print">Marque ao menos uma seção à esquerda.</p>`}
+
+        ${on('resumo') && html`<section style="margin-bottom:26px">
+          <h2 style="font-family:var(--serif);font-size:18px;border-bottom:2px solid var(--teal);padding-bottom:4px">Resumo</h2>
+          <p>Projeto <b>${project?.name||''}</b> (${projectMode==='collective'?'coletivo':'individual'}), com ${' '}
+            <b>${docs.length}</b>${' '} documento(s), <b>${codes.length}</b>${' '} código(s), ${' '}
+            <b>${cats.length}</b>${' '} categoria(s) e <b>${totalCodings}</b>${' '} codificação(ões)${projectMode==='collective'?' na camada final/individual considerada':''}.${on('credito')?' O projeto foi codificado por meio da ferramenta QualiLab.':''}</p>
+          ${coders.length>0 && html`<p style="margin:6px 0 0">Codificado por: <b>${coders.join(', ')}</b>.</p>`}
+        </section>`}
+
+        ${on('docs_list') && html`<section style="margin-bottom:26px">
+          <h2 style="font-family:var(--serif);font-size:18px;border-bottom:2px solid var(--teal);padding-bottom:4px">Documentos</h2>
+          ${docs.length===0 ? html`<span class="meta">Nenhum documento.</span>`
+            : html`<ol style="margin:6px 0 0;padding-left:22px">${docs.map(d=>html`<li key=${d.id}>${d.name}</li>`)}</ol>`}
+        </section>`}
+
+        ${anyEsq && html`<section style="margin-bottom:26px">
+          <h2 style="font-family:var(--serif);font-size:18px;border-bottom:2px solid var(--teal);padding-bottom:4px">Esquema</h2>
+          ${on('cat_count') && html`<p style="margin:6px 0">Total de <b>${cats.length}</b> categoria(s).</p>`}
+          ${on('cat_list') && html`<ul style="margin:6px 0;padding-left:22px">${cats.map(c=>html`<li key=${c.id}>${c.name} <span class="meta">(${kindLabel(c.kind)})</span></li>`)}</ul>`}
+          ${on('code_count') && html`<p style="margin:6px 0"><b>${topCodes.length}</b> código(s) de Hierarquia 0 (raiz).</p>`}
+          ${on('sub_count') && html`<p style="margin:6px 0"><b>${subCodes.length}</b> sub-código(s).</p>`}
+          ${on('code_list') && html`<div style="margin:6px 0"><p style="font-weight:600;margin:0 0 2px">Códigos de Hierarquia 0</p>
+            <ul style="margin:0;padding-left:22px">${topCodes.map(c=>html`<li key=${c.id}>${swatch(c)} <span style="vertical-align:middle">${c.name}</span></li>`)}</ul></div>`}
+          ${on('sub_list') && html`<div style="margin:6px 0"><p style="font-weight:600;margin:0 0 2px">Sub-códigos</p>
+            ${subCodes.length===0 ? html`<span class="meta">Nenhum sub-código.</span>`
+              : html`<ul style="margin:0;padding-left:22px">${subCodes.map(c=>html`<li key=${c.id}>${swatch(c)} <span style="vertical-align:middle">${pathOf(c.id)}</span></li>`)}</ul>`}</div>`}
+        </section>`}
+
+        ${on('freq') && html`<section style="margin-bottom:26px">
+          <h2 style="font-family:var(--serif);font-size:18px;border-bottom:2px solid var(--teal);padding-bottom:4px">Frequência de códigos</h2>
+          ${freq.length===0 ? html`<span class="meta">Nenhuma codificação.</span>`
+            : html`<table style="border-collapse:collapse;width:100%;font-size:13px">
+                <tbody>${freq.map(({code,n})=>html`<tr key=${code.id} style="border-bottom:1px solid var(--line-soft)">
+                  <td style="padding:4px 8px 4px 0">${swatch(code)} <span style="vertical-align:middle">${pathOf(code.id)}</span></td>
+                  <td style="padding:4px 0;text-align:right;font-family:var(--mono)">${n}</td>
+                </tr>`)}</tbody></table>`}
+        </section>`}
+
+        ${on('categorias') && html`<section style="margin-bottom:26px">
+          <h2 style="font-family:var(--serif);font-size:18px;border-bottom:2px solid var(--teal);padding-bottom:4px">Distribuição por categoria</h2>
+          ${catDist.length===0 ? html`<span class="meta">Nenhuma categoria fechada com valores preenchidos.</span>`
+            : catDist.map(({cat,rows})=>html`<div key=${cat.id} style="margin-bottom:14px">
+                <p style="font-weight:600;margin:0 0 4px">${cat.name}</p>
+                <table style="border-collapse:collapse;width:100%;font-size:13px">
+                  <tbody>${rows.map(([val,n])=>html`<tr key=${val} style="border-bottom:1px solid var(--line-soft)">
+                    <td style="padding:3px 8px 3px 0">${val}</td>
+                    <td style="padding:3px 0;text-align:right;font-family:var(--mono)">${n}</td>
+                  </tr>`)}</tbody>
+                </table>
+              </div>`)}
+        </section>`}
+
+        ${on('trechos') && html`<section style="margin-bottom:26px">
+          <h2 style="font-family:var(--serif);font-size:18px;border-bottom:2px solid var(--teal);padding-bottom:4px">Trechos por código</h2>
+          ${trechosByCode.length===0 ? html`<span class="meta">Nenhum trecho codificado.</span>`
+            : trechosByCode.map(({code,docs:ds})=>html`<div key=${code.id} style="margin-bottom:18px;break-inside:avoid">
+                <p style="font-weight:600;margin:0 0 6px">${swatch(code)} <span style="vertical-align:middle">${pathOf(code.id)}</span></p>
+                ${ds.map(d=>html`<div key=${d.docId} style="margin:0 0 8px 6px">
+                  <p class="meta" style="margin:0 0 3px">${d.name}</p>
+                  ${d.cods.map(c=>html`<blockquote key=${c.id}
+                    style="margin:0 0 4px;padding:2px 0 2px 10px;border-left:3px solid ${codeColor(code.hue,code.depth,code.hue_deg).solid};font-family:var(--serif);font-size:14px">
+                    “${c.quote}”${c.author_name?html`<span class="meta" style="font-family:var(--sans);font-size:11px"> — ${c.author_name}</span>`:''}</blockquote>`)}
+                </div>`)}
+              </div>`)}
+        </section>`}
+
+        ${on('unused') && html`<section style="margin-bottom:26px">
+          <h2 style="font-family:var(--serif);font-size:18px;border-bottom:2px solid var(--teal);padding-bottom:4px">Códigos não utilizados</h2>
+          ${unusedCodes.length===0 ? html`<span class="meta">Todos os códigos foram utilizados.</span>`
+            : html`<ul style="margin:6px 0;padding-left:22px">${unusedCodes.map(c=>html`<li key=${c.id}>${swatch(c)} <span style="vertical-align:middle">${pathOf(c.id)}</span></li>`)}</ul>`}
+        </section>`}
+      </div>
+    </div>
+  </section>`;
+}
+
 /* ============ VizNav — painel esquerdo da Visualização ============
    Visual idêntico ao painel de Codificação: mesmas classes CSS, sem fundo colorido. */
 function VizNav({ cats, codes, allCodings, allValues, docs, layer, catFilter, selCode,
                   onLayer, onCatFilter, onSelCode, codePath, codeById, projectMode }){
-  const [catsOpen, setCatsOpen] = useState(false);
+  const [catsOpen, setCatsOpen] = useState(true);
   const closedCats = cats.filter(c=>CAT_HAS_OPTIONS(c.kind)||c.kind==='date');
   const tops = codes.filter(c=>!c.parent_id);
   const childrenOf = (id)=>codes.filter(c=>c.parent_id===id);
@@ -3509,7 +3920,7 @@ function TreeNode({ code, childrenOf, count, sel, selCode, setSelCode, onApply, 
       onClick=${()=> appliable ? onApply(code.id) : setSelCode(code.id) }>
       ${kids.length>0 ? html`<span class="caret" onClick=${e=>{e.stopPropagation();setOpen(!open);}}>${open?'▾':'▸'}</span>` : html`<span class="caret"></span>`}
       <span class="swatch" style=${`background:${col.solid}`}></span>
-      <span class="node-name" title=${code.name}>${code.name}</span>
+      <span class="node-name" title=${code.name}>${code.is_redaction?'🚫 ':''}${code.name}</span>
       ${count[code.id]?html`<span class="count">${count[code.id]}</span>`:''}
       <button class="icon-btn" onClick=${e=>{e.stopPropagation(); if(confirm('Excluir o código e seus subcódigos e codificações?')) onDel(code.id);}} title="excluir">✕</button>
     </div>
@@ -3518,7 +3929,7 @@ function TreeNode({ code, childrenOf, count, sel, selCode, setSelCode, onApply, 
       store=${store} reload=${reload} depthPad=${depthPad+1} />`)}
   </div>`;
 }
-function RenameCode({ code, onUpd, onSetColor, isAdmin }){
+function RenameCode({ code, onUpd, onSetColor, onSetRedaction, isAdmin }){
   const [v,setV]=useState(code.name);
   useEffect(()=>setV(code.name),[code.id]);
   const col = codeColor(code.hue, code.depth, code.hue_deg);
@@ -3548,6 +3959,11 @@ function RenameCode({ code, onUpd, onSetColor, isAdmin }){
       ${code.hue_deg!=null && html`<button class="btn sm ghost" onClick=${()=>onSetColor(code, null)}>usar cor automática</button>`}
     </div>`}
     ${code.depth===0 && !isAdmin && code.hue_deg!=null && html`<p class="meta" style="margin-top:6px">Cor definida pelo administrador.</p>`}
+    ${isAdmin && html`<label class="row" style="gap:6px;margin-top:8px;font-size:12.5px;cursor:pointer;align-items:center">
+      <input type="checkbox" checked=${!!code.is_redaction} onChange=${e=>onSetRedaction(code, e.target.checked)} />
+      🚫 Código de censura
+    </label>
+    <p class="hint" style="margin:2px 0 0">Marca este código (e seus subcódigos) como sensível — por ora só sinaliza visualmente no leitor e na árvore, sem mascarar nada automaticamente.</p>`}
   </div>`;
 }
 

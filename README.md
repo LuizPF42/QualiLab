@@ -49,6 +49,7 @@ Cada categoria pode ter descrição/instrução e habilitar as opções **"Não 
 - **Visualização** — navegação por código à esquerda; trechos do código selecionado à direita, em tipografia legível, agrupados por documento. Filtro por categoria e cruzamento por co-ocorrência de até 2 códigos.
 - **Gráficos** — frequência de códigos, distribuição por categoria (gabarito), heatmap código × categoria, produção por codificador e concordância entre codificadores.
 - **Memos** — nota analítica única por alvo (projeto, documento ou código), compartilhada entre os pesquisadores e editável por qualquer membro.
+- **Relatório** — montador de relatório: o pesquisador liga/desliga seções por caixas de seleção (resumo, lista de documentos, contagens e listas do esquema, frequência de códigos, distribuição por categoria, trechos por código, códigos não utilizados) e o texto se monta ao vivo. Em projeto coletivo, escolhe a camada (gabarito final ou individuais). **Copiar texto** (texto simples, pronto pra colar em `.docx`/Docs) e **Imprimir / PDF**. Crédito opcional ao QualiLab embutido no resumo.
 
 ### Codificação colaborativa em camadas
 Cada codificação registra o autor. O trabalho de cada pesquisador é independente (`layer = individual`); a equipe consolida uma **camada final** na tela de Reconciliação. O mesmo modelo vale para as respostas de categoria: cada pesquisador preenche a sua; o administrador define o gabarito.
@@ -245,5 +246,5 @@ Copyright (c) 2026 Luiz Pimenta Filho
   - [ ] Cards "síntese" (número de documentos, tipo, códigos, etc.)
   - [ ] Distribuição por famílias analíticas
   - [ ] Análises textuais automatizadas (similaridade, coocorrência, redes textuais)
-- [ ] Pipeline de publicação de relatórios próprios por pesquisador / pesquisa
+- [x] Pipeline de publicação de relatórios próprios por pesquisador / pesquisa (aba **Relatório**: montador de seções, copiar texto, imprimir/PDF)
 - [ ] Integração de IA (?) — em avaliação; ferramentas de QDA costumam dividir opiniões sobre IA, o uso teria que ser opt-in e transparente

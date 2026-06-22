@@ -316,6 +316,9 @@ create policy memos_all on public.memos for all
 -- ---------- cor personalizada de codigo (somente nivel 0 / familia) ----------
 alter table public.codes add column if not exists hue_deg int;
 
+-- ---------- marcacao de censura (so visual por ora, sem efeito funcional) ----------
+alter table public.codes add column if not exists is_redaction boolean not null default false;
+
 create or replace function public.codes_color_guard()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
