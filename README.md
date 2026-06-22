@@ -26,7 +26,7 @@ As ferramentas disponíveis, pagas ou gratuitas, também não têm colaboração
 Importe `.txt`, `.md`, `.docx` e `.pdf`, ou cole texto diretamente. O conteúdo é extraído e exibido para leitura e codificação.
 
 ### Codificação por trechos
-Selecione qualquer trecho e aplique um código — ou clique com o **botão direito** para um menu de contexto rápido. Os códigos são **hierárquicos** (famílias → subcódigos), com cor por família e tonalidade por profundidade; administradores podem personalizar a cor de uma família (matiz, ou cinza), propagada para os subcódigos.
+Selecione qualquer trecho e aplique um código — ou clique com o **botão direito** para um menu de contexto rápido. Clicar com o botão direito num trecho **já codificado** (sem selecionar nada novo) abre direto a opção de **remover** aquele código, sem precisar reselecionar o trecho. **Ctrl+Z** desfaz a última codificação aplicada na sessão atual. Os códigos são **hierárquicos** (famílias → subcódigos), com cor por família e tonalidade por profundidade; administradores podem personalizar a cor de uma família (matiz, ou cinza), propagada para os subcódigos.
 
 ### Esquema de categorias (atributos do documento)
 Cada documento pode receber atributos com cinco tipos de campo:
@@ -43,7 +43,7 @@ Cada categoria pode ter descrição/instrução e habilitar as opções **"Não 
 
 ### Telas principais
 
-- **Codificação** — leitor à esquerda com grifos coloridos; painéis de categorias e de códigos à direita. Filtro **"Ver:"** para alternar entre camadas (individual, por codificador, final) — afeta tanto os grifos no texto quanto as respostas de categoria exibidas: ver a resposta de outro pesquisador ou o gabarito é só leitura (editar fica restrito à sua própria resposta, pra não sobrescrever a de outra pessoa por engano).
+- **Codificação** — leitor à esquerda com grifos coloridos (a linha embaixo do grifo só aparece quando há mais de um código sobreposto no mesmo trecho, pra não poluir visualmente); painéis de categorias e de códigos à direita. Uma barra de ferramentas no leitor traz zoom de fonte, largura de coluna e tema de leitura (claro/sépia/escuro), além de busca com navegação entre ocorrências (🔎). Filtro **"Ver:"** para alternar entre camadas (individual, por codificador, final, ou "Individuais (todos)" — que sobrepõe os grifos de todos os pesquisadores **e** o gabarito ao mesmo tempo) — afeta tanto os grifos no texto quanto as respostas de categoria exibidas: ver a resposta de outro pesquisador ou o gabarito é só leitura (editar fica restrito à sua própria resposta, pra não sobrescrever a de outra pessoa por engano).
 - **Esquema** — tela em branco (sem documento aberto) pra organizar o livro de códigos e o esquema de categorias de uma vez: reorganização em lote de códigos (agrupar, mesclar, promover a Hierarquia 0) e edição das categorias.
 - **Reconciliação** — agrupa as codificações que se sobrepõem no mesmo código, mostra quantos codificadores concordam e permite **consolidar** na camada final (gabarito).
 - **Visualização** — navegação por código à esquerda; trechos do código selecionado à direita, em tipografia legível, agrupados por documento. Filtro por categoria e cruzamento por co-ocorrência de até 2 códigos.
@@ -61,15 +61,16 @@ Ao criar um projeto você escolhe:
 O tipo pode ser alterado depois pelo administrador (convertendo Coletivo → Individual de forma irreversível, colapsando todas as codificações num único autor).
 
 ### Gestão de projeto e membros
-A **pílula do projeto** no cabeçalho abre o hub de gestão: código de convite para colaboradores, tipo do projeto, lista de membros com papéis (admin/membro), renomear, limpar conteúdo, excluir e configuração de conexão.
+A **pílula do projeto** no cabeçalho abre o hub de gestão: código de convite para colaboradores, tipo do projeto, lista de membros com papéis (admin/membro), renomear, limpar conteúdo, excluir e configuração de conexão. Se o projeto ativo for local ou arquivo (não nuvem), aparece também **"Enviar para a nuvem"** — cria um projeto novo na nuvem e copia tudo pra ele (documentos, categorias, códigos, codificações e memos) numa tacada só, sem precisar exportar e importar `.qualilab` manualmente.
 
 ### Conta e login (modo nuvem)
-No modo nuvem, a tela inicial pede login por **e-mail e senha** (com cadastro direto na mesma tela) ou **"Continuar como visitante"** para testar sem criar conta — sessões de visitante ficam vinculadas ao dispositivo, sem sincronizar entre aparelhos.
+No modo nuvem, a tela inicial pede login por **e-mail e senha** (com cadastro direto na mesma tela), **"Continuar como visitante"** para testar sem criar conta, ou **"Usar offline"** — pula a nuvem inteiramente e abre um projeto local neste dispositivo. "Usar offline" também entra em ação automaticamente se a conexão cair ou se o cadastro anônimo estiver desabilitado no servidor. Sessões de visitante ficam vinculadas ao dispositivo, sem sincronizar entre aparelhos.
 
 Clicando no seu nome no cabeçalho, a tela **Minha Conta** permite:
 - Trocar o nome de exibição (usado nas codificações).
 - Alterar a senha (contas com e-mail).
 - Ver todos os seus projetos em um só lugar, com ações diretas: abrir, renomear (admin), sair ou excluir (admin) — sem precisar entrar em cada um.
+- Sair da conta (desconecta do Supabase e volta pra tela de login).
 
 ### Importação e exportação
 
@@ -221,7 +222,7 @@ O QualiLab é um projeto em desenvolvimento ativo. Vale conhecer as limitações
 - **Tipo dos atributos em `.qdpx` de outras ferramentas é inferido, não declarado** — o REFI-QDA não distingui campo fechado de aberto. Ao importar um `.qdpx` de outro software (QualCoder, ATLAS.ti etc.), o QualiLab tenta adivinhar pelas respostas: poucos valores distintos repetidos entre documentos viram Texto Fechado; valores todos diferentes viram Texto Aberto. O resumo do import avisa quantas categorias foram decididas assim — vale revisar em "Gerenciar esquema de categorias".
 - **Sincronização em tempo real parcial** — apenas codificações e valores de categoria sincronizam ao vivo entre colaboradores. Mudanças no esquema de categorias ou na árvore de códigos exigem recarregar a página para aparecer para outros membros.
 - **Governança do livro de códigos é binária** — qualquer membro pode criar, renomear e excluir códigos livremente (necessário para codificação colaborativa em tempo real); apenas a cor personalizada de uma família é restrita a administradores. Não há, ainda, um modo intermediário de aprovação antes de um código novo ficar visível a todos.
-- **Sem histórico de versões** — não há desfazer (undo) ou log de auditoria de alterações; exclusões de documentos, códigos e categorias são definitivas.
+- **Desfazer é limitado** — Ctrl+Z desfaz só a última codificação aplicada na sessão atual (sem histórico entre sessões). Não há desfazer para categorias, código em si, documentos, ou qualquer outra ação; exclusões desses são definitivas. Também não há log de auditoria de alterações.
 - **Modo Arquivo local restrito a Chromium** — a File System Access API que sustenta esse modo só existe em Chrome e Edge; Firefox e Safari caem automaticamente para o modo local (`localStorage`).
 
 ---
