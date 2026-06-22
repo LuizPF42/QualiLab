@@ -41,7 +41,8 @@
   :focus-visible{outline:2px solid var(--sky);outline-offset:2px;}
 
   .app{display:flex;flex-direction:column;height:100vh;}
-  header.top{background:var(--surface);border-bottom:1px solid var(--line);padding:8px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  header.top{background:var(--surface);border-bottom:1px solid var(--line);padding:8px 14px;display:flex;flex-direction:column;gap:8px;}
+  .top-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
   .brand{font-family:var(--serif);font-size:22px;font-weight:600;letter-spacing:-.01em;color:var(--teal-deep);}
   .tag{font-size:11px;color:var(--ink-faint);letter-spacing:.04em;}
   .grow{flex:1;}
@@ -101,7 +102,7 @@
   .docitem.active{border-color:var(--teal);background:var(--teal-soft);}
 
   .modal-bg{position:fixed;inset:0;background:rgba(20,20,22,.45);display:flex;align-items:center;justify-content:center;z-index:50;padding:18px;}
-  .modal{background:var(--surface);border-radius:16px;border:1px solid var(--line);max-width:460px;width:100%;padding:22px;box-shadow:0 18px 50px rgba(0,0,0,.2);}
+  .modal{background:var(--surface);border-radius:16px;border:1px solid var(--line);max-width:460px;width:100%;padding:22px;box-shadow:0 18px 50px rgba(0,0,0,.2);max-height:calc(100vh - 36px);overflow-y:auto;}
   .modal h2{font-family:var(--serif);font-size:22px;margin:0 0 4px;}
 
   .empty{max-width:440px;margin:40px auto;text-align:center;color:var(--ink-soft);}
@@ -1354,7 +1355,7 @@ function App(){
     if(viewCoder==='final') return codings.filter(c=>c.layer==='final');
     const indiv = codings.filter(c=>c.layer!=='final');
     if(viewCoder==='mine') return indiv.filter(c=>c.created_by===user?.id);
-    if(viewCoder==='all') return indiv;
+    if(viewCoder==='all') return codings; // todas as camadas: individuais de cada coder + gabarito
     // id baseado em nome (importados de QDPX)
     if(viewCoder.startsWith('__nm__')){ const nm=viewCoder.slice(6); return indiv.filter(c=>c.author_name===nm); }
     return indiv.filter(c=>c.created_by===viewCoder);
@@ -1905,61 +1906,65 @@ function App(){
     />
     ${account && html`<${AccountModal} user=${user} projects=${myProjects}
       onClose=${()=>setAccount(false)} onChangePassword=${changePassword} onChangeName=${changeDisplayName}
-      onOpen=${acctOpenProject} onRename=${acctRenameProject} onDelete=${acctDeleteProject} onLeave=${acctLeaveProject} />`}
+      onOpen=${acctOpenProject} onRename=${acctRenameProject} onDelete=${acctDeleteProject} onLeave=${acctLeaveProject}
+      onLogout=${async()=>{ setAccount(false); try{localStorage.removeItem('qualilab:project');}catch(e){} try{ await store.signOut(); }catch(e){} setProject(null); setUser(null); setDocs([]); setActiveId(null); setPhase('auth'); }} />`}
   </div>`;
 
   return html`
   <div class="app">
     <header class="top">
-      <a class="brand" href="https://github.com/LuizPF42/QualiLab" target="_blank" rel="noopener"
-        title="o seu laboratório de pesquisa qualitativa / your own lab for qualitative research — ver no GitHub"
-        style="text-decoration:none">QualiLab</a>
-      ${project && html`<div class="seg" style="margin-left:10px">
-        <button class=${mainView==='codificar'?'on':''} onClick=${()=>setMainView('codificar')}>Codificação</button>
-        ${projectMode==='collective' && html`<button class=${mainView==='reconciliar'?'on':''} onClick=${()=>setMainView('reconciliar')}>Reconciliação</button>`}
-        <button class=${mainView==='visualizar'?'on':''} onClick=${()=>setMainView('visualizar')}>Visualização</button>
-        <button class=${mainView==='graficos'?'on':''} onClick=${()=>setMainView('graficos')}>Gráficos</button>
-        <button class=${mainView==='memos'?'on':''} onClick=${()=>setMainView('memos')}>Memos</button>
-        <button class=${mainView==='esquema'?'on':''} onClick=${()=>setMainView('esquema')}>Esquema</button>
-      </div>`}
-      <div class="grow"></div>
-      ${project && html`<button class="pill ${mode==='cloud'?'mode-cloud':''}" style="cursor:pointer"
-        title="Gerenciar projeto" onClick=${()=>setProjEdit(true)}>
-        ${store?.mode==='file'?'arquivo':mode==='cloud'?'nuvem':'local'} · ${project.name}${mode==='cloud'?` · ${project.code}`:''} · ${projectMode==='individual'?'individual':'coletivo'} ▾
-      </button>`}
-      ${user && (mode==='cloud'
-        ? html`<button class="btn sm ghost" title=${'Minha conta'+(user.email?' · '+user.email:'')} onClick=${()=>setAccount(true)}>${user.name}${user.anon?' (visitante)':''}</button>`
-        : html`<span class="meta">${user.name}</span>`)}
-      ${mode==='cloud' && html`<button class="btn sm ghost" onClick=${()=>{ try{localStorage.removeItem('qualilab:project');}catch(e){} setProject(null); setPhase('gate'); }}>trocar projeto</button>`}
-      ${mode==='cloud' && !online && html`<span class="pill" style="background:#FEF3C7;border-color:#D97706;color:#92400E;font-size:11px">offline${pending>0?` · ${pending} pendente${pending>1?'s':''}`:''}</span>`}
-      ${mode==='cloud' && online && pending>0 && html`<span class="pill" style="font-size:11px">sincronizando…</span>`}
-      ${mode==='cloud' && user && html`<button class="btn sm ghost" onClick=${async()=>{ try{localStorage.removeItem('qualilab:project');}catch(e){} try{ await store.signOut(); }catch(e){} setProject(null); setUser(null); setDocs([]); setActiveId(null); setPhase('auth'); }}>sair</button>`}
-      ${project && docs.length>0 && html`<div style="position:relative">
-        <button class="btn sm" onClick=${()=>setExpOpen(o=>!o)}>exportar ▾</button>
-        ${expOpen && html`<div>
-          <div onClick=${()=>setExpOpen(false)} style="position:fixed;inset:0;z-index:40"></div>
-          <div class="exmenu">
-            <button title="Baixa o projeto inteiro (documentos, categorias, códigos, codificações e memos) para reabrir/importar depois no próprio QualiLab" onClick=${()=>{ setExpOpen(false); saveQualilab(); }}>.qualilab (projeto completo, nativo)</button>
-            <button onClick=${()=>doExport('json')}>JSON (projeto)</button>
-            <button onClick=${()=>doExport('trechos')}>CSV (trechos codificados)</button>
-            <button onClick=${()=>doExport('documentos')}>CSV (atributos por documento)</button>
-            <button onClick=${()=>doExport('qdpx')}>QDPX (ATLAS.ti / MAXQDA / NVivo)</button>
-            <button title="Exporta só o livro de códigos, sem documentos nem codificações" onClick=${()=>{ setExpOpen(false); exportQDC(codes, project); }}>QDC (codebook REFI-QDA)</button>
-          </div>
+      <div class="top-row">
+        <a class="brand" href="https://github.com/LuizPF42/QualiLab" target="_blank" rel="noopener"
+          title="o seu laboratório de pesquisa qualitativa / your own lab for qualitative research — ver no GitHub"
+          style="text-decoration:none">QualiLab</a>
+        ${project && html`<div class="seg" style="margin-left:10px">
+          <button class=${mainView==='codificar'?'on':''} onClick=${()=>setMainView('codificar')}>Codificação</button>
+          ${projectMode==='collective' && html`<button class=${mainView==='reconciliar'?'on':''} onClick=${()=>setMainView('reconciliar')}>Reconciliação</button>`}
+          <button class=${mainView==='visualizar'?'on':''} onClick=${()=>setMainView('visualizar')}>Visualização</button>
+          <button class=${mainView==='graficos'?'on':''} onClick=${()=>setMainView('graficos')}>Gráficos</button>
+          <button class=${mainView==='memos'?'on':''} onClick=${()=>setMainView('memos')}>Memos</button>
+          <button class=${mainView==='esquema'?'on':''} onClick=${()=>setMainView('esquema')}>Esquema</button>
         </div>`}
-      </div>`}
-      ${project && html`<div style="position:relative">
-        <button class="btn sm ghost" onClick=${()=>setImpOpen(o=>!o)}>importar ▾</button>
-        ${impOpen && html`<div>
-          <div onClick=${()=>setImpOpen(false)} style="position:fixed;inset:0;z-index:40"></div>
-          <div class="exmenu">
-            <button title="Mescla um arquivo .qualilab (exportado por outra pessoa/dispositivo) neste projeto" onClick=${()=>{ setImpOpen(false); qualilabInputRef.current.click(); }}>.qualilab (projeto completo, nativo)</button>
-            <button title="Importa um projeto .qdpx (REFI-QDA)" onClick=${()=>{ setImpOpen(false); qdpxInputRef.current.click(); }}>QDPX (ATLAS.ti / MAXQDA / NVivo)</button>
-            <button title="Importa o projeto completo do Taguette (documentos, tags e trechos codificados)" onClick=${()=>{ setImpOpen(false); taguetteInputRef.current.click(); }}>.sqlite3 (Taguette)</button>
-            <button title="Importa só o livro de códigos (.qdc) — sem documentos nem codificações" onClick=${()=>{ setImpOpen(false); qdcInputRef.current.click(); }}>.qdc (codebook REFI-QDA)</button>
-          </div>
+      </div>
+      <div class="top-row">
+        ${project && html`<button class="pill ${mode==='cloud'?'mode-cloud':''}" style="cursor:pointer"
+          title="Gerenciar projeto" onClick=${()=>setProjEdit(true)}>
+          ${store?.mode==='file'?'arquivo':mode==='cloud'?'nuvem':'local'} · ${project.name}${mode==='cloud'?` · ${project.code}`:''} · ${projectMode==='individual'?'individual':'coletivo'} ▾
+        </button>`}
+        ${user && (mode==='cloud'
+          ? html`<button class="btn sm ghost" title=${'Minha conta'+(user.email?' · '+user.email:'')} onClick=${()=>setAccount(true)}>${user.name}${user.anon?' (visitante)':''}</button>`
+          : html`<span class="meta">${user.name}</span>`)}
+        ${mode==='cloud' && html`<button class="btn sm ghost" onClick=${()=>{ try{localStorage.removeItem('qualilab:project');}catch(e){} setProject(null); setPhase('gate'); }}>trocar projeto</button>`}
+        ${mode==='cloud' && user && html`<button class="btn sm ghost" onClick=${async()=>{ try{localStorage.removeItem('qualilab:project');}catch(e){} try{ await store.signOut(); }catch(e){} setProject(null); setUser(null); setDocs([]); setActiveId(null); setPhase('auth'); }}>sair</button>`}
+        ${project && docs.length>0 && html`<div style="position:relative">
+          <button class="btn sm" onClick=${()=>setExpOpen(o=>!o)}>exportar ▾</button>
+          ${expOpen && html`<div>
+            <div onClick=${()=>setExpOpen(false)} style="position:fixed;inset:0;z-index:40"></div>
+            <div class="exmenu">
+              <button title="Baixa o projeto inteiro (documentos, categorias, códigos, codificações e memos) para reabrir/importar depois no próprio QualiLab" onClick=${()=>{ setExpOpen(false); saveQualilab(); }}>.qualilab (projeto completo, nativo)</button>
+              <button onClick=${()=>doExport('json')}>JSON (projeto)</button>
+              <button onClick=${()=>doExport('trechos')}>CSV (trechos codificados)</button>
+              <button onClick=${()=>doExport('documentos')}>CSV (atributos por documento)</button>
+              <button onClick=${()=>doExport('qdpx')}>QDPX (ATLAS.ti / MAXQDA / NVivo)</button>
+              <button title="Exporta só o livro de códigos, sem documentos nem codificações" onClick=${()=>{ setExpOpen(false); exportQDC(codes, project); }}>QDC (codebook REFI-QDA)</button>
+            </div>
+          </div>`}
         </div>`}
-      </div>`}
+        ${project && html`<div style="position:relative">
+          <button class="btn sm ghost" onClick=${()=>setImpOpen(o=>!o)}>importar ▾</button>
+          ${impOpen && html`<div>
+            <div onClick=${()=>setImpOpen(false)} style="position:fixed;inset:0;z-index:40"></div>
+            <div class="exmenu">
+              <button title="Mescla um arquivo .qualilab (exportado por outra pessoa/dispositivo) neste projeto" onClick=${()=>{ setImpOpen(false); qualilabInputRef.current.click(); }}>.qualilab (projeto completo, nativo)</button>
+              <button title="Importa um projeto .qdpx (REFI-QDA)" onClick=${()=>{ setImpOpen(false); qdpxInputRef.current.click(); }}>QDPX (ATLAS.ti / MAXQDA / NVivo)</button>
+              <button title="Importa o projeto completo do Taguette (documentos, tags e trechos codificados)" onClick=${()=>{ setImpOpen(false); taguetteInputRef.current.click(); }}>.sqlite3 (Taguette)</button>
+              <button title="Importa só o livro de códigos (.qdc) — sem documentos nem codificações" onClick=${()=>{ setImpOpen(false); qdcInputRef.current.click(); }}>.qdc (codebook REFI-QDA)</button>
+            </div>
+          </div>`}
+        </div>`}
+        ${mode==='cloud' && !online && html`<span class="pill" style="background:#FEF3C7;border-color:#D97706;color:#92400E;font-size:11px">offline${pending>0?` · ${pending} pendente${pending>1?'s':''}`:''}</span>`}
+        ${mode==='cloud' && online && pending>0 && html`<span class="pill" style="font-size:11px">sincronizando…</span>`}
+      </div>
       <input ref=${qualilabInputRef} type="file" accept=".qualilab" style="display:none" onChange=${e=>{ if(e.target.files[0]) doImportQualilab(e.target.files[0]); e.target.value=''; }} />
       <input ref=${qdpxInputRef} type="file" accept=".qdpx" style="display:none" onChange=${e=>{ if(e.target.files[0]) doImportQDPX(e.target.files[0]); e.target.value=''; }} />
       <input ref=${taguetteInputRef} type="file" accept=".sqlite3,.sqlite,.db" style="display:none" onChange=${e=>{ if(e.target.files[0]) doImportTaguette(e.target.files[0]); e.target.value=''; }} />
@@ -3559,7 +3564,7 @@ function ProjectModal({ mode, user, project, projectMode, isAdmin, members, hasD
 }
 
 /* ============ MINHA CONTA ============ */
-function AccountModal({ user, projects, onClose, onChangePassword, onChangeName, onOpen, onRename, onDelete, onLeave }){
+function AccountModal({ user, projects, onClose, onChangePassword, onChangeName, onOpen, onRename, onDelete, onLeave, onLogout }){
   const [name,setName]=useState(user?.name||'');
   const [pw1,setPw1]=useState(''); const [pw2,setPw2]=useState('');
   const [msg,setMsg]=useState(null); const [err,setErr]=useState(null);
@@ -3642,7 +3647,10 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
         </div>`; })}
     </div>
 
-    <div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn" onClick=${onClose}>Fechar</button></div>
+    <div class="row" style="justify-content:space-between;margin-top:14px">
+      ${onLogout && html`<button class="btn ghost" style="color:var(--danger)" onClick=${onLogout}>sair da conta</button>`}
+      <button class="btn" onClick=${onClose}>Fechar</button>
+    </div>
   </div></div>`;
 }
 
