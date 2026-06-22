@@ -197,6 +197,8 @@ QualiLab/
 
 O QualiLab foi desenvolvido por **Luiz Pimenta Filho** no âmbito do **LabDados / FGV Direito SP** como projeto pessoal. Não representa posição institucional da FGV, que não tem qualquer responsabilidade pelo software.
 
+A maior parte do código deste projeto foi escrita com assistência do [Claude Code](https://claude.com/claude-code) (Anthropic).
+
 As principais inspirações foram:
 
 - **[Taguette](https://www.taguette.org/about.html)** — ferramenta pioneira em QDA aberto, com suporte a múltiplos formatos de importação de documentos e exportação do codebook em REFI-QDA (`.qdc`). Se você aprecia pesquisa aberta, visite o projeto e considere uma doação.
