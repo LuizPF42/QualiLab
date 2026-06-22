@@ -66,6 +66,19 @@
 
   .reader{font-family:var(--serif);font-size:17px;line-height:1.8;color:var(--ink);padding:22px 26px;white-space:pre-wrap;}
   .reader span[data-c]{border-radius:3px;padding:0 1px;cursor:default;}
+  .reader span[data-match]{border-radius:2px;box-shadow:inset 0 0 0 1px #C98A12;}
+  .reader span[data-match].current{background:#FFD54A!important;color:#3a2c00;box-shadow:none;}
+
+  /* preferencias de leitura (zoom/largura/tema), aplicadas no .pane-body que envolve o .reader */
+  .reader-pane.width-narrow .reader{max-width:760px;margin:0 auto;}
+  .reader-pane.theme-sepia{background:#F4ECD8;}
+  .reader-pane.theme-sepia .reader{color:#3b2f1d;}
+  .reader-pane.theme-dark{background:#1c1c1e;}
+  .reader-pane.theme-dark .reader{color:#e8e6e1;}
+  .reader-toolbar{display:flex;align-items:center;gap:4px;}
+  .reader-toolbar .icon-btn{font-size:13px;}
+  .search-bar{display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid var(--line-soft);background:var(--paper);}
+  .search-bar input{flex:1;max-width:320px;}
 
   .toolbar{position:sticky;top:0;z-index:5;background:var(--teal-soft);border-bottom:1px solid rgba(0,66,122,.3);padding:8px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
   .toolbar .q{font-family:var(--mono);font-size:12px;color:var(--ink);max-width:50%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -243,9 +256,10 @@ async function extractText(file){
 }
 
 /* ============ RUNS (segmentacao do texto para os grifos) ============ */
-function buildRuns(text, codings){
+function buildRuns(text, codings, extraPoints){
   const b = new Set([0, text.length]);
   codings.forEach(c=>{ if(c.span_start>=0 && c.span_end>c.span_start){ b.add(c.span_start); b.add(c.span_end);} });
+  (extraPoints||[]).forEach(p=>{ if(p>=0 && p<=text.length) b.add(p); });
   const pts = [...b].filter(p=>p>=0&&p<=text.length).sort((x,y)=>x-y);
   const runs=[];
   for(let i=0;i<pts.length-1;i++){
@@ -599,10 +613,17 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
    projeto coletivo na nuvem. Ids são remapeados (evita colisão ao reimportar o mesmo
    arquivo duas vezes), igual ao importQDPX. */
 async function importQualilab(file, store, projectId, projectMode, onProgress){
-  const codLayer = projectMode==='individual' ? 'final' : 'individual';
   let db;
   try{ db = JSON.parse(await file.text()); }
   catch(e){ throw new Error('Arquivo .qualilab inválido (JSON corrompido)'); }
+  return mergeQualilabDb(db, store, projectId, projectMode, onProgress);
+}
+/* nucleo do merge de um .qualilab (objeto ja parseado) num projeto ATIVO — extraido de
+   importQualilab pra poder ser chamado tambem sem passar por arquivo (ex.: "enviar pra
+   nuvem", que monta o db a partir do projeto local/arquivo aberto e importa direto num
+   projeto novo na nuvem, sem download/upload no meio). */
+async function mergeQualilabDb(db, store, projectId, projectMode, onProgress){
+  const codLayer = projectMode==='individual' ? 'final' : 'individual';
   if(!db || !Array.isArray(db.documents)) throw new Error('Arquivo .qualilab sem o formato esperado');
 
   const docMap = {}, catMap = {}, codeMap = {};
@@ -1315,18 +1336,49 @@ function App(){
   const qdpxInputRef = useRef(null);
   const taguetteInputRef = useRef(null);
   const qdcInputRef = useRef(null);
+  const undoStackRef = useRef([]);
   const [busy, setBusy] = useState(null);
   const [progress, setProgress] = useState(null); // {done,total} durante import grande
   const [online, setOnline] = useState(navigator.onLine);
   const [pending, setPending] = useState(0); // escritas em fila (cloud offline)
   const [saveError, setSaveError] = useState(null); // ultima falha de gravacao local/arquivo (null = ok)
   const [backupStatus, setBackupStatus] = useState({ active:false, name:null, lastOk:null, lastError:null, warnLarge:false }); // backup automatico em pasta (so LocalStore)
+  const [sendCloudOpen, setSendCloudOpen] = useState(false); // modal "Enviar para a nuvem" (projeto local/arquivo -> projeto novo na nuvem)
   const [importMsg, setImportMsg] = useState(null);
   const [role, setRole] = useState('member');  // papel do usuário no projeto: admin | member
   const [members, setMembers] = useState([]);   // membros do projeto (gestão de admins)
 
   const activeDoc = docs.find(d=>d.id===activeId) || null;
   const isAdmin = role==='admin';
+
+  // preferencias de leitura do .reader (zoom, largura, tema) — persistidas no localStorage,
+  // sem relacao com o projeto (vale pra qualquer documento/projeto neste navegador).
+  const [readerPrefs, setReaderPrefs] = useState(()=>{
+    try{ return { scale:1, width:'normal', theme:'light', ...JSON.parse(localStorage.getItem('qualilab:reader_prefs')||'{}') }; }
+    catch(e){ return { scale:1, width:'normal', theme:'light' }; }
+  });
+  useEffect(()=>{ try{ localStorage.setItem('qualilab:reader_prefs', JSON.stringify(readerPrefs)); }catch(e){} }, [readerPrefs]);
+  // busca dentro do documento aberto (independente da selecao de codigo/categoria)
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchIdx, setSearchIdx] = useState(0);
+  const readerRef = useRef(null);
+  const searchMatches = useMemo(()=>{
+    const text = activeDoc?.content||'';
+    const q = searchQuery.trim().toLowerCase();
+    if(!q || !text) return [];
+    const lower = text.toLowerCase();
+    const out = []; let from = 0;
+    while(true){ const found = lower.indexOf(q, from); if(found<0) break; out.push([found, found+q.length]); from = found+q.length; }
+    return out;
+  }, [searchQuery, activeDoc]);
+  useEffect(()=>{ setSearchIdx(0); }, [searchQuery, activeId]);
+  useEffect(()=>{
+    if(!searchOpen || !searchMatches.length) return;
+    const i = ((searchIdx % searchMatches.length) + searchMatches.length) % searchMatches.length;
+    const el = readerRef.current?.querySelector(`[data-match="${i}"]`);
+    el?.scrollIntoView({ block:'center' });
+  }, [searchIdx, searchMatches, searchOpen]);
 
   // codificadores presentes no documento ativo (para o filtro "Ver:")
   // usa created_by quando disponível (sessão ativa); cai em author_name para codificações
@@ -1406,6 +1458,20 @@ function App(){
       catch(e){ try{localStorage.removeItem('qualilab:project');}catch(_){} }
     }
     setPhase('gate');
+  }
+
+  async function enterLocalOffline(display){
+    const st = LocalStore();
+    setMode('local');
+    setStore(st);
+    const name = display || (()=>{ try{return localStorage.getItem('qualilab:name')||'pesquisador';}catch(e){return 'pesquisador';} })();
+    try{ localStorage.setItem('qualilab:name', name); }catch(e){}
+    await st.init(name);
+    setUser(st.currentUser());
+    const p = await st.createProject();
+    openProject(p);
+    setErr(null);
+    setPhase('work');
   }
 
   /* boot */
@@ -1629,7 +1695,7 @@ function App(){
   function closeCtxMenu(){ setCtxMenu(null); setCtxCreating(false); setCtxNewName(''); setCtxNewParent(''); }
   async function ctxCreateAndApply(){
     const name = ctxNewName.trim();
-    if(!name || !ctxMenu) return;
+    if(!name || !ctxMenu?.sel) return;
     const parentObj = ctxNewParent ? codeById[ctxNewParent] : null;
     const c = await addCode(parentObj, name);
     await applyCode(c.id, ctxMenu.sel);
@@ -1639,6 +1705,8 @@ function App(){
     const s = selection || sel;
     if(!s) return;
     const c = await store.addCoding(project.id,{ document_id:activeId, code_id:codeId, span_start:s.start, span_end:s.end, quote:s.quote, layer: projectMode==='individual' ? 'final' : 'individual' });
+    undoStackRef.current.push({ type:'addCoding', id:c.id });
+    if(undoStackRef.current.length>50) undoStackRef.current.shift();
     setCodings(x=>[...x,c]); setSel(null); closeCtxMenu(); window.getSelection()?.removeAllRanges();
   }
   // consolidacao: cria uma codificacao na camada "final" (reconciliacao manual)
@@ -1647,7 +1715,57 @@ function App(){
     setCodings(x=>[...x,c]);
   }
   async function delCoding(id){ await store.deleteCoding(id); setCodings(x=>x.filter(c=>c.id!==id)); }
+  const undoLastCoding = useCallback(async ()=>{
+    const last = undoStackRef.current.pop();
+    if(!last || last.type!=='addCoding') return;
+    try{
+      await store.deleteCoding(last.id);
+      setCodings(x=>x.filter(c=>c.id!==last.id));
+      closeCtxMenu(); setSel(null); window.getSelection()?.removeAllRanges();
+    }catch(e){
+      undoStackRef.current.push(last);
+      setErr(String(e.message||e));
+    }
+  }, [store]);
+  async function removeCodingFromMenu(id){
+    try{
+      await store.deleteCoding(id);
+      undoStackRef.current = undoStackRef.current.filter(x=>x.id!==id);
+      setCodings(x=>x.filter(c=>c.id!==id));
+      closeCtxMenu(); setSel(null); window.getSelection()?.removeAllRanges();
+    }catch(e){ setErr(String(e.message||e)); }
+  }
+  useEffect(()=>{
+    const onKeyDown = (e)=>{
+      const isUndo = (e.ctrlKey||e.metaKey) && !e.shiftKey && (e.key||'').toLowerCase()==='z';
+      if(!isUndo || mainView!=='codificar' || undoStackRef.current.length===0) return;
+      const tag = (e.target?.tagName||'').toLowerCase();
+      if(tag==='input' || tag==='textarea' || tag==='select' || e.target?.isContentEditable) return;
+      e.preventDefault();
+      undoLastCoding();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return ()=>window.removeEventListener('keydown', onKeyDown);
+  }, [mainView, undoLastCoding]);
 
+  // monta o objeto db no mesmo formato de um .qualilab a partir do projeto ATIVO (qualquer
+  // modo) — extraido pra ser reaproveitado tanto por saveQualilab (baixa como arquivo) quanto
+  // por "enviar para a nuvem" (importa direto noutro projeto, sem passar por arquivo).
+  async function buildQualilabDb(){
+    const documents = docs.map(d=>({ id:d.id, name:d.name, content:d.content, created_at:d.created_at||new Date().toISOString() }));
+    const categories = cats.map((c,i)=>({ id:c.id, position:c.position??i, name:c.name, kind:c.kind, options:c.options||[], description:c.description||'', color:c.color||0 }));
+    const codesOut = codes.map((c,i)=>({ id:c.id, position:c.position??i, parent_id:c.parent_id||null, name:c.name, hue:c.hue||0, depth:c.depth||0 }));
+    const doc_values=[], codings=[];
+    for(const d of docs){
+      const [v,co]=await Promise.all([store.getDocValues(d.id), store.listCodings(project.id, d.id)]);
+      v.forEach(x=>doc_values.push({ id:x.id||uid(), document_id:d.id, category_id:x.category_id, value:x.value, set_by:x.set_by||'file-user', author_name:x.author_name||'anonimo', layer:x.layer||'individual' }));
+      co.forEach(x=>codings.push({ id:x.id||uid(), document_id:x.document_id, code_id:x.code_id, span_start:x.span_start, span_end:x.span_end, quote:x.quote, layer:x.layer||'individual', created_by:x.created_by??null, author_name:x.author_name||'anonimo', created_at:x.created_at||new Date().toISOString() }));
+    }
+    let memos=[];
+    try{ memos = (await store.listMemos?.(project.id))||[]; }catch(e){}
+    return { _meta:{ id:'file-project', name:project.name||'Projeto', code:'FILE', mode:projectMode||'individual', displayName:user?.name||'pesquisador' },
+      documents, categories, doc_values, codes:codesOut, codings, memos };
+  }
   // salva o projeto inteiro como um arquivo .qualilab (mesmo formato do FileStore),
   // que pode ser reaberto depois via "abrir .qualilab". Funciona em qualquer modo
   // (local/nuvem/arquivo) — junta tudo do store e baixa como JSON.
@@ -1655,19 +1773,7 @@ function App(){
     setExpOpen(false);
     setBusy('Gerando .qualilab...');
     try{
-      const documents = docs.map(d=>({ id:d.id, name:d.name, content:d.content, created_at:d.created_at||new Date().toISOString() }));
-      const categories = cats.map((c,i)=>({ id:c.id, position:c.position??i, name:c.name, kind:c.kind, options:c.options||[], description:c.description||'', color:c.color||0 }));
-      const codesOut = codes.map((c,i)=>({ id:c.id, position:c.position??i, parent_id:c.parent_id||null, name:c.name, hue:c.hue||0, depth:c.depth||0 }));
-      const doc_values=[], codings=[];
-      for(const d of docs){
-        const [v,co]=await Promise.all([store.getDocValues(d.id), store.listCodings(project.id, d.id)]);
-        v.forEach(x=>doc_values.push({ id:x.id||uid(), document_id:d.id, category_id:x.category_id, value:x.value, set_by:x.set_by||'file-user', author_name:x.author_name||'anonimo', layer:x.layer||'individual' }));
-        co.forEach(x=>codings.push({ id:x.id||uid(), document_id:x.document_id, code_id:x.code_id, span_start:x.span_start, span_end:x.span_end, quote:x.quote, layer:x.layer||'individual', created_by:x.created_by??null, author_name:x.author_name||'anonimo', created_at:x.created_at||new Date().toISOString() }));
-      }
-      let memos=[];
-      try{ memos = (await store.listMemos?.(project.id))||[]; }catch(e){}
-      const db = { _meta:{ id:'file-project', name:project.name||'Projeto', code:'FILE', mode:projectMode||'individual', displayName:user?.name||'pesquisador' },
-        documents, categories, doc_values, codes:codesOut, codings, memos };
+      const db = await buildQualilabDb();
       download((project.name||'projeto').replace(/[^\w\-]+/g,'_')+'.qualilab', JSON.stringify(db,null,2), 'application/json');
       setBusy(null);
     }catch(e){ setBusy(null); setErr('Falha ao salvar .qualilab: '+(e.message||e)); }
@@ -1837,12 +1943,19 @@ function App(){
   }
   function onContextMenu(e){
     const sx = computeSelection();
-    if(!sx) return; // sem seleção: deixa o menu normal do navegador
+    const marked = e.target?.closest?.('[data-c="1"]');
+    if(!sx && !marked) return; // sem seleção nem grifo: deixa o menu normal do navegador
     e.preventDefault();
-    setSel(sx);
     // limite direito = borda da coluna de leitura (não invade o painel da direita)
     const boundRight = e.currentTarget.getBoundingClientRect().right;
-    setCtxMenu({ x:e.clientX, y:e.clientY, sel:sx, boundRight });
+    if(sx){
+      setSel(sx);
+      setCtxMenu({ x:e.clientX, y:e.clientY, sel:sx, quote:sx.quote, boundRight });
+    } else {
+      const start = parseInt(marked.dataset.start,10);
+      const end = parseInt(marked.dataset.end||marked.dataset.start,10);
+      setCtxMenu({ x:e.clientX, y:e.clientY, sel:null, pos:start, runEnd:end, quote:activeDoc.content.slice(start,end), boundRight });
+    }
   }
 
   /* ----- maps ----- */
@@ -1855,6 +1968,17 @@ function App(){
     return out;
   }, [codes]);
   const codePath = useCallback((id)=>{ const out=[]; let c=codeById[id]; let guard=0; while(c&&guard++<12){ out.unshift(c.name); c=c.parent_id?codeById[c.parent_id]:null; } return out; }, [codeById]);
+  const canRemoveCoding = useCallback((c)=> store?.mode!=='cloud' || projectMode==='individual' || c.created_by===user?.id, [store, projectMode, user]);
+  function codingsForCtxMenu(menu){
+    if(!menu) return [];
+    const matches = visibleCodings.filter(c=>{
+      if(c.document_id!==activeId || !canRemoveCoding(c)) return false;
+      if(menu.sel) return c.span_start < menu.sel.end && c.span_end > menu.sel.start;
+      return c.span_start <= menu.pos && c.span_end > menu.pos;
+    });
+    const seen = new Set();
+    return matches.filter(c=>{ if(seen.has(c.id)) return false; seen.add(c.id); return true; });
+  }
   const codingCount = useMemo(()=>{ const m={}; codings.forEach(c=>{m[c.code_id]=(m[c.code_id]||0)+1;}); return m; }, [codings]);
   // frequencia GLOBAL (todo o projeto, nao so o documento aberto) — usada na aba Esquema,
   // que nao tem documento ativo; ajuda a ver o que esta sendo usado de fato ao reorganizar
@@ -1878,7 +2002,8 @@ function App(){
     err=${err}
     onSignIn=${async (email,pw)=>{ try{ const u=await store.signIn(email,pw); try{localStorage.setItem('qualilab:name',u.name);}catch(e){} setErr(null); await afterAuth(store, u.name); }catch(e){ setErr(String(e.message||e)); } }}
     onSignUp=${async (email,pw,disp)=>{ try{ const r=await store.signUp(email,pw,disp); try{localStorage.setItem('qualilab:name',disp);}catch(e){} setErr(null); if(r.confirmed){ await afterAuth(store, disp); } return r; }catch(e){ setErr(String(e.message||e)); return { error:String(e.message||e) }; } }}
-    onAnon=${async (disp)=>{ try{ const u=await store.signInAnon(disp); try{localStorage.setItem('qualilab:name',disp);}catch(e){} setErr(null); await afterAuth(store, disp); }catch(e){ setErr(String(e.message||e)); } }}
+    onAnon=${async (disp)=>{ try{ if(!online){ await enterLocalOffline(disp); return; } const u=await store.signInAnon(disp); try{localStorage.setItem('qualilab:name',disp);}catch(e){} setErr(null); await afterAuth(store, disp); }catch(e){ const msg=String(e.message||e); if(/anonymous sign-ins.*disabled/i.test(msg)){ await enterLocalOffline(disp); return; } setErr(msg); } }}
+    onLocal=${enterLocalOffline}
   />`;
 
   const openFileProject = async (isNew)=>{
@@ -2003,8 +2128,33 @@ function App(){
               ${coders.filter(c=>c.id!==user?.id).map(c=>html`<option value=${c.id}>${c.name}</option>`)}
               <option value="final">Final / gabarito</option>
             </select></label>`}
+          ${activeDoc && html`<button class="icon-btn" title="Buscar no documento" onClick=${()=>setSearchOpen(o=>!o)}>🔎</button>`}
+          ${activeDoc && html`<div class="reader-toolbar">
+            <button class="icon-btn" title="Diminuir fonte" onClick=${()=>setReaderPrefs(p=>({...p, scale:Math.max(0.8, +(p.scale-0.1).toFixed(2))}))}>A-</button>
+            <button class="icon-btn" title="Aumentar fonte" onClick=${()=>setReaderPrefs(p=>({...p, scale:Math.min(1.6, +(p.scale+0.1).toFixed(2))}))}>A+</button>
+            <button class="icon-btn" title=${readerPrefs.width==='narrow'?'Largura padrão':'Largura de leitura (coluna estreita)'}
+              onClick=${()=>setReaderPrefs(p=>({...p, width:p.width==='narrow'?'normal':'narrow'}))}>${readerPrefs.width==='narrow'?'⬌':'⬍'}</button>
+            <button class="icon-btn" title="Tema de leitura"
+              onClick=${()=>setReaderPrefs(p=>({...p, theme: p.theme==='light'?'sepia':p.theme==='sepia'?'dark':'light'}))}>
+              ${readerPrefs.theme==='light'?'☀':readerPrefs.theme==='sepia'?'📜':'🌙'}
+            </button>
+          </div>`}
           ${activeDoc && html`<button class="icon-btn" title="Remover documento" onClick=${()=>delDoc(activeDoc.id)}>🗑</button>`}
         </div>
+
+        ${searchOpen && activeDoc && html`<div class="search-bar">
+          <input class="txtin" autoFocus value=${searchQuery} placeholder="buscar no documento…"
+            onInput=${e=>setSearchQuery(e.target.value)}
+            onKeyDown=${e=>{
+              if(e.key==='Enter') setSearchIdx(i=>e.shiftKey ? i-1 : i+1);
+              else if(e.key==='Escape') setSearchOpen(false);
+            }} />
+          <span class="meta">${searchMatches.length ? `${(searchIdx%searchMatches.length+searchMatches.length)%searchMatches.length+1} de ${searchMatches.length}` : (searchQuery.trim() ? 'nenhuma ocorrência' : '')}</span>
+          <button class="btn sm ghost" disabled=${!searchMatches.length} onClick=${()=>setSearchIdx(i=>i-1)}>‹ anterior</button>
+          <button class="btn sm ghost" disabled=${!searchMatches.length} onClick=${()=>setSearchIdx(i=>i+1)}>próxima ›</button>
+          <div class="grow"></div>
+          <button class="icon-btn" title="Fechar busca" onClick=${()=>{ setSearchOpen(false); setSearchQuery(''); }}>×</button>
+        </div>`}
 
         ${sel && html`<div class="toolbar">
           <span style="font-weight:600;color:var(--teal-deep);font-size:12.5px">Trecho selecionado</span>
@@ -2014,17 +2164,25 @@ function App(){
           <button class="btn sm ghost" onClick=${()=>{setSel(null);window.getSelection()?.removeAllRanges();}}>cancelar</button>
         </div>`}
 
-        <div class="pane-body scroll">
+        <div class="pane-body scroll reader-pane theme-${readerPrefs.theme} width-${readerPrefs.width}" ref=${readerRef}>
           ${!activeDoc ? html`<div class="empty"><div class="t">Nenhum documento</div><div>Envie arquivos (.txt, .md, .docx, .pdf) ou cole um texto. O conteúdo é extraído e exibido aqui para codificação.</div></div>`
-          : html`<div class="reader" onMouseUp=${onMouseUp} onContextMenu=${onContextMenu}>
-              ${buildRuns(activeDoc.content, visibleCodings).map((run,i)=>{
-                if(run.codings.length===0) return html`<span key=${i} data-start=${run.start}>${run.text}</span>`;
+          : html`<div class="reader" style=${`font-size:${(17*readerPrefs.scale).toFixed(1)}px`} onMouseUp=${onMouseUp} onContextMenu=${onContextMenu}>
+              ${buildRuns(activeDoc.content, visibleCodings, searchMatches.flat()).map((run,i)=>{
+                const matchI = searchMatches.findIndex(([s,e])=>run.start>=s && run.end<=e);
+                const isCurrent = matchI>=0 && matchI===((searchIdx%searchMatches.length+searchMatches.length)%searchMatches.length);
+                const matchAttrs = matchI>=0 ? { 'data-match': matchI } : {};
+                if(run.codings.length===0) return html`<span key=${i} data-start=${run.start} data-end=${run.end} ...${matchAttrs}
+                   class=${isCurrent?'current':''}>${run.text}</span>`;
                 const top = run.codings[run.codings.length-1];
                 const code = codeById[top.code_id];
                 const col = code ? codeColor(code.hue, code.depth, code.hue_deg) : codeColor(0,0);
                 const title = run.codings.map(c=>codePath(c.code_id).join(' ▸ ')+' ('+c.author_name+')').join('  |  ');
-                return html`<span key=${i} data-start=${run.start} data-c="1" title=${title}
-                   style=${`background:${col.tint};border-bottom:2px solid ${col.solid}`}>${run.text}</span>`;
+                // border-bottom so sinaliza "tem mais de um codigo aqui" (em vez de decorar todo
+                // trecho codificado, mesmo quando ha so 1 — o fundo tintado ja basta nesse caso).
+                const border = run.codings.length>1 ? `border-bottom:2px solid ${col.solid}` : '';
+                return html`<span key=${i} data-start=${run.start} data-end=${run.end} data-c="1" title=${title} ...${matchAttrs}
+                   class=${isCurrent?'current':''}
+                   style=${`background:${col.tint};${border}`}>${run.text}</span>`;
               })}
             </div>`}
         </div>
@@ -2161,16 +2319,24 @@ function App(){
     const rightLimit = (ctxMenu.boundRight||window.innerWidth) - 8;
     const left = Math.max(8, Math.min(ctxMenu.x, rightLimit - menuW));
     const top = Math.max(8, Math.min(ctxMenu.y, window.innerHeight - maxMenuH - 8));
+    const removable = codingsForCtxMenu(ctxMenu);
+    const quote = ctxMenu.quote || ctxMenu.sel?.quote || '';
     return html`<div>
     <div onClick=${closeCtxMenu} onContextMenu=${e=>{e.preventDefault();closeCtxMenu();}} style="position:fixed;inset:0;z-index:60"></div>
     <div class="exmenu" style=${`position:fixed;left:${left}px;top:${top}px;z-index:61;max-height:${maxMenuH}px;overflow:auto;width:${menuW}px`}>
-      <div style="padding:7px 12px;font-size:11px;color:var(--ink-faint);border-bottom:1px solid var(--line-soft);font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">"${ctxMenu.sel.quote}"</div>
-      ${orderedCodes.length===0 && !ctxCreating
+      <div style="padding:7px 12px;font-size:11px;color:var(--ink-faint);border-bottom:1px solid var(--line-soft);font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">"${quote}"</div>
+      ${removable.length>0 && html`<div style="border-bottom:1px solid var(--line-soft)">
+        <div style="padding:7px 12px 4px;font-size:11px;color:var(--ink-faint);font-weight:600;text-transform:uppercase">Remover código</div>
+        ${removable.map(c=>{ const code=codeById[c.code_id]; const path=codePath(c.code_id).join(' ▸ '); const col=code ? codeColor(code.hue,code.depth,code.hue_deg) : codeColor(0,0); return html`<button key=${c.id} onClick=${()=>removeCodingFromMenu(c.id)} style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;width:100%;box-sizing:border-box" title=${`${path} · ${c.author_name||''}`}>
+          <span class="swatch" style=${`background:${col.solid};display:inline-block;margin-right:7px;vertical-align:middle;flex-shrink:0`}></span>${path||'(código removido)'}
+        </button>`; })}
+      </div>`}
+      ${ctxMenu.sel && (orderedCodes.length===0 && !ctxCreating
         ? html`<div style="padding:9px 12px;color:var(--ink-faint);font-size:12.5px">Nenhum código criado ainda.</div>`
         : orderedCodes.map(c=>{ const col=codeColor(c.hue,c.depth,c.hue_deg); return html`<button key=${c.id} onClick=${()=>applyCode(c.id, ctxMenu.sel)} style=${`padding-left:${12+c.depth*14}px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;width:100%;box-sizing:border-box`} title=${c.name}>
             <span class="swatch" style=${`background:${col.solid};display:inline-block;margin-right:7px;vertical-align:middle;flex-shrink:0`}></span>${c.name}
-          </button>`; })}
-      <div style="border-top:1px solid var(--line-soft)">
+          </button>`; }))}
+      ${ctxMenu.sel && html`<div style="border-top:1px solid var(--line-soft)">
         ${!ctxCreating
           ? html`<button onClick=${e=>{e.stopPropagation();setCtxCreating(true);}} style="color:var(--teal);font-weight:600">+ Criar novo código</button>`
           : html`<div style="padding:9px 12px;display:flex;flex-direction:column;gap:6px" onClick=${e=>e.stopPropagation()}>
@@ -2186,7 +2352,8 @@ function App(){
                 <button class="btn sm primary" disabled=${!ctxNewName.trim()} onClick=${ctxCreateAndApply}>Criar e aplicar</button>
               </div>
             </div>`}
-      </div>
+      </div>`}
+      ${!ctxMenu.sel && removable.length===0 && html`<div style="padding:9px 12px;color:var(--ink-faint);font-size:12.5px">Nenhum código removível neste trecho.</div>`}
     </div>
   </div>`; })()}
 
@@ -2202,12 +2369,16 @@ function App(){
     onSaveCloud=${(url,key)=>{ try{localStorage.setItem('qualilab:url',url);localStorage.setItem('qualilab:key',key);}catch(e){} location.reload(); }}
     onClearCloud=${()=>{ try{localStorage.removeItem('qualilab:url');localStorage.removeItem('qualilab:key');localStorage.removeItem('qualilab:project');}catch(e){} location.reload(); }}
     canFolderBackup=${!!store?.enableFolderBackup} backupStatus=${backupStatus}
-    onEnableFolderBackup=${enableFolderBackup} onDisableFolderBackup=${disableFolderBackup} />`}
+    onEnableFolderBackup=${enableFolderBackup} onDisableFolderBackup=${disableFolderBackup}
+    canSendToCloud=${wantCloud && store?.mode!=='cloud'} onOpenSendToCloud=${()=>{ setProjEdit(false); setSendCloudOpen(true); }} />`}
+
+  ${sendCloudOpen && html`<${SendToCloudModal} defaultName=${project?.name||'Projeto'}
+    onBuildDb=${buildQualilabDb} onClose=${()=>setSendCloudOpen(false)} />`}
   `;
 }
 
 /* ============ AUTH (login / cadastro por e-mail e senha) ============ */
-function Auth({ onSignIn, onSignUp, onAnon, err }){
+function Auth({ onSignIn, onSignUp, onAnon, onLocal, err }){
   const [tab,setTab]=useState('in');   // in = entrar | up = criar conta
   const [name,setName]=useState('');
   const [email,setEmail]=useState('');
@@ -2243,7 +2414,8 @@ function Auth({ onSignIn, onSignUp, onAnon, err }){
     <div style="text-align:center">
       <span class="meta">Sem conta? </span>
       <button class="btn sm ghost" style="font-size:12px" onClick=${()=>onAnon(name||'visitante')}>Continuar como visitante</button>
-      <p class="meta" style="margin:6px 0 0;font-size:11px">Projetos ficam vinculados a este dispositivo — sem sincronização entre aparelhos.</p>
+      ${onLocal && html`<button class="btn sm ghost" style="font-size:12px;margin-left:6px" onClick=${()=>onLocal(name||'visitante')}>Usar offline</button>`}
+      <p class="meta" style="margin:6px 0 0;font-size:11px">Visitante usa a nuvem deste navegador. Offline salva apenas neste dispositivo, sem sincronização entre aparelhos.</p>
     </div>
   </div></div>`;
 }
@@ -3440,7 +3612,8 @@ function AddPaste({ onAdd }){
 /* ============ HUB DO PROJETO (tipo, convite, membros, conexão, zona de perigo) ============ */
 function ProjectModal({ mode, user, project, projectMode, isAdmin, members, hasDocs,
                         onClose, onSetMode, onSetRole, onRemoveMember, onRename, onClear, onDelete,
-                        onSaveCloud, onClearCloud, canFolderBackup, backupStatus, onEnableFolderBackup, onDisableFolderBackup }){
+                        onSaveCloud, onClearCloud, canFolderBackup, backupStatus, onEnableFolderBackup, onDisableFolderBackup,
+                        canSendToCloud, onOpenSendToCloud }){
   const [sel,setSel]=useState(projectMode);
   const [pname,setPname]=useState(project?.name||'');
   const [copied,setCopied]=useState(false);
@@ -3545,6 +3718,13 @@ function ProjectModal({ mode, user, project, projectMode, isAdmin, members, hasD
           </div>`}
     </div>`}
 
+    <!-- ENVIAR PARA A NUVEM (so quando o projeto ativo NAO e na nuvem) -->
+    ${canSendToCloud && html`<div class="card" style="margin-bottom:12px">
+      <div class="field-label">Enviar para a nuvem</div>
+      <p class="hint" style="margin:0 0 8px">Cria um projeto novo na nuvem e copia tudo deste projeto pra ele (documentos, categorias, códigos, codificações e memos) — numa tacada só, sem precisar exportar e importar manualmente.</p>
+      <button class="btn sm" onClick=${onOpenSendToCloud}>Enviar para a nuvem…</button>
+    </div>`}
+
     <!-- CONEXÃO -->
     <details style="margin-bottom:6px">
       <summary style="cursor:pointer;font-size:12.5px;color:var(--ink-soft)">Conexão (Supabase)</summary>
@@ -3560,6 +3740,104 @@ function ProjectModal({ mode, user, project, projectMode, isAdmin, members, hasD
     </details>
 
     <div class="row" style="justify-content:flex-end;margin-top:10px"><button class="btn" onClick=${onClose}>Fechar</button></div>
+  </div></div>`;
+}
+
+/* ============ ENVIAR PARA A NUVEM ============
+   Cria um projeto novo na nuvem e importa pra ele o projeto local/arquivo ativo, numa tacada
+   so — sem passar por exportar .qualilab e importar manualmente. Auto-contido: usa seu PROPRIO
+   cliente Supabase (mesma URL/key globais, sempre disponiveis quando canSendToCloud e true)
+   e sua propria instancia de SupabaseStore, sem tocar no store/sessao principal do App — entrar
+   de fato no projeto criado continua sendo "trocar projeto" depois, fluxo ja existente. */
+function SendToCloudModal({ defaultName, onBuildDb, onClose }){
+  const [step, setStep] = useState('auth'); // auth | project | running | done
+  const [authTab, setAuthTab] = useState('in'); // in | up | anon
+  const [email, setEmail] = useState(''); const [pw, setPw] = useState(''); const [dispName, setDispName] = useState('');
+  const [pname, setPname] = useState(defaultName || 'Projeto');
+  const [pmode, setPmode] = useState('collective');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+  const [progress, setProgress] = useState(null); // {done,total}
+  const [result, setResult] = useState(null); // {code,name}
+  const cloudRef = useRef(null);
+
+  const doAuth = async ()=>{
+    setErr(null); setBusy(true);
+    try{
+      const createClient = await getCreateClient();
+      const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      const st = SupabaseStore(sb);
+      if(authTab==='in') await st.signIn(email, pw);
+      else if(authTab==='up'){
+        const r = await st.signUp(email, pw, dispName.trim()||'pesquisador');
+        if(r && r.confirmed===false){ setErr('Conta criada — confirme seu e-mail e depois entre com "Já tenho conta".'); setBusy(false); return; }
+      } else await st.signInAnon(dispName.trim()||'pesquisador');
+      cloudRef.current = st;
+      setStep('project');
+    }catch(e){ setErr(String(e.message||e)); }
+    setBusy(false);
+  };
+
+  const doSend = async ()=>{
+    setErr(null); setBusy(true); setStep('running'); setProgress({done:0,total:1});
+    try{
+      const st = cloudRef.current;
+      const proj = await st.createProject(pname.trim()||'Projeto', st.currentUser()?.name||'pesquisador', pmode);
+      const db = await onBuildDb();
+      await mergeQualilabDb(db, st, proj.id, pmode, (done,total)=>setProgress({done,total}));
+      setResult({ code: proj.code, name: proj.name });
+      setStep('done');
+    }catch(e){ setErr(String(e.message||e)); setStep('project'); }
+    setBusy(false);
+  };
+
+  return html`<div class="modal-bg"><div class="modal">
+    <h2>Enviar para a nuvem</h2>
+    ${err && html`<div class="banner err" style="margin:0 0 12px">${err}</div>`}
+
+    ${step==='auth' && html`<div>
+      <p class="hint" style="margin:0 0 10px">Primeiro, entre (ou crie uma conta/visitante) na nuvem — é ali que o projeto novo vai ser criado.</p>
+      <div class="seg" style="margin-bottom:10px">
+        <button class=${authTab==='in'?'on':''} onClick=${()=>setAuthTab('in')}>Já tenho conta</button>
+        <button class=${authTab==='up'?'on':''} onClick=${()=>setAuthTab('up')}>Criar conta</button>
+        <button class=${authTab==='anon'?'on':''} onClick=${()=>setAuthTab('anon')}>Visitante</button>
+      </div>
+      ${authTab!=='anon' && html`<div class="field"><div class="field-label">E-mail</div>
+        <input class="txtin" type="email" value=${email} onInput=${e=>setEmail(e.target.value)} placeholder="voce@exemplo.com" /></div>
+        <div class="field"><div class="field-label">Senha</div>
+        <input class="txtin" type="password" value=${pw} onInput=${e=>setPw(e.target.value)} placeholder="mínimo 6 caracteres" /></div>`}
+      ${authTab!=='in' && html`<div class="field" style="margin-bottom:8px"><div class="field-label">Nome de exibição</div>
+        <input class="txtin" value=${dispName} onInput=${e=>setDispName(e.target.value)} placeholder="como você aparece nas codificações" /></div>`}
+      <div class="row" style="justify-content:flex-end;gap:8px;margin-top:10px">
+        <button class="btn ghost" onClick=${onClose}>cancelar</button>
+        <button class="btn primary" disabled=${busy||(authTab!=='anon' && (!email||!pw))} onClick=${doAuth}>${busy?'…':'Continuar'}</button>
+      </div>
+    </div>`}
+
+    ${step==='project' && html`<div>
+      <p class="hint" style="margin:0 0 10px">Tudo do projeto ativo (documentos, categorias, códigos, codificações e memos) vai ser copiado pra esse projeto novo na nuvem.</p>
+      <div class="field"><div class="field-label">Nome do projeto novo</div>
+        <input class="txtin" value=${pname} onInput=${e=>setPname(e.target.value)} /></div>
+      <div class="field" style="margin-bottom:8px"><div class="field-label">Tipo do projeto</div>
+        <div class="row" style="gap:8px">
+          <button class="opt ${pmode==='collective'?'on':''}" style="flex:1;justify-content:center" onClick=${()=>setPmode('collective')}>Coletivo</button>
+          <button class="opt ${pmode==='individual'?'on':''}" style="flex:1;justify-content:center" onClick=${()=>setPmode('individual')}>Individual</button>
+        </div>
+      </div>
+      <div class="row" style="justify-content:flex-end;gap:8px;margin-top:10px">
+        <button class="btn ghost" onClick=${onClose}>cancelar</button>
+        <button class="btn primary" disabled=${busy||!pname.trim()} onClick=${doSend}>${busy?'…':'Enviar'}</button>
+      </div>
+    </div>`}
+
+    ${step==='running' && html`<div class="banner warn">Enviando… ${progress?.total>0?`${progress.done}/${progress.total}`:''}</div>`}
+
+    ${step==='done' && html`<div>
+      <div class="banner warn" style="margin:0 0 12px">Projeto criado na nuvem com sucesso.</div>
+      <p class="hint">Nome: <b>${result.name}</b><br/>Código de acesso: <span class="pill" style="font-family:var(--mono)">${result.code}</span></p>
+      <p class="hint">Pra abrir, use "trocar projeto" e entre com esse código (ou ele já aparece em "Meus projetos" deste navegador).</p>
+      <div class="row" style="justify-content:flex-end;margin-top:10px"><button class="btn primary" onClick=${onClose}>Fechar</button></div>
+    </div>`}
   </div></div>`;
 }
 
