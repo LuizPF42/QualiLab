@@ -203,7 +203,7 @@ A maior parte do código deste projeto foi escrita com assistência do [Claude C
 
 As principais inspirações foram:
 
-- **[Taguette](https://www.taguette.org/about.html)** — ferramenta pioneira em QDA aberto, com suporte a múltiplos formatos de importação de documentos e exportação do codebook em REFI-QDA (`.qdc`). Se você aprecia pesquisa aberta, visite o projeto e considere uma doação.
+- **[Taguette](https://www.taguette.org/about.html)** — ferramenta de QDA aberto, pioneira em simplicidade e funcionamento on-line, com suporte a múltiplos formatos de importação de documentos e exportação do codebook em REFI-QDA (`.qdc`).
 - **[Magnolia](https://www.caledavis.eu/magnolia.html)** — QDA com foco em poder e intuitividade, transcrição de áudio/vídeo e análise de surveys. Um projeto impressionante e totalmente gratuito que merece sua atenção.
 - **[QualCoder](https://github.com/ccbogel/qualcoder)** — QDA maduro e completo (codificação de texto, imagem, áudio e vídeo; relatórios e medidas de concordância), livre e de código aberto. Uma referência robusta para quem precisa de uma ferramenta de desktop full-featured.
 
