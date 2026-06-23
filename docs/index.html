@@ -2611,8 +2611,8 @@ function App(){
     ${mainView==='codificar' ? html`<div class="split">
       <!-- ESQUERDA: documento -->
       <section class="pane left">
-        <div class="pane-head">
-          <select class="opt" style="max-width:840px" value=${activeId||''} onChange=${e=>setActiveId(e.target.value)}>
+        <div class="pane-head" style="flex-wrap:nowrap">
+          <select class="opt" style="max-width:840px;min-width:0" value=${activeId||''} onChange=${e=>setActiveId(e.target.value)}>
             ${docs.length===0 && html`<option value="">sem documentos</option>`}
             ${docs.map(d=>html`<option value=${d.id}>${d.name}</option>`)}
           </select>
