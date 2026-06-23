@@ -1705,7 +1705,11 @@ function App(){
   // importadas de QDPX que chegam sem uuid (created_by === null)
   const coders = useMemo(()=>{
     const byId = {}; const byName = {};
-    codings.forEach(c=>{
+    // lista de codificadores do PROJETO INTEIRO (allCodings) quando carregado — assim o filtro
+    // "Ver:" aparece e oferece todos os pesquisadores mesmo abrindo um documento de um so autor;
+    // cai para as codings do doc ativo enquanto allCodings nao estiver carregado.
+    const src = allCodings.length ? allCodings : codings;
+    src.forEach(c=>{
       // coletivo: a camada final (gabarito) nao e um "codificador". Individual: tudo conta,
       // pois .qdpx importado entra em 'final' mas preserva os autores em author_name —
       // sem isso, um projeto multi-pesquisador importado offline ficaria sem o filtro "Ver:".
@@ -1719,7 +1723,7 @@ function App(){
       .filter(n=>!fromId.find(x=>x.name===n))
       .map(n=>({id:'__nm__'+n, name:n}));
     return [...fromId, ...fromName].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
-  }, [codings, projectMode]);
+  }, [allCodings, codings, projectMode]);
 
   // codificações visíveis no leitor conforme o filtro de camada/codificador
   const visibleCodings = useMemo(()=>{
@@ -1936,7 +1940,11 @@ function App(){
     }
     setAllValues(V); setAllCodings(C);
   }, [store, project, docs]);
-  useEffect(()=>{ if(phase==='work' && (mainView==='visualizar'||mainView==='graficos'||mainView==='esquema'||mainView==='relatorio')) loadAll(); }, [phase, mainView, loadAll, codings]);
+  // loadAll alimenta allCodings/allValues. Tambem rodamos na Codificacao em modo NAO-nuvem
+  // (local/arquivo: leitura barata do localStorage/arquivo) so para o filtro "Ver:" listar todos
+  // os codificadores do projeto, nao so os do doc aberto. Na nuvem nao rodamos aqui (loadAll por
+  // doc e custoso) — la o filtro ja aparece por ser cloud+collective.
+  useEffect(()=>{ if(phase==='work' && (mainView==='visualizar'||mainView==='graficos'||mainView==='esquema'||mainView==='relatorio'||(mainView==='codificar'&&mode!=='cloud'))) loadAll(); }, [phase, mainView, mode, loadAll, codings]);
 
   /* memos: nota unica por alvo (projeto/documento/codigo) */
   const loadMemos = useCallback(async ()=>{
