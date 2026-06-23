@@ -800,13 +800,13 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
         let content = null, geomPages = null;
         const rep = src.querySelector(':scope > Representation');
         content = rep ? await readPlainText(rep) : null;
-        // FALLBACK (so quando necessario): se houver selecoes RETANGULARES (nomeadas com o arquivo
-        // ou sem nome — sem texto que o .txt consiga localizar), reextrai o PDF com pdf.js para
-        // recuperar o texto desses retangulos pela geometria. So entao o conteudo passa a vir do
-        // pdf.js (necessario pro casamento ser intra-extracao). E o caso do ATLAS.ti.
-        const precisaGeometria = Array.from(src.querySelectorAll(':scope > PDFSelection')).some(sel=>{
-          const q = normQuery(sel.getAttribute('name')||''); return (!q || isFilenameName(q)) && !isImageRegionName(q);
-        });
+        // FALLBACK (so quando necessario): se o documento tem selecoes por COORDENADA
+        // (<PDFSelection>), e um .qdpx com codificacao geometrica de PDF (ATLAS.ti) — e ai o texto
+        // fornecido (.txt) NAO resolve: o "name" das selecoes vem truncado (~67 chars) e as
+        // retangulares nem tem texto. Reextrai com pdf.js (conteudo + geometria) pra recuperar o
+        // texto certo de cada selecao pela posicao. .qdpx "normais" usam PlainTextSelection (com
+        // offset) e nao tem nenhuma <PDFSelection> -> pdf.js nunca roda; usa-se o texto fornecido.
+        const precisaGeometria = src.querySelector(':scope > PDFSelection') != null;
         if(precisaGeometria){
           try{
             const p = src.getAttribute('path')||'';
