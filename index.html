@@ -378,6 +378,8 @@ function codePathFor(codes,id){ const by={}; codes.forEach(c=>by[c.id]=c); const
 function download(name,text,mime){ const b=new Blob([text],{type:mime}); const u=URL.createObjectURL(b); const a=document.createElement('a'); a.href=u; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),1000); }
 
 /* ============ QDPX (REFI-QDA Project Exchange) ============
+   Formato definido pela REFI-QDA Standard (Rotterdam Exchange Format Initiative,
+   qdasoftware.org) — credito do formato e da iniciativa REFI-QDA; aqui so o implementamos.
    Compatível com ATLAS.ti, MAXQDA, NVivo, Quirkos, Taguette.
    Mapeamento: documento -> TextSource; categoria do documento -> Variable + Case;
    codigo -> Code (hierarquico); trecho codificado -> PlainTextSelection + Coding. */
@@ -2419,7 +2421,7 @@ function App(){
               <button onClick=${()=>doExport('json')}>JSON (projeto)</button>
               <button onClick=${()=>doExport('trechos')}>CSV (trechos codificados)</button>
               <button onClick=${()=>doExport('documentos')}>CSV (atributos por documento)</button>
-              <button onClick=${()=>doExport('qdpx')}>QDPX (ATLAS.ti / MAXQDA / NVivo)</button>
+              <button title="Exporta o projeto no formato nativo do padrão REFI-QDA (.qdpx) — interoperável com ATLAS.ti, MAXQDA, NVivo, Quirkos, QualCoder" onClick=${()=>doExport('qdpx')}>QDPX (REFI-QDA nativo)</button>
               <button title="Exporta só o livro de códigos, sem documentos nem codificações" onClick=${()=>{ setExpOpen(false); exportQDC(codes, project); }}>QDC (codebook REFI-QDA)</button>
             </div>
           </div>`}
@@ -2430,7 +2432,7 @@ function App(){
             <div onClick=${()=>setImpOpen(false)} style="position:fixed;inset:0;z-index:40"></div>
             <div class="exmenu">
               <button title="Mescla um arquivo .qualilab (exportado por outra pessoa/dispositivo) neste projeto" onClick=${()=>{ setImpOpen(false); qualilabInputRef.current.click(); }}>.qualilab (projeto completo, nativo)</button>
-              <button title="Importa um projeto .qdpx (REFI-QDA)" onClick=${()=>{ setImpOpen(false); qdpxInputRef.current.click(); }}>QDPX (ATLAS.ti / MAXQDA / NVivo)</button>
+              <button title="Importa um projeto .qdpx — formato nativo do padrão REFI-QDA (ATLAS.ti, MAXQDA, NVivo, Quirkos, QualCoder, etc.)" onClick=${()=>{ setImpOpen(false); qdpxInputRef.current.click(); }}>QDPX (REFI-QDA nativo)</button>
               <button title="Importa o projeto completo do Taguette (documentos, tags e trechos codificados)" onClick=${()=>{ setImpOpen(false); taguetteInputRef.current.click(); }}>.sqlite3 (Taguette)</button>
               <button title="Importa só o livro de códigos (.qdc) — sem documentos nem codificações" onClick=${()=>{ setImpOpen(false); qdcInputRef.current.click(); }}>.qdc (codebook REFI-QDA)</button>
             </div>

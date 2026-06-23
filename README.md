@@ -209,6 +209,10 @@ As principais inspirações foram:
 
 Todos demonstram que é possível fazer ferramentas de qualidade sem cobrar das pessoas que mais precisam delas — e que vale a pena apoiá-las.
 
+### Formato de intercâmbio
+
+Os formatos **QDPX** (projeto completo) e **QDC** (livro de códigos) são definidos pela **[REFI-QDA Standard](https://www.qdasoftware.org/)**, o padrão aberto criado pela *Rotterdam Exchange Format Initiative (REFI)* para permitir a troca de projetos entre ferramentas de análise qualitativa. A importação e exportação desses formatos no QualiLab seguem essa especificação — todo o crédito pelo formato é da iniciativa REFI-QDA. Conheça e apoie o padrão em [qdasoftware.org](https://www.qdasoftware.org/).
+
 ---
 
 ## Restrições atuais
