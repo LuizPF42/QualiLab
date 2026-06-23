@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="images/logo.png" alt="QualiLab" width="180">
+  <a href="https://luizpf42.github.io/QualiLab"><img src="images/logo.png" alt="QualiLab" width="180"></a>
 </p>
 
 # QualiLab
