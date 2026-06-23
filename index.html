@@ -494,6 +494,157 @@ function makeProgressTicker(onProgress, total){
   };
 }
 
+/* ===== Localizacao de trechos por texto (import de .qdpx estrangeiro) =====
+   ATLAS.ti (e outros) gravam as selecoes de PDF como <PDFSelection> com coordenadas
+   geometricas (firstX/firstY/page) + o texto grifado no atributo "name" — NAO offsets de
+   caractere. Para virar um grifo do QualiLab (que precisa de span_start/span_end no texto
+   do documento), localizamos esse texto na representacao .txt do PDF. Dois detalhes que
+   faziam o match falhar mesmo com o trecho presente no .txt:
+   - Unicode: um .qdpx vindo de macOS traz os "name" em NFD (ex.: c + cedilha combinante),
+     enquanto o .txt esta em NFC (ç precomposto) — bytes diferentes, mesmo glifo. NFC nos dois.
+   - Layout: o .txt carrega quebras de linha/espacos do PDF que nao existem no texto limpo do
+     "name". Colapsamos espacos. Um mapa (indice normalizado -> offset original) recupera o
+     offset real no conteudo armazenado. Indexado por UNIDADE UTF-16 (igual ao indexOf). */
+const COMBINING_MARK = /\p{M}/u;
+function buildMatchIndex(content){
+  const map = []; const parts = []; let lastSpace = false;
+  const n = content.length; let i = 0;
+  while(i < n){
+    const c = content[i]; const code = c.charCodeAt(0);
+    if(code < 128){ // caminho rapido ASCII (a grande maioria dos caracteres)
+      if(code===32||code===9||code===10||code===13||code===12||code===11){
+        if(!lastSpace){ parts.push(' '); map.push(i); lastSpace = true; }
+      } else { parts.push(code>=65&&code<=90 ? c.toLowerCase() : c); map.push(i); lastSpace = false; }
+      i++; continue;
+    }
+    let j = i + 1;
+    while(j < n && COMBINING_MARK.test(content[j])) j++;   // agrupa base + marcas combinantes
+    const cluster = content.slice(i, j).normalize('NFC');
+    if(/^\s+$/.test(cluster)){
+      if(!lastSpace){ parts.push(' '); map.push(i); lastSpace = true; }
+    } else {
+      const lc = cluster.toLowerCase();
+      for(let k=0;k<lc.length;k++){ parts.push(lc[k]); map.push(i); } // por unidade UTF-16
+      lastSpace = false;
+    }
+    i = j;
+  }
+  map.push(content.length); // sentinela: offset logo apos o ultimo caractere
+  return { norm: parts.join(''), map };
+}
+function normQuery(s){ return (s||'').normalize('NFC').replace(/\s+/g,' ').trim().toLowerCase(); }
+function isImageRegionName(q){ return /^\d+\s*[x×]\s*\d+$/.test(q); } // ex.: "392 x 396" / "392 × 396"
+function isFilenameName(q){ return /\.(pdf|png|jpe?g|tiff?|gif|bmp|docx?|txt)$/i.test(q); } // selecao retangular nomeada com o arquivo
+function findQuoteSpan(index, name){
+  const q = normQuery(name);
+  if(q.length < 3) return null;
+  const at = index.norm.indexOf(q);
+  if(at >= 0) return { start: index.map[at], end: index.map[at + q.length], approx:false };
+  // fallback conservador: ancora no comeco e (quando da) no fim do trecho. Util quando o
+  // miolo tem caractere ilegivel (�) ou ordem trocada na extracao do PDF. Marcado approx.
+  const words = q.split(' ').filter(Boolean);
+  if(words.length >= 4){
+    const prefix = words.slice(0, Math.min(5, words.length)).join(' ');
+    const p = index.norm.indexOf(prefix);
+    if(p >= 0){
+      const suffix = words.slice(Math.max(0, words.length - 3)).join(' ');
+      const s = index.norm.indexOf(suffix, p + prefix.length - suffix.length);
+      let endN;
+      if(s >= 0 && (s + suffix.length - p) <= q.length * 2.5) endN = s + suffix.length;
+      else endN = Math.min(p + q.length, index.norm.length);
+      return { start: index.map[p], end: index.map[endN], approx:true };
+    }
+  }
+  return null;
+}
+
+/* ===== Recuperacao geometrica de selecoes retangulares (Tier 2) =====
+   ATLAS.ti codifica PDF por RETANGULO (pagina + coordenadas em pontos, origem embaixo) e NAO
+   guarda o texto desses trechos em lugar nenhum — nem no .qdpx, nem no .atlasti nativo (so o
+   atributo "name", que para regiao vira o nome do arquivo ou "L x A"). Para recupera-los, usamos
+   o pdf.js como FONTE UNICA do documento: extraimos numa so passada o texto reflowado (que vira o
+   conteudo exibido) E os itens de texto posicionados de cada pagina. Cada selecao (inline ou
+   retangular) e localizada reconstruindo o texto dentro do seu retangulo a partir desses MESMOS
+   itens e casando-o no conteudo via findQuoteSpan — casamento INTRA-extracao, sem depender de
+   bater a extracao do pdf.js contra a do ATLAS.ti (.txt), que erram diferente no texto defeituoso
+   e faziam o match falhar. Se o pdf.js nao conseguir extrair, cai para o .txt do ATLAS.ti (sem
+   geometria). pdf.js ja vem da CDN (getPdfjs), nao engorda o index.html. */
+async function extractPdfTextAndGeometry(bytes){
+  const pdfjs = await getPdfjs();
+  const doc = await pdfjs.getDocument({ data: new Uint8Array(bytes) }).promise;
+  const pageTexts = []; const pages = {}; // pages[pageNum 1-indexado] = { items, height }
+  try{
+    for(let p=1; p<=doc.numPages; p++){
+      const page = await doc.getPage(p);
+      const vp = page.getViewport({ scale:1 });
+      const tc = await page.getTextContent();
+      const raw = tc.items.filter(it=>'str' in it && it.str.trim().length>0).map(it=>({
+        str: it.str, x: it.transform[4], y: it.transform[5],
+        w: it.width||0, h: Math.abs(it.height) || Math.abs(it.transform[3]) || 10
+      }));
+      pages[p] = { items: raw, height: vp.height };
+      if(!raw.length){ pageTexts.push(''); continue; }
+      // reflow de paragrafos identico ao extractText (mesma logica testada): agrupa itens em
+      // linhas por Y, une linhas em paragrafos (gap > 1.6x altura local), trata hifenizacao.
+      const avgH = raw.reduce((s,it)=>s+it.h,0)/raw.length;
+      const spaceThreshold = avgH*0.25;
+      const sorted = raw.slice().sort((a,b)=> b.y-a.y || a.x-b.x);
+      const lines = []; let cur = [sorted[0]];
+      for(let i=1;i<sorted.length;i++){ if(Math.abs(sorted[i].y-cur[0].y)<avgH*0.4) cur.push(sorted[i]); else { lines.push(cur); cur=[sorted[i]]; } }
+      lines.push(cur);
+      lines.forEach(l=>l.sort((a,b)=>a.x-b.x));
+      const lH = i => Math.max(...lines[i].map(it=>it.h));
+      const lineToText = (line)=>{ let t=line[0].str; for(let i=1;i<line.length;i++){ const gap=line[i].x-(line[i-1].x+line[i-1].w); if(gap>spaceThreshold && !t.endsWith(' ') && !line[i].str.startsWith(' ')) t+=' '; t+=line[i].str; } return t.trim(); };
+      const paras = []; let para = lineToText(lines[0]);
+      for(let k=1;k<lines.length;k++){ const gapY=lines[k-1][0].y-lines[k][0].y; const localH=Math.max(lH(k-1),lH(k)); const t=lineToText(lines[k]); if(gapY>localH*1.6){ paras.push(para.trim()); para=t; } else { para = para.endsWith('-') ? para.slice(0,-1)+t : para+' '+t; } }
+      paras.push(para.trim());
+      pageTexts.push(paras.join('\n\n'));
+    }
+  } finally { try{ doc.destroy(); }catch(e){} }
+  return { content: pageTexts.join('\n\n'), pages };
+}
+// reconstroi o texto contido num retangulo a partir dos itens posicionados de uma pagina
+function textInRect(items, xL, xR, yB, yT){
+  const tol = 2;
+  const sel = items.filter(it=>{
+    const cx = it.x + it.w/2;                       // centro horizontal do item
+    return cx >= xL - tol && cx <= xR + tol && (it.y + it.h) >= yB - tol && it.y <= yT + tol;
+  });
+  if(!sel.length) return '';
+  sel.sort((a,b)=> (b.y - a.y) || (a.x - b.x));     // ordem de leitura: cima->baixo (y desc), esq->dir
+  const lines = []; let cur = []; let lastY = null;
+  for(const it of sel){
+    if(lastY===null || Math.abs(it.y - lastY) <= it.h*0.6) cur.push(it);  // mesma linha
+    else { lines.push(cur); cur = [it]; }
+    lastY = it.y;
+  }
+  if(cur.length) lines.push(cur);
+  return lines.map(line=>{
+    line.sort((a,b)=>a.x-b.x);
+    let t = ''; let prevEnd = null;
+    for(const it of line){
+      const cw = it.str.length ? it.w/it.str.length : 0;          // largura media de caractere
+      if(prevEnd!==null && it.x - prevEnd > cw*0.4) t += ' ';     // insere espaco em lacunas horizontais
+      t += it.str; prevEnd = it.x + it.w;
+    }
+    return t;
+  }).join(' ').replace(/\s+/g,' ').trim();
+}
+// le o retangulo de uma <PDFSelection> (.qdpx) e devolve o texto reconstruido a partir dos itens
+// ja extraidos (geomPages). Tenta as duas convencoes de origem do eixo Y por seguranca.
+function reconstructRectText(geomPages, sel){
+  const pageAttr = parseInt(sel.getAttribute('page'),10); // .qdpx: pagina 0-indexada
+  const fx=parseFloat(sel.getAttribute('firstX')), fy=parseFloat(sel.getAttribute('firstY'));
+  const sx=parseFloat(sel.getAttribute('secondX')), sy=parseFloat(sel.getAttribute('secondY'));
+  if(!Number.isFinite(pageAttr) || ![fx,fy,sx,sy].every(Number.isFinite)) return '';
+  const pg = geomPages[pageAttr + 1];                   // pdf.js: pagina 1-indexada
+  if(!pg) return '';
+  const xL=Math.min(fx,sx), xR=Math.max(fx,sx), yB=Math.min(fy,sy), yT=Math.max(fy,sy);
+  let txt = textInRect(pg.items, xL, xR, yB, yT);                          // origem embaixo (PDF/ATLAS.ti)
+  if(!txt) txt = textInRect(pg.items, xL, xR, pg.height-yT, pg.height-yB); // fallback: origem no topo
+  return txt;
+}
+
 async function importQDPX(file, store, projectId, projectMode, onProgress){
   const codLayer = projectMode==='individual' ? 'final' : 'individual';
   const JSZip = await getJSZip();
@@ -504,7 +655,9 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
   const xml = new DOMParser().parseFromString(xmlText, 'application/xml');
   if(xml.querySelector('parsererror')) throw new Error('XML do project.qde inválido');
 
-  const skipped = { picture:0, audio:0, video:0, pdfSemTexto:0, fonteExterna:0 };
+  const skipped = { picture:0, audio:0, video:0, pdfSemTexto:0, fonteExterna:0, codingsRegiao:0, codingsNaoLocalizados:0 };
+  let approxCount = 0; // trechos localizados de forma aproximada (fallback do findQuoteSpan)
+  let geomCount = 0;   // trechos recuperados por geometria do PDF (selecoes retangulares)
 
   // usuarios: guid -> nome
   const userName = {};
@@ -564,44 +717,108 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
     if(path.startsWith('relative://') || path.startsWith('absolute://')){ skipped.fonteExterna++; }
     return null;
   }
-  function importSelections(srcEl, docId, content){
-    srcEl.querySelectorAll(':scope > PlainTextSelection').forEach(sel=>{
-      const start = parseInt(sel.getAttribute('startPosition'),10);
-      const end = parseInt(sel.getAttribute('endPosition'),10);
-      const author = authorOf(sel.getAttribute('creatingUser'));
-      const codingEls = sel.querySelectorAll(':scope > Coding');
-      codingEls.forEach((cod,i)=>{
-        const ref = cod.querySelector('CodeRef');
-        if(!ref) return;
-        const codeId = stripGuid(ref.getAttribute('targetGUID'));
-        newCodings.push({
-          id: i===0 ? stripGuid(sel.getAttribute('guid')) : uid(),
-          document_id: docId, code_id: codeId, span_start:start, span_end:end,
-          quote: (content||'').slice(start,end), author_name: author
-        });
+  const countCodings = (sel)=> sel.querySelectorAll(':scope > Coding').length;
+  function pushCodingsFor(sel, docId, start, end, content){
+    let n = 0;
+    sel.querySelectorAll(':scope > Coding').forEach((cod,i)=>{
+      const ref = cod.querySelector('CodeRef');
+      if(!ref) return;
+      const codeId = stripGuid(ref.getAttribute('targetGUID'));
+      // autor: quem aplicou o codigo (Coding); se faltar, quem criou a selecao
+      const author = authorOf(cod.getAttribute('creatingUser') || sel.getAttribute('creatingUser'));
+      newCodings.push({
+        id: i===0 ? stripGuid(sel.getAttribute('guid')) : uid(),
+        document_id: docId, code_id: codeId, span_start:start, span_end:end,
+        quote: (content||'').slice(start,end), author_name: author
       });
+      n++;
     });
+    return n;
+  }
+  function importSelections(parentEl, docId, content, index, geomPages){
+    // PlainTextSelection: quando o conteudo veio do .txt (sem geomPages), os offsets de caractere
+    // sao a fonte mais confiavel. Quando o conteudo veio do pdf.js (geomPages presente), os offsets
+    // do ATLAS.ti nao se aplicam ao texto do pdf.js — entao localizamos pelo texto do "name".
+    parentEl.querySelectorAll(':scope > PlainTextSelection, :scope > Representation > PlainTextSelection').forEach(sel=>{
+      let start = parseInt(sel.getAttribute('startPosition'),10);
+      let end = parseInt(sel.getAttribute('endPosition'),10);
+      let approx = false;
+      const offsetsOk = !geomPages && Number.isFinite(start) && Number.isFinite(end) && end>start && end<=content.length;
+      if(!offsetsOk){
+        const sp = findQuoteSpan(index, sel.getAttribute('name'));
+        if(!sp){ skipped.codingsNaoLocalizados += countCodings(sel); return; }
+        start = sp.start; end = sp.end; approx = sp.approx;
+      }
+      const n = pushCodingsFor(sel, docId, start, end, content);
+      if(approx) approxCount += n;
+    });
+    // PDFSelection: 1) se ha geometria (conteudo do pdf.js), reconstroi o texto do retangulo a
+    // partir dos MESMOS itens do conteudo e casa no proprio conteudo (intra-extracao, robusto);
+    // 2) senao (ou se falhar), tenta o texto do atributo "name" (cross-extracao, ultimo recurso).
+    for(const sel of parentEl.querySelectorAll(':scope > PDFSelection')){
+      const name = sel.getAttribute('name') || '';
+      const q = normQuery(name);
+      let sp = null;
+      if(geomPages){ const gt = reconstructRectText(geomPages, sel); if(gt){ sp = findQuoteSpan(index, gt); if(sp) sp.geom = true; } }
+      if(!sp && q && !isImageRegionName(q) && !isFilenameName(q)){
+        sp = findQuoteSpan(index, name);
+      }
+      if(!sp){
+        if(isImageRegionName(q)) skipped.codingsRegiao += countCodings(sel);
+        else skipped.codingsNaoLocalizados += countCodings(sel);
+        continue;
+      }
+      const n = pushCodingsFor(sel, docId, sp.start, sp.end, content);
+      if(sp.geom) geomCount += n; else if(sp.approx) approxCount += n;
+    }
   }
 
   const sourcesEl = xml.querySelector('Sources');
   if(sourcesEl){
-    for(const src of Array.from(sourcesEl.children)){
+    // fase de leitura das fontes: pode demorar (extracao geometrica de PDFs). Reporta
+    // progresso por documento pra nao parecer travado; a fase de persistencia (abaixo) tem
+    // o proprio contador. onProgress recebe uma label opcional pra distinguir as fases.
+    const srcChildren = Array.from(sourcesEl.children);
+    for(let si=0; si<srcChildren.length; si++){
+      const src = srcChildren[si];
+      onProgress?.(si, srcChildren.length, 'lendo documentos');
       if(src.tagName==='TextSource'){
         const id = stripGuid(src.getAttribute('guid'));
         const name = src.getAttribute('name') || 'documento importado';
         const content = await readPlainText(src);
         if(content==null) continue;
         newDocs.push({ id, name, content });
-        importSelections(src, id, content);
+        importSelections(src, id, content, buildMatchIndex(content), null);
       } else if(src.tagName==='PDFSource'){
+        const id = stripGuid(src.getAttribute('guid'));
+        const baseName = src.getAttribute('name') || 'pdf importado';
+        // PRINCIPAL: a representacao de texto fornecida no .qdpx (.txt). As <PDFSelection> (filhas
+        // DIRETAS do <PDFSource>) com texto no "name" sao localizadas nela; PlainTextSelection usa
+        // offset. Esse e o caminho de sempre — para .qdpx "normais", o pdf.js nunca roda.
+        let content = null, geomPages = null;
         const rep = src.querySelector(':scope > Representation');
-        if(rep){
-          const id = stripGuid(src.getAttribute('guid'));
-          const name = (src.getAttribute('name')||'pdf importado') + ' (texto extraído)';
-          const content = await readPlainText(rep);
-          if(content!=null){ newDocs.push({ id, name, content }); importSelections(rep, id, content); }
-          else skipped.pdfSemTexto++;
-        } else skipped.pdfSemTexto++;
+        content = rep ? await readPlainText(rep) : null;
+        // FALLBACK (so quando necessario): se houver selecoes RETANGULARES (nomeadas com o arquivo
+        // ou sem nome — sem texto que o .txt consiga localizar), reextrai o PDF com pdf.js para
+        // recuperar o texto desses retangulos pela geometria. So entao o conteudo passa a vir do
+        // pdf.js (necessario pro casamento ser intra-extracao). E o caso do ATLAS.ti.
+        const precisaGeometria = Array.from(src.querySelectorAll(':scope > PDFSelection')).some(sel=>{
+          const q = normQuery(sel.getAttribute('name')||''); return (!q || isFilenameName(q)) && !isImageRegionName(q);
+        });
+        if(precisaGeometria){
+          try{
+            const p = src.getAttribute('path')||'';
+            if(p.startsWith('internal://')){
+              const fn = p.replace('internal://','');
+              const entry = Object.keys(zip.files).find(k=>k.toLowerCase().endsWith('/'+fn.toLowerCase()) || k.toLowerCase().endsWith(fn.toLowerCase()));
+              if(entry){ const r = await extractPdfTextAndGeometry(await zip.files[entry].async('arraybuffer')); if(r.content && r.content.trim()){ content = r.content; geomPages = r.pages; } }
+            }
+          }catch(e){ /* mantem a representacao .txt (geomPages fica null) */ }
+        }
+        if(content==null){ skipped.pdfSemTexto++; continue; }
+        // sufixo "(texto extraído)" so quando ficamos na representacao .txt do ATLAS.ti
+        newDocs.push({ id, name: baseName + (geomPages ? '' : ' (texto extraído)'), content });
+        importSelections(src, id, content, buildMatchIndex(content), geomPages);
       } else if(src.tagName==='PictureSource'){ skipped.picture++; }
       else if(src.tagName==='AudioSource'){ skipped.audio++; }
       else if(src.tagName==='VideoSource'){ skipped.video++; }
@@ -680,7 +897,8 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
 
   return {
     documentos:newDocs.length, categorias:newCats.length, codigos:newCodes.length,
-    trechos:newCodings.length, casos: xml.querySelectorAll('Cases > Case').length,
+    trechos:newCodings.length, trechosAproximados: approxCount, trechosGeometricos: geomCount,
+    casos: xml.querySelectorAll('Cases > Case').length,
     descartados: skipped, categoriasFechadasDetectadas: catsFechadasDetectadas
   };
 }
@@ -1485,7 +1703,11 @@ function App(){
   // importadas de QDPX que chegam sem uuid (created_by === null)
   const coders = useMemo(()=>{
     const byId = {}; const byName = {};
-    codings.filter(c=>c.layer!=='final').forEach(c=>{
+    codings.forEach(c=>{
+      // coletivo: a camada final (gabarito) nao e um "codificador". Individual: tudo conta,
+      // pois .qdpx importado entra em 'final' mas preserva os autores em author_name —
+      // sem isso, um projeto multi-pesquisador importado offline ficaria sem o filtro "Ver:".
+      if(projectMode!=='individual' && c.layer==='final') return;
       if(c.created_by) byId[c.created_by] = c.author_name||'anônimo';
       else if(c.author_name) byName[c.author_name] = true;
     });
@@ -1494,8 +1716,8 @@ function App(){
     const fromName = Object.keys(byName)
       .filter(n=>!fromId.find(x=>x.name===n))
       .map(n=>({id:'__nm__'+n, name:n}));
-    return [...fromId, ...fromName];
-  }, [codings]);
+    return [...fromId, ...fromName].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
+  }, [codings, projectMode]);
 
   // codificações visíveis no leitor conforme o filtro de camada/codificador
   const visibleCodings = useMemo(()=>{
@@ -1503,7 +1725,13 @@ function App(){
     // Mostra TODAS as codificacoes (qualquer camada) — senao codigos importados de .qdpx
     // (que entram na camada 'final', mas podem estar em 'individual' por historico de modo)
     // ficariam invisiveis no leitor. buildRuns dedup por posicao, entao nao ha risco real.
-    if(projectMode==='individual') return codings;
+    if(projectMode==='individual'){
+      // tudo na camada final, mas .qdpx importado preserva varios autores em author_name:
+      // permite filtrar por codificador mesmo offline (o seletor "Ver:" aparece quando ha >1).
+      if(typeof viewCoder==='string' && viewCoder.startsWith('__nm__')) return codings.filter(c=>c.author_name===viewCoder.slice(6));
+      if(viewCoder && viewCoder!=='all' && viewCoder!=='mine' && viewCoder!=='final') return codings.filter(c=>c.created_by===viewCoder);
+      return codings;
+    }
     if(viewCoder==='final') return codings.filter(c=>c.layer==='final');
     const indiv = codings.filter(c=>c.layer!=='final');
     if(viewCoder==='mine') return indiv.filter(c=>c.created_by===user?.id);
@@ -1939,7 +2167,7 @@ function App(){
     setBusy('Importando .qdpx...');
     setProgress({done:0,total:0});
     try{
-      const r = await importQDPX(file, store, project.id, projectMode, (done,total)=>setProgress({done,total}));
+      const r = await importQDPX(file, store, project.id, projectMode, (done,total,label)=>setProgress({done,total,label}));
       setProgress(null);
       const freshDocs = await store.listDocuments(project.id);
       // carrega o projeto completo e define explicitamente o primeiro documento
@@ -1959,13 +2187,19 @@ function App(){
       if(desc.video) skippedBits.push(`${desc.video} vídeo(s)`);
       if(desc.pdfSemTexto) skippedBits.push(`${desc.pdfSemTexto} PDF(s) sem representação em texto`);
       if(desc.fonteExterna) skippedBits.push(`${desc.fonteExterna} fonte(s) externa(s)`);
+      if(desc.codingsRegiao) skippedBits.push(`${desc.codingsRegiao} codificação(ões) em regiões/imagens do PDF (sem texto selecionável)`);
+      if(desc.codingsNaoLocalizados) skippedBits.push(`${desc.codingsNaoLocalizados} codificação(ões) cujo trecho não foi localizado no texto`);
       const skippedMsg = skippedBits.length ? ` Não importado(s): ${skippedBits.join(', ')}.` : '';
+      const detalhes = [];
+      if(r.trechosGeometricos>0) detalhes.push(`${r.trechosGeometricos} recuperado(s) por geometria do PDF`);
+      if(r.trechosAproximados>0) detalhes.push(`${r.trechosAproximados} localizado(s) de forma aproximada`);
+      const aproxMsg = detalhes.length ? ` (${detalhes.join(', ')})` : '';
       const fechadasMsg = r.categoriasFechadasDetectadas>0
         ? ` ${r.categoriasFechadasDetectadas} categoria(s) detectada(s) como fechada(s) automaticamente (poucos valores distintos) — revise em "Gerenciar esquema de categorias".`
         : '';
       setErr(null);
       setBusy(null);
-      setImportMsg(`Importado: ${r.documentos} documento(s), ${r.categorias} categoria(s), ${r.codigos} código(s), ${r.trechos} trecho(s) codificado(s).${skippedMsg}${fechadasMsg}`);
+      setImportMsg(`Importado: ${r.documentos} documento(s), ${r.categorias} categoria(s), ${r.codigos} código(s), ${r.trechos} trecho(s) codificado(s)${aproxMsg}.${skippedMsg}${fechadasMsg}`);
     }catch(e){ setBusy(null); setProgress(null); setErr('Falha ao importar: '+(e.message||e)); }
   }
 
@@ -2219,7 +2453,7 @@ function App(){
     ${err && html`<div class="banner err">${err} <button class="btn sm ghost" onClick=${()=>setErr(null)}>fechar</button></div>`}
     ${importMsg && html`<div class="banner warn">${importMsg} <button class="btn sm ghost" onClick=${()=>setImportMsg(null)}>fechar</button></div>`}
     ${busy && html`<div class="banner warn">
-      ${busy}${progress?.total>0 ? ` ${progress.done}/${progress.total}` : ''}
+      ${busy}${progress?.total>0 ? `${progress.label?' — '+progress.label:''} ${progress.done}/${progress.total}` : ''}
       ${progress?.total>0 && html`<div class="progress-track"><div class="progress-fill" style=${`width:${Math.min(100,Math.round(100*progress.done/progress.total))}%`}></div></div>`}
     </div>`}
 
@@ -2236,12 +2470,17 @@ function App(){
           </label>
           <${AddPaste} onAdd=${addPasted} />
           <div class="grow"></div>
-          ${mode==='cloud' && projectMode==='collective' && html`<label class="meta" style="display:flex;align-items:center;gap:5px">Ver:
+          ${((mode==='cloud' && projectMode==='collective') || coders.length>1) && html`<label class="meta" style="display:flex;align-items:center;gap:5px">Ver:
             <select class="opt" value=${viewCoder} onChange=${e=>setViewCoder(e.target.value)}>
-              <option value="all">Individuais (todos)</option>
-              <option value="mine">Minhas</option>
-              ${coders.filter(c=>c.id!==user?.id).map(c=>html`<option value=${c.id}>${c.name}</option>`)}
-              <option value="final">Final / gabarito</option>
+              ${projectMode==='collective' ? html`
+                <option value="all">Individuais (todos)</option>
+                <option value="mine">Minhas</option>
+                ${coders.filter(c=>c.id!==user?.id).map(c=>html`<option value=${c.id}>${c.name}</option>`)}
+                <option value="final">Final / gabarito</option>
+              ` : html`
+                <option value="all">Todos os codificadores</option>
+                ${coders.map(c=>html`<option value=${c.id}>${c.name}</option>`)}
+              `}
             </select></label>`}
           ${activeDoc && html`<button class="icon-btn" title="Buscar no documento" onClick=${()=>setSearchOpen(o=>!o)}>🔎</button>`}
           ${activeDoc && html`<div class="reader-toolbar">
