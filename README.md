@@ -255,4 +255,4 @@ Copyright (c) 2026 Luiz Pimenta Filho
   - [ ] Distribuição por famílias analíticas
   - [ ] Análises textuais automatizadas (similaridade, coocorrência, redes textuais)
 - [x] Pipeline de publicação de relatórios próprios por pesquisador / pesquisa (aba **Relatório**: montador de seções, copiar texto, imprimir/PDF)
-- [ ] Integração de IA (?) — em avaliação; ferramentas de QDA costumam dividir opiniões sobre IA, o uso teria que ser opt-in e transparente
+- [x] Integração de IA (?) — em avaliação; ferramentas de QDA costumam dividir opiniões sobre IA, o uso teria que ser opt-in e transparente. Iniciado (working no experimental, não portado por APIs)
