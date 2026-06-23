@@ -259,6 +259,7 @@ Teste com `examples/QualiLab_demo_artificial_stress_test.qdpx` (16 docs, 90 cód
 - Sem "esqueci minha senha" (reset por e-mail).
 - Categorias multi-valor no filtro da Visualização casam por valor individual; refinamentos por parte (ex.: filtrar por ano de uma data) ainda não existem.
 - `LocalStore` ainda usa `localStorage` (limite 5-10MB). Candidato a migrar pra IndexedDB — funciona em Safari igual, sem o teto baixo. O banner de `onSaveError` cobre o aviso reativo (avisa quando o save falha); falta um indicador **proativo** de uso (ex.: "X% do limite") pra avisar antes de chegar lá.
+- **Comentários por trecho não são importados** (`<Description>` de `PDFSelection`/`PlainTextSelection` no `.qdpx`, ex.: a anotação "Preâmbulo" num grifo do ATLAS.ti). O modelo de memo do QualiLab só ancora em projeto/documento/código, não num trecho/coding. Para trazê-los faltaria ou (a) um memo ancorado em `coding` (novo `scope`/coluna), ou (b) anexá-los ao memo do documento com a citação do trecho como referência. Hoje só os comentários de documento/código e as notas livres do projeto entram (ver seção do import ATLAS.ti).
 
 ---
 
