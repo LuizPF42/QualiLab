@@ -668,11 +668,16 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
 
   // codigos hierarquicos (recursivo); hue por familia de topo, na ordem em que aparecem
   const newCodes = [];
+  const newMemos = []; // comentarios -> memos: { scope:'document'|'code', oldId, content, author }
   let topHue = 0;
   function walkCode(el, parentId, depth, hue){
     const id = stripGuid(el.getAttribute('guid'));
     const name = el.getAttribute('name') || 'codigo';
     newCodes.push({ id, parent_id: parentId, name, hue, depth });
+    // comentario do codigo (ATLAS.ti etc.) -> memo de codigo. :scope evita pegar a Description de um <Code> filho.
+    const cdesc = el.querySelector(':scope > Description');
+    const ct = cdesc ? (cdesc.textContent||'').trim() : '';
+    if(ct) newMemos.push({ scope:'code', oldId:id, content:ct });
     Array.from(el.children).filter(c=>c.tagName==='Code').forEach(c=>walkCode(c, id, depth+1, hue));
   }
   const codeBook = xml.querySelector('CodeBook > Codes');
@@ -775,6 +780,13 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
     }
   }
 
+  // comentario do documento (<Description> do Source) -> memo de documento
+  const addDocMemo = (src, oldId)=>{
+    const d = src.querySelector(':scope > Description');
+    const t = d ? (d.textContent||'').trim() : '';
+    if(t) newMemos.push({ scope:'document', oldId, content:t, author:authorOf(src.getAttribute('modifyingUser')||src.getAttribute('creatingUser')) });
+  };
+
   const sourcesEl = xml.querySelector('Sources');
   if(sourcesEl){
     // fase de leitura das fontes: pode demorar (extracao geometrica de PDFs). Reporta
@@ -790,6 +802,7 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
         const content = await readPlainText(src);
         if(content==null) continue;
         newDocs.push({ id, name, content });
+        addDocMemo(src, id);
         importSelections(src, id, content, buildMatchIndex(content), null);
       } else if(src.tagName==='PDFSource'){
         const id = stripGuid(src.getAttribute('guid'));
@@ -820,6 +833,7 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
         if(content==null){ skipped.pdfSemTexto++; continue; }
         // sufixo "(texto extraído)" so quando ficamos na representacao .txt do ATLAS.ti
         newDocs.push({ id, name: baseName + (geomPages ? '' : ' (texto extraído)'), content });
+        addDocMemo(src, id);
         importSelections(src, id, content, buildMatchIndex(content), geomPages);
       } else if(src.tagName==='PictureSource'){ skipped.picture++; }
       else if(src.tagName==='AudioSource'){ skipped.audio++; }
@@ -893,6 +907,13 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
     // created_by: null => o agrupamento por codificador usa author_name (do QDPX), não o uuid de quem importou
     // layer: em projeto individual tudo vai para a camada final (sem reconciliacao); em coletivo, fica individual
     for(const c of newCodings){ if(docMap[c.document_id] && codeMap[c.code_id]) await store.addCoding(projectId, { created_by:null, layer:codLayer, document_id:docMap[c.document_id], code_id:codeMap[c.code_id], span_start:c.span_start, span_end:c.span_end, quote:c.quote, author_name:c.author_name }); await tick(); }
+    // comentarios do .qdpx (<Description> de documento/codigo) -> memos do QualiLab (um por alvo)
+    if(store.setMemo){
+      for(const m of newMemos){
+        const targetId = m.scope==='document' ? docMap[m.oldId] : codeMap[m.oldId];
+        if(targetId) await store.setMemo(projectId, m.scope, targetId, m.content, m.author);
+      }
+    }
   } finally {
     if(store.endBatch) await store.endBatch();
   }
@@ -900,6 +921,7 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
   return {
     documentos:newDocs.length, categorias:newCats.length, codigos:newCodes.length,
     trechos:newCodings.length, trechosAproximados: approxCount, trechosGeometricos: geomCount,
+    memos:newMemos.length,
     casos: xml.querySelectorAll('Cases > Case').length,
     descartados: skipped, categoriasFechadasDetectadas: catsFechadasDetectadas
   };
@@ -2184,6 +2206,7 @@ function App(){
       // (evita race condition: loadDoc usa activeId do closure, que pode ser antigo)
       const [cats2, codes2] = await Promise.all([store.listCategories(project.id), store.listCodes(project.id)]);
       setCats(cats2); setCodes(codes2); setDocs(freshDocs);
+      try{ if(store.listMemos) setMemos(await store.listMemos(project.id) || []); }catch(e){}
       const firstId = freshDocs[0]?.id || null;
       if(firstId){
         setActiveId(firstId);
@@ -2209,7 +2232,8 @@ function App(){
         : '';
       setErr(null);
       setBusy(null);
-      setImportMsg(`Importado: ${r.documentos} documento(s), ${r.categorias} categoria(s), ${r.codigos} código(s), ${r.trechos} trecho(s) codificado(s)${aproxMsg}.${skippedMsg}${fechadasMsg}`);
+      const memosMsg = r.memos>0 ? ` ${r.memos} memo(s) (comentários de documento/código).` : '';
+      setImportMsg(`Importado: ${r.documentos} documento(s), ${r.categorias} categoria(s), ${r.codigos} código(s), ${r.trechos} trecho(s) codificado(s)${aproxMsg}.${memosMsg}${skippedMsg}${fechadasMsg}`);
     }catch(e){ setBusy(null); setProgress(null); setErr('Falha ao importar: '+(e.message||e)); }
   }
 
@@ -2222,6 +2246,7 @@ function App(){
       const freshDocs = await store.listDocuments(project.id);
       const [cats2, codes2] = await Promise.all([store.listCategories(project.id), store.listCodes(project.id)]);
       setCats(cats2); setCodes(codes2); setDocs(freshDocs);
+      try{ if(store.listMemos) setMemos(await store.listMemos(project.id) || []); }catch(e){}
       const firstId = freshDocs[0]?.id || null;
       if(firstId){
         setActiveId(firstId);
