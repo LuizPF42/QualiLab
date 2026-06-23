@@ -841,6 +841,21 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
     }
   }
 
+  // notas livres do projeto (<Notes><Note>) -> um unico memo de PROJETO (o modelo de memo do
+  // QualiLab nao tem nota livre sem alvo). Cada Note tem name (titulo) + texto em plainTextPath.
+  let projectNote = '', projectNotesCount = 0;
+  const notesEl = xml.querySelector('Notes');
+  if(notesEl){
+    const parts = [];
+    for(const note of Array.from(notesEl.children)){
+      if(note.tagName!=='Note') continue;
+      const title = (note.getAttribute('name')||'Nota').trim();
+      const body = ((await readPlainText(note))||'').trim();
+      if(title || body){ parts.push((title ? '## '+title+'\n\n' : '') + body); projectNotesCount++; }
+    }
+    projectNote = parts.join('\n\n———\n\n').trim();
+  }
+
   // casos -> valores de categoria por documento
   const newValues = [];
   xml.querySelectorAll('Cases > Case').forEach(caseEl=>{
@@ -913,6 +928,12 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
         const targetId = m.scope==='document' ? docMap[m.oldId] : codeMap[m.oldId];
         if(targetId) await store.setMemo(projectId, m.scope, targetId, m.content, m.author);
       }
+      // notas livres -> memo de projeto. Anexa (nao sobrescreve) um memo de projeto ja existente.
+      if(projectNote){
+        let content = projectNote;
+        try{ const ex = (await store.listMemos(projectId)||[]).find(x=>x.scope==='project' && !x.target_id); if(ex && (ex.content||'').trim()) content = ex.content.trim()+'\n\n———\n\n'+projectNote; }catch(e){}
+        await store.setMemo(projectId, 'project', null, content);
+      }
     }
   } finally {
     if(store.endBatch) await store.endBatch();
@@ -921,7 +942,7 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
   return {
     documentos:newDocs.length, categorias:newCats.length, codigos:newCodes.length,
     trechos:newCodings.length, trechosAproximados: approxCount, trechosGeometricos: geomCount,
-    memos:newMemos.length,
+    memos:newMemos.length, notasProjeto: projectNotesCount,
     casos: xml.querySelectorAll('Cases > Case').length,
     descartados: skipped, categoriasFechadasDetectadas: catsFechadasDetectadas
   };
@@ -2233,7 +2254,8 @@ function App(){
       setErr(null);
       setBusy(null);
       const memosMsg = r.memos>0 ? ` ${r.memos} memo(s) (comentários de documento/código).` : '';
-      setImportMsg(`Importado: ${r.documentos} documento(s), ${r.categorias} categoria(s), ${r.codigos} código(s), ${r.trechos} trecho(s) codificado(s)${aproxMsg}.${memosMsg}${skippedMsg}${fechadasMsg}`);
+      const notasMsg = r.notasProjeto>0 ? ` ${r.notasProjeto} nota(s) livre(s) reunida(s) no memo do projeto.` : '';
+      setImportMsg(`Importado: ${r.documentos} documento(s), ${r.categorias} categoria(s), ${r.codigos} código(s), ${r.trechos} trecho(s) codificado(s)${aproxMsg}.${memosMsg}${notasMsg}${skippedMsg}${fechadasMsg}`);
     }catch(e){ setBusy(null); setProgress(null); setErr('Falha ao importar: '+(e.message||e)); }
   }
 
