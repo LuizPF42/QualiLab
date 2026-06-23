@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 32 32" role="img" aria-label="QualiLab">
+  <title>QualiLab</title>
+  <rect width="32" height="32" rx="7" fill="#00427A"/>
+  <!-- font-size 26. Centro otico: x=16.02 deixa a tinta horizontalmente simetrica (cx=16.0);
+       y=23.13 assenta o glifo ~0.5u abaixo do centro matematico (o bojo do Q le melhor um
+       pouco mais baixo, com a cauda equilibrando embaixo). Medido por pixel. -->
+  <text x="16.02" y="23.13" font-family="Georgia, 'Times New Roman', serif" font-size="26" font-weight="700" fill="#ffffff" text-anchor="middle">Q</text>
+</svg>

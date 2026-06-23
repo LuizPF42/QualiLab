@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="images/logo.png" alt="QualiLab" width="180">
+</p>
+
 # QualiLab
 
 **o seu laboratório de pesquisa qualitativa / your own lab for qualitative research**
