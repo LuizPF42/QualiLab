@@ -24,18 +24,23 @@
     /* paleta FGV: azul-marinho (primario) + azul-celeste (acento). nomes --teal* mantidos por compatibilidade */
     --teal:#00427A; --teal-deep:#002B5C; --teal-soft:#E2ECF5; --sky:#1B9DD9;
     --amber:#8A6D1F; --amber-soft:#F3ECD9; --danger:#B23A3A;
+    --serif:"Newsreader","Iowan Old Style",Palatino,Georgia,serif;
+    --sans:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:"JetBrains Mono","SF Mono",ui-monospace,"Roboto Mono",Menlo,monospace;
   }
+  /* modo escuro do app inteiro: sobrepoe as MESMAS variaveis do :root quando html[data-theme=dark]
+     (setado pelo state darkMode no App). A maior parte da UI vira escura de graca por usar var(--*).
+     As 3 regras abaixo cobrem o que nao depende so de variavel (banner de erro e o tema sepia do
+     leitor sob fundo escuro). As cores dos codigos (tint) viram escuras via codeColor(...,dark). */
   [data-theme="dark"]{
     --paper:#1C1C1E; --surface:#2C2C2E; --ink:#F0EFEB; --ink-soft:#A0A09A; --ink-faint:#6B6B6B;
     --line:#3A3A3C; --line-soft:#2E2E30;
     --teal:#4A9EDB; --teal-deep:#76BBEC; --teal-soft:#1A2E3F; --sky:#5BB8F5;
     --amber:#C8A84B; --amber-soft:#2E2510; --danger:#E06060;
   }
-  :root{
-    --serif:"Newsreader","Iowan Old Style",Palatino,Georgia,serif;
-    --sans:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    --mono:"JetBrains Mono","SF Mono",ui-monospace,"Roboto Mono",Menlo,monospace;
-  }
+  [data-theme="dark"] .banner.err{background:#3D1A1A;border-color:#7A3A3A;color:#F08080;}
+  [data-theme="dark"] .reader-pane.theme-sepia{background:#2A2218;}
+  [data-theme="dark"] .reader-pane.theme-sepia .reader{color:#D4C9A8;}
   @import url('https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
   *{box-sizing:border-box;}
   html,body{margin:0;height:100%;}
@@ -43,7 +48,7 @@
   #app{height:100%;}
   ::selection{background:rgba(0,66,122,.18);}
   button{font-family:var(--sans);cursor:pointer;}
-  input,select,textarea{font-family:var(--sans);background:var(--surface);color:var(--ink);}
+  input,select,textarea{font-family:var(--sans);}
   .scroll::-webkit-scrollbar{width:10px;height:10px;}
   .scroll::-webkit-scrollbar-thumb{background:var(--line);border-radius:8px;}
   :focus-visible{outline:2px solid var(--sky);outline-offset:2px;}
@@ -67,8 +72,10 @@
 
   .split{flex:1;display:flex;min-height:0;}
   .pane{min-width:0;display:flex;flex-direction:column;}
-  .pane.left{flex:1 1 0;min-width:200px;border-right:none;}
+  .pane.left{flex:1 1 58%;border-right:1px solid var(--line);}
   .pane.right{flex:none;min-width:180px;}
+  /* divisa arrastavel entre leitor e painel direito (tela Codificacao). So a Codificacao usa
+     .pane.right; as outras views usam .pane.left com flex:1 1 100% inline, intocadas por isto. */
   .pane-resize{width:5px;flex:none;background:var(--line);cursor:col-resize;transition:background .15s;}
   .pane-resize:hover,.pane-resize.dragging{background:var(--sky);}
   .pane-head{padding:10px 14px;border-bottom:1px solid var(--line-soft);display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--surface);}
@@ -135,9 +142,6 @@
   .banner{font-size:12.5px;padding:9px 12px;border-radius:9px;margin:0 14px 12px;}
   .banner.warn{background:var(--amber-soft);border:1px solid rgba(138,109,31,.3);color:var(--amber);}
   .banner.err{background:#F8E6E6;border:1px solid #D9A3A3;color:#8A2A2A;}
-  [data-theme="dark"] .banner.err{background:#3D1A1A;border-color:#7A3A3A;color:#F08080;}
-  [data-theme="dark"] .reader-pane.theme-sepia{background:#2A2218;}
-  [data-theme="dark"] .reader-pane.theme-sepia .reader{color:#D4C9A8;}
   .progress-track{height:6px;border-radius:4px;background:rgba(138,109,31,.18);margin-top:7px;overflow:hidden;}
   .progress-fill{height:100%;background:var(--amber);border-radius:4px;transition:width .15s linear;}
   .exmenu{position:absolute;right:0;top:112%;z-index:41;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.14);overflow:hidden;min-width:212px;}
@@ -189,15 +193,29 @@ async function getSqlJs(){
 }
 
 /* ============ CONFIG ============
-   Para o modo coletivo (nuvem), preencha as duas linhas abaixo com os dados do
-   seu projeto Supabase (Project Settings > API). A anon key e publica e fica
-   protegida pelas policies de RLS. Se deixar vazio, o app abre em modo local. */
+   FONTE UNICA: este index.html (QualiLab-ai-lab) gera as duas versoes. A versao
+   "estavel/publica" (repo QualiLab) e este mesmo arquivo com AI_ENABLED=false e
+   estas duas credenciais trocadas pelas do projeto Supabase publico — regerada
+   pelo script scripts/gen-estavel.sh (modelo FLAG). Cada versao aponta para o
+   SEU proprio projeto Supabase; as credenciais abaixo sao as do projeto deste
+   fork. Para o modo coletivo (nuvem), preencha com os dados do seu projeto
+   Supabase (Project Settings > API). A anon key e publica e fica protegida pelas
+   policies de RLS. Se deixar vazio, o app abre em modo local. */
 let SUPABASE_URL = "https://lpfwnzotmltztfxacahb.supabase.co";
 let SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwZnduem90bWx0enRmeGFjYWhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4NzI2OTYsImV4cCI6MjA5NzQ0ODY5Nn0.qiygh5Nyhf7I7LS5R-z5cEW_hjMGgMbPpiUviMM2ev4";
 try {
   SUPABASE_URL = SUPABASE_URL || localStorage.getItem('qualilab:url') || "";
   SUPABASE_ANON_KEY = SUPABASE_ANON_KEY || localStorage.getItem('qualilab:key') || "";
 } catch(e){}
+
+// AI_ENABLED — chave da unificacao dos forks. Este arquivo (ai-lab) e a FONTE UNICA: com
+// AI_ENABLED=true serve a versao com IA; gerar a versao "estavel" (sem IA) = este mesmo arquivo
+// com AI_ENABLED=false (esconde as telas "Codificar/Analisar com IA", o card de IA em "Minha
+// Conta" e os caminhos de IA). O codigo de IA segue presente porem dormente — se a versao
+// estavel precisar de ZERO codigo de IA (auditoria), remova o bloco entre os marcadores
+// "AI-BLOCK START/END" antes de publicar (strip simples, sem build). Censura (is_redaction) NAO
+// e gateada por aqui: e uma feature geral de codificacao, nao uma tela de IA.
+const AI_ENABLED = false;
 
 /* ============ CORES (matiz = familia, luminosidade = profundidade) ============
    hueDeg (opcional, 0-359): cor personalizada definida na familia (nivel 0) e
@@ -213,7 +231,8 @@ function codeColor(hue, depth, hueDeg, dark=false){
   const H = (isGray||isBlack) ? 0 : (hueDeg!=null) ? ((hueDeg%360)+360)%360 : HUES[((hue % HUES.length)+HUES.length)%HUES.length];
   const S = (isGray||isBlack) ? 0 : 58, tintS = (isGray||isBlack) ? 0 : 55;
   const solidL = isBlack ? 0 : Math.min(70, 32 + depth*13);
-  // em dark mode, tint usa luminosidade baixa (fundo escuro tintado) em vez de pastel claro
+  // em dark mode, o tint (fundo do grifo) usa luminosidade baixa (fundo escuro tintado) em vez
+  // do pastel claro — senao os grifos viram blocos claros e berrantes sobre o fundo escuro.
   const bgL = dark ? Math.max(18, 24 - depth*2) : Math.min(94, 86 + depth*3);
   return { solid:`hsl(${H} ${S}% ${solidL}%)`, tint:`hsl(${H} ${tintS}% ${bgL}%)`, H, isGray, isBlack };
 }
@@ -348,6 +367,23 @@ function buildRuns(text, codings, extraPoints){
   return runs;
 }
 
+/* mascara trechos marcados como censura (code.is_redaction) antes de mandar pra IA — so
+   considera o codigo da PROPRIA linha de coding, nao verifica sobreposicao com OUTROS codigos
+   no mesmo span (ex.: um trecho com "Tema X" que por acaso contem um nome ja censurado por
+   outro codigo continuaria aparecendo intacto aqui). Cobertura parcial, de proposito por ora —
+   ver CLAUDE.md ("Censura — proximos passos") pra fechar essa lacuna e estender pra exports. */
+function maskRedactedContent(content, codings, maskedCodeIds){
+  if(!maskedCodeIds || !maskedCodeIds.size) return content;
+  const ranges = (codings||[])
+    .filter(c=>maskedCodeIds.has(c.code_id) && c.span_start>=0 && c.span_end>c.span_start)
+    .map(c=>[c.span_start, c.span_end]).sort((a,b)=>a[0]-b[0]);
+  if(!ranges.length) return content;
+  const merged=[]; for(const r of ranges){ const last=merged[merged.length-1]; if(last && r[0]<=last[1]) last[1]=Math.max(last[1],r[1]); else merged.push([...r]); }
+  let out='', pos=0;
+  for(const [s,e] of merged){ out += content.slice(pos,s) + '[trecho censurado]'; pos = e; }
+  return out + content.slice(pos);
+}
+
 function hslToHex(h,s,l){
   s/=100; l/=100;
   const k=n=>(n+h/30)%12;
@@ -370,6 +406,15 @@ function hueOf(hex){
 function xmlEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function stripGuid(g){ return String(g||'').replace(/[{}]/g,'').trim(); }
 
+/* markdown bem leve, so pra exibir as respostas da IA (que vem em markdown)
+   sem precisar carregar uma lib: negrito/italico e quebras de linha. */
+function mdLite(text){
+  return xmlEsc(text)
+    .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
+    .replace(/(?<!\*)\*(?!\*)(.+?)\*(?!\*)/g, '<i>$1</i>')
+    .replace(/\n/g, '<br>');
+}
+
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
 
 function csvEscape(s){ s = s==null ? "" : String(s); return /[",\n\r]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; }
@@ -378,8 +423,6 @@ function codePathFor(codes,id){ const by={}; codes.forEach(c=>by[c.id]=c); const
 function download(name,text,mime){ const b=new Blob([text],{type:mime}); const u=URL.createObjectURL(b); const a=document.createElement('a'); a.href=u; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),1000); }
 
 /* ============ QDPX (REFI-QDA Project Exchange) ============
-   Formato definido pela REFI-QDA Standard (Rotterdam Exchange Format Initiative,
-   qdasoftware.org) — credito do formato e da iniciativa REFI-QDA; aqui so o implementamos.
    Compatível com ATLAS.ti, MAXQDA, NVivo, Quirkos, Taguette.
    Mapeamento: documento -> TextSource; categoria do documento -> Variable + Case;
    codigo -> Code (hierarquico); trecho codificado -> PlainTextSelection + Coding. */
@@ -484,6 +527,17 @@ async function exportQDPX(docs, cats, allV, codes, allC, project){
 /* devolve o controle ao navegador a cada N itens (em vez de so a cada microtask) —
    sem isso, uma importacao de milhares de itens com store em lote (beginBatch) nunca
    cede a vez para repintura, e a aba parece travada até o fim (so reage com F5). */
+// Cede o controle ao event-loop (pra repintar a barra de progresso) SEM o throttle de
+// setTimeout: o Chrome clampa setTimeout aninhado a ~1s em aba/iframe em segundo plano, o que
+// travava imports longos por dezenas de segundos (cada um dos ~60 yields virava ~0,5-1s).
+// MessageChannel.postMessage e agendado como macrotask mas NAO sofre esse clamp. Fila FIFO de
+// resolvers pra suportar yields em sequencia com um unico canal.
+const yieldToHost = (()=>{
+  if(typeof MessageChannel==='undefined') return ()=> new Promise(r=>setTimeout(r,0));
+  const ch = new MessageChannel(); const q = [];
+  ch.port1.onmessage = ()=>{ const r = q.shift(); if(r) r(); };
+  return ()=> new Promise(res=>{ q.push(res); ch.port2.postMessage(0); });
+})();
 function makeProgressTicker(onProgress, total){
   const every = Math.max(10, Math.floor(total/60)); // ~60 atualizacoes da barra, nao uma por item
   let done = 0;
@@ -491,22 +545,11 @@ function makeProgressTicker(onProgress, total){
     done++;
     if(done % every === 0 || done === total){
       onProgress?.(done, total);
-      await new Promise(r=>setTimeout(r, 0));
+      await yieldToHost();
     }
   };
 }
 
-/* ===== Localizacao de trechos por texto (import de .qdpx estrangeiro) =====
-   ATLAS.ti (e outros) gravam as selecoes de PDF como <PDFSelection> com coordenadas
-   geometricas (firstX/firstY/page) + o texto grifado no atributo "name" — NAO offsets de
-   caractere. Para virar um grifo do QualiLab (que precisa de span_start/span_end no texto
-   do documento), localizamos esse texto na representacao .txt do PDF. Dois detalhes que
-   faziam o match falhar mesmo com o trecho presente no .txt:
-   - Unicode: um .qdpx vindo de macOS traz os "name" em NFD (ex.: c + cedilha combinante),
-     enquanto o .txt esta em NFC (ç precomposto) — bytes diferentes, mesmo glifo. NFC nos dois.
-   - Layout: o .txt carrega quebras de linha/espacos do PDF que nao existem no texto limpo do
-     "name". Colapsamos espacos. Um mapa (indice normalizado -> offset original) recupera o
-     offset real no conteudo armazenado. Indexado por UNIDADE UTF-16 (igual ao indexOf). */
 const COMBINING_MARK = /\p{M}/u;
 function buildMatchIndex(content){
   const map = []; const parts = []; let lastSpace = false;
@@ -647,6 +690,13 @@ function reconstructRectText(geomPages, sel){
   return txt;
 }
 
+// querySelectorAll(':scope > X') e PATOLOGICAMENTE lento num documento XML grande (DOMParser):
+// cada chamada parece varrer o documento inteiro, entao 2332 selecoes x 16 docs travava o import
+// por dezenas de segundos. directChildren/firstChild iteram so os filhos diretos por tagName —
+// O(filhos), nao O(documento) — e sao semanticamente identicos a ":scope > X" (filho direto).
+function directChildren(el, tag){ const out=[]; for(const c of el.children){ if(c.tagName===tag) out.push(c); } return out; }
+function firstChild(el, tag){ for(const c of el.children){ if(c.tagName===tag) return c; } return null; }
+
 async function importQDPX(file, store, projectId, projectMode, onProgress){
   const codLayer = projectMode==='individual' ? 'final' : 'individual';
   const JSZip = await getJSZip();
@@ -675,7 +725,7 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
     const name = el.getAttribute('name') || 'codigo';
     newCodes.push({ id, parent_id: parentId, name, hue, depth });
     // comentario do codigo (ATLAS.ti etc.) -> memo de codigo. :scope evita pegar a Description de um <Code> filho.
-    const cdesc = el.querySelector(':scope > Description');
+    const cdesc = firstChild(el, 'Description');
     const ct = cdesc ? (cdesc.textContent||'').trim() : '';
     if(ct) newMemos.push({ scope:'code', oldId:id, content:ct });
     Array.from(el.children).filter(c=>c.tagName==='Code').forEach(c=>walkCode(c, id, depth+1, hue));
@@ -712,22 +762,30 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
   // fontes de texto (TextSource e, quando existir, a Representation textual de um PDFSource)
   const newDocs = [];
   const newCodings = [];
-  async function readPlainText(srcEl){
-    const inline = srcEl.querySelector(':scope > PlainTextContent');
+  // PRE-LEITURA EM PARALELO de todas as entradas de texto do zip. CRUCIAL: chamar
+  // zip.files[e].async('string') em SERIE (await por documento dentro do loop) e
+  // patologicamente lento — ~4s por entrada, dezenas de segundos pro pacote todo (o primeiro
+  // read e rapido, os seguintes explodem; comportamento do DataWorker do JSZip). Em PARALELO o
+  // pacote inteiro sai em ~100ms. Lemos tudo de uma vez aqui e readPlainText so consulta o cache.
+  const textCache = {};
+  await Promise.all(Object.keys(zip.files).filter(k=>/\.(txt|html?|xml)$/i.test(k) && !/\.qde$/i.test(k))
+    .map(async k=>{ try{ textCache[k] = await zip.files[k].async('string'); }catch(e){} }));
+  function readPlainText(srcEl){
+    const inline = firstChild(srcEl, 'PlainTextContent');
     if(inline) return inline.textContent || '';
     const path = srcEl.getAttribute('plainTextPath') || '';
     if(path.startsWith('internal://')){
       const fname = path.replace('internal://','');
-      const entry = Object.keys(zip.files).find(k=>k.toLowerCase().endsWith('/'+fname.toLowerCase()) || k.toLowerCase()===('sources/'+fname.toLowerCase()) || k.toLowerCase().endsWith(fname.toLowerCase()));
-      if(entry) return await zip.files[entry].async('string');
+      const entry = Object.keys(textCache).find(k=>k.toLowerCase().endsWith('/'+fname.toLowerCase()) || k.toLowerCase()===('sources/'+fname.toLowerCase()) || k.toLowerCase().endsWith(fname.toLowerCase()));
+      if(entry) return textCache[entry];
     }
     if(path.startsWith('relative://') || path.startsWith('absolute://')){ skipped.fonteExterna++; }
     return null;
   }
-  const countCodings = (sel)=> sel.querySelectorAll(':scope > Coding').length;
+  const countCodings = (sel)=> directChildren(sel, 'Coding').length;
   function pushCodingsFor(sel, docId, start, end, content){
     let n = 0;
-    sel.querySelectorAll(':scope > Coding').forEach((cod,i)=>{
+    directChildren(sel, 'Coding').forEach((cod,i)=>{
       const ref = cod.querySelector('CodeRef');
       if(!ref) return;
       const codeId = stripGuid(ref.getAttribute('targetGUID'));
@@ -746,7 +804,7 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
     // PlainTextSelection: quando o conteudo veio do .txt (sem geomPages), os offsets de caractere
     // sao a fonte mais confiavel. Quando o conteudo veio do pdf.js (geomPages presente), os offsets
     // do ATLAS.ti nao se aplicam ao texto do pdf.js — entao localizamos pelo texto do "name".
-    parentEl.querySelectorAll(':scope > PlainTextSelection, :scope > Representation > PlainTextSelection').forEach(sel=>{
+    [...directChildren(parentEl,'PlainTextSelection'), ...directChildren(parentEl,'Representation').flatMap(r=>directChildren(r,'PlainTextSelection'))].forEach(sel=>{
       let start = parseInt(sel.getAttribute('startPosition'),10);
       let end = parseInt(sel.getAttribute('endPosition'),10);
       let approx = false;
@@ -762,7 +820,7 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
     // PDFSelection: 1) se ha geometria (conteudo do pdf.js), reconstroi o texto do retangulo a
     // partir dos MESMOS itens do conteudo e casa no proprio conteudo (intra-extracao, robusto);
     // 2) senao (ou se falhar), tenta o texto do atributo "name" (cross-extracao, ultimo recurso).
-    for(const sel of parentEl.querySelectorAll(':scope > PDFSelection')){
+    for(const sel of directChildren(parentEl, 'PDFSelection')){
       const name = sel.getAttribute('name') || '';
       const q = normQuery(name);
       let sp = null;
@@ -782,7 +840,7 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
 
   // comentario do documento (<Description> do Source) -> memo de documento
   const addDocMemo = (src, oldId)=>{
-    const d = src.querySelector(':scope > Description');
+    const d = firstChild(src, 'Description');
     const t = d ? (d.textContent||'').trim() : '';
     if(t) newMemos.push({ scope:'document', oldId, content:t, author:authorOf(src.getAttribute('modifyingUser')||src.getAttribute('creatingUser')) });
   };
@@ -799,7 +857,7 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
       if(src.tagName==='TextSource'){
         const id = stripGuid(src.getAttribute('guid'));
         const name = src.getAttribute('name') || 'documento importado';
-        const content = await readPlainText(src);
+        const content = readPlainText(src);
         if(content==null) continue;
         newDocs.push({ id, name, content });
         addDocMemo(src, id);
@@ -811,7 +869,7 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
         // DIRETAS do <PDFSource>) com texto no "name" sao localizadas nela; PlainTextSelection usa
         // offset. Esse e o caminho de sempre — para .qdpx "normais", o pdf.js nunca roda.
         let content = null, geomPages = null;
-        const rep = src.querySelector(':scope > Representation');
+        const rep = firstChild(src, 'Representation');
         content = rep ? await readPlainText(rep) : null;
         // FALLBACK (so quando necessario): se o documento tem selecoes por COORDENADA
         // (<PDFSelection>), e um .qdpx com codificacao geometrica de PDF (ATLAS.ti) — e ai o texto
@@ -819,7 +877,7 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
         // retangulares nem tem texto. Reextrai com pdf.js (conteudo + geometria) pra recuperar o
         // texto certo de cada selecao pela posicao. .qdpx "normais" usam PlainTextSelection (com
         // offset) e nao tem nenhuma <PDFSelection> -> pdf.js nunca roda; usa-se o texto fornecido.
-        const precisaGeometria = src.querySelector(':scope > PDFSelection') != null;
+        const precisaGeometria = firstChild(src, 'PDFSelection') != null;
         if(precisaGeometria){
           try{
             const p = src.getAttribute('path')||'';
@@ -859,8 +917,8 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
   // casos -> valores de categoria por documento
   const newValues = [];
   xml.querySelectorAll('Cases > Case').forEach(caseEl=>{
-    const srcRefs = Array.from(caseEl.querySelectorAll(':scope > SourceRef')).map(r=>stripGuid(r.getAttribute('targetGUID')));
-    const vvs = Array.from(caseEl.querySelectorAll(':scope > VariableValue'));
+    const srcRefs = directChildren(caseEl, 'SourceRef').map(r=>stripGuid(r.getAttribute('targetGUID')));
+    const vvs = directChildren(caseEl, 'VariableValue');
     vvs.forEach(vv=>{
       const ref = vv.querySelector('VariableRef'); if(!ref) return;
       const catId = stripGuid(ref.getAttribute('targetGUID'));
@@ -1335,6 +1393,13 @@ async function createFileStore(fileHandle, isNew){
       if(content && content.trim()) db.memos.push({ id:uid(), project_id:pid, scope, target_id:targetId, content, author_name:authorName||name, updated_at:new Date().toISOString() });
       await save();
     },
+    async listIaResults(){ return (db.ia_results||[]).slice().reverse(); },
+    async addIaResult(pid,{scope,mode_label,result,author_name}){
+      if(!db.ia_results) db.ia_results=[];
+      const r={ id:uid(), project_id:pid, scope, mode_label, result, author_name:author_name||name, created_at:new Date().toISOString() };
+      db.ia_results.push(r); await save(); return r;
+    },
+    async deleteIaResult(id){ db.ia_results=(db.ia_results||[]).filter(r=>r.id!==id); await save(); },
   };
 }
 /* verifica suporte e reabre último arquivo */
@@ -1436,6 +1501,13 @@ function LocalStore(){
       if(content && content.trim()) db.memos.push({ id:uid(), project_id:pid, scope, target_id:targetId, content, author_name:authorName||name, updated_at:new Date().toISOString() });
       save();
     },
+    async listIaResults(){ return (db.ia_results||[]).slice().reverse(); },
+    async addIaResult(pid,{scope,mode_label,result,author_name}){
+      if(!db.ia_results) db.ia_results=[];
+      const r={ id:uid(), project_id:pid, scope, mode_label, result, author_name:author_name||name, created_at:new Date().toISOString() };
+      db.ia_results.push(r); save(); return r;
+    },
+    async deleteIaResult(id){ db.ia_results=(db.ia_results||[]).filter(r=>r.id!==id); save(); },
     async changePassword(){ throw new Error('Sem conta no modo local'); },
     async changeDisplayName(newName){ name = newName || name; try{ localStorage.setItem('qualilab:name', name); }catch(e){} },
     async createProject(pn,disp,pmode){ return { id:'local', name:pn||'Projeto local', code:'LOCAL', created_by:'local-user', mode:pmode||'individual' }; },
@@ -1616,6 +1688,14 @@ function SupabaseStore(sb){
         { onConflict:'project_id,scope,target_id' }
       ));
     },
+    // resultados salvos da aba "Analisar com IA"
+    async listIaResults(pid){ try{ return must(await sb.from('ia_results').select('*').eq('project_id',pid).order('created_at',{ascending:false})); }catch(e){ return []; } },
+    async addIaResult(pid,{scope,mode_label,result,author_name}){
+      return must(await sb.from('ia_results').insert(
+        { project_id:pid, scope, mode_label, result, author_name:author_name||'anonimo', created_by:user?.id||null }
+      ).select().single());
+    },
+    async deleteIaResult(id){ must(await sb.from('ia_results').delete().eq('id',id)); },
     // sincronizacao ao vivo: dispara onChange a cada alteracao em codings/doc_values do projeto
     realtime(projectId, onChange){
       const ch = sb.channel('qualilab:'+projectId)
@@ -1653,6 +1733,7 @@ function App(){
   const [allCodings, setAllCodings] = useState([]);
   const [allValues, setAllValues] = useState([]);
   const [memos, setMemos] = useState([]);
+  const [iaResults, setIaResults] = useState([]); // resultados salvos da aba "Analisar com IA"
   const [memoSel, setMemoSel] = useState({ scope:'project', targetId:null }); // alvo selecionado na aba Memos
   // estado da aba Visualização (elevado para poder usar o split nativo do app)
   const [vizLayer,      setVizLayer]      = useState('individual');
@@ -1661,7 +1742,7 @@ function App(){
   const [vizCross,      setVizCross]      = useState(['','']);
 
   const [sel, setSel] = useState(null);
-  const [ctxMenu, setCtxMenu] = useState(null); // menu de contexto (botão direito) p/ aplicar código
+  const [ctxMenu, setCtxMenu] = useState(null); // menu de contexto (botão direito) p/ aplicar/remover código
   const [ctxCreating, setCtxCreating] = useState(false); // mini-formulário "criar novo código" dentro do menu
   const [ctxNewName, setCtxNewName] = useState('');
   const [ctxNewParent, setCtxNewParent] = useState(''); // id do código-pai, ou '' para nova família
@@ -1693,6 +1774,15 @@ function App(){
   const activeDoc = docs.find(d=>d.id===activeId) || null;
   const isAdmin = role==='admin';
 
+  // modo escuro do app inteiro (persistido por navegador, sem relacao com o projeto). Liga/desliga
+  // via html[data-theme=dark], que sobrepoe as variaveis de cor do :root. O tema do LEITOR
+  // (readerPrefs.theme) e independente disto.
+  const [darkMode, setDarkMode] = useState(()=>{ try{ return localStorage.getItem('qualilab:dark')==='1'; }catch(e){ return false; } });
+  useEffect(()=>{
+    document.documentElement.dataset.theme = darkMode ? 'dark' : '';
+    try{ localStorage.setItem('qualilab:dark', darkMode?'1':'0'); }catch(e){}
+  }, [darkMode]);
+
   // preferencias de leitura do .reader (zoom, largura, tema) — persistidas no localStorage,
   // sem relacao com o projeto (vale pra qualquer documento/projeto neste navegador).
   const [readerPrefs, setReaderPrefs] = useState(()=>{
@@ -1700,11 +1790,9 @@ function App(){
     catch(e){ return { scale:1, width:'normal', theme:'light', rightW:340 }; }
   });
   useEffect(()=>{ try{ localStorage.setItem('qualilab:reader_prefs', JSON.stringify(readerPrefs)); }catch(e){} }, [readerPrefs]);
-  const [darkMode, setDarkMode] = useState(()=>{ try{ return localStorage.getItem('qualilab:dark')==='1'; }catch(e){ return false; } });
-  useEffect(()=>{
-    document.documentElement.dataset.theme = darkMode ? 'dark' : '';
-    try{ localStorage.setItem('qualilab:dark', darkMode?'1':'0'); }catch(e){}
-  }, [darkMode]);
+  // arrasta a divisa (.pane-resize) entre o leitor e o painel direito na tela de Codificação —
+  // largura do painel direito persiste em readerPrefs.rightW. Arrastar pra esquerda alarga a
+  // direita (delta = startX - x atual). Limites: 180px a 60% da janela.
   function onResizeHandleMouseDown(e){
     if(e.button!==0) return;
     const startX = e.clientX;
@@ -1983,21 +2071,32 @@ function App(){
     }
     setAllValues(V); setAllCodings(C);
   }, [store, project, docs]);
-  // loadAll alimenta allCodings/allValues. Tambem rodamos na Codificacao em modo NAO-nuvem
-  // (local/arquivo: leitura barata do localStorage/arquivo) so para o filtro "Ver:" listar todos
-  // os codificadores do projeto, nao so os do doc aberto. Na nuvem nao rodamos aqui (loadAll por
-  // doc e custoso) — la o filtro ja aparece por ser cloud+collective.
-  useEffect(()=>{ if(phase==='work' && (mainView==='visualizar'||mainView==='graficos'||mainView==='esquema'||mainView==='relatorio'||(mainView==='codificar'&&mode!=='cloud'))) loadAll(); }, [phase, mainView, mode, loadAll, codings]);
+  useEffect(()=>{ if(phase==='work' && (mainView==='visualizar'||mainView==='graficos'||mainView==='ia_analisar'||mainView==='esquema'||mainView==='relatorio')) loadAll(); }, [phase, mainView, loadAll, codings]);
 
   /* memos: nota unica por alvo (projeto/documento/codigo) */
   const loadMemos = useCallback(async ()=>{
     if(!store || !project || !store.listMemos){ setMemos([]); return; }
     try{ setMemos(await store.listMemos(project.id) || []); }catch(e){ setMemos([]); }
   }, [store, project]);
-  useEffect(()=>{ if(phase==='work' && mainView==='memos') loadMemos(); }, [phase, mainView, loadMemos]);
+  useEffect(()=>{ if(phase==='work' && (mainView==='memos'||mainView==='ia_analisar')) loadMemos(); }, [phase, mainView, loadMemos]);
   async function saveMemo(scope, targetId, content){
     await store.setMemo(project.id, scope, targetId, content, user?.name||'anônimo');
     await loadMemos();
+  }
+
+  /* resultados salvos da aba "Analisar com IA" — sobrevivem ao F5 */
+  const loadIaResults = useCallback(async ()=>{
+    if(!store || !project || !store.listIaResults){ setIaResults([]); return; }
+    try{ setIaResults(await store.listIaResults(project.id) || []); }catch(e){ setIaResults([]); }
+  }, [store, project]);
+  useEffect(()=>{ if(phase==='work' && mainView==='ia_analisar') loadIaResults(); }, [phase, mainView, loadIaResults]);
+  async function saveIaResult(scope, modeLabel, result){
+    await store.addIaResult(project.id, { scope, mode_label:modeLabel, result, author_name:user?.name||'anônimo' });
+    await loadIaResults();
+  }
+  async function deleteIaResult(id){
+    await store.deleteIaResult(id);
+    await loadIaResults();
   }
 
   /* recarrega a visao atual (doc ativo + visualizacao, se aberta) — usado pelo realtime */
@@ -2073,8 +2172,8 @@ function App(){
     setCodes(x=>x.map(c=>ids.has(c.id) ? {...c, hue_deg:hueDeg} : c));
   }
   // censura propaga pra subarvore inteira (igual cor) — marcar uma familia como censura e
-  // os subcodigos continuarem "normais" seria inconsistente. So marcacao visual por ora,
-  // sem efeito funcional ainda (nenhuma tela de IA neste repositorio pra mascarar material).
+  // os subcodigos continuarem "normais" seria inconsistente: o pesquisador esperaria que
+  // qualquer trecho dali pra baixo ficasse de fora do material da IA por padrao.
   async function setCodeRedaction(rootCode, value){
     if(!isAdmin){ setErr('Apenas administradores podem marcar um código como censura.'); return; }
     const ids = new Set([rootCode.id]);
@@ -2155,10 +2254,11 @@ function App(){
       v.forEach(x=>doc_values.push({ id:x.id||uid(), document_id:d.id, category_id:x.category_id, value:x.value, set_by:x.set_by||'file-user', author_name:x.author_name||'anonimo', layer:x.layer||'individual' }));
       co.forEach(x=>codings.push({ id:x.id||uid(), document_id:x.document_id, code_id:x.code_id, span_start:x.span_start, span_end:x.span_end, quote:x.quote, layer:x.layer||'individual', created_by:x.created_by??null, author_name:x.author_name||'anonimo', created_at:x.created_at||new Date().toISOString() }));
     }
-    let memos=[];
+    let memos=[], ia_results=[];
     try{ memos = (await store.listMemos?.(project.id))||[]; }catch(e){}
+    try{ ia_results = ((await store.listIaResults?.(project.id))||[]).slice().reverse(); }catch(e){}
     return { _meta:{ id:'file-project', name:project.name||'Projeto', code:'FILE', mode:projectMode||'individual', displayName:user?.name||'pesquisador' },
-      documents, categories, doc_values, codes:codesOut, codings, memos };
+      documents, categories, doc_values, codes:codesOut, codings, memos, ia_results };
   }
   // salva o projeto inteiro como um arquivo .qualilab (mesmo formato do FileStore),
   // que pode ser reaberto depois via "abrir .qualilab". Funciona em qualquer modo
@@ -2268,7 +2368,6 @@ function App(){
       const freshDocs = await store.listDocuments(project.id);
       const [cats2, codes2] = await Promise.all([store.listCategories(project.id), store.listCodes(project.id)]);
       setCats(cats2); setCodes(codes2); setDocs(freshDocs);
-      try{ if(store.listMemos) setMemos(await store.listMemos(project.id) || []); }catch(e){}
       const firstId = freshDocs[0]?.id || null;
       if(firstId){
         setActiveId(firstId);
@@ -2455,6 +2554,8 @@ function App(){
           <button class=${mainView==='memos'?'on':''} onClick=${()=>setMainView('memos')}>Memos</button>
           <button class=${mainView==='esquema'?'on':''} onClick=${()=>setMainView('esquema')}>Esquema</button>
           <button class=${mainView==='relatorio'?'on':''} onClick=${()=>setMainView('relatorio')}>Relatório</button>
+          ${AI_ENABLED && html`<button class=${mainView==='ia_codificar'?'on':''} onClick=${()=>setMainView('ia_codificar')}>Codificar com IA</button>`}
+          ${AI_ENABLED && html`<button class=${mainView==='ia_analisar'?'on':''} onClick=${()=>setMainView('ia_analisar')}>Analisar com IA</button>`}
         </div>`}
       </div>
       <div class="top-row">
@@ -2476,7 +2577,7 @@ function App(){
               <button onClick=${()=>doExport('json')}>JSON (projeto)</button>
               <button onClick=${()=>doExport('trechos')}>CSV (trechos codificados)</button>
               <button onClick=${()=>doExport('documentos')}>CSV (atributos por documento)</button>
-              <button title="Exporta o projeto no formato nativo do padrão REFI-QDA (.qdpx) — interoperável com ATLAS.ti, MAXQDA, NVivo, Quirkos, QualCoder" onClick=${()=>doExport('qdpx')}>QDPX (REFI-QDA nativo)</button>
+              <button onClick=${()=>doExport('qdpx')}>QDPX (ATLAS.ti / MAXQDA / NVivo)</button>
               <button title="Exporta só o livro de códigos, sem documentos nem codificações" onClick=${()=>{ setExpOpen(false); exportQDC(codes, project); }}>QDC (codebook REFI-QDA)</button>
             </div>
           </div>`}
@@ -2487,7 +2588,7 @@ function App(){
             <div onClick=${()=>setImpOpen(false)} style="position:fixed;inset:0;z-index:40"></div>
             <div class="exmenu">
               <button title="Mescla um arquivo .qualilab (exportado por outra pessoa/dispositivo) neste projeto" onClick=${()=>{ setImpOpen(false); qualilabInputRef.current.click(); }}>.qualilab (projeto completo, nativo)</button>
-              <button title="Importa um projeto .qdpx — formato nativo do padrão REFI-QDA (ATLAS.ti, MAXQDA, NVivo, Quirkos, QualCoder, etc.)" onClick=${()=>{ setImpOpen(false); qdpxInputRef.current.click(); }}>QDPX (REFI-QDA nativo)</button>
+              <button title="Importa um projeto .qdpx (REFI-QDA)" onClick=${()=>{ setImpOpen(false); qdpxInputRef.current.click(); }}>QDPX (ATLAS.ti / MAXQDA / NVivo)</button>
               <button title="Importa o projeto completo do Taguette (documentos, tags e trechos codificados)" onClick=${()=>{ setImpOpen(false); taguetteInputRef.current.click(); }}>.sqlite3 (Taguette)</button>
               <button title="Importa só o livro de códigos (.qdc) — sem documentos nem codificações" onClick=${()=>{ setImpOpen(false); qdcInputRef.current.click(); }}>.qdc (codebook REFI-QDA)</button>
             </div>
@@ -2584,16 +2685,22 @@ function App(){
                 const matchAttrs = matchI>=0 ? { 'data-match': matchI } : {};
                 if(run.codings.length===0) return html`<span key=${i} data-start=${run.start} data-end=${run.end} ...${matchAttrs}
                    class=${isCurrent?'current':''}>${run.text}</span>`;
-                // censura tem prioridade visual — caixa fechada mesmo com 1 codigo so
+                // censura sempre na frente quando ha mais de um codigo no mesmo trecho — senao
+                // a caixa fechada (sinal visual de censura) podia ficar escondida atras de
+                // outro codigo que por acaso vem depois na lista (ordem nao tem prioridade).
                 const top = run.codings.find(c=>codeById[c.code_id]?.is_redaction) || run.codings[run.codings.length-1];
                 const code = codeById[top.code_id];
                 const col = code ? codeColor(code.hue, code.depth, code.hue_deg, darkMode) : codeColor(0,0,null,darkMode);
                 const title = run.codings.map(c=>codePath(c.code_id).join(' ▸ ')+' ('+c.author_name+')').join('  |  ');
-                // border-bottom so sinaliza "tem mais de um codigo aqui"; censura sempre com
-                // border 4 lados ("tarjao") mesmo com 1 codigo — cinza/preto seriam indistinguiveis
-                // sem essa borda dado o tint claro de fundo.
+                // igual o QualCoder: border-bottom so sinaliza "tem mais de um codigo aqui"
+                // (em vez de decorar todo trecho codificado, mesmo quando ha so 1 — o fundo
+                // tintado ja basta nesse caso, menos poluido visualmente). Censura e exececao:
+                // ganha caixa fechada (borda nos 4 lados) sempre, mesmo com 1 so codigo —
+                // cinza e preto tem o mesmo tom claro de fundo (tint), praticamente
+                // indistinguiveis sem essa borda; a caixa fechada tambem lembra visualmente o
+                // "tarjao" classico de redacao, reforcando que e censura.
                 const border = code?.is_redaction ? `border:2px solid ${col.solid}`
-                             : run.codings.length>1 ? `border-bottom:2px solid ${col.solid}` : '';
+                  : run.codings.length>1 ? `border-bottom:2px solid ${col.solid}` : '';
                 return html`<span key=${i} data-start=${run.start} data-end=${run.end} data-c="1" title=${title} ...${matchAttrs}
                    class=${isCurrent?'current':''}
                    style=${`background:${col.tint};${border}`}>${run.text}</span>`;
@@ -2684,7 +2791,7 @@ function App(){
       </div>
       ${esquemaTab==='codigos' && html`<${SchemaCodesView} codes=${codes} codeById=${codeById} codePath=${codePath} count=${schemaCodingCount}
              isAdmin=${isAdmin} store=${store} project=${project} reload=${()=>loadProject(store,project.id)} loadAll=${loadAll}
-             allCodings=${allCodings} selCode=${selCode} setSelCode=${setSelCode} onUpd=${updCode} onSetColor=${setCodeColor}
+             allCodings=${allCodings} selCode=${selCode} setSelCode=${setSelCode} onUpd=${updCode} onSetColor=${setCodeColor} onSetRedaction=${setCodeRedaction}
              onAdd=${addCode} onDel=${delCode} />`}
       ${esquemaTab==='categorias' && html`<section class="pane left" style="flex:1 1 100%;border-right:none;max-width:none">
         <div class="pane-body scroll">
@@ -2708,7 +2815,39 @@ function App(){
     </div>`
     : mainView==='relatorio' ? html`<${ReportView} project=${project} projectMode=${projectMode}
         docs=${docs} cats=${cats} codes=${codes} codeById=${codeById} codePath=${codePath}
-        allCodings=${allCodings} allValues=${allValues} loadAll=${loadAll} store=${store} />`
+        allCodings=${allCodings} allValues=${allValues} store=${store} />`
+    : mainView==='ia_codificar' ? html`<div class="split">
+      <!-- CODIFICAR COM IA: tela inteira -->
+      <section class="pane left" style="flex:1 1 100%;border-right:none;max-width:none">
+        <div class="pane-head"><span class="h" style="margin:0">Codificar com IA</span></div>
+        <div class="pane-body scroll">
+          <div style="max-width:760px;margin:0 auto">
+            <${IACodificarPanel} project=${project} docs=${docs} codes=${codes} codeById=${codeById} codePath=${codePath}
+              store=${store} allCodings=${allCodings} count=${schemaCodingCount} isAdmin=${isAdmin}
+              reload=${()=>loadProject(store,project.id)} loadAll=${loadAll} onAdd=${addCode} memos=${memos} />
+          </div>
+        </div>
+      </section>
+    </div>`
+    : mainView==='ia_analisar' ? html`<div class="split">
+      <!-- ANALISAR COM IA esquerda: material/modalidade + resultado atual -->
+      <section class="pane" style="flex:1;min-width:0">
+        <div class="pane-head"><span class="h" style="margin:0">Analisar com IA</span></div>
+        <div class="pane-body scroll">
+          <div style="max-width:760px;margin:0 auto">
+            <${IAAnalisarPanel} project=${project} docs=${docs} codes=${codes} codeById=${codeById} codePath=${codePath}
+              activeDoc=${activeDoc} sel=${sel} store=${store} allCodings=${allCodings} memos=${memos} cats=${cats} allValues=${allValues}
+              onSave=${saveIaResult} />
+          </div>
+        </div>
+      </section>
+      <!-- ANALISAR COM IA direita: resultados salvos -->
+      <section class="pane" style="flex:0 0 300px;min-width:0;border-left:1px solid var(--line);background:var(--paper)">
+        <div class="pane-body scroll" style="padding:0">
+          <${IAResultsPanel} results=${iaResults} onDelete=${deleteIaResult} />
+        </div>
+      </section>
+    </div>`
     : html`<div class="split">
       <!-- VISUALIZACAO esquerda: navegação por código -->
       <section class="pane" style="flex:0 0 270px;min-width:0;border-right:1px solid var(--line)">
@@ -2747,13 +2886,13 @@ function App(){
       ${removable.length>0 && html`<div style="border-bottom:1px solid var(--line-soft)">
         <div style="padding:7px 12px 4px;font-size:11px;color:var(--ink-faint);font-weight:600;text-transform:uppercase">Remover código</div>
         ${removable.map(c=>{ const code=codeById[c.code_id]; const path=codePath(c.code_id).join(' ▸ '); const col=code ? codeColor(code.hue,code.depth,code.hue_deg) : codeColor(0,0); return html`<button key=${c.id} onClick=${()=>removeCodingFromMenu(c.id)} style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;width:100%;box-sizing:border-box" title=${`${path} · ${c.author_name||''}`}>
-          <span class="swatch" style=${`background:${col.solid};display:inline-block;margin-right:7px;vertical-align:middle;flex-shrink:0`}></span>${path||'(código removido)'}
+          <span class="swatch" style=${`background:${col.solid};display:inline-block;margin-right:7px;vertical-align:middle;flex-shrink:0`}></span>${code?.is_redaction?'🚫 ':''}${path||'(código removido)'}
         </button>`; })}
       </div>`}
       ${ctxMenu.sel && (orderedCodes.length===0 && !ctxCreating
         ? html`<div style="padding:9px 12px;color:var(--ink-faint);font-size:12.5px">Nenhum código criado ainda.</div>`
         : orderedCodes.map(c=>{ const col=codeColor(c.hue,c.depth,c.hue_deg); return html`<button key=${c.id} onClick=${()=>applyCode(c.id, ctxMenu.sel)} style=${`padding-left:${12+c.depth*14}px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;width:100%;box-sizing:border-box`} title=${c.name}>
-            <span class="swatch" style=${`background:${col.solid};display:inline-block;margin-right:7px;vertical-align:middle;flex-shrink:0`}></span>${c.name}
+            <span class="swatch" style=${`background:${col.solid};display:inline-block;margin-right:7px;vertical-align:middle;flex-shrink:0`}></span>${c.is_redaction?'🚫 ':''}${c.name}
           </button>`; }))}
       ${ctxMenu.sel && html`<div style="border-top:1px solid var(--line-soft)">
         ${!ctxCreating
@@ -3458,279 +3597,6 @@ function Reconcile({ activeDoc, codings, coders, codeById, codePath, cats, value
   </div>`;
 }
 
-/* ============ ReportView — aba Relatório ============
-   Montador: o pesquisador liga/desliga seções por checkbox e o relatório se monta
-   ao vivo no painel direito. Imprime só o relatório (#report-print + CSS @media print). */
-const REPORT_GROUPS = [
-  { group:'Visão geral', items:[
-    { id:'resumo',    label:'Resumo do projeto',  desc:'Nome, tipo, totais e codificadores.' },
-    { id:'docs_list', label:'Lista de documentos', desc:'Nomes dos documentos do projeto.' },
-  ]},
-  { group:'Esquema', items:[
-    { id:'cat_count',  label:'Quantas categorias',   desc:'Número total de categorias.' },
-    { id:'cat_list',   label:'Quais categorias',     desc:'Lista das categorias, com o tipo.' },
-    { id:'code_count', label:'Quantos códigos',      desc:'Número de códigos de Hierarquia 0 (raiz).' },
-    { id:'sub_count',  label:'Quantos sub-códigos',  desc:'Número de códigos com pai (subníveis).' },
-    { id:'code_list',  label:'Quais códigos',        desc:'Lista dos códigos de Hierarquia 0.' },
-    { id:'sub_list',   label:'Quais sub-códigos',    desc:'Lista dos sub-códigos, com o caminho do pai.' },
-  ]},
-  { group:'Resultados', items:[
-    { id:'freq',       label:'Frequência de códigos',     desc:'Quantas vezes cada código foi aplicado.' },
-    { id:'categorias', label:'Distribuição por categoria', desc:'Documentos por valor de cada categoria fechada.' },
-    { id:'trechos',    label:'Trechos por código',        desc:'Citações agrupadas por código e documento.' },
-    { id:'unused',     label:'Códigos não utilizados',    desc:'Códigos sem nenhuma codificação.' },
-  ]},
-];
-
-function ReportView({ project, projectMode, docs, cats, codes, codeById, codePath, allCodings, allValues, store }){
-  const [enabled, setEnabled] = useState(()=>new Set(['credito','resumo','freq']));
-  const [title, setTitle] = useState('');
-  const [layer, setLayer] = useState('final'); // final | individual — só relevante em coletivo
-  const toggle = (id)=> setEnabled(s=>{ const n=new Set(s); n.has(id)?n.delete(id):n.add(id); return n; });
-  const on = (id)=> enabled.has(id);
-  // em projeto individual tudo já é 'final'; o seletor de camada não aparece
-  const useFinal = projectMode!=='collective' || layer==='final';
-
-  // codificações da camada escolhida (gabarito final ou individuais de todos)
-  const codingsForReport = useMemo(()=>{
-    if(projectMode==='individual') return allCodings;
-    return allCodings.filter(c=> useFinal ? c.layer==='final' : c.layer!=='final');
-  }, [allCodings, projectMode, useFinal]);
-
-  const docById = useMemo(()=>Object.fromEntries(docs.map(d=>[d.id,d])), [docs]);
-  const pathOf = (id)=> codePath ? codePath(id).join(' ▸ ') : (codeById[id]?.name||id);
-  const swatch = (c)=> html`<span class="swatch" style=${`display:inline-block;vertical-align:middle;background:${codeColor(c.hue,c.depth,c.hue_deg).solid}`}></span>`;
-  const kindLabel = (k)=> (CAT_KINDS.find(x=>x.id===k)||{}).label || k;
-
-  const topCodes = useMemo(()=>codes.filter(c=>!c.parent_id), [codes]);
-  const subCodes = useMemo(()=>codes.filter(c=>c.parent_id), [codes]);
-
-  // contagem (direta) por código
-  const countMap = useMemo(()=>{
-    const m={}; codingsForReport.forEach(c=>{ m[c.code_id]=(m[c.code_id]||0)+1; }); return m;
-  }, [codingsForReport]);
-  // frequência por código, do mais usado ao menos
-  const freq = useMemo(()=>
-    codes.map(c=>({ code:c, n:countMap[c.id]||0 })).filter(x=>x.n>0).sort((a,b)=>b.n-a.n)
-  , [countMap, codes]);
-  const unusedCodes = useMemo(()=>codes.filter(c=>!countMap[c.id]), [countMap, codes]);
-  const anyEsq = ['cat_count','cat_list','code_count','sub_count','code_list','sub_list'].some(on);
-
-  // distribuição por categoria fechada: contagem de documentos por valor (usa gabarito quando há)
-  const catDist = useMemo(()=>{
-    const closed = cats.filter(c=>CAT_HAS_OPTIONS(c.kind)||c.kind==='date');
-    return closed.map(cat=>{
-      const counts={};
-      docs.forEach(d=>{
-        const rows = allValues.filter(x=>x.document_id===d.id && x.category_id===cat.id);
-        const fin = rows.find(r=>r.layer==='final');
-        // segue a camada escolhida: gabarito usa só o final; individuais usam as respostas individuais
-        const vals = useFinal ? (fin ? [fin.value] : []) : rows.filter(r=>r.layer!=='final').map(r=>r.value);
-        const seen=new Set();
-        vals.forEach(v=>{ if(v==null) return; String(v).split(CAT_MULTI_SEP).forEach(part=>{ const k=part.trim(); if(k && !seen.has(k)){ seen.add(k); counts[k]=(counts[k]||0)+1; } }); });
-      });
-      const rows = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
-      return { cat, rows };
-    }).filter(x=>x.rows.length>0);
-  }, [cats, docs, allValues, useFinal]);
-
-  // trechos por código: agrupa codings por código, depois por documento
-  const trechosByCode = useMemo(()=>{
-    const byCode={};
-    codingsForReport.forEach(c=>{ (byCode[c.code_id]=byCode[c.code_id]||[]).push(c); });
-    return freq.map(({code})=>{
-      const list = byCode[code.id]||[];
-      const byDoc={};
-      list.forEach(c=>{ (byDoc[c.document_id]=byDoc[c.document_id]||[]).push(c); });
-      const docs2 = Object.entries(byDoc)
-        .map(([docId,cods])=>({ docId, name:docById[docId]?.name||docId,
-          cods:cods.slice().sort((a,b)=>a.span_start-b.span_start) }))
-        .sort((a,b)=>a.name>b.name?1:-1);
-      return { code, docs:docs2 };
-    }).filter(x=>x.docs.length>0);
-  }, [codingsForReport, freq, docById]);
-
-  const totalCodings = codingsForReport.length;
-
-  // codificadores: nomes distintos das codificações individuais (o trabalho de codificação).
-  // Só faz sentido em projeto coletivo; ordena alfabeticamente.
-  const coders = useMemo(()=>{
-    if(projectMode!=='collective') return [];
-    const s=new Set();
-    allCodings.filter(c=>c.layer!=='final').forEach(c=>{ const n=(c.author_name||'').trim(); if(n) s.add(n); });
-    return [...s].sort((a,b)=>a.localeCompare(b,'pt-BR'));
-  }, [allCodings, projectMode]);
-
-  // monta o relatório como texto simples (sem marcações .md) — para colar direto em Word/Docs
-  function buildText(){
-    const L=[]; const H=(t)=>L.push('',''+t,'');
-    L.push(title.trim()||project?.name||'Relatório');
-    L.push('Gerado em '+new Date().toLocaleDateString('pt-BR')+(projectMode==='collective'?' · Camada: '+(useFinal?'gabarito final':'individuais (todos)'):''));
-    if(on('resumo')){ H('Resumo');
-      L.push(`Projeto ${project?.name||''} (${projectMode==='collective'?'coletivo':'individual'}), com ${docs.length} documento(s), ${codes.length} código(s), ${cats.length} categoria(s) e ${totalCodings} codificação(ões).`+(on('credito')?' O projeto foi codificado por meio da ferramenta QualiLab.':''));
-      if(coders.length) L.push('', 'Codificado por: '+coders.join(', ')+'.');
-    }
-    if(on('docs_list')){ H('Documentos');
-      if(!docs.length) L.push('(nenhum documento)');
-      else docs.forEach((d,i)=> L.push(`${i+1}. ${d.name}`));
-    }
-    if(anyEsq){ H('Esquema');
-      if(on('cat_count')) L.push(`Total de ${cats.length} categoria(s).`);
-      if(on('cat_list')){ L.push(''); cats.forEach(c=> L.push(`• ${c.name} (${kindLabel(c.kind)})`)); }
-      if(on('code_count')) L.push(`${topCodes.length} código(s) de Hierarquia 0 (raiz).`);
-      if(on('sub_count')) L.push(`${subCodes.length} sub-código(s).`);
-      if(on('code_list')){ L.push('','Códigos de Hierarquia 0:'); topCodes.forEach(c=> L.push(`• ${c.name}`)); }
-      if(on('sub_list')){ L.push('','Sub-códigos:'); if(!subCodes.length) L.push('(nenhum)'); else subCodes.forEach(c=> L.push(`• ${pathOf(c.id)}`)); }
-    }
-    if(on('freq')){ H('Frequência de códigos');
-      if(!freq.length) L.push('(nenhuma codificação)');
-      else freq.forEach(({code,n})=> L.push(`• ${pathOf(code.id)}: ${n}`));
-    }
-    if(on('categorias')){ H('Distribuição por categoria');
-      if(!catDist.length) L.push('(nenhuma categoria fechada com valores)');
-      else catDist.forEach(({cat,rows})=>{ L.push('',cat.name+':');
-        rows.forEach(([val,n])=> L.push(`• ${val}: ${n}`)); });
-    }
-    if(on('trechos')){ H('Trechos por código');
-      if(!trechosByCode.length) L.push('(nenhum trecho codificado)');
-      else trechosByCode.forEach(({code,docs:ds})=>{ L.push('',pathOf(code.id));
-        ds.forEach(d=>{ L.push('',d.name+':');
-          d.cods.forEach(c=> L.push(`"${c.quote}"${c.author_name?' — '+c.author_name:''}`)); }); });
-    }
-    if(on('unused')){ H('Códigos não utilizados');
-      if(!unusedCodes.length) L.push('(todos os códigos foram utilizados)');
-      else unusedCodes.forEach(c=> L.push(`• ${pathOf(c.id)}`));
-    }
-    return L.join('\n').replace(/\n{3,}/g,'\n\n').trim()+'\n';
-  }
-  const [copied, setCopied] = useState(false);
-  async function copy(){
-    try{ await navigator.clipboard.writeText(buildText()); setCopied(true); setTimeout(()=>setCopied(false),1800); }
-    catch(e){ alert('Não foi possível copiar automaticamente. '+(e.message||'')); }
-  }
-
-  return html`<section class="pane left" style="flex:1 1 100%;border-right:none;max-width:none">
-    <div class="pane-head no-print" style="flex:none;justify-content:space-between">
-      <span class="field-label" style="margin:0">Relatório do projeto</span>
-      <div class="row" style="gap:8px">
-        <button class="btn sm" onClick=${copy} disabled=${enabled.size===0}>${copied?'Copiado ✓':'Copiar texto'}</button>
-        <button class="btn sm primary" onClick=${()=>window.print()} disabled=${enabled.size===0}>Imprimir / PDF</button>
-      </div>
-    </div>
-    <div class="pane-body scroll" style="display:flex;gap:0;align-items:flex-start">
-
-      <!-- montador (não imprime) -->
-      <aside class="no-print" style="flex:0 0 280px;position:sticky;top:0;padding:16px;border-right:1px solid var(--line)">
-        <label style="display:flex;gap:7px;align-items:center;cursor:pointer;margin:0 0 14px;font-size:12px;color:var(--ink-soft)">
-          <input type="checkbox" checked=${on('credito')} onChange=${()=>toggle('credito')} />
-          Creditar QualiLab no resumo
-        </label>
-
-        <p class="field-label" style="margin:0 0 8px">Seções do relatório</p>
-        <div class="field" style="margin-bottom:10px">
-          <div class="field-label">Título (opcional)</div>
-          <input class="txtin" placeholder=${project?.name||'Relatório'} value=${title} onInput=${e=>setTitle(e.target.value)} />
-        </div>
-        ${projectMode==='collective' && html`<div class="field" style="margin-bottom:14px">
-          <div class="field-label">Camada</div>
-          <select class="opt" style="width:100%" value=${layer} onChange=${e=>setLayer(e.target.value)}>
-            <option value="final">Gabarito final</option>
-            <option value="individual">Individuais (todos)</option>
-          </select>
-        </div>`}
-        ${REPORT_GROUPS.map(g=>html`<div key=${g.group} style="margin-bottom:12px">
-          <p class="meta" style="font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.04em;margin:0 0 4px">${g.group}</p>
-          ${g.items.map(s=>html`<label key=${s.id} class="opt ${on(s.id)?'on':''}"
-              style="display:flex;gap:8px;align-items:flex-start;width:100%;text-align:left;margin-bottom:6px;cursor:pointer;padding:8px 10px">
-            <input type="checkbox" checked=${on(s.id)} onChange=${()=>toggle(s.id)} style="margin-top:2px" />
-            <span><span style="font-weight:600;display:block">${s.label}</span>
-              <span class="meta" style="font-size:11px">${s.desc}</span></span>
-          </label>`)}
-        </div>`)}
-      </aside>
-
-      <!-- relatório montado (imprime) -->
-      <div id="report-print" style="flex:1;min-width:0;padding:24px 28px;max-width:840px">
-        <h1 style="font-family:var(--serif);font-size:24px;margin:0 0 4px">${title.trim()||project?.name||'Relatório'}</h1>
-        <p class="meta" style="margin:0 0 20px">Gerado em ${new Date().toLocaleDateString('pt-BR')}${projectMode==='collective'?' · Camada: '+(useFinal?'gabarito final':'individuais (todos)'):''}</p>
-
-        ${enabled.size===0 && html`<p class="hint no-print">Marque ao menos uma seção à esquerda.</p>`}
-
-        ${on('resumo') && html`<section style="margin-bottom:26px">
-          <h2 style="font-family:var(--serif);font-size:18px;border-bottom:2px solid var(--teal);padding-bottom:4px">Resumo</h2>
-          <p>Projeto <b>${project?.name||''}</b> (${projectMode==='collective'?'coletivo':'individual'}), com ${' '}
-            <b>${docs.length}</b>${' '} documento(s), <b>${codes.length}</b>${' '} código(s), ${' '}
-            <b>${cats.length}</b>${' '} categoria(s) e <b>${totalCodings}</b>${' '} codificação(ões)${projectMode==='collective'?' na camada final/individual considerada':''}.${on('credito')?' O projeto foi codificado por meio da ferramenta QualiLab.':''}</p>
-          ${coders.length>0 && html`<p style="margin:6px 0 0">Codificado por: <b>${coders.join(', ')}</b>.</p>`}
-        </section>`}
-
-        ${on('docs_list') && html`<section style="margin-bottom:26px">
-          <h2 style="font-family:var(--serif);font-size:18px;border-bottom:2px solid var(--teal);padding-bottom:4px">Documentos</h2>
-          ${docs.length===0 ? html`<span class="meta">Nenhum documento.</span>`
-            : html`<ol style="margin:6px 0 0;padding-left:22px">${docs.map(d=>html`<li key=${d.id}>${d.name}</li>`)}</ol>`}
-        </section>`}
-
-        ${anyEsq && html`<section style="margin-bottom:26px">
-          <h2 style="font-family:var(--serif);font-size:18px;border-bottom:2px solid var(--teal);padding-bottom:4px">Esquema</h2>
-          ${on('cat_count') && html`<p style="margin:6px 0">Total de <b>${cats.length}</b> categoria(s).</p>`}
-          ${on('cat_list') && html`<ul style="margin:6px 0;padding-left:22px">${cats.map(c=>html`<li key=${c.id}>${c.name} <span class="meta">(${kindLabel(c.kind)})</span></li>`)}</ul>`}
-          ${on('code_count') && html`<p style="margin:6px 0"><b>${topCodes.length}</b> código(s) de Hierarquia 0 (raiz).</p>`}
-          ${on('sub_count') && html`<p style="margin:6px 0"><b>${subCodes.length}</b> sub-código(s).</p>`}
-          ${on('code_list') && html`<div style="margin:6px 0"><p style="font-weight:600;margin:0 0 2px">Códigos de Hierarquia 0</p>
-            <ul style="margin:0;padding-left:22px">${topCodes.map(c=>html`<li key=${c.id}>${swatch(c)} <span style="vertical-align:middle">${c.name}</span></li>`)}</ul></div>`}
-          ${on('sub_list') && html`<div style="margin:6px 0"><p style="font-weight:600;margin:0 0 2px">Sub-códigos</p>
-            ${subCodes.length===0 ? html`<span class="meta">Nenhum sub-código.</span>`
-              : html`<ul style="margin:0;padding-left:22px">${subCodes.map(c=>html`<li key=${c.id}>${swatch(c)} <span style="vertical-align:middle">${pathOf(c.id)}</span></li>`)}</ul>`}</div>`}
-        </section>`}
-
-        ${on('freq') && html`<section style="margin-bottom:26px">
-          <h2 style="font-family:var(--serif);font-size:18px;border-bottom:2px solid var(--teal);padding-bottom:4px">Frequência de códigos</h2>
-          ${freq.length===0 ? html`<span class="meta">Nenhuma codificação.</span>`
-            : html`<table style="border-collapse:collapse;width:100%;font-size:13px">
-                <tbody>${freq.map(({code,n})=>html`<tr key=${code.id} style="border-bottom:1px solid var(--line-soft)">
-                  <td style="padding:4px 8px 4px 0">${swatch(code)} <span style="vertical-align:middle">${pathOf(code.id)}</span></td>
-                  <td style="padding:4px 0;text-align:right;font-family:var(--mono)">${n}</td>
-                </tr>`)}</tbody></table>`}
-        </section>`}
-
-        ${on('categorias') && html`<section style="margin-bottom:26px">
-          <h2 style="font-family:var(--serif);font-size:18px;border-bottom:2px solid var(--teal);padding-bottom:4px">Distribuição por categoria</h2>
-          ${catDist.length===0 ? html`<span class="meta">Nenhuma categoria fechada com valores preenchidos.</span>`
-            : catDist.map(({cat,rows})=>html`<div key=${cat.id} style="margin-bottom:14px">
-                <p style="font-weight:600;margin:0 0 4px">${cat.name}</p>
-                <table style="border-collapse:collapse;width:100%;font-size:13px">
-                  <tbody>${rows.map(([val,n])=>html`<tr key=${val} style="border-bottom:1px solid var(--line-soft)">
-                    <td style="padding:3px 8px 3px 0">${val}</td>
-                    <td style="padding:3px 0;text-align:right;font-family:var(--mono)">${n}</td>
-                  </tr>`)}</tbody>
-                </table>
-              </div>`)}
-        </section>`}
-
-        ${on('trechos') && html`<section style="margin-bottom:26px">
-          <h2 style="font-family:var(--serif);font-size:18px;border-bottom:2px solid var(--teal);padding-bottom:4px">Trechos por código</h2>
-          ${trechosByCode.length===0 ? html`<span class="meta">Nenhum trecho codificado.</span>`
-            : trechosByCode.map(({code,docs:ds})=>html`<div key=${code.id} style="margin-bottom:18px;break-inside:avoid">
-                <p style="font-weight:600;margin:0 0 6px">${swatch(code)} <span style="vertical-align:middle">${pathOf(code.id)}</span></p>
-                ${ds.map(d=>html`<div key=${d.docId} style="margin:0 0 8px 6px">
-                  <p class="meta" style="margin:0 0 3px">${d.name}</p>
-                  ${d.cods.map(c=>html`<blockquote key=${c.id}
-                    style="margin:0 0 4px;padding:2px 0 2px 10px;border-left:3px solid ${codeColor(code.hue,code.depth,code.hue_deg).solid};font-family:var(--serif);font-size:14px">
-                    “${c.quote}”${c.author_name?html`<span class="meta" style="font-family:var(--sans);font-size:11px"> — ${c.author_name}</span>`:''}</blockquote>`)}
-                </div>`)}
-              </div>`)}
-        </section>`}
-
-        ${on('unused') && html`<section style="margin-bottom:26px">
-          <h2 style="font-family:var(--serif);font-size:18px;border-bottom:2px solid var(--teal);padding-bottom:4px">Códigos não utilizados</h2>
-          ${unusedCodes.length===0 ? html`<span class="meta">Todos os códigos foram utilizados.</span>`
-            : html`<ul style="margin:6px 0;padding-left:22px">${unusedCodes.map(c=>html`<li key=${c.id}>${swatch(c)} <span style="vertical-align:middle">${pathOf(c.id)}</span></li>`)}</ul>`}
-        </section>`}
-      </div>
-    </div>
-  </section>`;
-}
-
 /* ============ VizNav — painel esquerdo da Visualização ============
    Visual idêntico ao painel de Codificação: mesmas classes CSS, sem fundo colorido. */
 function VizNav({ cats, codes, allCodings, allValues, docs, layer, catFilter, selCode,
@@ -4083,6 +3949,1203 @@ function MemoEditor({ sel, project, codeById, codePath, memos, onSave }){
   </div>`;
 }
 
+/* ============ IA (chat simples via Edge Function ai-ask) ============
+   Proxy generico para a Groq, deployado em supabase/functions/ai-ask.
+   Aqui so existe um chat de pergunta/resposta; funcoes mais especificas
+   (sugerir codigo, resumir documento) podem reusar askAI() depois. */
+// catalogo de modelos por provedor pro seletor de botoes em "Minha Conta" — ordenados do
+// mais rapido/barato pro mais capaz/lento/caro (mesmo padrao "tamanho" nos tres provedores).
+// O array tambem decide a ordem dos botoes de provedor.
+const AI_PROVIDERS = [
+  { id:'gemini', label:'Google Gemini', models:[
+    { id:'gemini-2.5-flash-lite', label:'Flash Lite',  note:'mais rápido e barato' },
+    { id:'gemini-2.5-flash',      label:'Flash',       note:'padrão — equilíbrio' },
+    { id:'gemini-2.5-pro',        label:'Pro',         note:'mais capaz — mais lento e caro' },
+  ]},
+  { id:'openai', label:'OpenAI', models:[
+    { id:'gpt-5.4-mini', label:'GPT-5.4-mini', note:'mais rápido e barato' },
+    { id:'gpt-5.4',      label:'GPT-5.4',      note:'padrão — equilíbrio' },
+    { id:'gpt-5.5',      label:'GPT-5.5',      note:'mais capaz — mais lento e caro' },
+  ]},
+  { id:'anthropic', label:'Anthropic', models:[
+    { id:'claude-haiku-4-5-20251001', label:'Haiku',  note:'mais rápido e barato' },
+    { id:'claude-sonnet-4-6',         label:'Sonnet', note:'padrão — equilíbrio' },
+    { id:'claude-opus-4-8',          label:'Opus',   note:'mais capaz — mais lento e caro' },
+  ]},
+  // Azure OpenAI: como o "custom" (URL base + modelo em texto livre, custom:true), mas
+  // autenticacao por header "api-key" e chave obrigatoria — tratado pela Edge Function.
+  // baseUrl = endpoint "v1" do recurso (https://SEU-RECURSO.openai.azure.com/openai/v1);
+  // modelo = nome do DEPLOYMENT criado no portal do Azure (nao o nome do modelo base).
+  { id:'azure', label:'Azure OpenAI', azure:true, custom:true, models:[] },
+  // provedor "personalizado": sem lista fixa de modelos (custom:true) — o pesquisador
+  // preenche URL base + modelo em texto livre. Cobre qualquer API compativel com o formato
+  // classico da OpenAI (/chat/completions): DeepSeek, Mistral, Qwen hospedado, ou um
+  // servidor local (Ollama/vLLM) exposto numa URL publica (a Edge Function roda no servidor
+  // do Supabase, nao alcanca localhost da maquina do pesquisador sem tunel).
+  { id:'custom', label:'Personalizado', custom:true, models:[] },
+];
+// configuracao pessoal de IA (BYOK) — guardada so no localStorage de quem configurou em
+// "Minha Conta". Ausente = usa a chave/modelo compartilhados do projeto (comportamento
+// de sempre); a Edge Function decide isso, aqui so manda o que tiver preenchido.
+function getAIConfig(){
+  try{
+    return {
+      provider: localStorage.getItem('qualilab:ai_provider') || 'gemini',
+      apiKey: localStorage.getItem('qualilab:ai_key') || '',
+      model: localStorage.getItem('qualilab:ai_model') || '',
+      baseUrl: localStorage.getItem('qualilab:ai_baseurl') || '',
+    };
+  }catch(e){ return { provider:'gemini', apiKey:'', model:'', baseUrl:'' }; }
+}
+async function askAI(prompt){
+  const cfg = getAIConfig();
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/ai-ask`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt, provider: cfg.provider, ...(cfg.apiKey ? { apiKey: cfg.apiKey } : {}), ...(cfg.model ? { model: cfg.model } : {}), ...(cfg.baseUrl ? { baseUrl: cfg.baseUrl } : {}) }),
+  });
+  const data = await res.json().catch(()=>({}));
+  if(!res.ok || data.error) throw new Error(data.error || `Erro ${res.status}`);
+  return data.text || '';
+}
+
+// Motor de conversa multi-turno (Fase 0 do plano de IA assistida). Reaproveita o suporte a
+// { system, messages } que a Edge Function ai-ask JA tem — nao substitui askAI (que segue
+// servindo o caminho de uma rodada). messages = [{role:'user'|'assistant', content}]; o
+// material grande vai no system (prefixo estavel = candidato a prompt caching no provedor).
+//
+// IMPORTANTE: a ai-ask SO usa body.system no fallback de { prompt } — quando vem body.messages,
+// ela ignora body.system e extrai o system de mensagens com role:'system' DENTRO do array.
+// Por isso o system entra PREPENDADO como 1a mensagem (role:'system'), nao como campo separado;
+// senao o system (= todo o material) seria descartado e o modelo responderia sem contexto.
+// Esse caminho funciona em todos os provedores (Gemini/OpenAI/Anthropic/Azure/custom) sem
+// precisar redeploy da function. Mandamos body.system tambem, por compatibilidade/inocuo.
+async function askAIChat({ system, messages, signal }){
+  const cfg = getAIConfig();
+  const msgs = [ ...(system ? [{ role:'system', content: system }] : []), ...(messages || []) ];
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/ai-ask`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      ...(system ? { system } : {}),
+      messages: msgs,
+      provider: cfg.provider,
+      ...(cfg.apiKey ? { apiKey: cfg.apiKey } : {}),
+      ...(cfg.model ? { model: cfg.model } : {}),
+      ...(cfg.baseUrl ? { baseUrl: cfg.baseUrl } : {}),
+    }),
+    ...(signal ? { signal } : {}),
+  });
+  const data = await res.json().catch(()=>({}));
+  if(!res.ok || data.error) throw new Error(data.error || `Erro ${res.status}`);
+  return data.text || '';
+}
+
+// extrai os objetos {...} de NIVEL SUPERIOR de uma string, respeitando strings/escapes —
+// usado pra "salvar" operacoes mesmo quando o JSON em volta veio truncado (max_tokens) ou
+// malformado. Pula chaves dentro de strings; nao confunde { de dentro de uma string.
+function extractBalancedObjects(s){
+  const out=[]; let depth=0, start=-1, inStr=false, esc=false;
+  for(let i=0;i<s.length;i++){ const ch=s[i];
+    if(inStr){ if(esc) esc=false; else if(ch==='\\') esc=true; else if(ch==='"') inStr=false; continue; }
+    if(ch==='"'){ inStr=true; continue; }
+    if(ch==='{'){ if(depth===0) start=i; depth++; }
+    else if(ch==='}'){ if(depth>0){ depth--; if(depth===0 && start>=0){ out.push(s.slice(start,i+1)); start=-1; } } }
+  }
+  return out;
+}
+
+// Parser tolerante de JSON vindo da IA — e o fallback UNIVERSAL do plano (funciona em
+// qualquer provedor BYOK sem depender de saida estruturada nativa). Estrategia em camadas:
+//   1) recorta um bloco ```json``` se houver, senao do 1o {/[ ao ultimo }/] e tenta JSON.parse
+//      (com e sem virgulas-sobrando), cobrindo o caso comum de resposta bem-formada.
+//   2) SALVAMENTO: se o parse falhar (tipico de saida truncada por max_tokens, em que o objeto
+//      { "operations": [ ... } nunca fecha), localiza o array "operations" e extrai dele os
+//      objetos {...} balanceados que parsearem individualmente — recupera as operacoes
+//      completas e descarta so a ultima cortada. Marca _salvaged pra UI avisar.
+// Devolve null se nada der. Quem chama trata o erro (e pode mostrar a resposta crua).
+function parseAIJson(text){
+  if(!text) return null;
+  let s = String(text).trim();
+  const fenced = s.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if(fenced) s = fenced[1].trim();
+  const firstObj = s.indexOf('{'), firstArr = s.indexOf('[');
+  let start = -1, closeCh = '}';
+  if(firstArr >= 0 && (firstObj < 0 || firstArr < firstObj)){ start = firstArr; closeCh=']'; }
+  else if(firstObj >= 0){ start = firstObj; }
+  const last = start>=0 ? s.lastIndexOf(closeCh) : -1;
+  const core = start>=0 ? s.slice(start, last>start ? last+1 : s.length) : s;
+  for(const t of [core, core.replace(/,\s*([}\]])/g, '$1')]){ // crua e sem virgula-sobrando
+    try{ return JSON.parse(t); }catch(e){}
+  }
+  // salvamento de operacoes (cobre truncamento): varre o conteudo do array "operations"
+  const opsKey = s.search(/["']operations["']/);
+  const scanFrom = opsKey>=0 ? s.slice(s.indexOf('[', opsKey) + 1) : s;
+  const objs = extractBalancedObjects(scanFrom);
+  const ops = [];
+  for(const o of objs){ try{ const p = JSON.parse(o); if(p && typeof p==='object') ops.push(p); }catch(e){} }
+  const opLike = ops.filter(o=>o.op);
+  if(opLike.length){
+    const sum = s.match(/["']summary["']\s*:\s*"((?:[^"\\]|\\.)*)"/);
+    return { operations: opLike, summary: sum ? sum[1] : '', _salvaged: true };
+  }
+  return null;
+}
+
+/* ============ ReportView — aba Relatório ============
+   Montador: o pesquisador liga/desliga seções por checkbox e o relatório se monta
+   ao vivo no painel direito. Imprime só o relatório (#report-print + CSS @media print). */
+const REPORT_GROUPS = [
+  { group:'Visão geral', items:[
+    { id:'resumo',    label:'Resumo do projeto',  desc:'Nome, tipo, totais e codificadores.' },
+    { id:'docs_list', label:'Lista de documentos', desc:'Nomes dos documentos do projeto.' },
+  ]},
+  { group:'Esquema', items:[
+    { id:'cat_count',  label:'Quantas categorias',   desc:'Número total de categorias.' },
+    { id:'cat_list',   label:'Quais categorias',     desc:'Lista das categorias, com o tipo.' },
+    { id:'code_count', label:'Quantos códigos',      desc:'Número de códigos de Hierarquia 0 (raiz).' },
+    { id:'sub_count',  label:'Quantos sub-códigos',  desc:'Número de códigos com pai (subníveis).' },
+    { id:'code_list',  label:'Quais códigos',        desc:'Lista dos códigos de Hierarquia 0.' },
+    { id:'sub_list',   label:'Quais sub-códigos',    desc:'Lista dos sub-códigos, com o caminho do pai.' },
+  ]},
+  { group:'Resultados', items:[
+    { id:'freq',       label:'Frequência de códigos',     desc:'Quantas vezes cada código foi aplicado.' },
+    { id:'categorias', label:'Distribuição por categoria', desc:'Documentos por valor de cada categoria fechada.' },
+    { id:'trechos',    label:'Trechos por código',        desc:'Citações agrupadas por código e documento.' },
+    { id:'unused',     label:'Códigos não utilizados',    desc:'Códigos sem nenhuma codificação.' },
+  ]},
+];
+
+function ReportView({ project, projectMode, docs, cats, codes, codeById, codePath, allCodings, allValues, store }){
+  const [enabled, setEnabled] = useState(()=>new Set(['credito','resumo','freq']));
+  const [title, setTitle] = useState('');
+  const [layer, setLayer] = useState('final'); // final | individual — só relevante em coletivo
+  const toggle = (id)=> setEnabled(s=>{ const n=new Set(s); n.has(id)?n.delete(id):n.add(id); return n; });
+  const on = (id)=> enabled.has(id);
+  // em projeto individual tudo já é 'final'; o seletor de camada não aparece
+  const useFinal = projectMode!=='collective' || layer==='final';
+
+  // codificações da camada escolhida (gabarito final ou individuais de todos)
+  const codingsForReport = useMemo(()=>{
+    if(projectMode==='individual') return allCodings;
+    return allCodings.filter(c=> useFinal ? c.layer==='final' : c.layer!=='final');
+  }, [allCodings, projectMode, useFinal]);
+
+  const docById = useMemo(()=>Object.fromEntries(docs.map(d=>[d.id,d])), [docs]);
+  const pathOf = (id)=> codePath ? codePath(id).join(' ▸ ') : (codeById[id]?.name||id);
+  const swatch = (c)=> html`<span class="swatch" style=${`display:inline-block;vertical-align:middle;background:${codeColor(c.hue,c.depth,c.hue_deg).solid}`}></span>`;
+  const kindLabel = (k)=> (CAT_KINDS.find(x=>x.id===k)||{}).label || k;
+
+  const topCodes = useMemo(()=>codes.filter(c=>!c.parent_id), [codes]);
+  const subCodes = useMemo(()=>codes.filter(c=>c.parent_id), [codes]);
+
+  // contagem (direta) por código
+  const countMap = useMemo(()=>{
+    const m={}; codingsForReport.forEach(c=>{ m[c.code_id]=(m[c.code_id]||0)+1; }); return m;
+  }, [codingsForReport]);
+  // frequência por código, do mais usado ao menos
+  const freq = useMemo(()=>
+    codes.map(c=>({ code:c, n:countMap[c.id]||0 })).filter(x=>x.n>0).sort((a,b)=>b.n-a.n)
+  , [countMap, codes]);
+  const unusedCodes = useMemo(()=>codes.filter(c=>!countMap[c.id]), [countMap, codes]);
+  const anyEsq = ['cat_count','cat_list','code_count','sub_count','code_list','sub_list'].some(on);
+
+  // distribuição por categoria fechada: contagem de documentos por valor (usa gabarito quando há)
+  const catDist = useMemo(()=>{
+    const closed = cats.filter(c=>CAT_HAS_OPTIONS(c.kind)||c.kind==='date');
+    return closed.map(cat=>{
+      const counts={};
+      docs.forEach(d=>{
+        const rows = allValues.filter(x=>x.document_id===d.id && x.category_id===cat.id);
+        const fin = rows.find(r=>r.layer==='final');
+        // segue a camada escolhida: gabarito usa só o final; individuais usam as respostas individuais
+        const vals = useFinal ? (fin ? [fin.value] : []) : rows.filter(r=>r.layer!=='final').map(r=>r.value);
+        const seen=new Set();
+        vals.forEach(v=>{ if(v==null) return; String(v).split(CAT_MULTI_SEP).forEach(part=>{ const k=part.trim(); if(k && !seen.has(k)){ seen.add(k); counts[k]=(counts[k]||0)+1; } }); });
+      });
+      const rows = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+      return { cat, rows };
+    }).filter(x=>x.rows.length>0);
+  }, [cats, docs, allValues, useFinal]);
+
+  // trechos por código: agrupa codings por código, depois por documento
+  const trechosByCode = useMemo(()=>{
+    const byCode={};
+    codingsForReport.forEach(c=>{ (byCode[c.code_id]=byCode[c.code_id]||[]).push(c); });
+    return freq.map(({code})=>{
+      const list = byCode[code.id]||[];
+      const byDoc={};
+      list.forEach(c=>{ (byDoc[c.document_id]=byDoc[c.document_id]||[]).push(c); });
+      const docs2 = Object.entries(byDoc)
+        .map(([docId,cods])=>({ docId, name:docById[docId]?.name||docId,
+          cods:cods.slice().sort((a,b)=>a.span_start-b.span_start) }))
+        .sort((a,b)=>a.name>b.name?1:-1);
+      return { code, docs:docs2 };
+    }).filter(x=>x.docs.length>0);
+  }, [codingsForReport, freq, docById]);
+
+  const totalCodings = codingsForReport.length;
+
+  // codificadores: nomes distintos das codificações individuais (o trabalho de codificação).
+  // Só faz sentido em projeto coletivo; ordena alfabeticamente.
+  const coders = useMemo(()=>{
+    if(projectMode!=='collective') return [];
+    const s=new Set();
+    allCodings.filter(c=>c.layer!=='final').forEach(c=>{ const n=(c.author_name||'').trim(); if(n) s.add(n); });
+    return [...s].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  }, [allCodings, projectMode]);
+
+  // monta o relatório como texto simples (sem marcações .md) — para colar direto em Word/Docs
+  function buildText(){
+    const L=[]; const H=(t)=>L.push('',''+t,'');
+    L.push(title.trim()||project?.name||'Relatório');
+    L.push('Gerado em '+new Date().toLocaleDateString('pt-BR')+(projectMode==='collective'?' · Camada: '+(useFinal?'gabarito final':'individuais (todos)'):''));
+    if(on('resumo')){ H('Resumo');
+      L.push(`Projeto ${project?.name||''} (${projectMode==='collective'?'coletivo':'individual'}), com ${docs.length} documento(s), ${codes.length} código(s), ${cats.length} categoria(s) e ${totalCodings} codificação(ões).`+(on('credito')?' O projeto foi codificado por meio da ferramenta QualiLab.':''));
+      if(coders.length) L.push('', 'Codificado por: '+coders.join(', ')+'.');
+    }
+    if(on('docs_list')){ H('Documentos');
+      if(!docs.length) L.push('(nenhum documento)');
+      else docs.forEach((d,i)=> L.push(`${i+1}. ${d.name}`));
+    }
+    if(anyEsq){ H('Esquema');
+      if(on('cat_count')) L.push(`Total de ${cats.length} categoria(s).`);
+      if(on('cat_list')){ L.push(''); cats.forEach(c=> L.push(`• ${c.name} (${kindLabel(c.kind)})`)); }
+      if(on('code_count')) L.push(`${topCodes.length} código(s) de Hierarquia 0 (raiz).`);
+      if(on('sub_count')) L.push(`${subCodes.length} sub-código(s).`);
+      if(on('code_list')){ L.push('','Códigos de Hierarquia 0:'); topCodes.forEach(c=> L.push(`• ${c.name}`)); }
+      if(on('sub_list')){ L.push('','Sub-códigos:'); if(!subCodes.length) L.push('(nenhum)'); else subCodes.forEach(c=> L.push(`• ${pathOf(c.id)}`)); }
+    }
+    if(on('freq')){ H('Frequência de códigos');
+      if(!freq.length) L.push('(nenhuma codificação)');
+      else freq.forEach(({code,n})=> L.push(`• ${pathOf(code.id)}: ${n}`));
+    }
+    if(on('categorias')){ H('Distribuição por categoria');
+      if(!catDist.length) L.push('(nenhuma categoria fechada com valores)');
+      else catDist.forEach(({cat,rows})=>{ L.push('',cat.name+':');
+        rows.forEach(([val,n])=> L.push(`• ${val}: ${n}`)); });
+    }
+    if(on('trechos')){ H('Trechos por código');
+      if(!trechosByCode.length) L.push('(nenhum trecho codificado)');
+      else trechosByCode.forEach(({code,docs:ds})=>{ L.push('',pathOf(code.id));
+        ds.forEach(d=>{ L.push('',d.name+':');
+          d.cods.forEach(c=> L.push(`"${c.quote}"${c.author_name?' — '+c.author_name:''}`)); }); });
+    }
+    if(on('unused')){ H('Códigos não utilizados');
+      if(!unusedCodes.length) L.push('(todos os códigos foram utilizados)');
+      else unusedCodes.forEach(c=> L.push(`• ${pathOf(c.id)}`));
+    }
+    return L.join('\n').replace(/\n{3,}/g,'\n\n').trim()+'\n';
+  }
+  const [copied, setCopied] = useState(false);
+  async function copy(){
+    try{ await navigator.clipboard.writeText(buildText()); setCopied(true); setTimeout(()=>setCopied(false),1800); }
+    catch(e){ alert('Não foi possível copiar automaticamente. '+(e.message||'')); }
+  }
+
+  return html`<section class="pane left" style="flex:1 1 100%;border-right:none;max-width:none">
+    <div class="pane-head no-print" style="flex:none;justify-content:space-between">
+      <span class="field-label" style="margin:0">Relatório do projeto</span>
+      <div class="row" style="gap:8px">
+        <button class="btn sm" onClick=${copy} disabled=${enabled.size===0}>${copied?'Copiado ✓':'Copiar texto'}</button>
+        <button class="btn sm primary" onClick=${()=>window.print()} disabled=${enabled.size===0}>Imprimir / PDF</button>
+      </div>
+    </div>
+    <div class="pane-body scroll" style="display:flex;gap:0;align-items:flex-start">
+
+      <!-- montador (não imprime) -->
+      <aside class="no-print" style="flex:0 0 280px;position:sticky;top:0;padding:16px;border-right:1px solid var(--line)">
+        <label style="display:flex;gap:7px;align-items:center;cursor:pointer;margin:0 0 14px;font-size:12px;color:var(--ink-soft)">
+          <input type="checkbox" checked=${on('credito')} onChange=${()=>toggle('credito')} />
+          Creditar QualiLab no resumo
+        </label>
+
+        <p class="field-label" style="margin:0 0 8px">Seções do relatório</p>
+        <div class="field" style="margin-bottom:10px">
+          <div class="field-label">Título (opcional)</div>
+          <input class="txtin" placeholder=${project?.name||'Relatório'} value=${title} onInput=${e=>setTitle(e.target.value)} />
+        </div>
+        ${projectMode==='collective' && html`<div class="field" style="margin-bottom:14px">
+          <div class="field-label">Camada</div>
+          <select class="opt" style="width:100%" value=${layer} onChange=${e=>setLayer(e.target.value)}>
+            <option value="final">Gabarito final</option>
+            <option value="individual">Individuais (todos)</option>
+          </select>
+        </div>`}
+        ${REPORT_GROUPS.map(g=>html`<div key=${g.group} style="margin-bottom:12px">
+          <p class="meta" style="font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.04em;margin:0 0 4px">${g.group}</p>
+          ${g.items.map(s=>html`<label key=${s.id} class="opt ${on(s.id)?'on':''}"
+              style="display:flex;gap:8px;align-items:flex-start;width:100%;text-align:left;margin-bottom:6px;cursor:pointer;padding:8px 10px">
+            <input type="checkbox" checked=${on(s.id)} onChange=${()=>toggle(s.id)} style="margin-top:2px" />
+            <span><span style="font-weight:600;display:block">${s.label}</span>
+              <span class="meta" style="font-size:11px">${s.desc}</span></span>
+          </label>`)}
+        </div>`)}
+      </aside>
+
+      <!-- relatório montado (imprime) -->
+      <div id="report-print" style="flex:1;min-width:0;padding:24px 28px;max-width:840px">
+        <h1 style="font-family:var(--serif);font-size:24px;margin:0 0 4px">${title.trim()||project?.name||'Relatório'}</h1>
+        <p class="meta" style="margin:0 0 20px">Gerado em ${new Date().toLocaleDateString('pt-BR')}${projectMode==='collective'?' · Camada: '+(useFinal?'gabarito final':'individuais (todos)'):''}</p>
+
+        ${enabled.size===0 && html`<p class="hint no-print">Marque ao menos uma seção à esquerda.</p>`}
+
+        ${on('resumo') && html`<section style="margin-bottom:26px">
+          <h2 style="font-family:var(--serif);font-size:18px;border-bottom:2px solid var(--teal);padding-bottom:4px">Resumo</h2>
+          <p>Projeto <b>${project?.name||''}</b> (${projectMode==='collective'?'coletivo':'individual'}), com ${' '}
+            <b>${docs.length}</b>${' '} documento(s), <b>${codes.length}</b>${' '} código(s), ${' '}
+            <b>${cats.length}</b>${' '} categoria(s) e <b>${totalCodings}</b>${' '} codificação(ões)${projectMode==='collective'?' na camada final/individual considerada':''}.${on('credito')?' O projeto foi codificado por meio da ferramenta QualiLab.':''}</p>
+          ${coders.length>0 && html`<p style="margin:6px 0 0">Codificado por: <b>${coders.join(', ')}</b>.</p>`}
+        </section>`}
+
+        ${on('docs_list') && html`<section style="margin-bottom:26px">
+          <h2 style="font-family:var(--serif);font-size:18px;border-bottom:2px solid var(--teal);padding-bottom:4px">Documentos</h2>
+          ${docs.length===0 ? html`<span class="meta">Nenhum documento.</span>`
+            : html`<ol style="margin:6px 0 0;padding-left:22px">${docs.map(d=>html`<li key=${d.id}>${d.name}</li>`)}</ol>`}
+        </section>`}
+
+        ${anyEsq && html`<section style="margin-bottom:26px">
+          <h2 style="font-family:var(--serif);font-size:18px;border-bottom:2px solid var(--teal);padding-bottom:4px">Esquema</h2>
+          ${on('cat_count') && html`<p style="margin:6px 0">Total de <b>${cats.length}</b> categoria(s).</p>`}
+          ${on('cat_list') && html`<ul style="margin:6px 0;padding-left:22px">${cats.map(c=>html`<li key=${c.id}>${c.name} <span class="meta">(${kindLabel(c.kind)})</span></li>`)}</ul>`}
+          ${on('code_count') && html`<p style="margin:6px 0"><b>${topCodes.length}</b> código(s) de Hierarquia 0 (raiz).</p>`}
+          ${on('sub_count') && html`<p style="margin:6px 0"><b>${subCodes.length}</b> sub-código(s).</p>`}
+          ${on('code_list') && html`<div style="margin:6px 0"><p style="font-weight:600;margin:0 0 2px">Códigos de Hierarquia 0</p>
+            <ul style="margin:0;padding-left:22px">${topCodes.map(c=>html`<li key=${c.id}>${swatch(c)} <span style="vertical-align:middle">${c.name}</span></li>`)}</ul></div>`}
+          ${on('sub_list') && html`<div style="margin:6px 0"><p style="font-weight:600;margin:0 0 2px">Sub-códigos</p>
+            ${subCodes.length===0 ? html`<span class="meta">Nenhum sub-código.</span>`
+              : html`<ul style="margin:0;padding-left:22px">${subCodes.map(c=>html`<li key=${c.id}>${swatch(c)} <span style="vertical-align:middle">${pathOf(c.id)}</span></li>`)}</ul>`}</div>`}
+        </section>`}
+
+        ${on('freq') && html`<section style="margin-bottom:26px">
+          <h2 style="font-family:var(--serif);font-size:18px;border-bottom:2px solid var(--teal);padding-bottom:4px">Frequência de códigos</h2>
+          ${freq.length===0 ? html`<span class="meta">Nenhuma codificação.</span>`
+            : html`<table style="border-collapse:collapse;width:100%;font-size:13px">
+                <tbody>${freq.map(({code,n})=>html`<tr key=${code.id} style="border-bottom:1px solid var(--line-soft)">
+                  <td style="padding:4px 8px 4px 0">${swatch(code)} <span style="vertical-align:middle">${pathOf(code.id)}</span></td>
+                  <td style="padding:4px 0;text-align:right;font-family:var(--mono)">${n}</td>
+                </tr>`)}</tbody></table>`}
+        </section>`}
+
+        ${on('categorias') && html`<section style="margin-bottom:26px">
+          <h2 style="font-family:var(--serif);font-size:18px;border-bottom:2px solid var(--teal);padding-bottom:4px">Distribuição por categoria</h2>
+          ${catDist.length===0 ? html`<span class="meta">Nenhuma categoria fechada com valores preenchidos.</span>`
+            : catDist.map(({cat,rows})=>html`<div key=${cat.id} style="margin-bottom:14px">
+                <p style="font-weight:600;margin:0 0 4px">${cat.name}</p>
+                <table style="border-collapse:collapse;width:100%;font-size:13px">
+                  <tbody>${rows.map(([val,n])=>html`<tr key=${val} style="border-bottom:1px solid var(--line-soft)">
+                    <td style="padding:3px 8px 3px 0">${val}</td>
+                    <td style="padding:3px 0;text-align:right;font-family:var(--mono)">${n}</td>
+                  </tr>`)}</tbody>
+                </table>
+              </div>`)}
+        </section>`}
+
+        ${on('trechos') && html`<section style="margin-bottom:26px">
+          <h2 style="font-family:var(--serif);font-size:18px;border-bottom:2px solid var(--teal);padding-bottom:4px">Trechos por código</h2>
+          ${trechosByCode.length===0 ? html`<span class="meta">Nenhum trecho codificado.</span>`
+            : trechosByCode.map(({code,docs:ds})=>html`<div key=${code.id} style="margin-bottom:18px;break-inside:avoid">
+                <p style="font-weight:600;margin:0 0 6px">${swatch(code)} <span style="vertical-align:middle">${pathOf(code.id)}</span></p>
+                ${ds.map(d=>html`<div key=${d.docId} style="margin:0 0 8px 6px">
+                  <p class="meta" style="margin:0 0 3px">${d.name}</p>
+                  ${d.cods.map(c=>html`<blockquote key=${c.id}
+                    style="margin:0 0 4px;padding:2px 0 2px 10px;border-left:3px solid ${codeColor(code.hue,code.depth,code.hue_deg).solid};font-family:var(--serif);font-size:14px">
+                    “${c.quote}”${c.author_name?html`<span class="meta" style="font-family:var(--sans);font-size:11px"> — ${c.author_name}</span>`:''}</blockquote>`)}
+                </div>`)}
+              </div>`)}
+        </section>`}
+
+        ${on('unused') && html`<section style="margin-bottom:26px">
+          <h2 style="font-family:var(--serif);font-size:18px;border-bottom:2px solid var(--teal);padding-bottom:4px">Códigos não utilizados</h2>
+          ${unusedCodes.length===0 ? html`<span class="meta">Todos os códigos foram utilizados.</span>`
+            : html`<ul style="margin:6px 0;padding-left:22px">${unusedCodes.map(c=>html`<li key=${c.id}>${swatch(c)} <span style="vertical-align:middle">${pathOf(c.id)}</span></li>`)}</ul>`}
+        </section>`}
+      </div>
+    </div>
+  </section>`;
+}
+
+/* ============ CODIFICAR COM IA — organizacao de codigos (Fase 2 do plano) ============
+   A IA PROPOE reorganizar o esquema de codigos (caso classico de grounded theory: centenas
+   de codigos soltos no mesmo nivel apos a codificacao aberta); o pesquisador APROVA / recusa
+   cada operacao, com a justificativa (reason) visivel. Nada e aplicado sem confirmacao
+   (mesmo espirito do allowRedact e do "Ver prompt completo"). Aplicar reusa a MESMA logica
+   ja provada em SchemaCodesView — reparentSubtree (recalcula profundidade/cor da subarvore),
+   merge via addCoding+deleteCoding preservando filhos, proteção contra ciclo (isDescendantOf).
+
+   IDs: os codigos reais sao uuids longos; aqui mapeamos cada um pra um id curto (#c1, #c2...)
+   pra IA referenciar de forma barata e legivel. Toda operacao tem seus ids traduzidos de
+   volta e VALIDADOS contra os codigos reais — id inexistente e descartado em silencio. */
+
+// uma operacao por tipo, com descricao legivel pra previa antes->depois e o reason da IA.
+const IA_COD_SYS_REGRAS = `Sua tarefa é propor uma reorganização do esquema de códigos e devolver SOMENTE um objeto JSON (sem texto fora dele), no formato:
+{
+  "operations": [
+    { "op": "merge",    "survivor": "#c2", "merged": ["#c5","#c8"], "reason": "..." },
+    { "op": "group",    "children": ["#c3","#c4"], "parent": "#c1", "reason": "..." },
+    { "op": "group",    "children": ["#c6","#c7"], "parent": null, "newParentName": "Nome da nova família", "reason": "..." },
+    { "op": "reparent", "id": "#c9", "newParent": "#c1", "reason": "..." },
+    { "op": "rename",   "id": "#c4", "newName": "Novo nome", "reason": "..." },
+    { "op": "promote",  "id": "#c7", "reason": "..." }
+  ],
+  "summary": "uma frase resumindo a lógica geral da proposta"
+}
+Significado: merge = fundir códigos redundantes num só (survivor sobrevive, merged somem e seus trechos passam pro survivor); group = manter os códigos separados, mas agrupá-los como filhos de um pai (existente em "parent", ou novo com "newParentName" e parent=null); reparent = mover um código pra dentro de outro pai; rename = renomear; promote = tornar um código uma família de topo (Hierarquia 0).
+Regras: use SOMENTE os ids curtos que aparecem na lista de códigos (não invente ids nem use nomes no lugar do id); explique CADA operação no campo "reason" (em português, em UMA frase curta — não use quebras de linha dentro de strings JSON); prefira poucas famílias claras a muitos níveis; sinalize incerteza no próprio "reason" quando houver; não proponha operações triviais ou redundantes. Proponha NO MÁXIMO 20 operações por resposta — se houver mais a fazer, priorize as mais importantes e diga no "summary" que há mais a fazer numa próxima rodada (a resposta não pode ser longa demais ou será cortada). Se o esquema já estiver bem organizado, devolva "operations": [] e diga isso no "summary". Devolva apenas o JSON, sem texto antes nem depois, sem comentários.`;
+
+function IACodificarPanel({ project, docs, codes, codeById, codePath, store, allCodings, count, isAdmin, reload, loadAll, onAdd, memos }){
+  const [history, setHistory] = useState([]);   // [{role:'user'|'assistant', content}] enviado ao modelo
+  const [ops, setOps] = useState([]);            // operacoes validas da ultima resposta, ja traduzidas+validadas
+  const [summary, setSummary] = useState('');    // resumo textual da IA
+  const [dropped, setDropped] = useState(0);     // quantas operacoes vieram invalidas (ids inexistentes etc.)
+  const [salvaged, setSalvaged] = useState(false); // JSON veio truncado/malformado e operacoes foram recuperadas
+  const [rawFail, setRawFail] = useState('');    // resposta crua quando o parse falha de vez (pra diagnostico)
+  const [decided, setDecided] = useState({});    // { opKey: true|false } aprovar/recusar por operacao (default aprovar)
+  const [instruction, setInstruction] = useState(''); // 1o turno / follow-up livre do pesquisador
+  const [withSamples, setWithSamples] = useState(true); // incluir amostra de trechos por codigo
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const [applyMsg, setApplyMsg] = useState('');
+  const [showPrompt, setShowPrompt] = useState(false);
+
+  // memo do projeto (mesma fonte que o IAAnalisarPanel usa pra contextualizar)
+  const projectMemo = (memos||[]).find(m=>m.scope==='project' && (m.target_id==null || m.target_id===project.id));
+
+  // ids curtos estaveis (#c1..) <-> uuid real. Recalcula quando a lista de codigos muda.
+  const { shortToId, idToShort } = useMemo(()=>{
+    const s2i = {}, i2s = {};
+    codes.forEach((c,i)=>{ const sh = 'c'+(i+1); s2i[sh] = c.id; i2s[c.id] = sh; });
+    return { shortToId: s2i, idToShort: i2s };
+  }, [codes]);
+  const resolveId = (ref)=>{
+    if(ref==null) return null;
+    const key = String(ref).replace(/^#/, '').trim();
+    if(shortToId[key]) return shortToId[key];      // id curto (#c3 ou c3)
+    if(codeById[key]) return key;                  // a IA mandou o uuid real direto
+    return null;
+  };
+  const shortOf = (realId)=> idToShort[realId] || '?';
+  const nameOf = (realId)=> codeById[realId]?.name || '(removido)';
+  const labelOf = (realId)=> `#${shortOf(realId)} "${nameOf(realId)}"`;
+
+  // censura: mascara amostras de trechos de codigos is_redaction (cobertura por codigo, simples
+  // — basta pra "dica" de organizacao; a versao com sobreposicao fica no IAAnalisarPanel).
+  const maskedCodeIds = useMemo(()=> new Set(codes.filter(c=>c.is_redaction).map(c=>c.id)), [codes]);
+
+  // ---- MATERIAL (vai no system, prefixo estavel) ----
+  const codeListBlock = useMemo(()=>{
+    const lines = codes.map(c=>{
+      const parent = c.parent_id ? '#'+shortOf(c.parent_id) : '(raiz)';
+      return `#${shortOf(c.id)} | "${c.name}" | pai: ${parent} | profundidade ${c.depth??0} | ${count[c.id]||0} trechos`;
+    });
+    return 'LISTA DE CÓDIGOS (id | nome | pai | profundidade | nº de trechos — esta lista é COMPLETA):\n' + (lines.join('\n') || '(nenhum código)');
+  }, [codes, count, idToShort]);
+
+  const excerptBlock = useMemo(()=>{
+    if(!withSamples) return '';
+    const byCode = {};
+    (allCodings||[]).forEach(c=>{ (byCode[c.code_id] = byCode[c.code_id]||[]).push(c); });
+    const blocks = codes.map(c=>{
+      const list = (byCode[c.id]||[]).slice(0, 3); // ate 3 trechos ilustrativos por codigo
+      if(!list.length) return null;
+      const quotes = list.map(co=> `- "${maskedCodeIds.has(c.id) ? '[trecho censurado]' : (co.quote||'').slice(0,240)}"`);
+      return `#${shortOf(c.id)} "${c.name}":\n${quotes.join('\n')}`;
+    }).filter(Boolean);
+    if(!blocks.length) return '';
+    return '\n\nAMOSTRA DE TRECHOS POR CÓDIGO (até 3 por código, apenas ilustrativos — NÃO são todos os trechos):\n' + blocks.join('\n\n');
+  }, [codes, allCodings, withSamples, maskedCodeIds, idToShort]);
+
+  const systemPrompt = useMemo(()=>{
+    const memo = projectMemo?.content?.trim();
+    let mat = codeListBlock + excerptBlock;
+    if(mat.length > IA_TOTAL_CHAR_LIMIT){
+      // preserva a lista de codigos inteira (essencial); trunca a amostra de trechos primeiro
+      const budget = Math.max(0, IA_TOTAL_CHAR_LIMIT - codeListBlock.length);
+      mat = codeListBlock + (budget>200 ? excerptBlock.slice(0, budget) + '\n[...amostra truncada — limite de tamanho...]' : '\n[amostra de trechos omitida — esquema grande]');
+    }
+    return [
+      'Você é um assistente de análise qualitativa especializado em organização de esquemas de códigos (codebooks), no espírito da grounded theory. Trabalha em português.',
+      memo ? `MEMO DO PROJETO (objetivo da pesquisa): ${memo}` : '(Sem memo de projeto registrado.)',
+      'DESCRIÇÃO DO MATERIAL: abaixo está a lista COMPLETA dos códigos do projeto (com hierarquia e contagem de trechos) e, quando disponível, uma amostra ilustrativa de trechos por código. A amostra NÃO é exaustiva — não tire conclusões sobre a quantidade de trechos a partir dela. Não critique a cobertura nem a quantidade de codificação: o foco é só a ORGANIZAÇÃO dos códigos.',
+      'MATERIAL:\n' + mat,
+      IA_COD_SYS_REGRAS,
+    ].join('\n\n');
+  }, [codeListBlock, excerptBlock, projectMemo]);
+
+  // ---- VALIDACAO: traduz ids curtos -> reais e descarta operacoes invalidas ----
+  const validateOps = (rawOps)=>{
+    const out = []; let bad = 0;
+    const seen = new Set(); // ids ja "consumidos" por um merge/group anterior nesta proposta
+    for(const o of (Array.isArray(rawOps)?rawOps:[])){
+      const op = String(o?.op||'').toLowerCase();
+      const reason = String(o?.reason||'').trim();
+      if(op==='merge'){
+        const survivor = resolveId(o.survivor);
+        const merged = (Array.isArray(o.merged)?o.merged:[]).map(resolveId).filter(id=>id && id!==survivor && !seen.has(id));
+        if(survivor && merged.length){ merged.forEach(id=>seen.add(id)); out.push({ op, survivor, merged, reason }); }
+        else bad++;
+      } else if(op==='group'){
+        const parent = o.parent!=null ? resolveId(o.parent) : null;
+        const newParentName = String(o.newParentName||'').trim();
+        const children = (Array.isArray(o.children)?o.children:[]).map(resolveId).filter(Boolean);
+        if(children.length && (parent || newParentName)) out.push({ op, parent, newParentName, children, reason });
+        else bad++;
+      } else if(op==='reparent'){
+        const id = resolveId(o.id), newParent = resolveId(o.newParent);
+        if(id && newParent && id!==newParent) out.push({ op, id, newParent, reason });
+        else bad++;
+      } else if(op==='rename'){
+        const id = resolveId(o.id), newName = String(o.newName||'').trim();
+        if(id && newName) out.push({ op, id, newName, reason });
+        else bad++;
+      } else if(op==='promote'){
+        const id = resolveId(o.id);
+        if(id && codeById[id]?.parent_id) out.push({ op, id, reason });
+        else bad++;
+      } else bad++;
+    }
+    return { out, bad };
+  };
+
+  const opKey = (o, i)=> i+':'+o.op; // chave estavel pra map de decisao (a lista e recriada por turno)
+
+  // ---- ENVIAR (1o turno ou follow-up) ----
+  async function send(){
+    if(busy) return;
+    if(!codes.length){ setErr('Não há códigos no projeto para organizar.'); return; }
+    const base = instruction.trim() || (history.length
+      ? 'Continue refinando a proposta.'
+      : 'Analise a lista de códigos fornecida e proponha uma reorganização (mesclar redundâncias, agrupar em famílias coerentes, mover, renomear ou promover quando fizer sentido).');
+    // reforco do formato no turno do usuario — modelos menores as vezes respondem em prosa
+    const userTurn = base + ' Responda APENAS com o objeto JSON no formato especificado, sem texto antes ou depois.';
+    setErr(''); setApplyMsg(''); setRawFail(''); setSalvaged(false); setBusy(true);
+    const nextHistory = [...history, { role:'user', content: userTurn }];
+    setHistory(nextHistory); setInstruction('');
+    try{
+      const text = await askAIChat({ system: systemPrompt, messages: nextHistory });
+      setHistory(h=>[...h, { role:'assistant', content: text }]);
+      const parsed = parseAIJson(text);
+      if(!parsed){
+        // parse falhou de vez: mostra a resposta crua pra diagnosticar (truncada? texto em vez de JSON?)
+        setErr('A IA não devolveu um JSON válido. Veja a resposta abaixo — se estiver cortada no fim, o esquema é grande demais: peça menos operações por vez, ou desligue a amostra de trechos.');
+        setRawFail(text || '(resposta vazia)'); setOps([]); setSummary(''); setDropped(0);
+        return;
+      }
+      setSalvaged(!!parsed._salvaged);
+      const { out, bad } = validateOps(parsed.operations);
+      setOps(out); setDropped(bad); setSummary(String(parsed.summary||''));
+      const dec = {}; out.forEach((o,i)=>{ dec[opKey(o,i)] = true; }); // default: aprovar tudo
+      setDecided(dec);
+    }catch(e){ setErr(String(e?.message||e)); }
+    finally{ setBusy(false); }
+  }
+
+  // ---- APLICAR operacoes aprovadas (reusa a logica de SchemaCodesView, sobre um modelo de
+  // trabalho local pra nao depender de re-render entre operacoes; reload/loadAll no fim) ----
+  async function applyApproved(){
+    if(!isAdmin){ setErr('Apenas administradores podem alterar o esquema de códigos.'); return; }
+    const approved = ops.filter((o,i)=>decided[opKey(o,i)]);
+    if(!approved.length){ setErr('Nenhuma operação aprovada para aplicar.'); return; }
+    setErr(''); setBusy(true);
+    // modelo de trabalho: copia mutavel dos codigos (intermediarios refletem aqui; o store e a
+    // fonte da verdade so depois do reload). _deleted marca codigos ja mesclados/excluidos.
+    const work = codes.map(c=>({ ...c }));
+    const byId = id => work.find(c=>c.id===id);
+    const childrenOf = id => work.filter(c=>c.parent_id===id && !c._deleted);
+    const isDescendantOf = (nodeId, ancId)=>{ let p=byId(nodeId)?.parent_id; while(p){ if(p===ancId) return true; p=byId(p)?.parent_id; } return false; };
+    async function reparentSubtree(codeId, newParentId, newDepth, adoptColor){
+      const node = byId(codeId); if(!node) return;
+      const patch = { parent_id:newParentId, depth:newDepth };
+      if(adoptColor){ patch.hue=adoptColor.hue; patch.hue_deg=adoptColor.hue_deg ?? null; }
+      await store.updateCode(codeId, patch); Object.assign(node, patch);
+      const stack=[{id:codeId,depth:newDepth}];
+      while(stack.length){ const {id,depth}=stack.pop();
+        for(const ch of childrenOf(id)){ const cd=depth+1; const cp={depth:cd};
+          if(adoptColor){ cp.hue=adoptColor.hue; cp.hue_deg=adoptColor.hue_deg ?? null; }
+          await store.updateCode(ch.id, cp); Object.assign(ch, cp); stack.push({id:ch.id,depth:cd}); }
+      }
+    }
+    let applied=0, skipped=0;
+    if(store.beginBatch) store.beginBatch();
+    try{
+      for(let i=0;i<ops.length;i++){
+        const o = ops[i];
+        if(!decided[opKey(o,i)]) continue;
+        try{
+          if(o.op==='merge'){
+            const survivor = byId(o.survivor);
+            const merged = o.merged.filter(id=>byId(id) && !byId(id)._deleted);
+            if(!survivor || survivor._deleted || !merged.length){ skipped++; continue; }
+            for(const mid of merged){
+              for(const cod of (allCodings||[]).filter(c=>c.code_id===mid)){
+                await store.addCoding(project.id, { document_id:cod.document_id, code_id:o.survivor,
+                  span_start:cod.span_start, span_end:cod.span_end, quote:cod.quote, layer:cod.layer,
+                  created_by:cod.created_by??null, author_name:cod.author_name });
+                await store.deleteCoding(cod.id);
+              }
+            }
+            for(const mid of merged){ for(const ch of childrenOf(mid)){ await reparentSubtree(ch.id, o.survivor, survivor.depth+1, { hue:survivor.hue, hue_deg:survivor.hue_deg }); } }
+            for(const mid of merged){ await store.deleteCode(mid); const n=byId(mid); if(n) n._deleted=true; }
+            applied++;
+          } else if(o.op==='group'){
+            let parent = o.parent ? byId(o.parent) : null;
+            if(!parent){ const created = await onAdd(null, o.newParentName||'Novo agrupamento'); parent = { ...created }; work.push(parent); }
+            if(parent._deleted){ skipped++; continue; }
+            for(const id of o.children){ const ch = byId(id); if(!ch || ch._deleted || id===parent.id || isDescendantOf(parent.id, id)) continue; await reparentSubtree(id, parent.id, parent.depth+1, { hue:parent.hue, hue_deg:parent.hue_deg }); }
+            applied++;
+          } else if(o.op==='reparent'){
+            const node = byId(o.id), parent = byId(o.newParent);
+            if(!node || node._deleted || !parent || parent._deleted || o.id===parent.id || isDescendantOf(parent.id, o.id)){ skipped++; continue; }
+            await reparentSubtree(o.id, parent.id, parent.depth+1, { hue:parent.hue, hue_deg:parent.hue_deg });
+            applied++;
+          } else if(o.op==='rename'){
+            const node = byId(o.id); if(!node || node._deleted){ skipped++; continue; }
+            await store.updateCode(o.id, { name:o.newName }); node.name=o.newName; applied++;
+          } else if(o.op==='promote'){
+            const node = byId(o.id); if(!node || node._deleted || !node.parent_id){ skipped++; continue; }
+            await reparentSubtree(o.id, null, 0, null); applied++;
+          }
+        }catch(e){ skipped++; }
+      }
+    } finally { if(store.endBatch) await store.endBatch(); }
+    await reload(); await loadAll();
+    setOps([]); setDecided({}); setSummary('');
+    setApplyMsg(`${applied} operação(ões) aplicada(s)${skipped?`, ${skipped} ignorada(s)`:''}. Confira o esquema na aba "Esquema ▸ Códigos".`);
+    // registra no historico que foi aplicado, pra IA saber o estado num proximo turno
+    setHistory(h=>[...h, { role:'user', content: `(Apliquei ${applied} operação(ões) da sua proposta. O esquema mudou.)` }]);
+    setBusy(false);
+  }
+
+  function reset(){ setHistory([]); setOps([]); setSummary(''); setDropped(0); setDecided({}); setErr(''); setApplyMsg(''); setInstruction(''); setRawFail(''); setSalvaged(false); }
+
+  // ---- descricao legivel de uma operacao (previa antes->depois) ----
+  const describe = (o)=>{
+    if(o.op==='merge') return html`Mesclar ${o.merged.map(labelOf).join(', ')} → sobrevivente <b>${labelOf(o.survivor)}</b>`;
+    if(o.op==='group') return html`Agrupar ${o.children.map(labelOf).join(', ')} sob ${o.parent ? html`<b>${labelOf(o.parent)}</b>` : html`a nova família <b>"${o.newParentName}"</b>`}`;
+    if(o.op==='reparent') return html`Mover ${labelOf(o.id)} para dentro de <b>${labelOf(o.newParent)}</b>`;
+    if(o.op==='rename') return html`Renomear ${labelOf(o.id)} → <b>"${o.newName}"</b>`;
+    if(o.op==='promote') return html`Promover ${labelOf(o.id)} a família de topo (Hierarquia 0)`;
+    return o.op;
+  };
+  const OP_TAG = { merge:'Mesclar', group:'Agrupar', reparent:'Mover', rename:'Renomear', promote:'Promover' };
+
+  const approvedCount = ops.filter((o,i)=>decided[opKey(o,i)]).length;
+
+  return html`<div class="section">
+    <p class="h">Codificar com IA — organização de códigos</p>
+    <p class="hint" style="margin:0 0 10px">A IA analisa todos os códigos do projeto e <b>propõe</b> uma reorganização (mesclar, agrupar, mover, renomear, promover). Você aprova ou recusa cada operação — <b>nada é aplicado sem a sua confirmação</b>. A aplicação usa a mesma lógica da aba Esquema.</p>
+
+    ${!isAdmin && html`<div class="banner warn" style="margin-bottom:10px">Você não é administrador deste projeto: pode ver as sugestões, mas não aplicá-las.</div>`}
+
+    <div class="card" style="margin-bottom:10px">
+      <label class="row" style="gap:6px;font-size:12.5px;cursor:pointer;align-items:center;margin-bottom:8px">
+        <input type="checkbox" checked=${withSamples} disabled=${busy} onChange=${e=>setWithSamples(e.target.checked)} />
+        Incluir amostra de trechos por código (a IA decide melhor, mas gasta mais tokens)
+      </label>
+      <textarea class="txtin" rows="2" style="width:100%;resize:vertical;box-sizing:border-box"
+        placeholder=${history.length ? 'Responder à IA / refinar (ex.: \"mantenha X separado\", \"agrupe de outro jeito\")…' : 'Instrução opcional para a 1ª proposta (deixe em branco para a IA decidir sozinha)…'}
+        value=${instruction} disabled=${busy} onInput=${e=>setInstruction(e.target.value)}></textarea>
+      <div class="row" style="gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap">
+        <button class="btn primary" disabled=${busy || !codes.length} onClick=${send}>${history.length ? 'Enviar refinamento' : 'Propor reorganização'}</button>
+        ${history.length>0 && html`<button class="btn ghost" disabled=${busy} onClick=${reset}>Recomeçar</button>`}
+        <button class="btn sm ghost" disabled=${busy} onClick=${()=>setShowPrompt(s=>!s)}>${showPrompt?'Ocultar':'Ver'} material enviado</button>
+        ${busy && html`<span class="meta">pensando…</span>`}
+      </div>
+      ${showPrompt && html`<pre style="white-space:pre-wrap;font-family:var(--mono);font-size:11px;background:var(--teal-soft);padding:10px;border-radius:8px;margin-top:8px;max-height:280px;overflow:auto">${systemPrompt}</pre>`}
+    </div>
+
+    ${err && html`<div class="banner err" style="margin-bottom:10px">${err}</div>`}
+    ${rawFail && html`<details style="margin-bottom:10px"><summary class="meta" style="cursor:pointer">Ver resposta crua da IA (diagnóstico)</summary>
+      <pre style="white-space:pre-wrap;font-family:var(--mono);font-size:11px;background:var(--teal-soft);padding:10px;border-radius:8px;margin-top:6px;max-height:280px;overflow:auto">${rawFail}</pre></details>`}
+    ${applyMsg && html`<div class="banner warn" style="margin-bottom:10px">${applyMsg}</div>`}
+    ${salvaged && html`<div class="banner warn" style="margin-bottom:10px">A resposta da IA veio truncada ou malformada; foram recuperadas as operações completas abaixo (a última pode ter sido descartada). Para uma proposta completa, peça menos operações por vez.</div>`}
+
+    ${summary && html`<div class="card" style="margin-bottom:10px"><b>Resumo da IA:</b> <span dangerouslySetInnerHTML=${{__html: mdLite(summary)}} /></div>`}
+
+    ${ops.length>0 && html`<div style="margin-bottom:10px">
+      <div class="row" style="align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">
+        <b>${ops.length} operação(ões) proposta(s)</b>
+        <span class="meta">${approvedCount} marcada(s) para aplicar</span>
+        ${dropped>0 && html`<span class="meta">(${dropped} descartada(s) por id inválido)</span>`}
+        <div style="flex:1"></div>
+        <button class="btn sm ghost" onClick=${()=>{ const d={}; ops.forEach((o,i)=>d[opKey(o,i)]=true); setDecided(d); }}>Aprovar todas</button>
+        <button class="btn sm ghost" onClick=${()=>{ const d={}; ops.forEach((o,i)=>d[opKey(o,i)]=false); setDecided(d); }}>Recusar todas</button>
+      </div>
+      ${ops.map((o,i)=>{ const k=opKey(o,i); const on=!!decided[k]; return html`<div key=${k} class="card" style=${`margin-bottom:8px;opacity:${on?1:0.55}`}>
+        <div class="row" style="gap:10px;align-items:flex-start">
+          <div style="flex:1;min-width:0">
+            <div style=${`font-size:13px;${on?'':'text-decoration:line-through;text-decoration-color:var(--ink-faint)'}`}><span class="pill" style="margin-right:6px">${OP_TAG[o.op]||o.op}</span>${describe(o)}</div>
+            ${o.reason && html`<div class="meta" style="margin-top:4px">${o.reason}</div>`}
+          </div>
+          <div class="row" style="gap:6px;flex-shrink:0">
+            <button class=${`btn sm ${on?'primary':'ghost'}`} title="Incluir esta operação ao aplicar" onClick=${()=>setDecided(d=>({...d,[k]:true}))}>${on?'✓ Aprovada':'Aprovar'}</button>
+            <button class=${`btn sm ${on?'ghost':''}`} title="Não aplicar esta operação" onClick=${()=>setDecided(d=>({...d,[k]:false}))} style=${on?'':'background:var(--danger);color:#fff;border-color:var(--danger)'}>${on?'Recusar':'✕ Recusada'}</button>
+          </div>
+        </div>
+      </div>`; })}
+      <div class="row" style="gap:8px;margin-top:4px">
+        <button class="btn primary" disabled=${busy || !isAdmin || !approvedCount} onClick=${applyApproved}>Aplicar ${approvedCount} operação(ões)</button>
+      </div>
+    </div>`}
+
+    ${history.length>0 && !ops.length && !summary && !busy && !err && html`<span class="meta">Sem operações na última resposta.</span>`}
+  </div>`;
+}
+
+/* ============ ANALISAR COM IA ============
+   Cada um dos tres escopos esta num momento diferente do trabalho qualitativo,
+   entao tem modalidades proprias (nao mais um conjunto unico colado nos tres):
+
+   - Documentos (texto bruto, SEM codificacao): leitura fresca / indutiva. A IA
+     e uma "segunda leitora" que NAO conhece o esquema de codigos — boa pra
+     codificacao aberta, sintese e a visao de fora.
+   - Trechos + Codigo (corpus ja codificado, sem o texto em volta): analise do
+     CODIGO em si — o que ele reune, se e coerente, se bate com a propria
+     definicao (memo), como varia entre casos.
+   - Documentos + Trechos + Codigo (texto + codificacao): codificacao EM CONTEXTO.
+     Unico escopo onde "segunda codificacao" e segura: o que escapou (recall),
+     validacao da associacao trecho-codigo, leitura do trecho no contexto.
+
+   Cada modalidade so troca a instrucao da tarefa; papel/material/regras vem do
+   buildPrompt, que tambem declara os LIMITES da selecao (recorte != lacuna).
+   Toda lista termina em "Personalizado": instrucao livre escrita pelo pesquisador. */
+const IA_MODE_CUSTOM = { id:'custom', label:'Personalizado', instr:'' };
+
+// Documentos — leitura indutiva, a IA nao ve nenhuma codificacao
+const IA_MODES_DOCS = [
+  { id:'temas', label:'Temas emergentes',
+    instr:'faça uma leitura aberta e indutiva, como numa primeira passada de codificação aberta: identifique os temas, conceitos e tensões que emergem do próprio material, sem partir de um esquema prévio. Para cada tema, dê um nome curto, descreva-o em uma frase e cite os trechos e documentos que o sustentam. Priorize o que é recorrente ou analiticamente denso em relação ao objetivo da pesquisa.' },
+  { id:'sintese', label:'Síntese analítica',
+    instr:'sintetize o que o material diz em relação ao objetivo da pesquisa: os achados principais e a linha geral, organizados de forma legível. Distinga o que é dominante do que é marginal e ancore cada ponto em evidência concreta (trecho e documento).' },
+  { id:'inesperado', label:'O inesperado',
+    instr:'em uma ou duas frases, declare primeiro o que seria razoável esperar sobre este fenômeno com base em conhecimento geral; depois confronte com o material e destaque o que há de mais surpreendente ou contraintuitivo, sempre ancorado em evidência (trecho e documento). Se nada for genuinamente surpreendente, diga isso.' },
+  { id:'diferencas', label:'Diferenças entre casos',
+    instr:'compare sistematicamente os documentos e aponte diferenças relevantes entre eles — de conteúdo, posição, ênfase ou mesmo silêncios — contrastando as fontes citadas. Se as diferenças forem triviais, diga isso: a convergência também é um achado.' },
+  IA_MODE_CUSTOM,
+];
+
+// Trechos + Codigo — analise do codigo como categoria analitica
+const IA_MODES_CODES = [
+  { id:'conteudo', label:'O que há no código',
+    instr:'para cada código, sintetize o que o conjunto de trechos efetivamente expressa: o sentido central, as dimensões ou variações internas e os matizes. Trate o código como uma categoria analítica e descreva seu conteúdo a partir das evidências, citando trechos e suas fontes.' },
+  { id:'coerencia', label:'Coerência & saturação',
+    instr:'avalie, para cada código, se os trechos formam um conjunto coerente: compartilham um mesmo sentido ou o código está abarcando coisas distintas demais (candidato a ser desdobrado)? Há repetição que sugira saturação, ou o sentido ainda está disperso? Aponte tensões internas citando os trechos que as revelam — analise a coerência do que está presente, não a quantidade.' },
+  { id:'definicao', label:'Código vs. definição',
+    instr:'compare os trechos de cada código com o memo/definição do código (quando houver). Os trechos correspondem ao que o código se propõe a capturar, ou há desvio, sobre-extensão ou uso ambíguo? Aponte casos concretos. Se não houver memo, infira a definição implícita a partir dos próprios trechos e avalie sua consistência.' },
+  { id:'diferencas', label:'Diferenças entre casos',
+    instr:'examine como cada código se manifesta de forma diferente entre os documentos ou falantes: variações de sentido, intensidade ou enquadramento. Contraste as fontes citando os trechos. Se o código for homogêneo entre os casos, diga isso.' },
+  IA_MODE_CUSTOM,
+];
+
+// Documentos + Trechos + Codigo — codificacao em contexto (segunda leitura)
+const IA_MODES_DOCSCODES = [
+  { id:'escapou', label:'O que escapou',
+    instr:'atue como uma segunda leitura de recall: considerando apenas os códigos que aparecem aplicados neste material, percorra o texto integral e aponte passagens que se encaixariam nesses mesmos códigos mas não foram codificadas. Cite a passagem e indique a qual código presente ela corresponderia. Restrinja-se aos códigos efetivamente presentes — não proponha códigos novos nem comente a ausência de outros.' },
+  { id:'validacao', label:'Validação em contexto',
+    instr:'para cada trecho codificado, verifique se o contexto ao redor no documento sustenta o código atribuído. Aponte trechos cuja codificação parece frágil, ambígua, ou cujo sentido muda quando lido no contexto. Foque na validade da associação trecho–código, não na quantidade de codificação.' },
+  { id:'contexto', label:'Trecho em contexto',
+    instr:'aprofunde a interpretação de cada trecho codificado lendo-o à luz do documento inteiro: que função ele cumpre no argumento, na narrativa ou na posição do falante? O contexto reforça, qualifica ou tensiona o sentido capturado pelo código? Cite documento e código.' },
+  { id:'sintese', label:'Síntese contextualizada',
+    instr:'sintetize os achados relacionando a codificação ao texto: o que os trechos codificados dizem, lidos dentro de seus documentos, em relação ao objetivo da pesquisa. Ancore cada ponto em documento e código.' },
+  IA_MODE_CUSTOM,
+];
+// travas de tamanho do material enviado (~1 token ≈ 4 caracteres). O backend usa
+// Gemini (tier gratuito bem mais folgado que o da Groq), mas ainda vale ter um
+// limite pra não gerar prompts gigantes sem necessidade.
+const IA_DOC_CHAR_LIMIT = 8000; // por documento
+const IA_TOTAL_CHAR_LIMIT = 40000; // total do material empírico, somando todos os itens selecionados
+
+function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings, memos, cats, allValues, onSave }){
+  const [scope, setScope] = useState('docs'); // docs | codes | docs_codes
+  const [selDocs, setSelDocs] = useState([]);
+  const [selCodes, setSelCodes] = useState([]);
+  const [docFilter, setDocFilter] = useState({}); // {categoryId: valor} — so pra ajudar a marcar varios documentos de uma vez
+  const [allowRedact, setAllowRedact] = useState({}); // {codeId: true} — codigos de censura que o pesquisador decidiu incluir nesta analise (default: de fora)
+  const modesFor = (s)=> s==='docs' ? IA_MODES_DOCS : s==='codes' ? IA_MODES_CODES : IA_MODES_DOCSCODES;
+  const modes = modesFor(scope);
+  const [mode, setMode] = useState(modes[0].id);
+  const [customInstr, setCustomInstr] = useState(''); // instrucao livre quando mode==='custom'
+  // conversa iterativa (Fase 1): o material vira o `system` TRAVADO da conversa; a tarefa do
+  // modo e o 1o turno; os follow-ups do pesquisador sao os turnos seguintes (material entra
+  // so uma vez no system, so os turnos crescem — cuida do IA_TOTAL_CHAR_LIMIT).
+  const [history, setHistory] = useState([]);       // [{role:'user'|'assistant', content}]
+  const [convSystem, setConvSystem] = useState(''); // system travado enquanto a conversa esta ativa
+  const [convLabel, setConvLabel] = useState('');   // rotulo do modo com que a conversa comecou (pra salvar)
+  const [followup, setFollowup] = useState('');     // texto do proximo turno do pesquisador
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const [saved, setSaved] = useState(false);
+
+  const changeScope = (s)=>{ setScope(s); setMode(modesFor(s)[0].id); };
+  const isCustom = mode==='custom';
+
+  const projectMemo = (memos||[]).find(m=>m.scope==='project' && m.target_id===project?.id);
+
+  const toggleIn = (arr, setArr, id)=> setArr(arr.includes(id) ? arr.filter(x=>x!==id) : [...arr, id]);
+
+  const closedCats = (cats||[]).filter(c=>CAT_HAS_OPTIONS(c.kind));
+  const hasDocFilter = Object.values(docFilter).some(Boolean);
+  const matchingDocIds = useMemo(()=>{
+    const s = new Set();
+    docs.forEach(d=>{
+      const ok = Object.entries(docFilter).every(([catId,want])=>{
+        if(!want) return true;
+        const rows = (allValues||[]).filter(x=>x.document_id===d.id && x.category_id===catId);
+        const fin = rows.find(r=>r.layer==='final');
+        const pool = fin ? [fin.value] : rows.map(r=>r.value);
+        return pool.some(v=>v!=null && String(v).split(CAT_MULTI_SEP).includes(want));
+      });
+      if(ok) s.add(d.id);
+    });
+    return s;
+  }, [docs, allValues, docFilter]);
+  const visibleDocs = hasDocFilter ? docs.filter(d=>matchingDocIds.has(d.id)) : docs;
+
+  // categorias preenchidas do documento (prefere o gabarito quando existe) — da contexto
+  // de "fonte" pra IA citar junto das observacoes, especialmente na analise por codigo
+  const docCatsLine = (docId)=>{
+    const parts = (cats||[]).map(cat=>{
+      const rows = (allValues||[]).filter(v=>v.document_id===docId && v.category_id===cat.id);
+      const fin = rows.find(r=>r.layer==='final');
+      const val = fin ? fin.value : rows.map(r=>r.value).filter(Boolean).join(' | ');
+      return val ? `${cat.name}: ${val}` : null;
+    }).filter(Boolean);
+    return parts.length ? parts.join(', ') : '(sem categorias preenchidas)';
+  };
+  const codeMemoLine = (codeId)=>{
+    const m = (memos||[]).find(mm=>mm.scope==='code' && mm.target_id===codeId);
+    return m?.content?.trim() || null;
+  };
+  const docNameOf = (docId)=> docs.find(d=>d.id===docId)?.name || '(documento removido)';
+
+  // duas codificacoes "se sobrepoem" se os spans (no mesmo documento) se cruzam — usado pra
+  // detectar censura em scope='codes', onde a citacao mostrada e o c.quote de UM coding so
+  // (o do codigo analitico selecionado), que pode ocupar o MESMO trecho de uma censura
+  // aplicada como um coding separado (code_id diferente). Nos outros escopos (docs/docs_codes)
+  // isso ja "funciona de graca": maskRedactedContent reconstroi o texto inteiro por posicao,
+  // entao uma censura em qualquer code_id já apaga aquele intervalo independente de quem mais
+  // codificou o mesmo span.
+  const spansOverlap = (aStart,aEnd,bStart,bEnd)=>
+    aStart>=0 && aEnd>aStart && bStart>=0 && bEnd>bStart && aStart<bEnd && bStart<aEnd;
+  const codingsByDoc = useMemo(()=>{
+    const m = {}; (allCodings||[]).forEach(c=>{ (m[c.document_id]=m[c.document_id]||[]).push(c); }); return m;
+  }, [allCodings]);
+
+  // codigos de censura (is_redaction) com trechos na selecao atual — um checkbox por codigo,
+  // default excluido (mascarado). So olha os codigos relevantes pro escopo atual: em
+  // scope='codes', inclui tanto o codigo de censura selecionado diretamente quanto qualquer
+  // censura cujo span se sobrepoe ao de algum coding dos codigos analiticos selecionados; nos
+  // outros dois escopos, e o que pode aparecer no texto integral dos documentos escolhidos
+  // (a sobreposicao ali ja e coberta por posicao em maskRedactedContent, sem precisar disso).
+  const relevantForRedaction = scope==='codes'
+    ? (()=>{
+        const chosen = (allCodings||[]).filter(c=>selCodes.includes(c.code_id));
+        const overlapping = chosen.flatMap(c=>(codingsByDoc[c.document_id]||[])
+          .filter(o=>o.id!==c.id && spansOverlap(c.span_start,c.span_end,o.span_start,o.span_end)));
+        return [...chosen, ...overlapping];
+      })()
+    : (allCodings||[]).filter(c=>selDocs.includes(c.document_id));
+  const redactionCodesPresent = [...new Set(relevantForRedaction.map(c=>c.code_id))]
+    .map(id=>codeById[id]).filter(c=>c && c.is_redaction);
+  const maskedCodeIds = new Set(redactionCodesPresent.filter(c=>!allowRedact[c.id]).map(c=>c.id));
+
+  const docsBlock = ()=>{
+    const chosen = docs.filter(d=>selDocs.includes(d.id));
+    return chosen.map(d=>{
+      const content = maskRedactedContent(d.content||'', (allCodings||[]).filter(c=>c.document_id===d.id), maskedCodeIds);
+      return `--- Documento: ${d.name} (categorias: ${docCatsLine(d.id)}) ---\n${content.slice(0, IA_DOC_CHAR_LIMIT)}`;
+    }).join('\n\n');
+  };
+
+  // mascara a citacao se o PROPRIO code_id estiver marcado, ou se algum outro coding do mesmo
+  // documento sobrepoe o span dela com um codigo de censura nao liberado em allowRedact.
+  const isQuoteMasked = (c)=> maskedCodeIds.has(c.code_id)
+    || (codingsByDoc[c.document_id]||[]).some(o=>o.id!==c.id && maskedCodeIds.has(o.code_id) && spansOverlap(c.span_start,c.span_end,o.span_start,o.span_end));
+
+  const codesBlock = ()=>{
+    const chosen = (allCodings||[]).filter(c=>selCodes.includes(c.code_id));
+    return selCodes.map(codeId=>{
+      const memo = codeMemoLine(codeId);
+      const quotes = chosen.filter(c=>c.code_id===codeId)
+        .map(c=>`"${isQuoteMasked(c)?'[trecho censurado]':c.quote}" — documento: ${docNameOf(c.document_id)} (categorias: ${docCatsLine(c.document_id)}) [${c.author_name||'anônimo'}${c.layer==='final'?', final':''}]`);
+      return `--- Código: ${codePath(codeId).join(' ▸ ')}${memo?`\nMemo do código: ${memo}`:''} (${quotes.length} trechos) ---\n${quotes.join('\n')}`;
+    }).join('\n\n');
+  };
+
+  const docsWithCodingsBlock = ()=>{
+    const chosen = docs.filter(d=>selDocs.includes(d.id));
+    // filtro opcional de codigos: se nada selecionado, inclui todos os codigos do documento
+    const codeFilter = selCodes.length ? new Set(selCodes) : null;
+    return chosen.map(d=>{
+      const codingsByCode = {};
+      (allCodings||[]).filter(c=>c.document_id===d.id && (!codeFilter || codeFilter.has(c.code_id)))
+        .forEach(c=>{ (codingsByCode[c.code_id]=codingsByCode[c.code_id]||[]).push(c); });
+      const codeBlocks = Object.entries(codingsByCode).map(([codeId,cs])=>{
+        const memo = codeMemoLine(codeId);
+        const quotes = cs.map(c=>`"${isQuoteMasked(c)?'[trecho censurado]':c.quote}" (${c.author_name||'anônimo'}${c.layer==='final'?', final':''})`);
+        return `${codePath(codeId).join(' ▸ ')}${memo?` — memo: ${memo}`:''}:\n${quotes.join('\n')}`;
+      });
+      // rotulo filtro-ciente: quando ha filtro, "(nenhum)" significaria so "nenhum DOS SELECIONADOS",
+      // nunca "documento sem codificacao" — deixar isso explicito evita a IA criticar lacuna inexistente.
+      const header = codeFilter ? 'Trechos dos códigos selecionados presentes neste documento:' : 'Codificação aplicada neste documento:';
+      const empty = codeFilter ? '(nenhum trecho dos códigos selecionados neste documento — o documento pode conter outras codificações não exibidas)' : '(nenhuma codificação neste documento)';
+      const content = maskRedactedContent(d.content||'', (allCodings||[]).filter(c=>c.document_id===d.id), maskedCodeIds);
+      return `--- Documento: ${d.name} (categorias: ${docCatsLine(d.id)}) ---\n${content.slice(0, IA_DOC_CHAR_LIMIT)}\n\n${header}\n${codeBlocks.length?codeBlocks.join('\n\n'):empty}`;
+    }).join('\n\n');
+  };
+
+  const rawMaterial = scope==='docs' ? docsBlock()
+    : scope==='codes' ? codesBlock()
+    : docsWithCodingsBlock();
+  const materialTruncated = rawMaterial.length > IA_TOTAL_CHAR_LIMIT;
+  const buildMaterial = ()=> materialTruncated
+    ? rawMaterial.slice(0, IA_TOTAL_CHAR_LIMIT) + '\n\n[...material truncado — limite de tamanho da requisição...]'
+    : rawMaterial;
+
+  const hasSelection = scope==='codes' ? selCodes.length>0 : selDocs.length>0;
+
+  // monta as PECAS do prompt (papel, memo, descricao do material com os LIMITES da selecao,
+  // material, regra de citacao, e a tarefa). A descricao do material e a chave: diz a IA o que
+  // ela ve e, sobretudo, o que foi deixado de fora de proposito — pra nao confundir recorte
+  // com lacuna. buildSystem junta tudo MENOS a tarefa (= prefixo estavel/cacheavel = `system`);
+  // buildTask devolve so a tarefa (= 1o turno de usuario). Assim a conversa reusa o mesmo
+  // material sem remontar nada a cada follow-up.
+  const buildParts = ()=>{
+    const memo = projectMemo?.content?.trim() || '(nenhum memo de projeto registrado)';
+    const codeNames = (ids)=> ids.map(id=>codePath(id).join(' ▸ ')).join('; ');
+
+    let role, materialDesc, taskLead, cite;
+    if(scope==='docs'){
+      role = 'Você é um assistente de análise qualitativa. Vai analisar o texto bruto de documentos, sem nenhuma codificação aplicada.';
+      materialDesc = `É o texto integral de ${selDocs.length} documento(s) escolhido(s) pelo pesquisador. Não há códigos nem trechos destacados — trate o conteúdo como dado empírico bruto.`;
+      taskLead = 'Analisando o conteúdo dos documentos,';
+      cite = 'Ao fazer uma observação, cite a fonte (nome exato do documento).';
+    } else if(scope==='codes'){
+      role = 'Você é um assistente de análise qualitativa. Vai analisar trechos já codificados, agrupados pelo código que receberam.';
+      materialDesc = `Contém apenas os trechos dos ${selCodes.length} código(s) que o pesquisador selecionou para esta análise: ${codeNames(selCodes)}. `
+        + 'O texto integral dos documentos NÃO está incluído — você vê somente os trechos extraídos. '
+        + 'Outros códigos e trechos existem no projeto, mas foram deliberadamente deixados de fora desta seleção: NÃO trate a ausência deles como lacuna, falha ou achado.';
+      taskLead = 'Analisando os trechos e o que cada código reúne,';
+      cite = 'Ao fazer uma observação, cite a fonte (nome do documento e código correspondente, exatamente como aparecem no material).';
+    } else { // docs_codes
+      const filtered = selCodes.length > 0;
+      role = 'Você é um assistente de análise qualitativa. Vai analisar documentos em conjunto com a codificação aplicada a eles, relacionando texto e códigos.';
+      materialDesc = `É o texto integral de ${selDocs.length} documento(s) escolhido(s) e, em cada um, os trechos nele codificados. `
+        + (filtered
+            ? `ATENÇÃO: foram incluídos apenas os trechos do(s) código(s) selecionado(s): ${codeNames(selCodes)}. `
+              + 'Os documentos podem conter muitas outras codificações que foram deliberadamente omitidas desta visualização. '
+              + 'NÃO interprete a ausência de outros códigos — nem documentos que apareçam sem trechos — como lacuna de codificação, falha do pesquisador ou achado: o recorte é intencional.'
+            : 'Estão incluídas todas as codificações presentes nesses documentos.');
+      taskLead = 'Analisando os documentos em conjunto com a codificação aplicada (relacionando o que os trechos codificados dizem com o texto em volta),';
+      cite = 'Ao fazer uma observação, cite a fonte (nome do documento e, quando for sobre um trecho, o código correspondente).';
+    }
+    if(maskedCodeIds.size){
+      materialDesc += ` Trechos marcados como censura (${[...maskedCodeIds].map(id=>codeById[id]?.name).join(', ')}) aparecem como "[trecho censurado]" — é uma omissão deliberada do pesquisador, não uma lacuna ou erro de extração.`;
+    }
+
+    // tarefa: modo pre-definido usa taskLead + instrucao; "Personalizado" usa a
+    // instrucao livre do pesquisador como tarefa inteira (controle total do verbo).
+    const task = isCustom
+      ? (customInstr.trim() || '(escreva a instrução personalizada)')
+      : `${taskLead} ${modes.find(m=>m.id===mode).instr}`;
+
+    return { role, memo, materialDesc, material: buildMaterial(), cite, task };
+  };
+
+  // system = tudo MENOS a tarefa (prefixo estavel/cacheavel). Inclui a nota de que e uma conversa.
+  const buildSystem = ()=>{ const p = buildParts();
+    return `${p.role}\n\n`
+      + `Memo do projeto (objetivo e contexto da pesquisa):\n${p.memo}\n\n`
+      + `Sobre o material que você recebeu:\n${p.materialDesc}\n\n`
+      + `Material:\n${p.material}\n\n`
+      + `Regras:\n- Baseie-se exclusivamente no material acima; não invente nada além dele.\n- ${p.cite}\n- Não comente o tamanho ou a abrangência da seleção: ela foi definida de propósito pelo pesquisador.\n\n`
+      + `Esta é uma conversa de análise: responda à tarefa inicial do pesquisador e, depois, às perguntas de acompanhamento, sempre com base neste mesmo material.`;
+  };
+  const buildTask = ()=> buildParts().task;
+  // previa de transparencia total: mostra o system (material) + a 1a tarefa exatamente como vao.
+  const buildPreview = ()=> buildSystem() + `\n\n=== 1º turno (tarefa enviada como mensagem do usuário) ===\n${buildTask()}`;
+
+  const canRun = hasSelection && !(isCustom && !customInstr.trim());
+
+  // 1o turno: trava o material no system e manda a tarefa do modo como 1a mensagem de usuario.
+  const analyze = async ()=>{
+    if(!canRun || busy) return;
+    const system = buildSystem();
+    const h = [{ role:'user', content: buildTask() }];
+    setConvSystem(system); setConvLabel(isCustom ? 'Personalizado' : modes.find(m=>m.id===mode).label);
+    setHistory(h); setFollowup(''); setSaved(false); setErr(''); setBusy(true);
+    try{
+      const text = await askAIChat({ system, messages: h });
+      setHistory(x=>[...x, { role:'assistant', content: text }]);
+    }catch(e){ setErr(String(e?.message || e)); }
+    finally{ setBusy(false); }
+  };
+
+  // follow-up: continua a MESMA conversa reusando o system travado (material entra so 1 vez;
+  // so os turnos crescem). buildPrompt nao e remontado.
+  const sendFollowup = async ()=>{
+    const text = followup.trim();
+    if(!text || busy || !convSystem) return;
+    const h = [...history, { role:'user', content: text }];
+    setHistory(h); setFollowup(''); setSaved(false); setErr(''); setBusy(true);
+    try{
+      const reply = await askAIChat({ system: convSystem, messages: h });
+      setHistory(x=>[...x, { role:'assistant', content: reply }]);
+    }catch(e){ setErr(String(e?.message || e)); }
+    finally{ setBusy(false); }
+  };
+
+  const resetConv = ()=>{ setHistory([]); setConvSystem(''); setConvLabel(''); setFollowup(''); setErr(''); setSaved(false); };
+
+  // salva a conversa INTEIRA (todas as perguntas e respostas) como um resultado unico.
+  const save = async ()=>{
+    if(!history.length || saved) return;
+    const transcript = history.map(t=> (t.role==='user' ? '**Pergunta:** ' : '**IA:** ') + t.content).join('\n\n');
+    await onSave(scope, convLabel || (modes.find(m=>m.id===mode)?.label || ''), transcript);
+    setSaved(true);
+  };
+
+  return html`<div class="section">
+    <p class="h">Analisar com IA</p>
+    <p class="hint" style="margin:0 0 10px">O memo do projeto é sempre enviado como contexto. Escolha o material e a modalidade de análise.</p>
+
+    <p class="field-label">Material</p>
+    <div class="seg" style="margin-bottom:10px;flex-wrap:wrap">
+      <button class=${scope==='docs'?'on':''} onClick=${()=>changeScope('docs')}>Documentos</button>
+      <button class=${scope==='codes'?'on':''} onClick=${()=>changeScope('codes')}>Trechos + Código</button>
+      <button class=${scope==='docs_codes'?'on':''} onClick=${()=>changeScope('docs_codes')}>Documentos + Trechos + Código</button>
+    </div>
+
+    ${scope==='codes' ? html`<div>
+      <div class="row" style="margin-bottom:6px;gap:8px">
+        <button class="btn sm ghost" onClick=${()=>setSelCodes(codes.map(c=>c.id))}>selecionar todos</button>
+        <button class="btn sm ghost" onClick=${()=>setSelCodes([])}>limpar seleção</button>
+      </div>
+      <div class="card" style="margin-bottom:10px;max-height:220px;overflow:auto">
+        ${codes.length===0 && html`<span class="meta">Nenhum código no projeto.</span>`}
+        ${codes.map(c=>html`<button key=${c.id} class="opt ${selCodes.includes(c.id)?'on':''}" style="display:flex;width:100%;margin-bottom:4px"
+          onClick=${()=>toggleIn(selCodes, setSelCodes, c.id)}>${selCodes.includes(c.id)?'☑':'☐'} ${codePath(c.id).join(' ▸ ')}</button>`)}
+      </div>
+    </div>` : html`<div>
+      ${closedCats.length>0 && html`<div class="field" style="margin-bottom:8px">
+        <div class="field-label">Filtrar documentos por categoria (opcional, ajuda a marcar vários de uma vez)</div>
+        <div class="row" style="gap:8px;flex-wrap:wrap">
+          ${closedCats.map(cat=>{ const opts=(cat.options||[]).filter(o=>!isSpecialOpt(o));
+            return html`<select key=${cat.id} class="opt" style="min-width:160px"
+              value=${docFilter[cat.id]||''} onChange=${e=>{ const v=e.target.value; setDocFilter(f=>{ const n={...f}; if(v) n[cat.id]=v; else delete n[cat.id]; return n; }); }}>
+              <option value="">${cat.name}: qualquer</option>
+              ${opts.map(o=>html`<option value=${o}>${cat.name}: ${o}</option>`)}
+            </select>`;
+          })}
+          ${hasDocFilter && html`<button class="btn sm ghost" onClick=${()=>setDocFilter({})}>limpar filtro</button>`}
+        </div>
+      </div>`}
+      <div class="row" style="margin-bottom:6px;gap:8px">
+        <button class="btn sm ghost" onClick=${()=>setSelDocs(visibleDocs.map(d=>d.id))}>selecionar ${hasDocFilter?'visíveis':'todos'}</button>
+        <button class="btn sm ghost" onClick=${()=>setSelDocs([])}>limpar seleção</button>
+      </div>
+      <div class="card" style="margin-bottom:10px;max-height:220px;overflow:auto">
+        ${visibleDocs.length===0 && html`<span class="meta">${docs.length===0?'Nenhum documento no projeto.':'Nenhum documento corresponde ao filtro.'}</span>`}
+        ${visibleDocs.map(d=>html`<button key=${d.id} class="opt ${selDocs.includes(d.id)?'on':''}" style="display:flex;width:100%;margin-bottom:4px"
+          onClick=${()=>toggleIn(selDocs, setSelDocs, d.id)}>${selDocs.includes(d.id)?'☑':'☐'} ${d.name}</button>`)}
+      </div>
+      ${scope==='docs_codes' && html`<div class="field" style="margin-bottom:10px">
+        <div class="field-label">Filtrar por código (opcional — vazio = todos os códigos do documento)</div>
+        <div class="row" style="margin-bottom:6px;gap:8px">
+          <button class="btn sm ghost" onClick=${()=>setSelCodes(codes.map(c=>c.id))}>selecionar todos</button>
+          <button class="btn sm ghost" onClick=${()=>setSelCodes([])}>limpar seleção</button>
+        </div>
+        <div class="card" style="max-height:200px;overflow:auto">
+          ${codes.length===0 && html`<span class="meta">Nenhum código no projeto.</span>`}
+          ${codes.map(c=>html`<button key=${c.id} class="opt ${selCodes.includes(c.id)?'on':''}" style="display:flex;width:100%;margin-bottom:4px"
+            onClick=${()=>toggleIn(selCodes, setSelCodes, c.id)}>${selCodes.includes(c.id)?'☑':'☐'} ${codePath(c.id).join(' ▸ ')}</button>`)}
+        </div>
+      </div>`}
+    </div>`}
+
+    ${redactionCodesPresent.length>0 && html`<div class="card" style="margin-bottom:10px">
+      <div class="field-label">🚫 Trechos censurados na seleção</div>
+      <p class="hint" style="margin:0 0 6px">Por padrão, ficam fora do material enviado à IA. Marque os que valem como contexto para esta análise.</p>
+      ${redactionCodesPresent.map(c=>html`<label key=${c.id} class="row" style="gap:6px;font-size:12.5px;cursor:pointer;align-items:center">
+        <input type="checkbox" checked=${!!allowRedact[c.id]} onChange=${e=>setAllowRedact(x=>({...x,[c.id]:e.target.checked}))} />
+        Incluir trechos de "${c.name}"
+      </label>`)}
+    </div>`}
+
+    <p class="field-label">Modalidade</p>
+    <div class="seg" style="margin-bottom:10px;flex-wrap:wrap">
+      ${modes.map(m=>html`<button key=${m.id} class=${mode===m.id?'on':''} onClick=${()=>setMode(m.id)}>${m.label}</button>`)}
+    </div>
+    ${!isCustom && html`<p class="hint" style="margin:0 0 10px">${modes.find(m=>m.id===mode).instr}</p>`}
+    ${isCustom && html`<div class="field" style="margin-bottom:10px">
+      <textarea class="txtin" rows="3" style="resize:vertical" placeholder="Escreva sua própria instrução de análise (ela vira a tarefa enviada à IA, com o memo, o material e as regras de citação em volta)…"
+        value=${customInstr} onInput=${e=>setCustomInstr(e.target.value)}></textarea>
+    </div>`}
+    <details style="margin:0 0 14px">
+      <summary class="hint" style="cursor:pointer">Ver prompt completo enviado à IA (material no system + 1ª tarefa)</summary>
+      <div class="card" style="margin-top:8px;white-space:pre-wrap;font-size:12.5px;max-height:300px;overflow:auto">${buildPreview()}</div>
+    </details>
+    ${materialTruncated && html`<div class="banner warn" style="margin-bottom:10px">Material selecionado (~${rawMaterial.length} caracteres) excede o limite de tamanho por requisição e será truncado em ${IA_TOTAL_CHAR_LIMIT} caracteres antes de enviar — selecione menos itens para uma análise completa.</div>`}
+    ${history.length>0 && html`<p class="hint" style="margin:0 0 8px">Uma conversa está em andamento — os follow-ups continuam sobre o material desta análise. Mude a seleção e clique em <b>Analisar de novo</b> para recomeçar com outro material.</p>`}
+
+    <button class="btn primary" disabled=${busy || !canRun} onClick=${analyze}>
+      ${history.length ? 'Analisar de novo' : (busy ? 'analisando…' : 'Analisar')}
+    </button>
+
+    ${err && html`<div class="banner err" style="margin-top:10px">${err}</div>`}
+
+    ${history.length>0 && html`<div style="margin-top:14px">
+      ${history.map((t,i)=>html`<div key=${i} class="card" style="margin-bottom:8px">
+        <div class="field-label" style="margin-bottom:4px">${t.role==='user' ? (i===0?'Tarefa':'Você') : 'IA'}</div>
+        ${t.role==='user'
+          ? html`<div style="white-space:pre-wrap;font-size:13px">${t.content}</div>`
+          : html`<div dangerouslySetInnerHTML=${{__html: mdLite(t.content)}} />`}
+      </div>`)}
+      ${busy && html`<span class="meta">analisando…</span>`}
+
+      <div class="field" style="margin-top:8px">
+        <textarea class="txtin" rows="2" style="resize:vertical" placeholder="Continuar a conversa (ex.: &quot;desenvolva o ponto 2&quot;, &quot;compare com o outro documento&quot;)… Enter envia, Shift+Enter quebra linha"
+          value=${followup} disabled=${busy} onInput=${e=>setFollowup(e.target.value)}
+          onKeyDown=${e=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendFollowup(); } }}></textarea>
+      </div>
+      <div class="row" style="gap:8px;margin-top:6px;align-items:center;flex-wrap:wrap">
+        <button class="btn primary" disabled=${busy || !followup.trim()} onClick=${sendFollowup}>Enviar</button>
+        <button class="btn sm ${saved?'ghost':'primary'}" disabled=${saved} onClick=${save}>${saved?'Salvo ✓':'Salvar conversa'}</button>
+        <button class="btn sm ghost" disabled=${busy} onClick=${resetConv}>Limpar conversa</button>
+        ${saved && html`<span class="meta">Disponível em "Resultados salvos" →</span>`}
+      </div>
+    </div>`}
+  </div>`;
+}
+
+/* ============ Resultados salvos da aba "Analisar com IA" ============
+   Lista lateral, mais recente primeiro; cada item pode ser expandido e
+   apagado. Persistido via store (sobrevive ao F5 / fechar o navegador). */
+function IAResultsPanel({ results, onDelete }){
+  const [openId, setOpenId] = useState(null);
+  return html`<div class="section" style="padding:14px">
+    <p class="h" style="margin-bottom:2px">Resultados salvos</p>
+    <p class="hint" style="margin:0 0 10px">${results.length} salvo${results.length===1?'':'s'}</p>
+    ${results.length===0 && html`<span class="meta">Nenhum resultado salvo ainda.</span>`}
+    ${results.map(r=>{ const open = openId===r.id;
+      return html`<div key=${r.id} class="card" style="margin-bottom:8px;padding:8px 10px">
+        <div class="node-row" style="padding:0;cursor:pointer" onClick=${()=>setOpenId(open?null:r.id)}>
+          <span class="caret">${open?'▾':'▸'}</span>
+          <span class="node-name" style="font-weight:600">${r.mode_label}</span>
+        </div>
+        <div class="meta" style="margin:2px 0 0 18px">
+          ${r.scope==='docs'?'Documentos':r.scope==='codes'?'Trechos + Código':'Documentos + Trechos + Código'}
+          · ${r.author_name||'anônimo'} · ${r.created_at?new Date(r.created_at).toLocaleString('pt-BR'):''}
+        </div>
+        ${open && html`<div style="margin-top:8px">
+          <div dangerouslySetInnerHTML=${{__html: mdLite(r.result)}} />
+          <button class="btn sm ghost" style="margin-top:8px" onClick=${()=>onDelete(r.id)}>apagar</button>
+        </div>`}
+      </div>`;
+    })}
+  </div>`;
+}
+
 function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allValues, projectMode }){
   const isIndividual = projectMode==='individual';
   const [layer,setLayer] = useState('individual');         // individual | final
@@ -4259,7 +5322,7 @@ function RenameCode({ code, onUpd, onSetColor, onSetRedaction, isAdmin }){
       <input type="checkbox" checked=${!!code.is_redaction} onChange=${e=>onSetRedaction(code, e.target.checked)} />
       🚫 Código de censura
     </label>
-    <p class="hint" style="margin:2px 0 0">Marca este código (e seus subcódigos) como sensível — por ora só sinaliza visualmente no leitor e na árvore, sem mascarar nada automaticamente.</p>`}
+    <p class="hint" style="margin:2px 0 0">Trechos com este código (e seus subcódigos) ficam de fora por padrão do que é enviado pra IA — pode escolher incluir na hora da análise.</p>`}
   </div>`;
 }
 
@@ -4563,6 +5626,18 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
   const [confirmId,setConfirmId]=useState(null); // id do projeto aguardando confirmação inline
   const list = projects||[];
 
+  // BYOK (bring your own key): config de IA pessoal, guardada so no localStorage deste
+  // navegador — ausente significa "usa a chave/modelo compartilhados do projeto" (default).
+  const [aiProvider,setAiProvider]=useState(()=>{ try{return localStorage.getItem('qualilab:ai_provider')||'gemini';}catch(e){return 'gemini';} });
+  const [aiKey,setAiKey]=useState(()=>{ try{return localStorage.getItem('qualilab:ai_key')||'';}catch(e){return '';} });
+  const [aiModel,setAiModel]=useState(()=>{ try{return localStorage.getItem('qualilab:ai_model')||'';}catch(e){return '';} });
+  const [aiBaseUrl,setAiBaseUrl]=useState(()=>{ try{return localStorage.getItem('qualilab:ai_baseurl')||'';}catch(e){return '';} });
+  // custom e azure compartilham a UI de "URL base + modelo em texto livre" (custom:true);
+  // azure tem rotulos proprios e exige a chave (azure:true).
+  const provDef = AI_PROVIDERS.find(p=>p.id===aiProvider);
+  const needsBaseUrl = !!provDef?.custom;
+  const isAzure = !!provDef?.azure;
+
   const run = async (fn)=>{ setErr(null); setMsg(null); try{ await fn(); }catch(e){ setErr(String(e.message||e)); } };
 
   const saveName = ()=>run(async()=>{ await onChangeName(name.trim()||'pesquisador'); setMsg('Nome atualizado.'); });
@@ -4572,6 +5647,23 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
     setBusy(true);
     run(async()=>{ await onChangePassword(pw1); setPw1('');setPw2(''); setMsg('Senha alterada.'); }).finally(()=>setBusy(false));
   };
+  const saveAI = ()=>run(async()=>{
+    if(needsBaseUrl && !aiBaseUrl.trim()){ setErr(isAzure?'Informe a URL base (endpoint) do Azure OpenAI.':'Informe a URL base da API personalizada.'); return; }
+    if(needsBaseUrl && !aiModel.trim()){ setErr(isAzure?'Informe o deployment do Azure OpenAI.':'Informe o modelo da API personalizada.'); return; }
+    if(isAzure && !aiKey.trim()){ setErr('A chave de API é obrigatória para o Azure OpenAI.'); return; }
+    try{
+      localStorage.setItem('qualilab:ai_provider', aiProvider);
+      if(aiKey.trim()) localStorage.setItem('qualilab:ai_key', aiKey.trim()); else localStorage.removeItem('qualilab:ai_key');
+      if(aiModel.trim()) localStorage.setItem('qualilab:ai_model', aiModel.trim()); else localStorage.removeItem('qualilab:ai_model');
+      if(needsBaseUrl && aiBaseUrl.trim()) localStorage.setItem('qualilab:ai_baseurl', aiBaseUrl.trim()); else localStorage.removeItem('qualilab:ai_baseurl');
+    }catch(e){}
+    setMsg('Configuração de IA salva.');
+  });
+  const clearAI = ()=>run(async()=>{
+    try{ localStorage.removeItem('qualilab:ai_provider'); localStorage.removeItem('qualilab:ai_key'); localStorage.removeItem('qualilab:ai_model'); localStorage.removeItem('qualilab:ai_baseurl'); }catch(e){}
+    setAiProvider('gemini'); setAiKey(''); setAiModel(''); setAiBaseUrl('');
+    setMsg('Removida — as telas de IA voltam a usar a chave compartilhada do projeto.');
+  });
 
   return html`<div class="modal-bg"><div class="modal" style="max-width:560px">
     <h2>Minha conta</h2>
@@ -4594,6 +5686,40 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
       <div class="field"><input class="txtin" type="password" value=${pw1} onInput=${e=>setPw1(e.target.value)} placeholder="nova senha (mín. 6)" /></div>
       <div class="field" style="margin-bottom:8px"><input class="txtin" type="password" value=${pw2} onInput=${e=>setPw2(e.target.value)} placeholder="repita a nova senha" /></div>
       <button class="btn sm primary" disabled=${busy||!pw1||!pw2} onClick=${savePw}>${busy?'…':'Alterar senha'}</button>
+    </div>`}
+
+    <!-- IA: chave e modelo pessoais (opcional, BYOK) — gateado por AI_ENABLED -->
+    ${AI_ENABLED && html`<div class="card" style="margin-bottom:12px">
+      <div class="field-label">IA — chave e modelo pessoais (opcional)</div>
+      <p class="hint" style="margin:0 0 8px">Por padrão, as telas de IA usam a chave e o modelo compartilhados deste projeto. Preenchendo aqui, suas análises passam a usar a <b>sua</b> chave — ela viaja só na requisição até a função do servidor que chama o provedor escolhido; não fica guardada lá, só neste navegador.</p>
+      <div class="field"><div class="field-label">Provedor</div>
+        <div class="row" style="gap:6px;flex-wrap:wrap">
+          ${AI_PROVIDERS.map(p=>html`<button key=${p.id} class="opt ${aiProvider===p.id?'on':''}"
+            onClick=${()=>{ setAiProvider(p.id); setAiModel(''); setAiBaseUrl(''); }}>${p.label}</button>`)}
+        </div>
+      </div>
+      ${needsBaseUrl && html`<div class="field"><div class="field-label">${isAzure?'URL base (endpoint do recurso)':'URL base da API'}</div>
+        <input class="txtin" value=${aiBaseUrl} onInput=${e=>setAiBaseUrl(e.target.value)} placeholder=${isAzure?'ex.: https://SEU-RECURSO.openai.azure.com/openai/v1':'ex.: https://api.deepseek.com/v1 — precisa ser acessível pela internet (não funciona com localhost)'} />
+        <p class="hint" style="margin:6px 0 0">${isAzure
+          ? html`Endpoint do seu recurso no portal do Azure, terminando em <code>/openai/v1</code> (superfície "v1"). A autenticação é por chave de API do recurso.`
+          : html`Qualquer API compatível com o formato clássico da OpenAI (<code>/chat/completions</code>) — cobre DeepSeek, Mistral, Qwen hospedado, ou um servidor próprio (Ollama/vLLM) exposto numa URL pública.`}</p>
+      </div>`}
+      <div class="field"><div class="field-label">Sua chave de API</div>
+        <input class="txtin" type="password" value=${aiKey} onInput=${e=>setAiKey(e.target.value)} placeholder=${isAzure?'obrigatória — chave de API do recurso Azure':needsBaseUrl?'deixe em branco se o servidor não exigir chave':'deixe em branco pra usar a chave compartilhada'} /></div>
+      <div class="field" style="margin-bottom:4px"><div class="field-label">${isAzure?'Deployment':'Modelo'}</div>
+        ${needsBaseUrl
+          ? html`<input class="txtin" value=${aiModel} onInput=${e=>setAiModel(e.target.value)} placeholder=${isAzure?'ex.: gpt-4.1-mini (nome do deployment)':'ex.: deepseek-chat'} />`
+          : html`<div class="row" style="gap:6px;flex-wrap:wrap">
+              ${(provDef?.models||[]).map(m=>html`<button key=${m.id} class="opt ${aiModel===m.id?'on':''}"
+                title=${m.note} onClick=${()=>setAiModel(m.id)}>${m.label}</button>`)}
+            </div>`}
+        <p class="hint" style="margin:6px 0 0">${isAzure ? 'Obrigatório — use o nome do deployment criado no portal do Azure (não o nome do modelo base, ex.: o deployment de um gpt-4.1-mini pode ter qualquer nome).' : needsBaseUrl ? 'Obrigatório para o provedor personalizado — use o id de modelo exatamente como o servidor espera.' : 'Modelo "vazio" usa o padrão do projeto pra esse provedor. Em geral, modelos maiores/mais capazes (à direita) são mais lentos e mais caros por uso do que os menores (à esquerda) — escolha conforme a complexidade da tarefa.'}</p>
+      </div>
+      <p class="hint" style="margin:0 0 8px">Temperatura padrão: <code>0,3</code> (respostas mais focadas e consistentes, menos "criativas"). Top-p: não definido pela aplicação — usa o padrão do provedor/modelo escolhido (em geral entre 0,9 e 1). Nenhum dos dois é configurável por aqui ainda.</p>
+      <div class="row" style="gap:6px">
+        <button class="btn sm primary" onClick=${saveAI}>salvar</button>
+        <button class="btn sm ghost" onClick=${clearAI}>usar chave compartilhada</button>
+      </div>
     </div>`}
 
     <!-- projetos -->

@@ -2,6 +2,8 @@
 
 Instruções para uma futura sessão do Claude trabalhar neste repositório. Leia antes de editar.
 
+> 🔗 **Este `docs/index.html` é GERADO — NÃO edite aqui.** A fonte única é o `index.html` do fork **`../QualiLab-ai-lab`** (superset = estável + camada de IA). Este arquivo é regenerado por `QualiLab-ai-lab/scripts/gen-estavel.sh` (modelo **FLAG**): é o mesmo `index.html` do ai-lab com `const AI_ENABLED = false` (esconde as telas/card/caminhos de IA) e as credenciais Supabase deste projeto público preservadas. **Consequência do modelo FLAG:** o código de IA fica fisicamente presente porém **dormente** (~1100 linhas); ele não roda sem o backend de IA. **Para mudar qualquer coisa, edite no ai-lab e rode o script** — edições feitas aqui serão perdidas na próxima regeneração. (Há um modelo "STRIP" alternativo, que removeria o código de IA, descrito no CLAUDE.md do ai-lab.) Censura (`is_redaction`) **veio junto** (não é gateada pela flag) — é feature geral de codificação.
+
 ---
 
 ## O que é
