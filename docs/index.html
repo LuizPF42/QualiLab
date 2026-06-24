@@ -182,11 +182,13 @@ import htm from 'https://esm.sh/htm@3';
 const html = htm.bind(h);
 
 // carregamento sob demanda (uma falha aqui vira erro tratavel, nao tela em branco)
-let _pdfjs=null, _mammoth=null, _JSZip=null, _createClient=null, _SQL=null;
+let _pdfjs=null, _mammoth=null, _JSZip=null, _createClient=null, _SQL=null, _XLSX=null;
 async function getPdfjs(){ if(!_pdfjs){ _pdfjs=await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.7.76/build/pdf.min.mjs'); try{ _pdfjs.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.7.76/build/pdf.worker.min.mjs'; }catch(e){} } return _pdfjs; }
 async function getMammoth(){ if(!_mammoth){ const m=await import('https://esm.sh/mammoth@1.8.0'); _mammoth=m.default||m; } return _mammoth; }
 async function getJSZip(){ if(!_JSZip){ const m=await import('https://esm.sh/jszip@3.10.1'); _JSZip=m.default||m; } return _JSZip; }
 async function getCreateClient(){ if(!_createClient){ const m=await import('https://esm.sh/@supabase/supabase-js@2'); _createClient=m.createClient; } return _createClient; }
+// SheetJS: le .xlsx/.xls no navegador (para o import de planilha Excel, mesmo fluxo do .csv)
+async function getXLSX(){ if(!_XLSX){ const m=await import('https://esm.sh/xlsx@0.18.5'); _XLSX=m.default||m; } return _XLSX; }
 // sql.js: SQLite compilado para WASM, p/ ler o .sqlite3 nativo do Taguette no navegador
 async function getSqlJs(){
   if(!_SQL){ const m=await import('https://esm.sh/sql.js@1.14.0'); const initSqlJs=m.default||m;
@@ -1138,6 +1140,123 @@ function buildCodeTreeFromPaths(rows, getPath){
   return { newCodes, codeIdByRow };
 }
 
+/* ============ IMPORT .csv ============
+   Planilha tabular: cada LINHA vira um documento; uma coluna escolhida vira o TEXTO
+   (conteudo do documento), outra (opcional) vira o NOME do documento, e as demais colunas
+   selecionadas viram CATEGORIAS (o valor da celula = resposta daquela categoria pra aquele
+   documento). O mapeamento coluna->papel e feito pelo usuario no CsvImportModal antes de
+   confirmar — aqui so aplicamos. Sem codigos nem codificacoes (o .csv nao tem isso). */
+
+// parser de CSV minimo, RFC-4180: aspas duplas, "" como aspa escapada, campos com
+// virgula/quebra de linha dentro de aspas. Detecta o delimitador (',' ';' ou tab) pela
+// 1a linha — planilhas em pt-BR costumam exportar com ';'.
+function parseCSV(text){
+  text = text.replace(/^﻿/, ''); // remove BOM
+  // detecta delimitador olhando a 1a linha fora de aspas
+  let delim = ',';
+  { let inQ=false, counts={',':0,';':0,'\t':0};
+    for(let i=0;i<text.length;i++){ const ch=text[i];
+      if(ch==='"'){ inQ=!inQ; continue; }
+      if(ch==='\n'||ch==='\r'){ if(!inQ) break; }
+      if(!inQ && counts[ch]!==undefined) counts[ch]++; }
+    if(counts[';']>counts[delim]) delim=';';
+    if(counts['\t']>counts[delim]) delim='\t'; }
+  const rows=[]; let field='', row=[], inQ=false;
+  for(let i=0;i<text.length;i++){
+    const ch=text[i];
+    if(inQ){
+      if(ch==='"'){ if(text[i+1]==='"'){ field+='"'; i++; } else inQ=false; }
+      else field+=ch;
+    } else {
+      if(ch==='"') inQ=true;
+      else if(ch===delim){ row.push(field); field=''; }
+      else if(ch==='\n'){ row.push(field); rows.push(row); field=''; row=[]; }
+      else if(ch==='\r'){ /* trata \r\n e \r soltos */ if(text[i+1]==='\n') i++; row.push(field); rows.push(row); field=''; row=[]; }
+      else field+=ch;
+    }
+  }
+  if(field!=='' || row.length){ row.push(field); rows.push(row); }
+  // remove linhas totalmente vazias (ex.: linha final em branco)
+  const clean = rows.filter(r=> r.some(c=> (c||'').trim()!==''));
+  if(!clean.length) return { headers:[], rows:[] };
+  const headers = clean[0].map((h,i)=> (h||'').trim() || `Coluna ${i+1}`);
+  return { headers, rows: clean.slice(1) };
+}
+
+/* le um .xlsx/.xls (1a planilha) e devolve o MESMO formato {headers, rows} do parseCSV,
+   pra reaproveitar o modal de mapeamento e o importCSV. Cada celula vira string (datas
+   formatadas como texto, nao serial Excel — raw:false). */
+async function parseXLSX(file){
+  const XLSX = await getXLSX();
+  const wb = XLSX.read(await file.arrayBuffer(), { type:'array', cellDates:true });
+  const sheetName = wb.SheetNames[0];
+  if(!sheetName) return { headers:[], rows:[] };
+  const ws = wb.Sheets[sheetName];
+  // header:1 => matriz de linhas; defval:'' garante celulas vazias; raw:false => texto formatado
+  const matrix = XLSX.utils.sheet_to_json(ws, { header:1, defval:'', raw:false, blankrows:false });
+  const clean = matrix.map(r=> r.map(c=> c==null ? '' : String(c)))
+                      .filter(r=> r.some(c=> c.trim()!==''));
+  if(!clean.length) return { headers:[], rows:[] };
+  const headers = clean[0].map((h,i)=> (h||'').trim() || `Coluna ${i+1}`);
+  return { headers, rows: clean.slice(1) };
+}
+
+/* aplica o .csv ja parseado e mapeado. mapping = { textCol, nameCol(-1 se nenhum),
+   cats:[{col,name,kind}] }. Espelha o padrao dos outros imports (beginBatch/endBatch,
+   setVal individual/final conforme projectMode). */
+async function importCSV(parsed, mapping, store, projectId, projectMode, onProgress){
+  const { headers, rows } = parsed;
+  const cats = (mapping.cats||[]).filter(c=> c.col!=null && c.col>=0);
+  // monta as categorias; para tipos com opcoes, deriva os valores distintos observados
+  const catDefs = cats.map(c=>{
+    let options;
+    if(CAT_HAS_OPTIONS(c.kind)){
+      const seen=new Set(), opts=[];
+      for(const r of rows){
+        const raw=(r[c.col]||'').trim(); if(!raw) continue;
+        const parts = c.kind==='checkbox' ? raw.split(/\s*[|;]\s*/).filter(Boolean) : [raw];
+        for(const p of parts){ if(!seen.has(p)){ seen.add(p); opts.push(p); } }
+      }
+      options = opts;
+    }
+    return { id:uid(), name:c.name, kind:c.kind, options, col:c.col };
+  });
+
+  // ignora linhas sem conteudo na coluna de texto (viraria um documento vazio, sem nada a
+  // codificar) — alem das linhas totalmente em branco que o parser ja descartou.
+  let ignoradas = 0;
+  const docDefs = [];
+  rows.forEach((r,i)=>{
+    const content = mapping.textCol>=0 ? (r[mapping.textCol]||'') : '';
+    if(content.trim()===''){ ignoradas++; return; }
+    docDefs.push({
+      id:uid(),
+      name: (mapping.nameCol>=0 ? (r[mapping.nameCol]||'').trim() : '') || `Documento ${i+1}`,
+      content, row: r
+    });
+  });
+
+  const total = docDefs.length + catDefs.length + docDefs.length*catDefs.length;
+  const tick = makeProgressTicker(onProgress, total);
+  const setVal = projectMode==='individual' ? store.setFinalValue.bind(store) : store.setDocValue.bind(store);
+  if(store.beginBatch) store.beginBatch();
+  try{
+    for(const d of docDefs){ await store.addDocument(projectId, { id:d.id, name:d.name, content:d.content }); await tick(); }
+    for(let i=0;i<catDefs.length;i++){ const c=catDefs[i]; await store.addCategory(projectId, { id:c.id, name:c.name, kind:c.kind, options:c.options, position:i }); await tick(); }
+    for(const d of docDefs){
+      for(const c of catDefs){
+        let val=(d.row[c.col]||'').trim();
+        if(c.kind==='checkbox' && val) val = val.split(/\s*[|;]\s*/).filter(Boolean).join(CAT_MULTI_SEP);
+        if(val) await setVal(projectId, d.id, c.id, val);
+        await tick();
+      }
+    }
+  } finally {
+    if(store.endBatch) await store.endBatch();
+  }
+  return { documentos:docDefs.length, categorias:catDefs.length, ignoradas };
+}
+
 /* ============ IMPORT .sqlite3 do TAGUETTE ============
    O Taguette nao usa QDPX/REFI-QDA para o projeto completo (so o codebook, em .qdc) —
    o projeto inteiro (documentos + tags + trechos) e um banco SQLite proprio. Lemos esse
@@ -1839,6 +1958,8 @@ function App(){
   const qdpxInputRef = useRef(null);
   const taguetteInputRef = useRef(null);
   const qdcInputRef = useRef(null);
+  const csvInputRef = useRef(null);
+  const [csvPending, setCsvPending] = useState(null); // {parsed,fileName} aguardando mapeamento
   const undoStackRef = useRef([]);
   const [busy, setBusy] = useState(null);
   const [progress, setProgress] = useState(null); // {done,total} durante import grande
@@ -2499,6 +2620,40 @@ function App(){
     }catch(e){ setBusy(null); setProgress(null); setErr('Falha ao importar .qdc: '+(e.message||e)); }
   }
 
+  // 1a etapa: le e parseia a planilha (.csv ou .xlsx/.xls), abre o modal de mapeamento
+  async function openCsvMapping(file){
+    const ext = (file.name||'').toLowerCase();
+    const isExcel = ext.endsWith('.xlsx') || ext.endsWith('.xls');
+    try{
+      const parsed = isExcel ? await parseXLSX(file) : parseCSV(await file.text());
+      if(!parsed.headers.length || !parsed.rows.length) throw new Error('arquivo vazio ou sem dados.');
+      setCsvPending({ parsed, fileName:file.name });
+    }catch(e){ setErr(`Falha ao ler ${isExcel?'.xlsx':'.csv'}: `+(e.message||e)); }
+  }
+  // 2a etapa: aplica o mapeamento confirmado no modal
+  async function doImportCSV(mapping){
+    const pending = csvPending; if(!pending) return;
+    setCsvPending(null);
+    setBusy('Importando planilha...');
+    setProgress({done:0,total:0});
+    try{
+      const r = await importCSV(pending.parsed, mapping, store, project.id, projectMode, (done,total)=>setProgress({done,total}));
+      setProgress(null);
+      const [freshDocs, cats2] = await Promise.all([store.listDocuments(project.id), store.listCategories(project.id)]);
+      setCats(cats2); setDocs(freshDocs);
+      const firstId = freshDocs[0]?.id || null;
+      if(firstId){
+        setActiveId(firstId);
+        const [vals, cods] = await Promise.all([store.getDocValues(firstId), store.listCodings(project.id, firstId)]);
+        setValues(vals); setCodings(cods);
+      }
+      setErr(null);
+      setBusy(null);
+      const ignMsg = r.ignoradas>0 ? ` ${r.ignoradas} linha(s) ignorada(s) por estarem sem texto.` : '';
+      setImportMsg(`Importado da planilha: ${r.documentos} documento(s), ${r.categorias} categoria(s).${ignMsg}`);
+    }catch(e){ setBusy(null); setProgress(null); setErr('Falha ao importar planilha: '+(e.message||e)); }
+  }
+
   async function doClearProject(){
     if(!confirm('Apagar TODOS os documentos, categorias, códigos e codificações deste projeto? Esta ação não pode ser desfeita.')) return;
     setBusy('Limpando projeto...');
@@ -2675,6 +2830,7 @@ function App(){
               <button title="Importa um projeto .qdpx (REFI-QDA)" onClick=${()=>{ setImpOpen(false); qdpxInputRef.current.click(); }}>QDPX (ATLAS.ti / MAXQDA / NVivo)</button>
               <button title="Importa o projeto completo do Taguette (documentos, tags e trechos codificados)" onClick=${()=>{ setImpOpen(false); taguetteInputRef.current.click(); }}>.sqlite3 (Taguette)</button>
               <button title="Importa só o livro de códigos (.qdc) — sem documentos nem codificações" onClick=${()=>{ setImpOpen(false); qdcInputRef.current.click(); }}>.qdc (codebook REFI-QDA)</button>
+              <button title="Importa uma planilha (.csv ou Excel .xlsx): cada linha vira um documento; você escolhe qual coluna é o texto e quais viram categorias" onClick=${()=>{ setImpOpen(false); csvInputRef.current.click(); }}>planilha (.csv / .xlsx → documentos + categorias)</button>
             </div>
           </div>`}
         </div>`}
@@ -2685,6 +2841,7 @@ function App(){
       <input ref=${qdpxInputRef} type="file" accept=".qdpx" style="display:none" onChange=${e=>{ if(e.target.files[0]) doImportQDPX(e.target.files[0]); e.target.value=''; }} />
       <input ref=${taguetteInputRef} type="file" accept=".sqlite3,.sqlite,.db" style="display:none" onChange=${e=>{ if(e.target.files[0]) doImportTaguette(e.target.files[0]); e.target.value=''; }} />
       <input ref=${qdcInputRef} type="file" accept=".qdc" style="display:none" onChange=${e=>{ if(e.target.files[0]) doImportQDC(e.target.files[0]); e.target.value=''; }} />
+      <input ref=${csvInputRef} type="file" accept=".csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" style="display:none" onChange=${e=>{ if(e.target.files[0]) openCsvMapping(e.target.files[0]); e.target.value=''; }} />
     </header>
 
     ${saveError && html`<div class="banner err">
@@ -3061,7 +3218,82 @@ function App(){
 
   ${sendCloudOpen && html`<${SendToCloudModal} defaultName=${project?.name||'Projeto'}
     onBuildDb=${buildQualilabDb} onClose=${()=>setSendCloudOpen(false)} />`}
+
+  ${csvPending && html`<${CsvImportModal} parsed=${csvPending.parsed} fileName=${csvPending.fileName}
+    onCancel=${()=>setCsvPending(null)} onConfirm=${doImportCSV} />`}
   `;
+}
+
+/* ============ MODAL DE MAPEAMENTO DO .csv ============
+   Mostra cada coluna do .csv e deixa o usuario escolher o papel dela: Texto (conteudo do
+   documento), Nome do documento, uma Categoria (de qualquer tipo) ou Ignorar. Exige
+   exatamente UMA coluna de texto. Os defaults sao um chute: a coluna com texto mais longo
+   em media vira o "Texto"; as demais viram Categoria · Texto Fechado (revisavel). */
+function CsvImportModal({ parsed, fileName, onCancel, onConfirm }){
+  const { headers, rows } = parsed;
+  // chute inicial: coluna com maior comprimento medio = texto
+  const guessTextCol = (()=>{
+    let best=0, bestLen=-1;
+    headers.forEach((_,c)=>{ let sum=0,n=0; for(const r of rows.slice(0,50)){ sum+=(r[c]||'').length; n++; } const avg=n?sum/n:0; if(avg>bestLen){ bestLen=avg; best=c; } });
+    return best;
+  })();
+  const [roles, setRoles] = useState(()=> headers.map((_,c)=> c===guessTextCol ? 'text' : 'cat:select'));
+  const setRole = (c,v)=> setRoles(rs=> rs.map((x,i)=> i===c ? v : x));
+
+  const textCount = roles.filter(r=>r==='text').length;
+  const valid = textCount===1;
+  const roleOpts = [
+    {v:'ignore', l:'— Ignorar —'},
+    {v:'text', l:'Texto (conteúdo do documento)'},
+    {v:'name', l:'Nome do documento'},
+    ...CAT_KINDS.map(k=>({v:'cat:'+k.id, l:'Categoria · '+k.label})),
+  ];
+
+  function confirm(){
+    if(!valid) return;
+    const textCol = roles.findIndex(r=>r==='text');
+    const nameCol = roles.findIndex(r=>r==='name'); // -1 se nenhum
+    const cats = roles.map((r,c)=> r.startsWith('cat:') ? { col:c, name:headers[c], kind:r.slice(4) } : null).filter(Boolean);
+    onConfirm({ textCol, nameCol, cats });
+  }
+
+  // amostra por coluna: primeiros 3 VALORES DISTINTOS nao-vazios (para no 3o, varre so o necessario) —
+  // a 1a linha de dados as vezes esta vazia/NA e nao representa a coluna; mostrar distintos
+  // da uma ideia melhor do conteudo (e ja sinaliza colunas de poucos valores = candidatas a fechada).
+  const colSamples = headers.map((_,c)=>{
+    const seen=new Set(); const out=[];
+    for(const r of rows){ const v=(r[c]||'').trim(); if(!v||seen.has(v)) continue; seen.add(v); out.push(v); if(out.length>=3) break; }
+    return out;
+  });
+  return html`<div class="modal-bg" onClick=${onCancel}>
+    <div class="modal" onClick=${e=>e.stopPropagation()} style="max-width:640px">
+      <h3 style="margin:0 0 4px">Importar planilha</h3>
+      <p class="hint" style="margin:0 0 12px">
+        <b>${fileName}</b> · ${rows.length} linha(s) → cada linha vira um documento.
+        Escolha o papel de cada coluna. Exatamente uma coluna deve ser o <b>Texto</b> (o conteúdo a codificar); as demais podem virar categorias.
+      </p>
+      <div style="max-height:46vh;overflow:auto;display:flex;flex-direction:column;gap:8px">
+        ${headers.map((h,c)=> html`<div key=${c} class="card" style="padding:8px 10px;display:flex;align-items:center;gap:10px">
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${h}</div>
+            <div class="hint" style="font-family:var(--mono);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title=${colSamples[c].join(' · ')}>
+              ${colSamples[c].length ? 'ex.: '+colSamples[c].join(' · ') : '(coluna vazia)'}
+            </div>
+          </div>
+          <select value=${roles[c]} onChange=${e=>setRole(c, e.target.value)} style="flex-shrink:0">
+            ${roleOpts.map(o=> html`<option key=${o.v} value=${o.v}>${o.l}</option>`)}
+          </select>
+        </div>`)}
+      </div>
+      ${!valid && html`<p class="hint" style="color:var(--danger);margin:10px 0 0">
+        ${textCount===0 ? 'Selecione uma coluna como "Texto (conteúdo do documento)".' : 'Apenas uma coluna pode ser o Texto.'}
+      </p>`}
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+        <button class="btn ghost" onClick=${onCancel}>Cancelar</button>
+        <button class="btn primary" disabled=${!valid} onClick=${confirm}>Importar</button>
+      </div>
+    </div>
+  </div>`;
 }
 
 /* ============ AUTH (login / cadastro por e-mail e senha) ============ */

@@ -232,6 +232,16 @@ O Taguette **não** usa QDPX para o projeto completo (só o codebook, em `.qdc`)
 - **Sem nenhum aninhamento no arquivo inteiro** (ex.: o próprio Taguette exporta assim — tudo num nível, hierarquia embutida no `name` como `"tech.floss"`): cai no mesmo `buildCodeTreeFromPaths` do import do Taguette via `.sqlite3`, usando `name` como o "caminho".
 - **Export**: sempre com aninhamento real (`<Code>` dentro de `<Code>`) e `color`, já que vem da nossa própria árvore — não precisa da heurística.
 
+## Import de planilha (`.csv` / `.xlsx`) — `parseCSV`/`parseXLSX` + `importCSV` + `CsvImportModal`
+
+Importa uma planilha tabular onde **cada linha vira um documento**. Diferente dos outros importadores, **não é "um arquivo → aplica direto"**: precisa de um passo de **mapeamento** (qual coluna é o quê), feito num modal antes de aplicar. Fluxo em duas etapas no `App`: `openCsvMapping(file)` lê/parseia e guarda em `csvPending` (abre o modal); `doImportCSV(mapping)` aplica e recarrega docs/categorias.
+
+- **`parseCSV(text)`** — parser próprio (sem lib), RFC-4180: aspas duplas, `""` escapado, vírgula/quebra-de-linha dentro de aspas. **Detecta o delimitador** (`,`/`;`/tab) contando ocorrências fora de aspas na 1ª linha — planilhas pt-BR costumam exportar com `;`. Remove BOM e linhas totalmente vazias. Retorna `{headers, rows}` (rows = arrays de string).
+- **`parseXLSX(file)`** — Excel via **SheetJS** (`getXLSX()`, loader `esm.sh/xlsx@0.18.5`, sob demanda como os outros). Lê só a **1ª aba** (`wb.SheetNames[0]`, igual o import do Taguette que pega o 1º projeto — sem seletor de aba ainda) e devolve **exatamente o mesmo `{headers, rows}`** do `parseCSV`, então o modal e o `importCSV` são reaproveitados sem mudança. `raw:false` + `cellDates:true` → datas saem como texto formatado, não serial Excel.
+- **`importCSV(parsed, mapping, store, projectId, projectMode, onProgress)`** — núcleo comum. `mapping = { textCol, nameCol(-1 se nenhum), cats:[{col,name,kind}] }`. Cada linha → `addDocument` (conteúdo = `textCol`, nome = `nameCol` ou `Documento N`); cada coluna marcada → `addCategory`. Para tipos com opções (`CAT_HAS_OPTIONS`), as opções são **deduzidas dos valores distintos observados** (checkbox separa por `|`/`;` e regrava com `CAT_MULTI_SEP`). Valores gravados com `setFinalValue`/`setDocValue` conforme `projectMode` (mesmo padrão do QDPX). Tudo em `beginBatch()/endBatch()`. **Sem códigos nem codificações** — a planilha não tem isso. **Linhas sem texto na coluna de conteúdo são ignoradas** (viraria documento vazio); o resumo do import conta quantas (`ignoradas`). Linhas totalmente em branco já são descartadas no parse.
+- **`CsvImportModal`** — lista cada coluna com prévia (3 primeiras linhas) e um `<select>` de papel: *Ignorar*, *Texto (conteúdo)*, *Nome do documento*, ou *Categoria · <tipo>* (todos os `CAT_KINDS`). Chute inicial: a coluna com texto mais longo em média vira o "Texto"; as demais nascem como *Categoria · Texto Fechado* (revisável). **Exige exatamente uma coluna de Texto** pra habilitar "Importar".
+- **UI**: uma entrada no menu "importar ▾" e **um único `<input>`** com `accept` cobrindo `.csv`/`.xlsx`/`.xls` — a distinção é por extensão dentro de `openCsvMapping`.
+
 ---
 
 ## Rodar e testar
