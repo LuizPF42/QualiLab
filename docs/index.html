@@ -6276,6 +6276,10 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
   const isRedactionCoding = (c)=> !!codeById[c.code_id]?.is_redaction;
   const [cloudCodes,setCloudCodes] = useState(()=>new Set()); // filtro multi-código da NUVEM (cada um + descendentes); vazio = todos
   const onPickCloud = (id)=> setCloudCodes(prev=>{ const n=new Set(prev); n.has(id)?n.delete(id):n.add(id); return n; });
+  // co-ocorrência: códigos escolhidos para cada eixo da matriz (vazio = top por frequência)
+  const [coocX,setCoocX] = useState(()=>new Set()); // eixo X = colunas
+  const [coocY,setCoocY] = useState(()=>new Set()); // eixo Y = linhas
+  const toggleIn = (setter)=>(id)=> setter(prev=>{ const n=new Set(prev); n.has(id)?n.delete(id):n.add(id); return n; });
   const matchingDocIds = useMemo(()=>{
     const s=new Set();
     docs.forEach(d=>{
@@ -6354,26 +6358,30 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
     }).sort((a,b)=>b.value-a.value);
   }, [cod, cloudCodeSet, docContentById, codeById]);
 
-  // ---- co-ocorrência: matriz código×código (nº de pares de trechos sobrepostos no mesmo doc)
+  // ---- co-ocorrência: matriz código×código (nº de pares de trechos sobrepostos no mesmo doc).
+  // eixos escolhidos pelo usuário: Y = linhas (coocY), X = colunas (coocX). Vazio = top-12 por
+  // frequência, na ordem de freqItems (pra não abrir vazio). Conta só os pares úteis (X×Y).
   const cooc = useMemo(()=>{
-    const top = freqItems.slice(0, Math.min(20, freqItems.length)).map(i=>i.key);
-    const inTop = new Set(top);
-    const m={}; top.forEach(a=>m[a]={});
+    const rank = freqItems.map(i=>i.key);
+    const order = (s)=> rank.filter(id=>s.has(id)).concat([...s].filter(id=>!rank.includes(id)));
+    const rows = coocY.size ? order(coocY) : rank.slice(0,12); // ids das linhas
+    const cols = coocX.size ? order(coocX) : rank.slice(0,12); // ids das colunas
+    const rowSet=new Set(rows), colSet=new Set(cols);
+    const m={}; rows.forEach(a=>m[a]={});
     Object.values(codingsByDoc).forEach(list=>{
-      for(let i=0;i<list.length;i++) for(let j=i+1;j<list.length;j++){
+      for(let i=0;i<list.length;i++) for(let j=0;j<list.length;j++){
+        if(i===j) continue;
         const a=list[i], b=list[j];
         if(a.code_id===b.code_id) continue;
-        if(!inTop.has(a.code_id)||!inTop.has(b.code_id)) continue;
-        if(a.span_start<b.span_end && b.span_start<a.span_end){
-          m[a.code_id][b.code_id]=(m[a.code_id][b.code_id]||0)+1;
-          m[b.code_id][a.code_id]=(m[b.code_id][a.code_id]||0)+1;
-        }
+        if(!rowSet.has(a.code_id) || !colSet.has(b.code_id)) continue;
+        if(a.span_start<b.span_end && b.span_start<a.span_end) m[a.code_id][b.code_id]=(m[a.code_id][b.code_id]||0)+1;
       }
     });
-    let max=1; top.forEach(a=>top.forEach(b=>{ if(a!==b) max=Math.max(max,m[a][b]||0); }));
-    const rows = top.map(id=>({ id, label:codeLabelOf(id) }));
-    return { rows, cols:top, m, max };
-  }, [freqItems, codingsByDoc, codePath]);
+    // laço ordenado (i≠j): a célula m[linha][coluna] conta os pares (coding-da-linha, coding-da-coluna)
+    // sobrepostos — sem dobra, pois (x,y) e (y,x) caem em células distintas (linha×coluna ≠ coluna×linha).
+    let max=1; rows.forEach(a=>cols.forEach(b=>{ if(a!==b) max=Math.max(max, m[a][b]||0); }));
+    return { rows: rows.map(id=>({ id, label:codeLabelOf(id) })), cols, m, max };
+  }, [freqItems, codingsByDoc, coocX, coocY, codePath]);
 
   // ---- código × atributo (heatmap): valor consolidado (gabarito) por documento
   const finalVal = (docId,cId)=>{ const f=allValues.find(v=>v.document_id===docId && v.category_id===cId && v.layer==='final'); return f?f.value:null; };
@@ -6434,8 +6442,10 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
     chart = coverItems.length===0 ? null
       : svgHBars(coverItems.slice(0,topN), { w:cw, color:'var(--sky)', fmt:(v)=>v.toFixed(2)+'%' });
   } else if(tab==='cooc'){
-    hint = 'Quantos trechos de dois códigos se sobrepõem no mesmo documento.';
-    chart = cooc.rows.length<2 ? null
+    hint = (coocX.size||coocY.size)
+      ? 'Trechos sobrepostos no mesmo documento entre os códigos de cada eixo (linha = Y, coluna = X). Diagonal do mesmo código fica vazia.'
+      : 'Trechos sobrepostos no mesmo documento (12 códigos mais frequentes em cada eixo — escolha os eixos no painel à esquerda).';
+    chart = (cooc.rows.length===0 || cooc.cols.length===0) ? null
       : svgHeat(cooc.rows, cooc.cols, (r,c)=> r.id===c?null:(cooc.m[r.id]?.[c]||0), cooc.max, {
           W:cw, colLabel:(id)=>codeLabelOf(id) });
   } else if(tab==='cruz'){
@@ -6500,6 +6510,32 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
           ${tops.length===0 ? html`<span class="meta" style="padding:10px 8px;display:block">Nenhum código criado.</span>`
             : tops.map(t=>html`<${CloudCodeNode} key=${t.id} code=${t} childrenOf=${childrenOf}
                 counts=${codeCounts} selectedIds=${cloudCodes} onToggle=${onPickCloud} depthPad=${0} />`)}
+        </div>
+      </div>`}
+      ${tab==='cooc' && html`<div>
+        <div style="border-top:1px solid var(--line-soft)">
+          <div class="field-label" style="padding:10px 14px 2px;margin:0;display:flex;align-items:center;gap:8px">
+            ↔️ Eixo X (horizontal)
+            ${coocX.size>0 && html`<span class="pill" style="font-size:10px;padding:1px 8px">${coocX.size}</span>`}
+          </div>
+          <p class="meta" style="margin:0;padding:0 14px 6px;font-size:11px">Códigos nas colunas. Nenhum = 12 mais frequentes.</p>
+          ${coocX.size>0 && html`<div style="padding:0 14px 6px"><button class="btn sm ghost" style="width:100%" onClick=${()=>setCoocX(new Set())}>limpar X</button></div>`}
+          <div class="tree" style="padding:4px 6px">
+            ${tops.map(t=>html`<${CloudCodeNode} key=${'x'+t.id} code=${t} childrenOf=${childrenOf}
+              counts=${codeCounts} selectedIds=${coocX} onToggle=${toggleIn(setCoocX)} depthPad=${0} />`)}
+          </div>
+        </div>
+        <div style="border-top:1px solid var(--line-soft)">
+          <div class="field-label" style="padding:10px 14px 2px;margin:0;display:flex;align-items:center;gap:8px">
+            ↕️ Eixo Y (vertical)
+            ${coocY.size>0 && html`<span class="pill" style="font-size:10px;padding:1px 8px">${coocY.size}</span>`}
+          </div>
+          <p class="meta" style="margin:0;padding:0 14px 6px;font-size:11px">Códigos nas linhas. Nenhum = 12 mais frequentes.</p>
+          ${coocY.size>0 && html`<div style="padding:0 14px 6px"><button class="btn sm ghost" style="width:100%" onClick=${()=>setCoocY(new Set())}>limpar Y</button></div>`}
+          <div class="tree" style="padding:4px 6px">
+            ${tops.map(t=>html`<${CloudCodeNode} key=${'y'+t.id} code=${t} childrenOf=${childrenOf}
+              counts=${codeCounts} selectedIds=${coocY} onToggle=${toggleIn(setCoocY)} depthPad=${0} />`)}
+          </div>
         </div>
       </div>`}
     </div>
