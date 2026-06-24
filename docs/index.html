@@ -1696,6 +1696,94 @@ function SupabaseStore(sb){
   };
 }
 
+/* ===== Recorte "Ver:" unificado (camada/codificador) — fonte unica usada em TODAS as telas =====
+   view: 'all' (individuais de todos + gabarito) | 'mine' | 'final' (gabarito) | <userId> | '__nm__'+nome
+   Regra: 'all' = sobreposicao de TODAS as camadas (individuais de cada codificador + o gabarito
+   consolidado), pra "ver todo mundo" incluir o que ja foi reconciliado. O gabarito sozinho fica
+   em 'final'. (Atencao: em telas de contagem — Graficos/Relatorio — 'all' soma individuais E
+   gabarito, entao o que ja foi consolidado conta duas vezes; escolha do autor.) Projeto individual:
+   tudo ja nasce em 'final', entao o recorte so filtra por codificador quando ha >1 autor importado. */
+function codingsForView(codings, view, userId, projectMode){
+  if(projectMode==='individual'){
+    if(typeof view==='string' && view.startsWith('__nm__')) return codings.filter(c=>c.author_name===view.slice(6));
+    if(view && view!=='all' && view!=='mine' && view!=='final') return codings.filter(c=>c.created_by===view);
+    return codings;
+  }
+  if(view==='final') return codings.filter(c=>c.layer==='final');
+  if(view==='all') return codings;
+  const indiv = codings.filter(c=>c.layer!=='final');
+  if(view==='mine') return indiv.filter(c=>c.created_by===userId);
+  if(typeof view==='string' && view.startsWith('__nm__')){ const nm=view.slice(6); return indiv.filter(c=>c.author_name===nm); }
+  return indiv.filter(c=>c.created_by===view);
+}
+/* lista de valores de UMA categoria de UM documento conforme o recorte (para agregacao/distribuicao).
+   'all' devolve as respostas de todos os pesquisadores + o gabarito; 'final' so o gabarito;
+   'mine'/coder a resposta daquele autor. Em projeto individual, gabarito (ou a 1a resposta). */
+function valuesForView(values, docId, catId, view, userId, projectMode){
+  const rows = values.filter(v=>v.document_id===docId && v.category_id===catId);
+  const fin = rows.find(r=>r.layer==='final');
+  if(projectMode==='individual') return fin ? [fin.value] : (rows[0] ? [rows[0].value] : []);
+  if(view==='final') return fin ? [fin.value] : [];
+  const indiv = rows.filter(r=>(r.layer||'individual')!=='final');
+  if(view==='all') return rows.map(r=>r.value);
+  if(view==='mine'){ const m=indiv.find(r=>r.set_by===userId); return m?[m.value]:[]; }
+  if(typeof view==='string' && view.startsWith('__nm__')){ const nm=view.slice(6); const m=indiv.find(r=>r.author_name===nm); return m?[m.value]:[]; }
+  const m=indiv.find(r=>r.set_by===view); return m?[m.value]:[];
+}
+/* rotulo legivel do recorte (para textos/relatorio) */
+function viewLabel(view, coders){
+  if(view==='final') return 'gabarito final';
+  if(view==='all') return 'individuais (todos)';
+  if(view==='mine') return 'minhas codificacoes';
+  if(typeof view==='string' && view.startsWith('__nm__')) return view.slice(6);
+  const c=(coders||[]).find(x=>x.id===view); return c?c.name:'individuais';
+}
+/* Seletor "Ver:" unico, identico em todas as telas. Recebe o estado compartilhado do App.
+   Visibilidade: igual a regra historica do leitor — projeto coletivo na nuvem, ou qualquer
+   projeto com mais de um codificador (ex.: .qdpx importado offline). */
+function ViewSelect({ value, onChange, coders, userId, projectMode, mode, label='Ver:' }){
+  const show = (mode==='cloud' && projectMode==='collective') || (coders||[]).length>1;
+  if(!show) return null;
+  return html`<label class="meta" style="display:flex;align-items:center;gap:5px">${label}
+    <select class="opt" value=${value} onChange=${e=>onChange(e.target.value)}>
+      ${projectMode==='collective' ? html`
+        <option value="all">Individuais (todos)</option>
+        <option value="mine">Minhas</option>
+        ${coders.filter(c=>c.id!==userId).map(c=>html`<option value=${c.id}>${c.name}</option>`)}
+        <option value="final">Final / gabarito</option>
+      ` : html`
+        <option value="all">Todos os codificadores</option>
+        ${coders.map(c=>html`<option value=${c.id}>${c.name}</option>`)}
+      `}
+    </select></label>`;
+}
+
+/* Seção colapsável (fechada por padrão) do menu de contexto do leitor — usada por
+   "Aceitar no gabarito" e "Rejeitar / remover", pra não despejar listas longas abertas. */
+function CtxSection({ title, count, children }){
+  const [open, setOpen] = useState(false);
+  return html`<div style="border-bottom:1px solid var(--line-soft)">
+    <button onClick=${e=>{ e.stopPropagation(); setOpen(o=>!o); }}
+      style="display:flex;align-items:center;gap:6px;width:100%;padding:7px 12px;font-size:11px;color:var(--ink-faint);font-weight:600;text-transform:uppercase;box-sizing:border-box">
+      <span style="font-size:9px;width:9px">${open?'▼':'▶'}</span>${title}<span class="count" style="margin-left:auto">${count}</span>
+    </button>
+    ${open && children}
+  </div>`;
+}
+
+/* Seção colapsável (aberta por padrão) de barra lateral — cabeçalho com caret + conteúdo.
+   Usada na navegação da Reconciliação (Documentos / Categoria / Código). */
+function NavGroup({ title, children, defaultOpen=true }){
+  const [open, setOpen] = useState(defaultOpen);
+  return html`<div style="border-bottom:1px solid var(--line-soft)">
+    <div class="node-row" style="padding:6px 12px;cursor:pointer;border-radius:0" onClick=${()=>setOpen(o=>!o)}>
+      <span class="caret">${open?'▾':'▸'}</span>
+      <span class="node-name" style="font-weight:600;text-transform:uppercase;font-size:11px;letter-spacing:.04em;color:var(--ink-soft)">${title}</span>
+    </div>
+    ${open && html`<div style="padding-bottom:6px">${children}</div>`}
+  </div>`;
+}
+
 /* ============================== APP ============================== */
 function App(){
   const wantCloud = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
@@ -1725,7 +1813,6 @@ function App(){
   const [iaResults, setIaResults] = useState([]); // resultados salvos da aba "Analisar com IA"
   const [memoSel, setMemoSel] = useState({ scope:'project', targetId:null }); // alvo selecionado na aba Memos
   // estado da aba Visualização (elevado para poder usar o split nativo do app)
-  const [vizLayer,      setVizLayer]      = useState('individual');
   const [vizCatFilter,  setVizCatFilter]  = useState({});
   const [vizSelCode,    setVizSelCode]    = useState(null);
   const [vizCross,      setVizCross]      = useState(['','']);
@@ -1738,6 +1825,10 @@ function App(){
   const [selCode, setSelCode] = useState(null);
   const [rtab, setRtab] = useState('categorias');
   const [esquemaTab, setEsquemaTab] = useState('codigos'); // codigos | categorias — sub-paginas da aba Esquema
+  const [reconcileTab, setReconcileTab] = useState('categorias'); // codigos | categorias — sub-abas da Reconciliacao (abre em Categorias)
+  const [reconDoc, setReconDoc] = useState('all');  // 'all' (uma categoria em todos os docs) | <docId> (todas as categorias de um doc)
+  const [reconCat, setReconCat] = useState('');     // categoria escolhida no modo "(Todos os documentos)"
+  const [reconCode, setReconCode] = useState('all'); // codigo escolhido no modo "(Todos os documentos)" da aba Codigos ('all' = todos)
   const [mainView, setMainView] = useState('codificar'); // codificar | reconciliar | visualizar
   const [viewCoder, setViewCoder] = useState('all');      // all | mine | <userId> | final
   const [account, setAccount] = useState(false);  // tela "Minha conta"
@@ -1845,27 +1936,11 @@ function App(){
     return [...fromId, ...fromName].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
   }, [allCodings, codings, projectMode]);
 
-  // codificações visíveis no leitor conforme o filtro de camada/codificador
-  const visibleCodings = useMemo(()=>{
-    // projeto individual: um unico codificador, sem reconciliacao e sem seletor "Ver:".
-    // Mostra TODAS as codificacoes (qualquer camada) — senao codigos importados de .qdpx
-    // (que entram na camada 'final', mas podem estar em 'individual' por historico de modo)
-    // ficariam invisiveis no leitor. buildRuns dedup por posicao, entao nao ha risco real.
-    if(projectMode==='individual'){
-      // tudo na camada final, mas .qdpx importado preserva varios autores em author_name:
-      // permite filtrar por codificador mesmo offline (o seletor "Ver:" aparece quando ha >1).
-      if(typeof viewCoder==='string' && viewCoder.startsWith('__nm__')) return codings.filter(c=>c.author_name===viewCoder.slice(6));
-      if(viewCoder && viewCoder!=='all' && viewCoder!=='mine' && viewCoder!=='final') return codings.filter(c=>c.created_by===viewCoder);
-      return codings;
-    }
-    if(viewCoder==='final') return codings.filter(c=>c.layer==='final');
-    const indiv = codings.filter(c=>c.layer!=='final');
-    if(viewCoder==='mine') return indiv.filter(c=>c.created_by===user?.id);
-    if(viewCoder==='all') return codings; // todas as camadas: individuais de cada coder + gabarito
-    // id baseado em nome (importados de QDPX)
-    if(viewCoder.startsWith('__nm__')){ const nm=viewCoder.slice(6); return indiv.filter(c=>c.author_name===nm); }
-    return indiv.filter(c=>c.created_by===viewCoder);
-  }, [codings, viewCoder, user, projectMode]);
+  // codificações visíveis no leitor conforme o recorte "Ver:" — mesma fonte (codingsForView)
+  // usada por Visualizar, Gráficos e Relatório, pra o comportamento ser idêntico em todas as telas.
+  const visibleCodings = useMemo(()=>
+    codingsForView(codings, viewCoder, user?.id, projectMode)
+  , [codings, viewCoder, user, projectMode]);
 
   /* lista "Meus Projetos" por conta (cache local, complementa o servidor) */
   const recentKey = (st)=> 'qualilab:projects:'+((st||store)?.currentUser?.()?.id || 'anon');
@@ -1887,8 +1962,8 @@ function App(){
 
   const openProject = (p)=>{
     setProject(p); setProjectMode(p.mode||'collective');
-    // projetos individuais nao tem camada "individual" relevante: tudo fica no gabarito (final)
-    setVizLayer(p.mode==='individual' ? 'final' : 'individual');
+    // recorte "Ver:" volta ao padrão (individuais de todos) ao entrar num projeto
+    setViewCoder('all');
   };
 
   /* online / offline + flush da fila de escrita ao recuperar conexão */
@@ -2004,7 +2079,7 @@ function App(){
     try{
       await store.setProjectMode(project.id, newMode, user?.name||'pesquisador');
       const np={...project, mode:newMode}; setProject(np); setProjectMode(newMode);
-      setVizLayer(newMode==='individual' ? 'final' : 'individual');
+      setViewCoder('all');
       try{localStorage.setItem('qualilab:project',JSON.stringify(np));}catch(e){}
       if(newMode==='individual' && mainView!=='codificar') setMainView('codificar');
       await loadProject(store, project.id); await loadDoc();
@@ -2066,7 +2141,9 @@ function App(){
     }
     setAllValues(V); setAllCodings(C);
   }, [store, project, docs]);
-  useEffect(()=>{ if(phase==='work' && (mainView==='visualizar'||mainView==='graficos'||mainView==='ia_analisar'||mainView==='esquema'||mainView==='relatorio')) loadAll(); }, [phase, mainView, loadAll, codings]);
+  useEffect(()=>{ if(phase==='work' && (mainView==='visualizar'||mainView==='graficos'||mainView==='ia_analisar'||mainView==='esquema'||mainView==='relatorio'||mainView==='reconciliar')) loadAll(); }, [phase, mainView, loadAll, codings]);
+  // categoria padrão no modo "(Todos os documentos)" da Reconciliação
+  useEffect(()=>{ if(!cats.find(c=>c.id===reconCat)) setReconCat(cats[0]?.id || ''); }, [cats]); // eslint-disable-line
 
   /* memos: nota unica por alvo (projeto/documento/codigo) */
   const loadMemos = useCallback(async ()=>{
@@ -2126,6 +2203,8 @@ function App(){
     loadDoc();
   }
   async function setFinalValue(catId, value){ if(!store.setFinalValue) return; await store.setFinalValue(project.id, activeId, catId, value); loadDoc(); }
+  // gabarito de uma categoria em um documento ARBITRÁRIO (modo "(Todos os documentos)" da Reconciliação)
+  async function setFinalValueDoc(docId, catId, value){ if(!store.setFinalValue) return; await store.setFinalValue(project.id, docId, catId, value); if(docId===activeId) loadDoc(); loadAll(); }
   async function addCategory(){ const c = await store.addCategory(project.id,{name:'Nova categoria',kind:'single',options:[NAO_INFO],color:cats.length%HUES.length,position:cats.length}); setCats(x=>[...x,c]); }
   async function updCategory(id,patch){ await store.updateCategory(id,patch); setCats(x=>x.map(c=>c.id===id?{...c,...patch}:c)); }
   async function delCategory(id){ await store.deleteCategory(id); setCats(x=>x.filter(c=>c.id!==id)); setValues(v=>v.filter(x=>x.category_id!==id)); }
@@ -2220,6 +2299,15 @@ function App(){
       await store.deleteCoding(id);
       undoStackRef.current = undoStackRef.current.filter(x=>x.id!==id);
       setCodings(x=>x.filter(c=>c.id!==id));
+      closeCtxMenu(); setSel(null); window.getSelection()?.removeAllRanges();
+    }catch(e){ setErr(String(e.message||e)); }
+  }
+  // já existe esse mesmo trecho consolidado no gabarito? (evita duplicar ao "aceitar")
+  const isFinalAlready = useCallback((c)=> codings.some(x=>x.layer==='final' && x.document_id===c.document_id && x.code_id===c.code_id && x.span_start===c.span_start && x.span_end===c.span_end), [codings]);
+  // admin consolida (aceita) um grifo individual na camada final, a partir do menu de contexto do leitor
+  async function acceptCodingToFinal(c){
+    try{
+      await addFinalCoding(c.document_id, c.code_id, c.span_start, c.span_end, c.quote);
       closeCtxMenu(); setSel(null); window.getSelection()?.removeAllRanges();
     }catch(e){ setErr(String(e.message||e)); }
   }
@@ -2466,7 +2554,8 @@ function App(){
     return out;
   }, [codes]);
   const codePath = useCallback((id)=>{ const out=[]; let c=codeById[id]; let guard=0; while(c&&guard++<12){ out.unshift(c.name); c=c.parent_id?codeById[c.parent_id]:null; } return out; }, [codeById]);
-  const canRemoveCoding = useCallback((c)=> store?.mode!=='cloud' || projectMode==='individual' || c.created_by===user?.id, [store, projectMode, user]);
+  // o próprio autor sempre remove; admin remove (rejeita) o grifo de qualquer codificador; fora da nuvem/individual tudo é do usuário
+  const canRemoveCoding = useCallback((c)=> store?.mode!=='cloud' || projectMode==='individual' || c.created_by===user?.id || isAdmin, [store, projectMode, user, isAdmin]);
   function codingsForCtxMenu(menu){
     if(!menu) return [];
     const matches = visibleCodings.filter(c=>{
@@ -2623,18 +2712,7 @@ function App(){
           </label>
           <${AddPaste} onAdd=${addPasted} />
           <div class="grow"></div>
-          ${((mode==='cloud' && projectMode==='collective') || coders.length>1) && html`<label class="meta" style="display:flex;align-items:center;gap:5px">Ver:
-            <select class="opt" value=${viewCoder} onChange=${e=>setViewCoder(e.target.value)}>
-              ${projectMode==='collective' ? html`
-                <option value="all">Individuais (todos)</option>
-                <option value="mine">Minhas</option>
-                ${coders.filter(c=>c.id!==user?.id).map(c=>html`<option value=${c.id}>${c.name}</option>`)}
-                <option value="final">Final / gabarito</option>
-              ` : html`
-                <option value="all">Todos os codificadores</option>
-                ${coders.map(c=>html`<option value=${c.id}>${c.name}</option>`)}
-              `}
-            </select></label>`}
+          <${ViewSelect} value=${viewCoder} onChange=${setViewCoder} coders=${coders} userId=${user?.id} projectMode=${projectMode} mode=${mode} />
           ${activeDoc && html`<button class="icon-btn" title="Buscar no documento" onClick=${()=>setSearchOpen(o=>!o)}>🔎</button>`}
           ${activeDoc && html`<div class="reader-toolbar">
             <button class="icon-btn" title="Diminuir fonte" onClick=${()=>setReaderPrefs(p=>({...p, scale:Math.max(0.8, +(p.scale-0.1).toFixed(2))}))}>A-</button>
@@ -2710,8 +2788,8 @@ function App(){
       <aside class="pane right" style=${`width:${readerPrefs.rightW}px`}>
         <div class="pane-head">
           <div class="seg">
-            <button class=${rtab==='categorias'?'on':''} onClick=${()=>setRtab('categorias')}>Categorias do documento</button>
-            <button class=${rtab==='codigos'?'on':''} onClick=${()=>setRtab('codigos')}>Codificar</button>
+            <button class=${rtab==='categorias'?'on':''} onClick=${()=>setRtab('categorias')}>🏷️ Categorias</button>
+            <button class=${rtab==='codigos'?'on':''} onClick=${()=>setRtab('codigos')}>🖍️ Codificar</button>
           </div>
         </div>
         <div class="pane-body scroll">
@@ -2726,27 +2804,73 @@ function App(){
         </div>
       </aside>
     </div>`
-    : mainView==='reconciliar' ? html`<div class="split">
-      <!-- RECONCILIACAO: tela inteira -->
-      <section class="pane left" style="flex:1 1 100%;border-right:none;max-width:none">
-        <div class="pane-head">
-          <span class="h" style="margin:0">Reconciliação</span>
-          <select class="opt" style="max-width:840px;margin-left:10px" value=${activeId||''} onChange=${e=>setActiveId(e.target.value)}>
-            ${docs.length===0 && html`<option value="">sem documentos</option>`}
-            ${docs.map(d=>html`<option value=${d.id}>${d.name}</option>`)}
-          </select>
-        </div>
-        <div class="pane-body scroll">
-          <div style="max-width:900px;margin:0 auto">
-            <${Reconcile} activeDoc=${activeDoc} codings=${codings} coders=${coders}
-              codeById=${codeById} codePath=${codePath}
-              cats=${cats} values=${values} isOwner=${isAdmin} onSetFinal=${setFinalValue}
-              onConsolidate=${(codeId,start,end,quote)=>addFinalCoding(activeId,codeId,start,end,quote)}
-              onDelCoding=${delCoding} />
+    : mainView==='reconciliar' ? (()=>{
+        // item de navegação no padrão .node-row (mesma linguagem visual da Visualização)
+        const navRow = (active, label, onClick, indent=0)=> html`<div class="node-row ${active?'sel':''}" onClick=${onClick}
+          style=${`cursor:pointer;border-radius:0;padding:7px ${12+indent*14}px`} title=${label}>
+          <span class="node-name" style=${active?'font-weight:600':''}>${label}</span>
+        </div>`;
+        const catsAllMode = reconcileTab==='categorias' && reconDoc==='all';
+        const codesAllMode = reconcileTab==='codigos' && reconDoc==='all';
+        const ctx = reconDoc==='all' ? ' · todos os documentos' : (activeDoc?` · ${activeDoc.name}`:'');
+        // códigos que têm alguma codificação (conjunto útil para o seletor da aba Códigos)
+        const codedIds = new Set(allCodings.map(c=>c.code_id));
+        const reconCodes = codes.filter(c=>codedIds.has(c.id));
+        return html`<div class="split">
+      <!-- RECONCILIACAO: barra lateral (Categorias / Códigos + navegação) + detalhe à direita -->
+      <section class="pane" style="flex:0 0 240px;min-width:0;border-right:1px solid var(--line)">
+        <div class="pane-head"><span class="h" style="margin:0">Reconciliar</span></div>
+        <div class="pane-body scroll" style="padding:0">
+          <div style="background:var(--surface);min-height:100%;padding-bottom:8px">
+            ${navRow(reconcileTab==='categorias', '🏷️ Categorias', ()=>setReconcileTab('categorias'))}
+            ${reconcileTab==='categorias' && html`<div>
+              <${NavGroup} title="Documentos">
+                ${navRow(reconDoc==='all', '(Todos os documentos)', ()=>setReconDoc('all'), 1)}
+                ${docs.map(d=>navRow(reconDoc===d.id, d.name, ()=>{ setReconDoc(d.id); setActiveId(d.id); }, 1))}
+              </${NavGroup}>
+              ${catsAllMode && html`<${NavGroup} title="Categoria">
+                ${cats.length===0 ? html`<div class="meta" style="padding:2px 26px">Nenhuma categoria.</div>`
+                  : cats.map(c=>navRow(reconCat===c.id, c.name, ()=>setReconCat(c.id), 1))}
+              </${NavGroup}>`}
+            </div>`}
+            ${navRow(reconcileTab==='codigos', '🖍️ Códigos', ()=>setReconcileTab('codigos'))}
+            ${reconcileTab==='codigos' && html`<div>
+              <${NavGroup} title="Documentos">
+                ${navRow(reconDoc==='all', '(Todos os documentos)', ()=>setReconDoc('all'), 1)}
+                ${docs.length===0 ? html`<div class="meta" style="padding:2px 26px">Sem documentos.</div>`
+                  : docs.map(d=>navRow(reconDoc===d.id, d.name, ()=>{ setReconDoc(d.id); setActiveId(d.id); }, 1))}
+              </${NavGroup}>
+              ${codesAllMode && html`<${NavGroup} title="Código">
+                ${navRow(reconCode==='all', '(Todos os códigos)', ()=>setReconCode('all'), 1)}
+                ${reconCodes.length===0 ? html`<div class="meta" style="padding:2px 26px">Nenhum código com codificação.</div>`
+                  : reconCodes.map(c=>navRow(reconCode===c.id, codePath(c.id).join(' ▸ '), ()=>setReconCode(c.id), 1))}
+              </${NavGroup}>`}
+            </div>`}
           </div>
         </div>
       </section>
-    </div>`
+      <section class="pane left" style="flex:1;border-right:none;max-width:none">
+        <div class="pane-head">
+          <span class="h" style="margin:0">Reconciliação · ${reconcileTab==='categorias'?'🏷️ Categorias':'🖍️ Códigos'}${ctx}</span>
+        </div>
+        <div class="pane-body scroll">
+          <div style="max-width:900px;margin:0 auto">
+            ${catsAllMode
+              ? html`<${ReconcileCatAcrossDocs} docs=${docs} cat=${cats.find(c=>c.id===reconCat)} allValues=${allValues} isOwner=${isAdmin} onSetFinalDoc=${setFinalValueDoc} />`
+              : codesAllMode
+              ? html`<${ReconcileCodesAllDocs} docs=${docs} allCodings=${allCodings} coders=${coders}
+                  codeById=${codeById} codePath=${codePath} isOwner=${isAdmin} userId=${user?.id} selCode=${reconCode}
+                  onConsolidateDoc=${async (docId,codeId,start,end,quote)=>{ await addFinalCoding(docId,codeId,start,end,quote); loadAll(); }}
+                  onDelCoding=${async id=>{ await delCoding(id); loadAll(); }} />`
+              : html`<${Reconcile} activeDoc=${activeDoc} codings=${codings} coders=${coders}
+                  codeById=${codeById} codePath=${codePath} tab=${reconcileTab}
+                  cats=${cats} values=${values} isOwner=${isAdmin} userId=${user?.id} onSetFinal=${setFinalValue}
+                  onConsolidate=${(codeId,start,end,quote)=>addFinalCoding(activeId,codeId,start,end,quote)}
+                  onDelCoding=${delCoding} />`}
+          </div>
+        </div>
+      </section>
+    </div>`; })()
     : mainView==='graficos' ? html`<div class="split">
       <!-- GRAFICOS: tela inteira -->
       <section class="pane left" style="flex:1 1 100%;border-right:none;max-width:none">
@@ -2755,6 +2879,7 @@ function App(){
           <div style="max-width:920px;margin:0 auto">
             <${ChartsPanel} docs=${docs} cats=${cats} codes=${codes}
               codeById=${codeById} codePath=${codePath}
+              view=${viewCoder} onView=${setViewCoder} coders=${coders} userId=${user?.id} mode=${mode}
               allCodings=${allCodings} allValues=${allValues} projectMode=${projectMode} />
           </div>
         </div>
@@ -2780,8 +2905,8 @@ function App(){
       <!-- ESQUEMA: tela inteira, sem documento aberto -->
       <div class="pane-head" style="flex:none">
         <div class="seg">
-          <button class=${esquemaTab==='codigos'?'on':''} onClick=${()=>setEsquemaTab('codigos')}>Códigos</button>
-          <button class=${esquemaTab==='categorias'?'on':''} onClick=${()=>setEsquemaTab('categorias')}>Categorias</button>
+          <button class=${esquemaTab==='codigos'?'on':''} onClick=${()=>setEsquemaTab('codigos')}>🖍️ Códigos</button>
+          <button class=${esquemaTab==='categorias'?'on':''} onClick=${()=>setEsquemaTab('categorias')}>🏷️ Categorias</button>
         </div>
       </div>
       ${esquemaTab==='codigos' && html`<${SchemaCodesView} codes=${codes} codeById=${codeById} codePath=${codePath} count=${schemaCodingCount}
@@ -2791,7 +2916,7 @@ function App(){
       ${esquemaTab==='categorias' && html`<section class="pane left" style="flex:1 1 100%;border-right:none;max-width:none">
         <div class="pane-body scroll">
           <div style="max-width:760px;margin:0 auto" class="section">
-            <p class="h">Esquema de categorias</p>
+            <p class="h">🏷️ Esquema de categorias</p>
             <p class="hint">Cada categoria recebe um valor por documento (preenchido na aba Codificação). Aqui você só define os campos: nome, tipo e opções.</p>
             ${cats.length===0 && html`<div class="card"><span class="meta">${isAdmin?'Nenhuma categoria ainda. Crie abaixo.':'Nenhuma categoria definida pelo dono do projeto.'}</span></div>`}
             ${isAdmin
@@ -2810,6 +2935,7 @@ function App(){
     </div>`
     : mainView==='relatorio' ? html`<${ReportView} project=${project} projectMode=${projectMode}
         docs=${docs} cats=${cats} codes=${codes} codeById=${codeById} codePath=${codePath}
+        view=${viewCoder} onView=${setViewCoder} coders=${coders} userId=${user?.id} mode=${mode}
         allCodings=${allCodings} allValues=${allValues} store=${store} />`
     : mainView==='ia_codificar' ? html`<div class="split">
       <!-- CODIFICAR COM IA: tela inteira -->
@@ -2848,8 +2974,9 @@ function App(){
       <section class="pane" style="flex:0 0 270px;min-width:0;border-right:1px solid var(--line)">
         <div class="pane-body scroll" style="padding:0">
           <${VizNav} cats=${cats} codes=${codes} allCodings=${allCodings} allValues=${allValues} docs=${docs}
-            layer=${vizLayer} catFilter=${vizCatFilter} selCode=${vizSelCode}
-            onLayer=${setVizLayer} onCatFilter=${setVizCatFilter} onSelCode=${setVizSelCode}
+            view=${viewCoder} catFilter=${vizCatFilter} selCode=${vizSelCode}
+            onView=${setViewCoder} onCatFilter=${setVizCatFilter} onSelCode=${setVizSelCode}
+            coders=${coders} userId=${user?.id} mode=${mode}
             codePath=${codePath} codeById=${codeById} projectMode=${projectMode} />
         </div>
       </section>
@@ -2858,9 +2985,12 @@ function App(){
         <div class="pane-body scroll" style="padding:0">
           <${VizExcerpts} docs=${docs} codes=${codes} codeById=${codeById} codePath=${codePath}
             allCodings=${allCodings} allValues=${allValues}
-            layer=${vizLayer} catFilter=${vizCatFilter} selCode=${vizSelCode}
+            view=${viewCoder} catFilter=${vizCatFilter} selCode=${vizSelCode}
+            userId=${user?.id}
             crossCodes=${vizCross} setCrossCodes=${setVizCross}
+            isAdmin=${isAdmin} mode=${mode}
             onDelCoding=${async id=>{ await delCoding(id); loadAll(); }}
+            onAccept=${async c=>{ await addFinalCoding(c.document_id, c.code_id, c.span_start, c.span_end, c.quote); loadAll(); }}
             onJump=${(docId)=>{ setActiveId(docId); setMainView('codificar'); }} projectMode=${projectMode} darkMode=${darkMode} />
         </div>
       </section>
@@ -2878,12 +3008,16 @@ function App(){
     <div onClick=${closeCtxMenu} onContextMenu=${e=>{e.preventDefault();closeCtxMenu();}} style="position:fixed;inset:0;z-index:60"></div>
     <div class="exmenu" style=${`position:fixed;left:${left}px;top:${top}px;z-index:61;max-height:${maxMenuH}px;overflow:auto;width:${menuW}px`}>
       <div style="padding:7px 12px;font-size:11px;color:var(--ink-faint);border-bottom:1px solid var(--line-soft);font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">"${quote}"</div>
-      ${removable.length>0 && html`<div style="border-bottom:1px solid var(--line-soft)">
-        <div style="padding:7px 12px 4px;font-size:11px;color:var(--ink-faint);font-weight:600;text-transform:uppercase">Remover código</div>
-        ${removable.map(c=>{ const code=codeById[c.code_id]; const path=codePath(c.code_id).join(' ▸ '); const col=code ? codeColor(code.hue,code.depth,code.hue_deg) : codeColor(0,0); return html`<button key=${c.id} onClick=${()=>removeCodingFromMenu(c.id)} style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;width:100%;box-sizing:border-box" title=${`${path} · ${c.author_name||''}`}>
-          <span class="swatch" style=${`background:${col.solid};display:inline-block;margin-right:7px;vertical-align:middle;flex-shrink:0`}></span>${code?.is_redaction?'🚫 ':''}${path||'(código removido)'}
+      ${(()=>{ const acceptable = (isAdmin && projectMode==='collective') ? removable.filter(c=>c.layer!=='final' && !isFinalAlready(c)) : []; return acceptable.length>0 && html`<${CtxSection} title="Aceitar no gabarito" count=${acceptable.length}>
+        ${acceptable.map(c=>{ const code=codeById[c.code_id]; const path=codePath(c.code_id).join(' ▸ '); const col=code ? codeColor(code.hue,code.depth,code.hue_deg) : codeColor(0,0); return html`<button key=${'acc'+c.id} onClick=${()=>acceptCodingToFinal(c)} style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;width:100%;box-sizing:border-box;color:var(--teal);font-weight:600" title=${`Consolidar no final (gabarito): ${path} · ${c.author_name||''}`}>
+          <span class="swatch" style=${`background:${col.solid};display:inline-block;margin-right:7px;vertical-align:middle;flex-shrink:0`}></span>✓ ${path||'(código)'}${c.author_name?` · ${c.author_name}`:''}
         </button>`; })}
-      </div>`}
+      </${CtxSection}>`; })()}
+      ${removable.length>0 && html`<${CtxSection} title=${isAdmin && projectMode==='collective' ? 'Rejeitar / remover código' : 'Remover código'} count=${removable.length}>
+        ${removable.map(c=>{ const code=codeById[c.code_id]; const path=codePath(c.code_id).join(' ▸ '); const col=code ? codeColor(code.hue,code.depth,code.hue_deg) : codeColor(0,0); const alien=isAdmin&&c.created_by!==user?.id; return html`<button key=${c.id} onClick=${()=>removeCodingFromMenu(c.id)} style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;width:100%;box-sizing:border-box" title=${`${alien?'Rejeitar (admin): ':''}${path} · ${c.author_name||''}`}>
+          <span class="swatch" style=${`background:${col.solid};display:inline-block;margin-right:7px;vertical-align:middle;flex-shrink:0`}></span>${code?.is_redaction?'🚫 ':''}${path||'(código removido)'}${c.layer==='final'?' · gabarito':alien&&c.author_name?` · ${c.author_name}`:''}
+        </button>`; })}
+      </${CtxSection}>`}
       ${ctxMenu.sel && (orderedCodes.length===0 && !ctxCreating
         ? html`<div style="padding:9px 12px;color:var(--ink-faint);font-size:12.5px">Nenhum código criado ainda.</div>`
         : orderedCodes.map(c=>{ const col=codeColor(c.hue,c.depth,c.hue_deg); return html`<button key=${c.id} onClick=${()=>applyCode(c.id, ctxMenu.sel)} style=${`padding-left:${12+c.depth*14}px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;width:100%;box-sizing:border-box`} title=${c.name}>
@@ -3074,11 +3208,11 @@ function CategoriesPanel({ cats, values, activeDoc, canEditSchema, userId, proje
     if(viewCoder.startsWith('__nm__')){ const nm=viewCoder.slice(6); return indiv.find(v=>v.author_name===nm); }
     return indiv.find(v=>v.set_by===viewCoder);
   };
-  const viewLabel = viewCoder==='final' ? 'Final / gabarito' : viewCoder==='all' ? 'Final / gabarito (sem 1 resposta individual só pra mostrar com "todos")' : viewCoder.startsWith('__nm__') ? viewCoder.slice(6) : 'outro pesquisador';
+  const viewLbl = viewCoder==='final' ? 'Final / gabarito' : viewCoder==='all' ? 'Final / gabarito (sem 1 resposta individual só pra mostrar com "todos")' : viewCoder.startsWith('__nm__') ? viewCoder.slice(6) : 'outro pesquisador';
   return html`<div class="section">
     <p class="h">Atributos deste documento</p>
     <p class="hint">Cada categoria recebe um valor para o documento inteiro (não para um trecho). O esquema é definido pelo dono do projeto; o valor é preenchido por documento.</p>
-    ${!isOwnView && html`<div class="banner warn" style="margin:0 0 10px">Mostrando: ${viewLabel} — somente leitura. Troque o filtro "Ver:" para "Minhas" pra editar a sua própria resposta.</div>`}
+    ${!isOwnView && html`<div class="banner warn" style="margin:0 0 10px">Mostrando: ${viewLbl} — somente leitura. Troque o filtro "Ver:" para "Minhas" pra editar a sua própria resposta.</div>`}
     ${!activeDoc && html`<div class="card"><span class="meta">Abra um documento para preencher.</span></div>`}
     ${activeDoc && cats.length===0 && html`<div class="card"><span class="meta">${canEditSchema?'Nenhuma categoria ainda. Crie abaixo.':'Nenhuma categoria definida pelo dono do projeto.'}</span></div>`}
     ${activeDoc && cats.map(cat=>{
@@ -3242,7 +3376,7 @@ function CodesPanel({ codes, codeById, count, sel, selCode, setSelCode, codePath
   const childrenOf = (id)=>codes.filter(c=>c.parent_id===id);
   const selected = selCode ? codeById[selCode] : null;
   return html`<div class="section">
-    <p class="h">Códigos hierárquicos</p>
+    <p class="h">🖍️ Códigos hierárquicos</p>
     <p class="hint">Estrutura importa: família no topo (cor mais escura), descendo até o subcódigo (mais claro). O código novo entra como filho do código selecionado, então a organização é o caminho mais fácil.</p>
 
     <div class="row" style="gap:6px;margin-bottom:10px">
@@ -3387,6 +3521,7 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
   return html`<div class="split">
     <section class="pane" style="flex:1;min-width:0;border-right:1px solid var(--line)">
       <div class="pane-body scroll" style="padding:14px">
+        <p class="h" style="margin:0 0 10px">🖍️ Esquema de códigos</p>
         <div class="row" style="gap:6px;margin-bottom:10px;flex-wrap:wrap">
           <button class="btn sm" onClick=${()=>onAdd(selCode?codeById[selCode]:null)} disabled=${!selCode}
             title=${selCode?`filho de ${codeById[selCode]?.name}`:'selecione um código'}>＋ subcódigo</button>
@@ -3511,14 +3646,8 @@ function SchemaBulkPanel({ selectedIds, codes, codeById, count, onMerge, onGroup
   </div>`;
 }
 
-/* ============ RECONCILIACAO (camadas individuais -> camada final) ============
-   Agrupa as codificacoes individuais que se sobrepoem com o mesmo codigo, mostra
-   quantos codificadores concordam e permite consolidar cada grupo na camada "final". */
-function Reconcile({ activeDoc, codings, coders, codeById, codePath, cats, values, isOwner, onSetFinal, onConsolidate, onDelCoding }){
-  if(!activeDoc) return html`<div class="card"><span class="meta">Abra um documento para reconciliar.</span></div>`;
-  const indiv = codings.filter(c=>c.layer!=='final');
-  const finals = codings.filter(c=>c.layer==='final');
-  const totalCoders = new Set(indiv.map(c=>c.created_by)).size || 1;
+/* Agrupa codificacoes individuais que se sobrepoem com o mesmo codigo (reuso: por-doc e todos-os-docs) */
+function reconcileGroups(indiv){
   const byCode = {};
   indiv.forEach(c=>{ (byCode[c.code_id]=byCode[c.code_id]||[]).push(c); });
   const groups = [];
@@ -3530,9 +3659,22 @@ function Reconcile({ activeDoc, codings, coders, codeById, codePath, cats, value
     });
   });
   groups.sort((a,b)=>a.start-b.start || a.end-b.end);
+  return groups;
+}
+
+/* ============ RECONCILIACAO (camadas individuais -> camada final) ============
+   Agrupa as codificacoes individuais que se sobrepoem com o mesmo codigo, mostra
+   quantos codificadores concordam e permite consolidar cada grupo na camada "final". */
+function Reconcile({ activeDoc, codings, coders, codeById, codePath, cats, values, isOwner, userId, tab, onSetFinal, onConsolidate, onDelCoding }){
+  if(!activeDoc) return html`<div class="card"><span class="meta">Abra um documento para reconciliar.</span></div>`;
+  const indiv = codings.filter(c=>c.layer!=='final');
+  const finals = codings.filter(c=>c.layer==='final');
+  const totalCoders = new Set(indiv.map(c=>c.created_by)).size || 1;
+  const groups = reconcileGroups(indiv);
   const finalFor = (g)=> finals.find(f=>f.code_id===g.codeId && f.span_start < g.end && g.start < f.span_end);
   const nameOf = (id, fallback)=> (coders.find(c=>c.id===id)||{}).name || fallback || 'anônimo';
   return html`<div class="section">
+    ${tab==='categorias' && html`<div>
     <p class="h">Categorias — gabarito e comparação</p>
     <p class="hint">Cada pesquisador preenche os atributos do documento; o dono consolida o <b>gabarito</b>. ✓ = igual ao gabarito, ✗ = diferente.</p>
     ${(cats||[]).length===0 && html`<div class="card"><span class="meta">Nenhuma categoria definida.</span></div>`}
@@ -3562,9 +3704,25 @@ function Reconcile({ activeDoc, codings, coders, codeById, codePath, cats, value
             })}
       </div>`;
     })}
-
-    <p class="h" style="margin-top:18px">Códigos — reconciliação</p>
+    </div>`}
+    ${tab==='codigos' && html`<div>
+    <p class="h">Códigos — reconciliação</p>
     <p class="hint">Cada grupo reúne as codificações que se sobrepõem com o mesmo código. Consolide os que devem entrar na camada <b>final</b> do projeto.${totalCoders>1?` ${totalCoders} codificadores neste documento.`:''}</p>
+    ${isOwner && (()=>{
+      const pending = groups.filter(g=>!finalFor(g));
+      const mine = pending.filter(g=>g.items.some(i=>i.created_by===userId));
+      const consolidateMany = async (list)=>{ for(const g of list){ await onConsolidate(g.codeId, g.start, g.end, activeDoc.content.slice(g.start,g.end)); } };
+      return pending.length>0 && html`<div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:12px">
+        <button class="btn sm" disabled=${mine.length===0}
+          title="Consolida no gabarito final todas as suas codificações ainda não consolidadas deste documento"
+          onClick=${()=>{ if(confirm(`Consolidar no gabarito final as ${mine.length} codificação(ões) feitas por você neste documento?\n\nIsso NÃO pode ser desfeito.`)) consolidateMany(mine); }}>
+          Consolidar tudo feito por mim (${mine.length})</button>
+        <button class="btn sm primary"
+          title="Consolida no gabarito final todas as codificações ainda não consolidadas deste documento, de todos os codificadores"
+          onClick=${()=>{ if(confirm(`Consolidar no gabarito final TODAS as ${pending.length} codificação(ões) deste documento (de todos os codificadores)?\n\nIsso NÃO pode ser desfeito.`)) consolidateMany(pending); }}>
+          Consolidar tudo (${pending.length})</button>
+      </div>`;
+    })()}
     ${groups.length===0 && html`<div class="card"><span class="meta">Nenhuma codificação individual neste documento ainda.</span></div>`}
     ${groups.map(g=>{
       const code = codeById[g.codeId]; const col = code?codeColor(code.hue,code.depth,code.hue_deg):codeColor(0,0);
@@ -3589,25 +3747,146 @@ function Reconcile({ activeDoc, codings, coders, codeById, codePath, cats, value
           : html`<button class="btn sm primary" onClick=${()=>onConsolidate(g.codeId, g.start, g.end, quote)}>Consolidar no final →</button>`}
       </div>`;
     })}
+    </div>`}
+  </div>`;
+}
+
+/* ============ ReconcileCatAcrossDocs — UMA categoria reconciliada em TODOS os documentos ============
+   Modo "(Todos os documentos)" da aba Categorias: usa allValues (projeto inteiro) e grava o gabarito
+   por documento via onSetFinalDoc(docId, catId, value). Espelha o card por-categoria do Reconcile. */
+function ReconcileCatAcrossDocs({ docs, cat, allValues, isOwner, onSetFinalDoc }){
+  if(!cat) return html`<div class="card"><span class="meta">Nenhuma categoria neste projeto.</span></div>`;
+  return html`<div class="section">
+    <p class="h">Categoria em todos os documentos · ${cat.name}</p>
+    <p class="hint">Consolide o <b>gabarito</b> desta categoria documento a documento. ✓ = resposta igual ao gabarito, ✗ = diferente.</p>
+    ${cat.description && html`<p class="hint" style="margin-top:-4px">${cat.description}</p>`}
+    ${docs.length===0 && html`<div class="card"><span class="meta">Nenhum documento no projeto.</span></div>`}
+    ${docs.map(d=>{
+      const rows = allValues.filter(v=>v.document_id===d.id && v.category_id===cat.id);
+      const finRow = rows.find(r=>r.layer==='final');
+      const finalVal = finRow ? finRow.value : '';
+      const indivVals = rows.filter(r=>(r.layer||'individual')!=='final');
+      return html`<div class="card" key=${d.id} style="margin-bottom:8px;padding:10px 12px">
+        <div style="font-size:12.5px;font-weight:600;margin-bottom:4px">${d.name}</div>
+        <div style="background:var(--teal-soft);border-radius:8px;padding:6px 10px;margin-bottom:8px">
+          <div class="row" style="gap:8px;align-items:center">
+            <span class="meta" style="color:var(--teal-deep);font-weight:600">Gabarito</span>
+            ${isOwner
+              ? html`<div style="flex:1"><${CategoryValue} cat=${cat} v=${finRow} onSet=${val=>onSetFinalDoc(d.id, cat.id, val)} /></div>`
+              : html`<span style="font-weight:600;color:var(--teal-deep)">${finalVal||'(não consolidado)'}</span>`}
+          </div>
+        </div>
+        ${indivVals.length===0
+          ? html`<div class="meta">Ninguém respondeu ainda.</div>`
+          : indivVals.map((v,i)=>{ const ok = finalVal!=='' && v.value===finalVal;
+              return html`<div class="row" key=${i} style="gap:8px;padding:2px 0">
+                <span style=${`color:${ok?'var(--teal)':'var(--danger)'};font-weight:700;width:14px`}>${ok?'✓':'✗'}</span>
+                <span style="flex:1;font-size:13px">${v.value||html`<span class="meta" style="font-style:italic">sem resposta</span>`}</span>
+                <span class="meta">${v.author_name||'anônimo'}</span>
+              </div>`;
+            })}
+      </div>`;
+    })}
+  </div>`;
+}
+
+/* Bloco colapsável de UM documento na visão "todos os documentos" da aba Códigos. */
+function ReconcileDocCodes({ d, groups, finalFor, totalCoders, coders, codeById, codePath, onConsolidateDoc, onDelCoding }){
+  const [open, setOpen] = useState(true);
+  const nameOf = (id, fallback)=> (coders.find(c=>c.id===id)||{}).name || fallback || 'anônimo';
+  const pend = groups.filter(g=>!finalFor(g)).length;
+  return html`<div style="margin-bottom:14px">
+    <div class="node-row" style="cursor:pointer;border-radius:6px;background:var(--surface);padding:6px 10px" onClick=${()=>setOpen(o=>!o)}>
+      <span class="caret">${open?'▾':'▸'}</span>
+      <span class="node-name" style="font-weight:600">${d.name}</span>
+      <span class="count">${groups.length}</span>
+      ${pend>0 && html`<span class="pill" style="font-size:10px;padding:1px 8px">${pend} pendente${pend>1?'s':''}</span>`}
+    </div>
+    ${open && html`<div style="padding-top:8px">
+      ${groups.map(g=>{
+        const code = codeById[g.codeId]; const col = code?codeColor(code.hue,code.depth,code.hue_deg):codeColor(0,0);
+        const coderIds = [...new Set(g.items.map(i=>i.created_by))];
+        const fin = finalFor(g);
+        const consensus = coderIds.length>=totalCoders && totalCoders>1;
+        const quote = (d.content||'').slice(g.start,g.end);
+        return html`<div class="card" key=${g.codeId+':'+g.start} style=${`margin-bottom:8px;padding:10px 12px;${consensus?'border-color:var(--teal)':''}`}>
+          <div class="row" style="gap:7px;margin-bottom:4px">
+            <span class="swatch" style=${`background:${col.solid}`}></span>
+            <span style="flex:1;font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${codePath(g.codeId).join(' ▸ ')}</span>
+            <span class="meta">${coderIds.length} de ${totalCoders}${consensus?' · consenso':''}</span>
+          </div>
+          <div class="row" style="flex-wrap:wrap;gap:4px;margin-bottom:6px">
+            ${coderIds.map(id=>html`<span class="author" key=${id}>${nameOf(id, (g.items.find(i=>i.created_by===id)||{}).author_name)}</span>`)}
+          </div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--ink-soft);margin-bottom:8px">"${quote.slice(0,180)}"</div>
+          ${fin
+            ? html`<div class="row" style="gap:8px;align-items:center">
+                <span class="author" style="background:var(--teal-soft);color:var(--teal-deep)">✓ na camada final</span>
+                <button class="btn sm ghost" onClick=${()=>onDelCoding(fin.id)}>remover do final</button></div>`
+            : html`<button class="btn sm primary" onClick=${()=>onConsolidateDoc(d.id, g.codeId, g.start, g.end, quote)}>Consolidar no final →</button>`}
+        </div>`;
+      })}
+    </div>`}
+  </div>`;
+}
+
+/* ============ ReconcileCodesAllDocs — códigos reconciliados em TODOS os documentos ============
+   Modo "(Todos os documentos)" da aba Códigos. selCode='all' mostra todos; um id filtra um código.
+   Usa allCodings (projeto inteiro) e o conteúdo de cada doc para os trechos; blocos por documento
+   colapsáveis; botões de consolidar em massa (projeto inteiro, respeitando o filtro de código). */
+function ReconcileCodesAllDocs({ docs, allCodings, coders, codeById, codePath, isOwner, userId, selCode, onConsolidateDoc, onDelCoding }){
+  // por documento: grupos individuais + finais, e os pendentes (sem equivalente no gabarito)
+  const perDoc = docs.map(d=>{
+    const dc = allCodings.filter(c=>c.document_id===d.id);
+    const indiv = dc.filter(c=>c.layer!=='final');
+    const finals = dc.filter(c=>c.layer==='final');
+    let groups = reconcileGroups(indiv);
+    if(selCode && selCode!=='all') groups = groups.filter(g=>g.codeId===selCode);
+    const finalFor = (g)=> finals.find(f=>f.code_id===g.codeId && f.span_start < g.end && g.start < f.span_end);
+    const totalCoders = new Set(indiv.map(c=>c.created_by)).size || 1;
+    return { d, groups, finalFor, totalCoders };
+  }).filter(x=>x.groups.length>0);
+
+  // pendentes (e os "meus") em todo o projeto, para os botões de consolidar em massa
+  const allPending = [], allMine = [];
+  perDoc.forEach(({d, groups, finalFor})=> groups.forEach(g=>{ if(!finalFor(g)){ allPending.push({d,g}); if(g.items.some(i=>i.created_by===userId)) allMine.push({d,g}); } }));
+  const consolidateMany = async (list)=>{ for(const {d,g} of list){ await onConsolidateDoc(d.id, g.codeId, g.start, g.end, (d.content||'').slice(g.start,g.end)); } };
+  const filtTitle = selCode && selCode!=='all' ? ` · ${codePath(selCode).join(' ▸ ')}` : '';
+
+  return html`<div class="section">
+    <p class="h">Códigos — todos os documentos${filtTitle}</p>
+    <p class="hint">Cada grupo reúne as codificações que se sobrepõem com o mesmo código. Consolide na camada <b>final</b> do projeto.</p>
+    ${isOwner && allPending.length>0 && html`<div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="btn sm" disabled=${allMine.length===0}
+        title="Consolida no gabarito final todas as suas codificações ainda não consolidadas (respeitando o filtro de código)"
+        onClick=${()=>{ if(confirm(`Consolidar no gabarito final as ${allMine.length} codificação(ões) feitas por você?\n\nIsso NÃO pode ser desfeito.`)) consolidateMany(allMine); }}>
+        Consolidar tudo feito por mim (${allMine.length})</button>
+      <button class="btn sm primary"
+        title="Consolida no gabarito final todas as codificações ainda não consolidadas (respeitando o filtro de código)"
+        onClick=${()=>{ if(confirm(`Consolidar no gabarito final TODAS as ${allPending.length} codificação(ões) (de todos os codificadores)?\n\nIsso NÃO pode ser desfeito.`)) consolidateMany(allPending); }}>
+        Consolidar tudo (${allPending.length})</button>
+    </div>`}
+    ${perDoc.length===0 && html`<div class="card"><span class="meta">${selCode && selCode!=='all' ? 'Nenhuma codificação deste código.' : 'Nenhuma codificação individual no projeto ainda.'}</span></div>`}
+    ${perDoc.map(({d, groups, finalFor, totalCoders})=>html`<${ReconcileDocCodes} key=${d.id}
+      d=${d} groups=${groups} finalFor=${finalFor} totalCoders=${totalCoders}
+      coders=${coders} codeById=${codeById} codePath=${codePath}
+      onConsolidateDoc=${onConsolidateDoc} onDelCoding=${onDelCoding} />`)}
   </div>`;
 }
 
 /* ============ VizNav — painel esquerdo da Visualização ============
    Visual idêntico ao painel de Codificação: mesmas classes CSS, sem fundo colorido. */
-function VizNav({ cats, codes, allCodings, allValues, docs, layer, catFilter, selCode,
-                  onLayer, onCatFilter, onSelCode, codePath, codeById, projectMode }){
+function VizNav({ cats, codes, allCodings, allValues, docs, view, catFilter, selCode,
+                  onView, onCatFilter, onSelCode, coders, userId, mode, codePath, codeById, projectMode }){
   const [catsOpen, setCatsOpen] = useState(true);
   const closedCats = cats.filter(c=>CAT_HAS_OPTIONS(c.kind)||c.kind==='date');
   const tops = codes.filter(c=>!c.parent_id);
   const childrenOf = (id)=>codes.filter(c=>c.parent_id===id);
 
-  // projeto individual: sem reconciliação, todas as codificações já nascem na camada
-  // 'final' — não há o que escolher, então nem mostra o seletor (uniforme com o leitor,
-  // que também ignora a camada nesse modo — ver visibleCodings).
+  // mesma fonte (codingsForView) do leitor: o recorte "Ver:" é compartilhado entre todas as telas.
   const layerCodings = useMemo(()=>
-    projectMode==='individual' ? allCodings
-      : allCodings.filter(c=> layer==='final' ? c.layer==='final' : c.layer!=='final')
-  , [allCodings, layer, projectMode]);
+    codingsForView(allCodings, view, userId, projectMode)
+  , [allCodings, view, userId, projectMode]);
 
   const matchingDocIds = useMemo(()=>{
     const s=new Set();
@@ -3641,15 +3920,9 @@ function VizNav({ cats, codes, allCodings, allValues, docs, layer, catFilter, se
 
   return html`<div style="background:var(--surface);display:flex;flex-direction:column;height:100%">
 
-    <!-- camada + categorias: mesma linguagem do pane-head -->
-    ${projectMode!=='individual' && html`<div class="pane-head" style="flex-direction:column;align-items:stretch;gap:6px;padding:10px 14px">
-      <div class="row" style="gap:8px;align-items:center">
-        <span class="field-label" style="margin:0;flex:none">Camada</span>
-        <select class="opt" style="flex:1" value=${layer} onChange=${e=>onLayer(e.target.value)}>
-          <option value="individual">Individuais (todos)</option>
-          <option value="final">Final / gabarito</option>
-        </select>
-      </div>
+    <!-- recorte "Ver:" compartilhado (mesmo seletor do leitor) -->
+    ${((mode==='cloud' && projectMode==='collective') || (coders||[]).length>1) && html`<div class="pane-head" style="flex-direction:column;align-items:stretch;gap:6px;padding:10px 14px">
+      <${ViewSelect} value=${view} onChange=${onView} coders=${coders} userId=${userId} projectMode=${projectMode} mode=${mode} />
     </div>`}
 
     <!-- categorias: seção colapsável idêntica ao "Gerenciar esquema" -->
@@ -3657,7 +3930,7 @@ function VizNav({ cats, codes, allCodings, allValues, docs, layer, catFilter, se
       <div class="node-row" style="padding:6px 14px;cursor:pointer;border-radius:0"
         onClick=${()=>setCatsOpen(o=>!o)}>
         <span class="caret">${catsOpen?'▾':'▸'}</span>
-        <span class="node-name" style="font-weight:600">Categorias</span>
+        <span class="node-name" style="font-weight:600">🏷️ Categorias</span>
         ${hasFilter && html`<span class="pill" style="font-size:10px;padding:1px 8px">filtro ativo</span>`}
       </div>
       ${catsOpen && html`<div style="padding:4px 14px 12px">
@@ -3675,6 +3948,7 @@ function VizNav({ cats, codes, allCodings, allValues, docs, layer, catFilter, se
     </div>`}
 
     <!-- árvore de códigos (mesmas classes que o TreeNode do painel Codificar) -->
+    <div class="field-label" style="padding:8px 14px 0;margin:0">🖍️ Códigos</div>
     <div class="tree scroll" style="flex:1;overflow-y:auto;padding:4px 6px">
       ${tops.length===0 && html`<span class="meta" style="padding:14px 8px;display:block">Nenhum código criado.</span>`}
       ${tops.map(t=>html`<${VizCodeNode} key=${t.id} code=${t} childrenOf=${childrenOf}
@@ -3704,12 +3978,24 @@ function VizCodeNode({ code, childrenOf, counts, sel, onSel, depthPad }){
 /* ============ VizExcerpts — painel direito da Visualização ============
    Trechos do código selecionado, legíveis, agrupados por documento. */
 function VizExcerpts({ docs, codes, codeById, codePath, allCodings, allValues,
-                       layer, catFilter, selCode, crossCodes, setCrossCodes,
-                       onDelCoding, onJump, projectMode }){
+                       view, userId, catFilter, selCode, crossCodes, setCrossCodes,
+                       onDelCoding, onAccept, onJump, projectMode, isAdmin, mode }){
   const layerCodings = useMemo(()=>
-    projectMode==='individual' ? allCodings
-      : allCodings.filter(c=> layer==='final' ? c.layer==='final' : c.layer!=='final')
-  , [allCodings, layer, projectMode]);
+    codingsForView(allCodings, view, userId, projectMode)
+  , [allCodings, view, userId, projectMode]);
+
+  // conjunto de codificações já no gabarito (final), por doc+código+intervalo — pra não
+  // oferecer "aceitar no gabarito" de algo que já está consolidado (evita duplicata).
+  const finalSet = useMemo(()=>{
+    const s=new Set();
+    allCodings.forEach(c=>{ if(c.layer==='final') s.add(c.document_id+'|'+c.code_id+'|'+c.span_start+'|'+c.span_end); });
+    return s;
+  }, [allCodings]);
+  const isFinalAlready = (c)=> finalSet.has(c.document_id+'|'+c.code_id+'|'+c.span_start+'|'+c.span_end);
+  // admin no projeto coletivo pode consolidar no gabarito (só faz sentido pra trecho individual ainda não final)
+  const canAccept = (c)=> isAdmin && projectMode==='collective' && c.layer!=='final' && !isFinalAlready(c);
+  // remover: o próprio autor sempre; admin remove de qualquer um; fora da nuvem/individual tudo é do usuário
+  const canRemove = (c)=> mode!=='cloud' || projectMode==='individual' || c.created_by===userId || isAdmin;
 
   const docById = useMemo(()=>Object.fromEntries(docs.map(d=>[d.id,d])), [docs]);
 
@@ -3814,10 +4100,14 @@ function VizExcerpts({ docs, codes, codeById, codePath, allCodings, allValues,
             <span class="meta" style="font-weight:600">${codePath(c.code_id).join(' ▸ ')}</span>
           </div>`}
           <div class="reader" style="padding:0;font-size:16px;white-space:normal;margin-bottom:8px">${c.quote}</div>
-          <div class="row" style="gap:8px">
+          <div class="row" style="gap:8px;align-items:center">
             ${c.author_name && html`<span class="author">${c.author_name}</span>`}
+            ${c.layer==='final' && html`<span class="pill" title="Codificação consolidada no gabarito">gabarito</span>`}
             <div class="grow"></div>
-            <button class="icon-btn" onClick=${()=>onDelCoding(c.id)} title="remover">🗑</button>
+            ${canAccept(c) && html`<button class="btn sm primary" title="Consolidar este trecho na camada final (gabarito)"
+              onClick=${()=>onAccept&&onAccept(c)}>Aceitar no gabarito →</button>`}
+            ${!canAccept(c) && c.layer!=='final' && isFinalAlready(c) && html`<span class="meta" title="Já existe no gabarito">✓ no gabarito</span>`}
+            ${canRemove(c) && html`<button class="icon-btn" onClick=${()=>onDelCoding(c.id)} title=${isAdmin&&c.created_by!==userId?'remover (admin)':'remover'}>🗑</button>`}
           </div>
         </div>
       </div>`; })}
@@ -3953,18 +4243,18 @@ function MemoEditor({ sel, project, codeById, codePath, memos, onSave }){
 // O array tambem decide a ordem dos botoes de provedor.
 const AI_PROVIDERS = [
   { id:'gemini', label:'Google Gemini', models:[
-    { id:'gemini-2.5-flash-lite', label:'Flash Lite',  note:'mais rápido e barato' },
-    { id:'gemini-2.5-flash',      label:'Flash',       note:'padrão — equilíbrio' },
-    { id:'gemini-2.5-pro',        label:'Pro',         note:'mais capaz — mais lento e caro' },
+    { id:'gemini-3.1-flash-lite',  label:'Flash Lite', note:'mais rápido e barato' },
+    { id:'gemini-3.5-flash',       label:'Flash',      note:'padrão — equilíbrio', def:true },
+    { id:'gemini-3.1-pro-preview', label:'Pro',        note:'mais capaz — mais lento e caro' },
   ]},
   { id:'openai', label:'OpenAI', models:[
     { id:'gpt-5.4-mini', label:'GPT-5.4-mini', note:'mais rápido e barato' },
-    { id:'gpt-5.4',      label:'GPT-5.4',      note:'padrão — equilíbrio' },
+    { id:'gpt-5.4',      label:'GPT-5.4',      note:'padrão — equilíbrio', def:true },
     { id:'gpt-5.5',      label:'GPT-5.5',      note:'mais capaz — mais lento e caro' },
   ]},
   { id:'anthropic', label:'Anthropic', models:[
     { id:'claude-haiku-4-5-20251001', label:'Haiku',  note:'mais rápido e barato' },
-    { id:'claude-sonnet-4-6',         label:'Sonnet', note:'padrão — equilíbrio' },
+    { id:'claude-sonnet-4-6',         label:'Sonnet', note:'padrão — equilíbrio', def:true },
     { id:'claude-opus-4-8',          label:'Opus',   note:'mais capaz — mais lento e caro' },
   ]},
   // Azure OpenAI: como o "custom" (URL base + modelo em texto livre, custom:true), mas
@@ -4111,20 +4401,16 @@ const REPORT_GROUPS = [
   ]},
 ];
 
-function ReportView({ project, projectMode, docs, cats, codes, codeById, codePath, allCodings, allValues, store }){
+function ReportView({ project, projectMode, docs, cats, codes, codeById, codePath, allCodings, allValues, store, view, onView, coders:projCoders, userId, mode }){
   const [enabled, setEnabled] = useState(()=>new Set(['credito','resumo','freq']));
   const [title, setTitle] = useState('');
-  const [layer, setLayer] = useState('final'); // final | individual — só relevante em coletivo
   const toggle = (id)=> setEnabled(s=>{ const n=new Set(s); n.has(id)?n.delete(id):n.add(id); return n; });
   const on = (id)=> enabled.has(id);
-  // em projeto individual tudo já é 'final'; o seletor de camada não aparece
-  const useFinal = projectMode!=='collective' || layer==='final';
 
-  // codificações da camada escolhida (gabarito final ou individuais de todos)
-  const codingsForReport = useMemo(()=>{
-    if(projectMode==='individual') return allCodings;
-    return allCodings.filter(c=> useFinal ? c.layer==='final' : c.layer!=='final');
-  }, [allCodings, projectMode, useFinal]);
+  // codificações do recorte "Ver:" compartilhado (mesma fonte das outras telas)
+  const codingsForReport = useMemo(()=>
+    codingsForView(allCodings, view, userId, projectMode)
+  , [allCodings, view, userId, projectMode]);
 
   const docById = useMemo(()=>Object.fromEntries(docs.map(d=>[d.id,d])), [docs]);
   const pathOf = (id)=> codePath ? codePath(id).join(' ▸ ') : (codeById[id]?.name||id);
@@ -4151,17 +4437,15 @@ function ReportView({ project, projectMode, docs, cats, codes, codeById, codePat
     return closed.map(cat=>{
       const counts={};
       docs.forEach(d=>{
-        const rows = allValues.filter(x=>x.document_id===d.id && x.category_id===cat.id);
-        const fin = rows.find(r=>r.layer==='final');
-        // segue a camada escolhida: gabarito usa só o final; individuais usam as respostas individuais
-        const vals = useFinal ? (fin ? [fin.value] : []) : rows.filter(r=>r.layer!=='final').map(r=>r.value);
+        // segue o recorte "Ver:": gabarito usa só o final; individuais usam as respostas individuais
+        const vals = valuesForView(allValues, d.id, cat.id, view, userId, projectMode);
         const seen=new Set();
         vals.forEach(v=>{ if(v==null) return; String(v).split(CAT_MULTI_SEP).forEach(part=>{ const k=part.trim(); if(k && !seen.has(k)){ seen.add(k); counts[k]=(counts[k]||0)+1; } }); });
       });
       const rows = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
       return { cat, rows };
     }).filter(x=>x.rows.length>0);
-  }, [cats, docs, allValues, useFinal]);
+  }, [cats, docs, allValues, view, userId, projectMode]);
 
   // trechos por código: agrupa codings por código, depois por documento
   const trechosByCode = useMemo(()=>{
@@ -4194,7 +4478,7 @@ function ReportView({ project, projectMode, docs, cats, codes, codeById, codePat
   function buildText(){
     const L=[]; const H=(t)=>L.push('',''+t,'');
     L.push(title.trim()||project?.name||'Relatório');
-    L.push('Gerado em '+new Date().toLocaleDateString('pt-BR')+(projectMode==='collective'?' · Camada: '+(useFinal?'gabarito final':'individuais (todos)'):''));
+    L.push('Gerado em '+new Date().toLocaleDateString('pt-BR')+(projectMode==='collective'?' · Ver: '+viewLabel(view, projCoders):''));
     if(on('resumo')){ H('Resumo');
       L.push(`Projeto ${project?.name||''} (${projectMode==='collective'?'coletivo':'individual'}), com ${docs.length} documento(s), ${codes.length} código(s), ${cats.length} categoria(s) e ${totalCodings} codificação(ões).`+(on('credito')?' O projeto foi codificado por meio da ferramenta QualiLab.':''));
       if(coders.length) L.push('', 'Codificado por: '+coders.join(', ')+'.');
@@ -4260,12 +4544,9 @@ function ReportView({ project, projectMode, docs, cats, codes, codeById, codePat
           <div class="field-label">Título (opcional)</div>
           <input class="txtin" placeholder=${project?.name||'Relatório'} value=${title} onInput=${e=>setTitle(e.target.value)} />
         </div>
-        ${projectMode==='collective' && html`<div class="field" style="margin-bottom:14px">
-          <div class="field-label">Camada</div>
-          <select class="opt" style="width:100%" value=${layer} onChange=${e=>setLayer(e.target.value)}>
-            <option value="final">Gabarito final</option>
-            <option value="individual">Individuais (todos)</option>
-          </select>
+        ${((mode==='cloud' && projectMode==='collective') || (projCoders||[]).length>1) && html`<div class="field" style="margin-bottom:14px">
+          <div class="field-label">Ver</div>
+          <${ViewSelect} value=${view} onChange=${onView} coders=${projCoders} userId=${userId} projectMode=${projectMode} mode=${mode} label="" />
         </div>`}
         ${REPORT_GROUPS.map(g=>html`<div key=${g.group} style="margin-bottom:12px">
           <p class="meta" style="font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.04em;margin:0 0 4px">${g.group}</p>
@@ -4281,7 +4562,7 @@ function ReportView({ project, projectMode, docs, cats, codes, codeById, codePat
       <!-- relatório montado (imprime) -->
       <div id="report-print" style="flex:1;min-width:0;padding:24px 28px;max-width:840px">
         <h1 style="font-family:var(--serif);font-size:24px;margin:0 0 4px">${title.trim()||project?.name||'Relatório'}</h1>
-        <p class="meta" style="margin:0 0 20px">Gerado em ${new Date().toLocaleDateString('pt-BR')}${projectMode==='collective'?' · Camada: '+(useFinal?'gabarito final':'individuais (todos)'):''}</p>
+        <p class="meta" style="margin:0 0 20px">Gerado em ${new Date().toLocaleDateString('pt-BR')}${projectMode==='collective'?' · Ver: '+viewLabel(view, projCoders):''}</p>
 
         ${enabled.size===0 && html`<p class="hint no-print">Marque ao menos uma seção à esquerda.</p>`}
 
@@ -5141,18 +5422,15 @@ function IAResultsPanel({ results, onDelete }){
   </div>`;
 }
 
-function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allValues, projectMode }){
+function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allValues, projectMode, view, onView, coders, userId, mode }){
   const isIndividual = projectMode==='individual';
-  const [layer,setLayer] = useState('individual');         // individual | final
   const closedCats = (cats||[]).filter(c=>CAT_HAS_OPTIONS(c.kind) || c.kind==='date');
   const [catId,setCatId] = useState(closedCats[0]?.id || '');
   useEffect(()=>{ if(!closedCats.find(c=>c.id===catId)) setCatId(closedCats[0]?.id || ''); }, [cats]); // eslint-disable-line
   const cat = (cats||[]).find(c=>c.id===catId) || null;
 
-  // projeto individual: sem reconciliação, todas as codificações já nascem na camada
-  // 'final' — não há camada a escolher (mesmo raciocínio do VizNav/VizExcerpts).
-  const cod = useMemo(()=> isIndividual ? allCodings
-    : allCodings.filter(c=> layer==='final' ? c.layer==='final' : c.layer!=='final'), [allCodings, layer, isIndividual]);
+  // codings do recorte "Ver:" compartilhado (mesma fonte do leitor/Visualizar/Relatório).
+  const cod = useMemo(()=> codingsForView(allCodings, view, userId, projectMode), [allCodings, view, userId, projectMode]);
 
   // 1) frequência de códigos
   const freqItems = useMemo(()=>{
@@ -5211,11 +5489,8 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
 
   return html`<div class="section">
     <div class="row" style="gap:14px;flex-wrap:wrap;margin-bottom:6px">
-      ${!isIndividual && html`<label class="row" style="gap:6px;font-size:12.5px">Camada das codificações:
-        <select class="opt" value=${layer} onChange=${e=>setLayer(e.target.value)}>
-          <option value="individual">Individuais (todos)</option>
-          <option value="final">Final / gabarito</option>
-        </select></label>`}
+      <${ViewSelect} value=${view} onChange=${onView} coders=${coders} userId=${userId} projectMode=${projectMode} mode=${mode} />
+      ${((mode==='cloud' && projectMode==='collective') || (coders||[]).length>1) && html`<span class="meta" style="font-size:11px;opacity:.7">As respostas de categoria usam o valor consolidado de cada documento; o recorte acima muda só as codificações.</span>`}
       ${closedCats.length>0 && html`<label class="row" style="gap:6px;font-size:12.5px">Categoria:
         <select class="opt" value=${catId} onChange=${e=>setCatId(e.target.value)}>
           ${closedCats.map(c=>html`<option value=${c.id}>${c.name}</option>`)}
@@ -5705,8 +5980,8 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
         ${needsBaseUrl
           ? html`<input class="txtin" value=${aiModel} onInput=${e=>setAiModel(e.target.value)} placeholder=${isAzure?'ex.: gpt-4.1-mini (nome do deployment)':'ex.: deepseek-chat'} />`
           : html`<div class="row" style="gap:6px;flex-wrap:wrap">
-              ${(provDef?.models||[]).map(m=>html`<button key=${m.id} class="opt ${aiModel===m.id?'on':''}"
-                title=${m.note} onClick=${()=>setAiModel(m.id)}>${m.label}</button>`)}
+              ${(provDef?.models||[]).map(m=>html`<button key=${m.id} class="opt ${aiModel===m.id || (!aiModel && m.def) ? 'on':''}"
+                title=${m.note} onClick=${()=>setAiModel(m.id)}>${m.label}${m.def?html`<span style="opacity:.65;font-size:10px;margin-left:5px">padrão</span>`:''}</button>`)}
             </div>`}
         <p class="hint" style="margin:6px 0 0">${isAzure ? 'Obrigatório — use o nome do deployment criado no portal do Azure (não o nome do modelo base, ex.: o deployment de um gpt-4.1-mini pode ter qualquer nome).' : needsBaseUrl ? 'Obrigatório para o provedor personalizado — use o id de modelo exatamente como o servidor espera.' : 'Modelo "vazio" usa o padrão do projeto pra esse provedor. Em geral, modelos maiores/mais capazes (à direita) são mais lentos e mais caros por uso do que os menores (à esquerda) — escolha conforme a complexidade da tarefa.'}</p>
       </div>
