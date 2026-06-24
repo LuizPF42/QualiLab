@@ -3302,18 +3302,15 @@ function App(){
       </section>
     </div>`; })()
     : mainView==='graficos' ? html`<div class="split">
-      <!-- GRAFICOS: tela inteira -->
-      <section class="pane left" style="flex:1 1 100%;border-right:none;max-width:none">
-        <div class="pane-head"><span class="h" style="margin:0">Gráficos</span></div>
-        <div class="pane-body scroll">
-          <div style="max-width:920px;margin:0 auto">
-            <${ChartsPanel} docs=${docs} cats=${cats} codes=${codes}
-              codeById=${codeById} codePath=${codePath}
-              view=${viewCoder} onView=${setViewCoder} coders=${coders} userId=${user?.id} mode=${mode}
-              allCodings=${allCodings} allValues=${allValues} projectMode=${projectMode} />
-          </div>
-        </div>
-      </section>
+      <!-- GRAFICOS: explorador (gráfico SVG + painel de trechos), o split vive no componente -->
+      <${ChartsPanel} docs=${docs} cats=${cats} codes=${codes}
+        codeById=${codeById} codePath=${codePath}
+        view=${viewCoder} onView=${setViewCoder} coders=${coders} userId=${user?.id} mode=${mode}
+        allCodings=${allCodings} allValues=${allValues} projectMode=${projectMode}
+        isAdmin=${isAdmin} darkMode=${darkMode}
+        onDelCoding=${async id=>{ await delCoding(id); loadAll(); }}
+        onAccept=${async c=>{ await addFinalCoding(c.document_id, c.code_id, c.span_start, c.span_end, c.quote); loadAll(); }}
+        onJump=${(docId)=>{ setActiveId(docId); setMainView('codificar'); }} />
     </div>`
     : mainView==='memos' ? html`<div class="split">
       <!-- MEMOS esquerda: navegação por alvo -->
@@ -4629,16 +4626,155 @@ function VizExcerpts({ docs, codes, codeById, codePath, allCodings, allValues,
   </div>`;
 }
 
-/* ============ GRAFICOS (barras em HTML/CSS + heatmap em tabela) ============ */
-function barRows(items, color){
-  const max = Math.max(1, ...items.map(i=>i.value));
-  return items.map((it,idx)=>html`<div class="row" key=${it.key||it.label||idx} style="gap:8px;margin-bottom:5px;align-items:center">
-    <div style="width:190px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title=${it.label}>${it.label}</div>
-    <div style="flex:1;background:var(--line-soft);border-radius:5px;height:16px">
-      <div style=${`width:${Math.round(it.value/max*100)}%;min-width:2px;height:100%;border-radius:5px;background:${it.color||color||'var(--teal)'}`}></div>
-    </div>
-    <div class="count" style="width:38px;text-align:right">${it.value}</div>
-  </div>`);
+/* ============ GRAFICOS — primitivas SVG desenhadas na mão (sem libs) ============
+   Tudo é um único <svg> por gráfico, com viewBox/largura explícitos, pra que a
+   exportação SVG/PNG (inlineSvgStyles + rasterizeSvg) seja genérica: serializa o
+   <svg> ao vivo, resolve as var(--cor) computadas e baixa vetor ou rasteriza. */
+function chTrunc(s, n){ s=String(s==null?'':s); return s.length>n ? s.slice(0,n-1)+'…' : s; }
+
+/* soma de caracteres cobertos por uma lista de intervalos [start,end], mesclando
+   sobreposições (senão um trecho coberto por 2 codings contaria em dobro). */
+function mergedLen(spans){
+  if(!spans.length) return 0;
+  const s=[...spans].sort((a,b)=>a[0]-b[0]);
+  let total=0, curS=s[0][0], curE=s[0][1];
+  for(let i=1;i<s.length;i++){ const [a,b]=s[i];
+    if(a>curE){ total+=curE-curS; curS=a; curE=b; } else if(b>curE){ curE=b; } }
+  return total + (curE-curS);
+}
+
+/* barras horizontais que PREENCHEM a largura disponível (w = largura do container,
+   medida pelo componente). Coluna de rótulo dimensionada pelo maior rótulo, sem cortar
+   à toa; barras ocupam todo o resto. items: [{key,label,value,color,title}] */
+function svgHBars(items, opt={}){
+  const { color='var(--teal)', w=900, onClick, selKey, fmt=(v)=>v } = opt;
+  const rowH=26, padT=10, padB=10, gap=14, valW=60, CH=6.6; // CH ≈ largura média do glifo a 12px
+  // rótulo: cabe o maior texto, mas entre 25% e 48% da largura
+  const longest = items.reduce((m,i)=>Math.max(m,String(i.label).length),0);
+  const labelW = Math.round(Math.min(w*0.48, Math.max(w*0.25, Math.min(longest*CH+10, 520))));
+  const maxChars = Math.max(6, Math.floor((labelW-8)/CH));
+  const barX=labelW+gap, valX=w-6, barMaxW=Math.max(40, w-barX-valW-gap);
+  const h=padT+padB+items.length*rowH;
+  const max=Math.max(1, ...items.map(i=>i.value));
+  return html`<svg viewBox="0 0 ${w} ${h}" width=${w} style="max-width:100%;font-family:var(--sans)" xmlns="http://www.w3.org/2000/svg">
+    ${items.map((it,i)=>{ const y=padT+i*rowH, cy=y+rowH/2;
+      const bw=Math.max(2, it.value/max*barMaxW), sel=selKey!=null&&it.key===selKey;
+      return html`<g key=${it.key||i} style=${onClick?'cursor:pointer':''} onClick=${onClick?()=>onClick(it):null}>
+        <title>${it.title||(it.label+' — '+fmt(it.value))}</title>
+        <rect x="0" y=${y} width=${w} height=${rowH} fill="transparent"></rect>
+        <text x=${labelW} y=${cy} dominant-baseline="middle" text-anchor="end" font-size="12.5" fill="var(--ink)">${chTrunc(it.label,maxChars)}</text>
+        <rect x=${barX} y=${cy-9} width=${barMaxW} height="18" rx="5" fill="var(--line-soft)"></rect>
+        <rect x=${barX} y=${cy-9} width=${bw} height="18" rx="5" fill=${it.color||color} stroke=${sel?'var(--ink)':'none'} stroke-width=${sel?1.6:0}></rect>
+        <text x=${valX} y=${cy} dominant-baseline="middle" text-anchor="end" font-size="12" font-family="var(--mono)" fill="var(--ink-soft)">${fmt(it.value)}</text>
+      </g>`; })}
+  </svg>`;
+}
+
+/* heatmap em grade que ocupa a largura disponível (W = largura do container).
+   Coluna de rótulo dimensionada pelo maior rótulo; células crescem pra preencher
+   o resto quando há poucas colunas (e rolam horizontalmente quando há muitas).
+   rows:[{id,label}], cols:[...], getN(row,col)->n */
+function svgHeat(rows, cols, getN, max, opt={}){
+  const { onClick, selId, colLabel=(c)=>c, sel2=null, W=900 } = opt;
+  const cellH=24, topH=112, padR=12, padB=10, CH=6.4;
+  const longest = rows.reduce((m,r)=>Math.max(m,String(r.label).length),0);
+  const leftW = Math.round(Math.min(W*0.45, Math.max(W*0.18, Math.min(longest*CH+12, 480))));
+  const maxChars = Math.max(8, Math.floor((leftW-8)/CH));
+  const avail = W-leftW-padR;
+  const cellW = Math.max(40, Math.min(140, Math.floor(avail/Math.max(1,cols.length)))); // preenche, sem esticar absurdo
+  const w=Math.max(W, leftW+cols.length*cellW+padR), h=topH+rows.length*cellH+padB;
+  const heatFn=(n)=>{ if(!n) return 'transparent'; const a=0.12+0.78*(n/Math.max(1,max)); return `hsl(205 62% 42% / ${a.toFixed(2)})`; };
+  return html`<svg viewBox="0 0 ${w} ${h}" width=${w} style="max-width:100%;font-family:var(--sans)" xmlns="http://www.w3.org/2000/svg">
+    ${cols.map((c,ci)=>{ const x=leftW+ci*cellW+cellW*0.62, yy=topH-7;
+      return html`<text key=${'h'+ci} x=${x} y=${yy} transform=${`rotate(-45 ${x} ${yy})`} text-anchor="start" font-size="10.5" fill="var(--ink-soft)">${chTrunc(colLabel(c),20)}</text>`; })}
+    ${rows.map((r,ri)=>{ const y=topH+ri*cellH, cy=y+cellH/2, sel=selId!=null&&r.id===selId;
+      return html`<g key=${r.id||ri}>
+        <title>${r.label}</title>
+        <text x=${leftW-6} y=${cy} dominant-baseline="middle" text-anchor="end" font-size="11.5" fill=${sel?'var(--teal)':'var(--ink)'} font-weight=${sel?'600':'400'}>${chTrunc(r.label,maxChars)}</text>
+        ${cols.map((c,ci)=>{ const n=getN(r,c), x=leftW+ci*cellW;
+          const hot=sel2&&selId===r.id&&sel2===c;
+          return html`<g key=${ci} style=${onClick?'cursor:pointer':''} onClick=${onClick?()=>onClick(r,c,n):null}>
+            <rect x=${x} y=${y} width=${cellW} height=${cellH} fill=${heatFn(n)} stroke=${hot?'var(--ink)':'var(--surface)'} stroke-width=${hot?1.6:1}></rect>
+            ${n?html`<text x=${x+cellW/2} y=${cy} dominant-baseline="middle" text-anchor="middle" font-size="11" font-family="var(--mono)" fill="var(--ink)">${n}</text>`:null}
+          </g>`; })}
+      </g>`; })}
+  </svg>`;
+}
+
+/* copia os estilos computados (resolvendo var(--cor)) do svg ao vivo para um clone
+   destacado, pra que vetor/PNG saiam idênticos à tela mesmo fora do documento. */
+function inlineSvgStyles(srcRoot, dstRoot){
+  const src=[srcRoot, ...srcRoot.querySelectorAll('*')];
+  const dst=[dstRoot, ...dstRoot.querySelectorAll('*')];
+  const props=['fill','stroke','stroke-width','font-size','font-family','font-weight','opacity','dominant-baseline','text-anchor'];
+  for(let i=0;i<src.length;i++){ const cs=getComputedStyle(src[i]), d=dst[i]; if(!d) continue;
+    props.forEach(p=>{ const v=cs.getPropertyValue(p); if(v) d.style.setProperty(p,v); }); }
+}
+function svgCloneForExport(svg){
+  const clone=svg.cloneNode(true);
+  inlineSvgStyles(svg, clone);
+  const vb=svg.viewBox.baseVal; const W=vb&&vb.width?vb.width:svg.clientWidth, H=vb&&vb.height?vb.height:svg.clientHeight;
+  clone.setAttribute('width', W); clone.setAttribute('height', H);
+  const bg=document.createElementNS('http://www.w3.org/2000/svg','rect');
+  bg.setAttribute('x',0); bg.setAttribute('y',0); bg.setAttribute('width',W); bg.setAttribute('height',H); bg.setAttribute('fill','#ffffff');
+  clone.insertBefore(bg, clone.firstChild);
+  return { clone, W, H };
+}
+function exportChartSVG(svg, name){
+  if(!svg) return; const { clone }=svgCloneForExport(svg);
+  const s='<?xml version="1.0" encoding="UTF-8"?>\n'+new XMLSerializer().serializeToString(clone);
+  download(name+'.svg', s, 'image/svg+xml');
+}
+function exportChartPNG(svg, name){
+  if(!svg) return; const { clone, W, H }=svgCloneForExport(svg);
+  const s=new XMLSerializer().serializeToString(clone);
+  const img=new Image(); const sc=2;
+  img.onload=()=>{ const c=document.createElement('canvas'); c.width=W*sc; c.height=H*sc;
+    const ctx=c.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,c.width,c.height); ctx.scale(sc,sc); ctx.drawImage(img,0,0);
+    c.toBlob(b=>{ const u=URL.createObjectURL(b); const a=document.createElement('a'); a.href=u; a.download=name+'.png';
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),1000); }); };
+  img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(s);
+}
+
+/* ===== Nuvem de palavras ===== */
+// stopwords PT (foco em 3+ letras; tokens de 1-2 chars já caem no filtro de tamanho).
+const STOPWORDS_PT = new Set(('que uma com não nao por para dos das pelo pela como mas ser ter está esta estao estão são sao foi era essa esse isso ele ela eles elas voce você seu sua seus suas meu minha num numa pelos pelas este isto aquele aquela aquilo entre sem sob sobre até ate também tambem mais menos muito pouco quando onde porque qual quais quem cujo então entao assim ainda depois antes agora aqui ali hoje sempre nunca talvez sim nem cada todo toda todos todas outro outra outros outras mesmo mesma tão tao bem mal dele dela deles delas pra pro nesse nessa neste nesta naquele vai vão vao fazer fez tem têm tem havia haver estar estou estava sendo vamos vou foram será sera seria nas nos das dos lhe nos eles isso aos numa pelas algum alguma alguns algumas nenhum nenhuma qualquer porém porem contudo logo pois enquanto durante apenas tipo coisa coisas gente assim ter feito ficar fica ficou tinha tive teve estão estavam pode podem poder deve devem ano anos vez vezes').split(/\s+/));
+function tokenizeWords(text){
+  const out=[];
+  const m = (text||'').toLowerCase().match(/\p{L}[\p{L}\p{M}'\-]*/gu);
+  if(!m) return out;
+  for(const tk of m){ const w=tk.replace(/^['\-]+|['\-]+$/g,''); if(w.length>=3 && !STOPWORDS_PT.has(w) && !/^\d+$/.test(w)) out.push(w); }
+  return out;
+}
+/* nuvem de palavras posicionada por espiral de Arquimedes com colisão por retângulo
+   (mesma ideia do d3-cloud, sem lib). items: [{label,value,color}] já ordenados desc. */
+function svgWordCloud(items, opt={}){
+  const { w=900, h=520 } = opt;
+  if(!items.length) return null;
+  const fr=items.map(i=>i.value), maxF=Math.max(...fr), minF=Math.min(...fr);
+  const sizeOf=(f)=>{ if(maxF===minF) return 26; const t=(Math.sqrt(f)-Math.sqrt(minF))/(Math.sqrt(maxF)-Math.sqrt(minF)); return Math.round(12+t*34); };
+  const placed=[]; // {x,y,hw,hh,label,size,color,value}
+  const hit=(x,y,hw,hh)=> placed.some(p=> Math.abs(x-p.x)<(hw+p.hw+1.5) && Math.abs(y-p.y)<(hh+p.hh+1.5));
+  let minX=0,maxX=0,minY=0,maxY=0;
+  // empacota na PROPORÇÃO da área visível (w/h): a nuvem nasce parecida com o container,
+  // pra que ao caber (contain) sobre pouca margem. VF achata/estica a espiral p/ isso.
+  // (palavras são largas, baseAR≈1.25; VF = baseAR / aspecto-alvo, limitado.)
+  const VF=Math.max(0.32, Math.min(1.5, 1.25/((w/Math.max(1,h))||1.4)));
+  items.forEach(it=>{
+    const size=sizeOf(it.value);
+    const hw=Math.max(5, it.label.length*size*0.285), hh=size*0.58;
+    let x=0,y=0;
+    for(let t=0; t<6000; t+=0.22){ const r=2.4*t; x=r*Math.cos(t); y=r*Math.sin(t)*VF; if(!hit(x,y,hw,hh)) break; }
+    placed.push({x,y,hw,hh,label:it.label,size,color:it.color,value:it.value});
+    minX=Math.min(minX,x-hw); maxX=Math.max(maxX,x+hw); minY=Math.min(minY,y-hh); maxY=Math.max(maxY,y+hh);
+  });
+  const pad=10, W=Math.round((maxX-minX)+pad*2), H=Math.round((maxY-minY)+pad*2);
+  const ox=-minX+pad, oy=-minY+pad;
+  // width/height = 100% do contêiner (que tem tamanho fixo = área visível) + preserveAspectRatio
+  // "meet" => a nuvem CABE inteira (contain), centralizada, sem rolagem.
+  return html`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;display:block;font-family:var(--sans)" xmlns="http://www.w3.org/2000/svg">
+    ${placed.map((p,i)=>html`<text key=${i} x=${(p.x+ox).toFixed(1)} y=${(p.y+oy).toFixed(1)} font-size=${p.size} font-weight="600" fill=${p.color} text-anchor="middle" dominant-baseline="middle"><title>${p.label} — ${p.value}</title>${p.label}</text>`)}
+  </svg>`;
 }
 /* ============ MemoNav — painel esquerdo da aba Memos ============
    Memo do projeto + lista de documentos + árvore de códigos. Visual idêntico
@@ -6072,120 +6208,287 @@ function IAResultsPanel({ results, onDelete }){
   </div>`;
 }
 
-function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allValues, projectMode, view, onView, coders, userId, mode }){
+/* ============ GRAFICOS — explorador interativo ============
+   Uma aba = um gráfico por vez (.seg), desenhado em SVG (exportável PNG/SVG),
+   com painel de trechos à direita: clicar numa barra/célula abre as codificações
+   daquele recorte no VizExcerpts (mesma leitura da aba Visualizar). Abas:
+   freq · co-ocorrência · cobertura · código×atributo · tempo. */
+function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allValues, projectMode,
+                       view, onView, coders, userId, mode, isAdmin, onDelCoding, onAccept, onJump, darkMode }){
   const isIndividual = projectMode==='individual';
-  const closedCats = (cats||[]).filter(c=>CAT_HAS_OPTIONS(c.kind) || c.kind==='date');
+  const closedCats = (cats||[]).filter(c=>CAT_HAS_OPTIONS(c.kind));
+  const dateCats   = (cats||[]).filter(c=>c.kind==='date');
+  const [tab,setTab] = useState('freq');
+  const [topN,setTopN] = useState(25);
   const [catId,setCatId] = useState(closedCats[0]?.id || '');
+  const [dateCatId,setDateCatId] = useState(dateCats[0]?.id || '');
   useEffect(()=>{ if(!closedCats.find(c=>c.id===catId)) setCatId(closedCats[0]?.id || ''); }, [cats]); // eslint-disable-line
-  const cat = (cats||[]).find(c=>c.id===catId) || null;
+  useEffect(()=>{ if(!dateCats.find(c=>c.id===dateCatId)) setDateCatId(dateCats[0]?.id || ''); }, [cats]); // eslint-disable-line
+  const cat = closedCats.find(c=>c.id===catId) || null;
 
-  // codings do recorte "Ver:" compartilhado (mesma fonte do leitor/Visualizar/Relatório).
-  const cod = useMemo(()=> codingsForView(allCodings, view, userId, projectMode), [allCodings, view, userId, projectMode]);
+  const [coderMode,setCoderMode] = useState('prod'); // sub-modo da aba Codificadores
 
-  // 1) frequência de códigos
+  // mede a ÁREA VISÍVEL (largura e altura) pra os gráficos serem responsivos; mede o
+  // pane-body (viewport de rolagem, tamanho estável que NÃO cresce com o conteúdo, evitando
+  // o laço do ResizeObserver). `chartRef` fica no wrapper do gráfico ativo só p/ o export.
+  const chartRef = useRef(null);
+  const bodyRef  = useRef(null);
+  const [cw,setCw] = useState(900);
+  const [ch,setCh] = useState(440);
+  useEffect(()=>{
+    const el = bodyRef.current; if(!el || typeof ResizeObserver==='undefined') return;
+    let raf=0;
+    const apply = ()=>{ const w=Math.round(el.clientWidth-30), h=Math.round(el.clientHeight-54); // -30 padding do card; -54 hint+margens
+      // rAF tira o setState de dentro da entrega do observer (silencia "ResizeObserver loop …");
+      // limiar evita micro-oscilação.
+      setCw(prev=> (w>200 && Math.abs(w-prev)>4) ? w : prev);
+      setCh(prev=> (h>160 && Math.abs(h-prev)>4) ? h : prev); };
+    const measure = ()=>{ cancelAnimationFrame(raf); raf=requestAnimationFrame(apply); };
+    measure(); const ro=new ResizeObserver(measure); ro.observe(el); return ()=>{ cancelAnimationFrame(raf); ro.disconnect(); };
+  }, []);
+
+  // filtro por categorias (painel esquerdo, igual à Visualização): restringe os
+  // documentos considerados em TODOS os gráficos. {catId: valor exigido}.
+  const [catFilter,setCatFilter] = useState({});
+  const [hideRedaction,setHideRedaction] = useState(true); // "ignorar censura" (padrão ligado): tira códigos is_redaction
+  const isRedactionCoding = (c)=> !!codeById[c.code_id]?.is_redaction;
+  const matchingDocIds = useMemo(()=>{
+    const s=new Set();
+    docs.forEach(d=>{
+      const ok = Object.entries(catFilter).every(([cId,want])=>{
+        if(!want) return true;
+        const rows = allValues.filter(x=>x.document_id===d.id && x.category_id===cId);
+        const fin = rows.find(r=>r.layer==='final');
+        const pool = fin ? [fin.value] : rows.map(r=>r.value);
+        return pool.some(v=>v!=null && String(v).split(CAT_MULTI_SEP).includes(want));
+      });
+      if(ok) s.add(d.id);
+    });
+    return s;
+  }, [docs, allValues, catFilter]);
+  const fdocs = useMemo(()=> docs.filter(d=>matchingDocIds.has(d.id)), [docs, matchingDocIds]);
+
+  // codings do recorte "Ver:" compartilhado (mesma fonte do leitor/Visualizar/Relatório),
+  // já restritas aos documentos que passam no filtro de categorias.
+  const cod = useMemo(()=> codingsForView(allCodings, view, userId, projectMode).filter(c=>matchingDocIds.has(c.document_id) && (!hideRedaction || !isRedactionCoding(c))), [allCodings, view, userId, projectMode, matchingDocIds, hideRedaction, codeById]);
+  const codingsByDoc = useMemo(()=>{ const g={}; cod.forEach(c=>{ (g[c.document_id]=g[c.document_id]||[]).push(c); }); return g; }, [cod]);
+  const codeOf = (id)=>codeById[id];
+  const codeColorOf = (id)=>{ const c=codeOf(id); return c?codeColor(c.hue,c.depth,c.hue_deg).solid:'var(--teal)'; };
+  const codeLabelOf = (id)=>codePath(id).join(' ▸ ');
+
+  // ---- frequência de códigos
   const freqItems = useMemo(()=>{
     const f={}; cod.forEach(c=>{ f[c.code_id]=(f[c.code_id]||0)+1; });
-    return codes.filter(c=>f[c.id]).map(c=>({ key:c.id, label:codePath(c.id).join(' ▸ '), value:f[c.id], color:codeColor(c.hue,c.depth,c.hue_deg).solid }))
+    return codes.filter(c=>f[c.id]).map(c=>({ key:c.id, label:codeLabelOf(c.id), value:f[c.id], color:codeColorOf(c.id) }))
       .sort((a,b)=>b.value-a.value);
   }, [cod, codes, codePath]);
 
-  // valor consolidado (gabarito) de um documento para uma categoria
-  const finalVal = (docId)=>{ const f=allValues.find(v=>v.document_id===docId && v.category_id===catId && v.layer==='final'); return f?f.value:null; };
-  // rótulo neutro: vale para os dois modos (em individual não existe "consolidação" a esperar)
+  // ---- cobertura do corpus (% de caracteres cobertos por cada código, mesclando sobreposições)
+  const corpusLen = useMemo(()=> fdocs.reduce((s,d)=>s+((d.content||'').length),0), [fdocs]);
+  const coverItems = useMemo(()=>{
+    const byCode={}; // codeId -> {docId -> [[s,e]]}
+    cod.forEach(c=>{ (byCode[c.code_id]=byCode[c.code_id]||{}); (byCode[c.code_id][c.document_id]=byCode[c.code_id][c.document_id]||[]).push([c.span_start,c.span_end]); });
+    return Object.entries(byCode).map(([id,perDoc])=>{
+      let chars=0; Object.values(perDoc).forEach(spans=>{ chars+=mergedLen(spans); });
+      return { key:id, label:codeLabelOf(id), chars, value:corpusLen?+(chars/corpusLen*100).toFixed(2):0, color:codeColorOf(id) };
+    }).filter(i=>i.chars>0).sort((a,b)=>b.value-a.value);
+  }, [cod, corpusLen, codePath]);
+
+  // ---- nuvem de palavras: tokens dos trechos codificados, cor herdada do código dominante.
+  // usa `cod` (já respeita filtro de categorias, "Ver:" e "ignorar censura").
+  const docContentById = useMemo(()=>{ const m={}; docs.forEach(d=>{ m[d.id]=d.content||''; }); return m; }, [docs]);
+  const wordCloud = useMemo(()=>{
+    const wf={}; // palavra -> { total, codes:{codeId:n} }
+    cod.forEach(c=>{
+      const txt=(docContentById[c.document_id]||'').slice(c.span_start, c.span_end);
+      tokenizeWords(txt).forEach(w=>{ const e=wf[w]||(wf[w]={total:0,codes:{}}); e.total++; e.codes[c.code_id]=(e.codes[c.code_id]||0)+1; });
+    });
+    return Object.entries(wf).map(([w,e])=>{
+      let best=null,bn=-1; for(const k in e.codes){ if(e.codes[k]>bn){ bn=e.codes[k]; best=k; } }
+      return { key:w, label:w, value:e.total, color:codeColorOf(best) };
+    }).sort((a,b)=>b.value-a.value);
+  }, [cod, docContentById, codeById]);
+
+  // ---- co-ocorrência: matriz código×código (nº de pares de trechos sobrepostos no mesmo doc)
+  const cooc = useMemo(()=>{
+    const top = freqItems.slice(0, Math.min(20, freqItems.length)).map(i=>i.key);
+    const inTop = new Set(top);
+    const m={}; top.forEach(a=>m[a]={});
+    Object.values(codingsByDoc).forEach(list=>{
+      for(let i=0;i<list.length;i++) for(let j=i+1;j<list.length;j++){
+        const a=list[i], b=list[j];
+        if(a.code_id===b.code_id) continue;
+        if(!inTop.has(a.code_id)||!inTop.has(b.code_id)) continue;
+        if(a.span_start<b.span_end && b.span_start<a.span_end){
+          m[a.code_id][b.code_id]=(m[a.code_id][b.code_id]||0)+1;
+          m[b.code_id][a.code_id]=(m[b.code_id][a.code_id]||0)+1;
+        }
+      }
+    });
+    let max=1; top.forEach(a=>top.forEach(b=>{ if(a!==b) max=Math.max(max,m[a][b]||0); }));
+    const rows = top.map(id=>({ id, label:codeLabelOf(id) }));
+    return { rows, cols:top, m, max };
+  }, [freqItems, codingsByDoc, codePath]);
+
+  // ---- código × atributo (heatmap): valor consolidado (gabarito) por documento
+  const finalVal = (docId,cId)=>{ const f=allValues.find(v=>v.document_id===docId && v.category_id===cId && v.layer==='final'); return f?f.value:null; };
   const splitVals = (val)=> val==null ? ['(sem valor)'] : String(val).split(CAT_MULTI_SEP).filter(Boolean);
-
-  // 2) distribuição de documentos por valor da categoria
-  const distItems = useMemo(()=>{
-    if(!cat) return [];
-    const counts={};
-    docs.forEach(d=>{ splitVals(finalVal(d.id)).forEach(v=>{ counts[v]=(counts[v]||0)+1; }); });
-    return Object.entries(counts).map(([label,value])=>({label,value})).sort((a,b)=>b.value-a.value);
-  }, [cat, docs, allValues, catId]);
-
-  // 3) código × categoria (heatmap): linhas = códigos com trechos, colunas = valores
-  const cross = useMemo(()=>{
-    if(!cat) return { cols:[], rows:[] };
-    const docVals = {}; docs.forEach(d=>{ docVals[d.id]=splitVals(finalVal(d.id)); });
-    const colSet = new Set(); Object.values(docVals).forEach(vs=>vs.forEach(v=>colSet.add(v)));
-    const cols = [...colSet];
-    const cellCounts = {}; // codeId -> {val -> n}
-    cod.forEach(c=>{ (docVals[c.document_id]||[]).forEach(v=>{ (cellCounts[c.code_id]=cellCounts[c.code_id]||{}); cellCounts[c.code_id][v]=(cellCounts[c.code_id][v]||0)+1; }); });
-    const rows = codes.filter(c=>cellCounts[c.id]).map(c=>({ id:c.id, label:codePath(c.id).join(' ▸ '), cells:cellCounts[c.id] }));
-    let max=1; rows.forEach(r=>cols.forEach(v=>{ max=Math.max(max, r.cells[v]||0); }));
+  const crossTab = useMemo(()=>{
+    if(!cat) return { cols:[], rows:[], max:1 };
+    const docVals={}; fdocs.forEach(d=>{ docVals[d.id]=splitVals(finalVal(d.id,catId)); });
+    const colSet=new Set(); Object.values(docVals).forEach(vs=>vs.forEach(v=>colSet.add(v)));
+    const cols=[...colSet];
+    const cells={}; cod.forEach(c=>{ (docVals[c.document_id]||[]).forEach(v=>{ (cells[c.code_id]=cells[c.code_id]||{}); cells[c.code_id][v]=(cells[c.code_id][v]||0)+1; }); });
+    const rows=codes.filter(c=>cells[c.id]).map(c=>({ id:c.id, label:codeLabelOf(c.id), cells:cells[c.id] }))
+      .sort((a,b)=>{ const sa=Object.values(a.cells).reduce((x,y)=>x+y,0), sb=Object.values(b.cells).reduce((x,y)=>x+y,0); return sb-sa; });
+    let max=1; rows.forEach(r=>cols.forEach(v=>{ max=Math.max(max,r.cells[v]||0); }));
     return { cols, rows, max };
-  }, [cat, docs, cod, codes, catId, allValues]);
+  }, [cat, fdocs, cod, codes, catId, allValues, codePath]);
 
-  // 4) por codificador + concordância por código
-  // "indiv" = codificações individuais (layer !== 'final')
-  // cada codificação é identificada pelo par (created_by, author_name): se created_by é null
-  // (importado via QDPX), usa author_name como chave; se não, usa o uuid para agrupar corretamente
-  // mesmo quando o author_name muda (ex.: renomeação posterior do pesquisador)
-  const indiv = useMemo(()=> allCodings.filter(c=>c.layer!=='final'), [allCodings]);
+  // ---- série temporal: trechos por ano (via categoria de data, gabarito do documento)
+  const timeData = useMemo(()=>{
+    if(!dateCatId) return [];
+    const yearOf={}; fdocs.forEach(d=>{ const y=parseDate(finalVal(d.id,dateCatId)).y; if(y) yearOf[d.id]=y; });
+    const counts={}; cod.forEach(c=>{ const y=yearOf[c.document_id]; if(y) counts[y]=(counts[y]||0)+1; });
+    return Object.entries(counts).map(([y,value])=>({ key:y, label:y, value })).sort((a,b)=>a.label.localeCompare(b.label));
+  }, [dateCatId, fdocs, cod, allValues]);
+
+  // ---- por codificador (só coletivo): produção e concordância sobre a camada individual,
+  // respeitando o filtro de categorias (documentos que passam no filtro).
+  const indiv = useMemo(()=> allCodings.filter(c=>c.layer!=='final' && matchingDocIds.has(c.document_id) && (!hideRedaction || !isRedactionCoding(c))), [allCodings, matchingDocIds, hideRedaction, codeById]);
   const coderKey = (c)=> c.created_by || ('__nm__'+(c.author_name||'anônimo'));
-  const coderLabel = (c)=> c.author_name||'anônimo';
   const prodItems = useMemo(()=>{
-    const p={}; const lbl={};
-    indiv.forEach(c=>{ const k=coderKey(c); p[k]=(p[k]||0)+1; lbl[k]=coderLabel(c); });
-    return Object.entries(p).map(([k,value])=>({label:lbl[k]||k,value})).sort((a,b)=>b.value-a.value);
+    const p={}, lbl={}; indiv.forEach(c=>{ const k=coderKey(c); p[k]=(p[k]||0)+1; lbl[k]=c.author_name||'anônimo'; });
+    return Object.entries(p).map(([k,value])=>({ key:k, label:lbl[k]||k, value })).sort((a,b)=>b.value-a.value);
   }, [indiv]);
   const agreeItems = useMemo(()=>{
     const m={}; indiv.forEach(c=>{ (m[c.code_id]=m[c.code_id]||new Set()).add(coderKey(c)); });
-    return codes.filter(c=>m[c.id]).map(c=>({ key:c.id, label:codePath(c.id).join(' ▸ '), value:m[c.id].size, color:codeColor(c.hue,c.depth,c.hue_deg).solid }))
+    return codes.filter(c=>m[c.id]).map(c=>({ key:c.id, label:codeLabelOf(c.id), value:m[c.id].size, color:codeColorOf(c.id) }))
       .sort((a,b)=>b.value-a.value);
   }, [indiv, codes, codePath]);
 
   const empty = allCodings.length===0 && (allValues||[]).length===0;
-  const heat = (n)=>{ if(!n) return 'transparent'; const a = 0.12 + 0.78*(n/cross.max); return `hsl(170 55% 38% / ${a.toFixed(2)})`; };
+  const TABS = [['freq','Frequência'],['nuvem','Nuvem'],['cooc','Co-ocorrência'],['cobertura','Cobertura'],['cruz','Código × atributo']];
+  if(dateCats.length) TABS.push(['tempo','Tempo']);
+  if(!isIndividual) TABS.push(['coders','Codificadores']);
 
-  return html`<div class="section">
-    <div class="row" style="gap:14px;flex-wrap:wrap;margin-bottom:6px">
-      <${ViewSelect} value=${view} onChange=${onView} coders=${coders} userId=${userId} projectMode=${projectMode} mode=${mode} />
-      ${((mode==='cloud' && projectMode==='collective') || (coders||[]).length>1) && html`<span class="meta" style="font-size:11px;opacity:.7">As respostas de categoria usam o valor consolidado de cada documento; o recorte acima muda só as codificações.</span>`}
-      ${closedCats.length>0 && html`<label class="row" style="gap:6px;font-size:12.5px">Categoria:
-        <select class="opt" value=${catId} onChange=${e=>setCatId(e.target.value)}>
-          ${closedCats.map(c=>html`<option value=${c.id}>${c.name}</option>`)}
-        </select></label>`}
+  // ---- gráfico ativo (um SVG por aba)
+  let chart=null, hint=null;
+  if(tab==='freq'){
+    hint = 'Nº de trechos codificados com cada código.';
+    chart = freqItems.length===0 ? null : svgHBars(freqItems.slice(0,topN), { w:cw });
+  } else if(tab==='nuvem'){
+    hint = 'Palavras dos trechos codificados, coloridas pelo código predominante (tamanho ∝ frequência). Stopwords removidas; sem lematização.';
+    chart = wordCloud.length===0 ? null : svgWordCloud(wordCloud.slice(0,topN), { w:cw, h:ch });
+  } else if(tab==='cobertura'){
+    hint = '% do corpus coberto por cada código (sobreposições mescladas) — peso real, não só contagem.';
+    chart = coverItems.length===0 ? null
+      : svgHBars(coverItems.slice(0,topN), { w:cw, color:'var(--sky)', fmt:(v)=>v.toFixed(2)+'%' });
+  } else if(tab==='cooc'){
+    hint = 'Quantos trechos de dois códigos se sobrepõem no mesmo documento.';
+    chart = cooc.rows.length<2 ? null
+      : svgHeat(cooc.rows, cooc.cols, (r,c)=> r.id===c?null:(cooc.m[r.id]?.[c]||0), cooc.max, {
+          W:cw, colLabel:(id)=>codeLabelOf(id) });
+  } else if(tab==='cruz'){
+    hint = 'Nº de trechos de cada código nos documentos com cada valor da categoria.';
+    chart = (!cat || crossTab.rows.length===0) ? null
+      : svgHeat(crossTab.rows, crossTab.cols, (r,c)=>r.cells[c]||0, crossTab.max, { W:cw, colLabel:(v)=>v });
+  } else if(tab==='tempo'){
+    hint = 'Trechos codificados por ano (data consolidada do documento).';
+    chart = timeData.length===0 ? null : svgHBars(timeData, { w:cw, color:'var(--teal-deep)' });
+  } else if(tab==='coders'){
+    if(coderMode==='prod'){
+      hint = 'Nº de trechos codificados por cada pesquisador (camada individual).';
+      chart = prodItems.length===0 ? null : svgHBars(prodItems, { w:cw, color:'var(--amber)' });
+    } else {
+      hint = 'Quantos pesquisadores diferentes aplicaram cada código (concordância).';
+      chart = agreeItems.length===0 ? null : svgHBars(agreeItems, { w:cw });
+    }
+  }
+
+  const svgEl = ()=>chartRef.current?.querySelector('svg');
+  const hasFilter = Object.values(catFilter).some(Boolean);
+
+  // Painel esquerdo (filtro por categorias, mesmo tamanho da Visualização) + gráfico à direita.
+  // htm devolve um array com os dois <section>; o App já os envolve num .split.
+  return html`
+  <section class="pane" style="flex:0 0 270px;min-width:0;border-right:1px solid var(--line)">
+    <div class="pane-body scroll" style="padding:0;background:var(--surface)">
+      <div class="field-label" style="padding:12px 14px 6px;margin:0;display:flex;align-items:center;gap:8px">
+        🏷️ Filtrar por categorias
+        ${hasFilter && html`<span class="pill" style="font-size:10px;padding:1px 8px">ativo</span>`}
+      </div>
+      <label class="row" style="gap:7px;padding:2px 14px 10px;font-size:12px;cursor:pointer;align-items:center" title="Exclui dos gráficos os códigos marcados como censura (is_redaction)">
+        <input type="checkbox" checked=${hideRedaction} onChange=${e=>setHideRedaction(e.target.checked)} />
+        Ignorar censura
+      </label>
+      <div style="padding:0 14px 14px">
+        ${closedCats.length===0
+          ? html`<span class="meta">Nenhuma categoria com opções para filtrar. Crie categorias de Texto Fechado, Múltipla Escolha ou Caixa de Seleção.</span>`
+          : html`<div>
+            <p class="meta" style="margin:0 0 10px;font-size:11px">Restringe todos os gráficos aos documentos que atendem às condições selecionadas.</p>
+            ${closedCats.map(cat=>{ const opts=(cat.options||[]).filter(o=>!isSpecialOpt(o));
+              return html`<div key=${cat.id} class="field" style="margin-bottom:9px">
+                <div class="field-label" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title=${cat.name}>${cat.name}</div>
+                <select class="opt" style="width:100%"
+                  value=${catFilter[cat.id]||''} onChange=${e=>{ const v=e.target.value; setCatFilter(f=>{ const n={...f}; if(v) n[cat.id]=v; else delete n[cat.id]; return n; }); }}>
+                  <option value="">(qualquer)</option>
+                  ${opts.map(o=>html`<option value=${o}>${o}</option>`)}
+                </select>
+              </div>`; })}
+            ${hasFilter && html`<button class="btn sm ghost" style="width:100%;margin-top:4px" onClick=${()=>setCatFilter({})}>limpar filtros</button>`}
+            <p class="meta" style="margin:12px 0 0;font-size:11px">${matchingDocIds.size} de ${docs.length} documento(s) no filtro.</p>
+          </div>`}
+      </div>
     </div>
-    ${empty && html`<div class="card"><span class="meta">Ainda não há dados para gráficos. Codifique trechos e preencha categorias.</span></div>`}
-
-    <p class="h" style="margin-top:14px">Frequência de códigos</p>
-    <div class="card">
-      ${freqItems.length===0 ? html`<span class="meta">Nenhuma codificação nesta camada.</span>` : barRows(freqItems)}
+  </section>
+  <section class="pane left" style="flex:1;border-right:none;max-width:none;display:flex;flex-direction:column">
+    <div class="pane-head" style="flex-wrap:wrap;gap:10px">
+      <div class="seg">
+        ${TABS.map(([k,lbl])=>html`<button key=${k} class=${tab===k?'on':''} onClick=${()=>setTab(k)}>${lbl}</button>`)}
+      </div>
+      <div class="row" style="gap:10px;flex-wrap:wrap;margin-left:auto">
+        <${ViewSelect} value=${view} onChange=${onView} coders=${coders} userId=${userId} projectMode=${projectMode} mode=${mode} />
+        ${(tab==='freq'||tab==='cobertura'||tab==='nuvem') && html`<label class="meta" style="display:flex;gap:5px;align-items:center">${tab==='nuvem'?'Palavras:':'Top:'}
+          <select class="opt" value=${String(topN)} onChange=${e=>setTopN(e.target.value==='all'?9999:+e.target.value)}>
+            <option value="10">10</option><option value="25">25</option><option value="50">50</option><option value="all">Todos</option>
+          </select></label>`}
+        ${tab==='cruz' && closedCats.length>0 && html`<label class="meta" style="display:flex;gap:5px;align-items:center">Categoria:
+          <select class="opt" value=${catId} onChange=${e=>setCatId(e.target.value)}>
+            ${closedCats.map(c=>html`<option value=${c.id}>${c.name}</option>`)}
+          </select></label>`}
+        ${tab==='tempo' && dateCats.length>1 && html`<label class="meta" style="display:flex;gap:5px;align-items:center">Data:
+          <select class="opt" value=${dateCatId} onChange=${e=>setDateCatId(e.target.value)}>
+            ${dateCats.map(c=>html`<option value=${c.id}>${c.name}</option>`)}
+          </select></label>`}
+        ${tab==='coders' && html`<div class="seg">
+          <button class=${coderMode==='prod'?'on':''} onClick=${()=>setCoderMode('prod')}>Produção</button>
+          <button class=${coderMode==='agree'?'on':''} onClick=${()=>setCoderMode('agree')}>Concordância</button>
+        </div>`}
+        ${chart && html`<span class="row" style="gap:4px">
+          <button class="btn sm ghost" title="Baixar vetor (SVG)" onClick=${()=>exportChartSVG(svgEl(),'grafico-'+tab)}>SVG</button>
+          <button class="btn sm ghost" title="Baixar imagem (PNG)" onClick=${()=>exportChartPNG(svgEl(),'grafico-'+tab)}>PNG</button>
+        </span>`}
+      </div>
     </div>
-
-    <p class="h" style="margin-top:18px">Distribuição por categoria${cat?` — ${cat.name}`:''}</p>
-    <div class="card">
-      ${!cat ? html`<span class="meta">Defina uma categoria.</span>`
-        : distItems.length===0 ? html`<span class="meta">Sem valores.</span>` : barRows(distItems, 'var(--teal)')}
+    <div class="pane-body scroll" ref=${bodyRef} style=${`flex:1;scrollbar-gutter:stable;${tab==='nuvem'?'overflow:hidden':''}`}>
+      <div>
+        ${empty ? html`<div class="card"><span class="meta">Ainda não há dados para gráficos. Codifique trechos e preencha categorias.</span></div>`
+          : html`<div>
+            ${hint && html`<p class="meta" style="margin:2px 0 12px">${hint}</p>`}
+            ${tab==='cruz' && closedCats.length===0 && html`<div class="card"><span class="meta">Crie uma categoria de Texto Fechado, Múltipla Escolha ou Caixa de Seleção para cruzar com os códigos.</span></div>`}
+            ${tab==='tempo' && dateCats.length===0 && html`<div class="card"><span class="meta">Crie uma categoria de Data para ver a distribuição temporal.</span></div>`}
+            ${tab==='nuvem'
+              ? html`<div ref=${chartRef} class="card" style="height:${Math.max(220,ch)}px;overflow:hidden;display:flex;align-items:center;justify-content:center">
+                  ${chart || html`<span class="meta">Sem palavras nos trechos codificados (no recorte/filtro atual).</span>`}
+                </div>`
+              : html`<div ref=${chartRef} class="card" style="overflow:auto">
+                  ${chart || html`<span class="meta">Sem dados para este gráfico no recorte atual.</span>`}
+                </div>`}
+          </div>`}
+      </div>
     </div>
-
-    <p class="h" style="margin-top:18px">Código × categoria${cat?` — ${cat.name}`:''} (nº de trechos)</p>
-    <div class="card" style="overflow:auto">
-      ${!cat || cross.rows.length===0 ? html`<span class="meta">Sem cruzamento disponível.</span>`
-        : html`<table style="border-collapse:collapse;font-size:12px;min-width:100%">
-            <thead><tr>
-              <th style="text-align:left;padding:4px 8px;position:sticky;left:0;background:var(--surface)"></th>
-              ${cross.cols.map(v=>html`<th key=${v} style="padding:4px 8px;text-align:center;font-weight:600">${v}</th>`)}
-            </tr></thead>
-            <tbody>
-              ${cross.rows.map(r=>html`<tr key=${r.id}>
-                <td style="padding:3px 8px;white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis;position:sticky;left:0;background:var(--surface)" title=${r.label}>${r.label}</td>
-                ${cross.cols.map(v=>{ const n=r.cells[v]||0; return html`<td key=${v} style=${`text-align:center;padding:3px 8px;background:${heat(n)}`}>${n||''}</td>`; })}
-              </tr>`)}
-            </tbody>
-          </table>`}
-    </div>
-
-    ${!isIndividual && html`<p class="h" style="margin-top:18px">Produção por codificador</p>
-    <div class="card">
-      ${prodItems.length===0 ? html`<span class="meta">Nenhuma codificação individual.</span>` : barRows(prodItems, 'var(--amber)')}
-    </div>`}
-
-    ${!isIndividual && html`<p class="h" style="margin-top:18px">Concordância por código (nº de codificadores)</p>
-    <div class="card">
-      ${agreeItems.length===0 ? html`<span class="meta">Nenhuma codificação individual.</span>` : barRows(agreeItems)}
-    </div>`}
-  </div>`;
+  </section>`;
 }
 
 function TreeNode({ code, childrenOf, count, sel, selCode, setSelCode, onApply, onDel, store, reload, depthPad }){
