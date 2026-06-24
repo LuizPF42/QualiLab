@@ -1718,6 +1718,7 @@ async function createFileStore(fileHandle, isNew){
     realtime(){ return ()=>{}; },
     listDocuments(){ return P(db.documents.slice()); },
     async addDocument(pid,{id,name:dn,content}){ const d={id:id||uid(),name:dn,content,created_at:new Date().toISOString()}; db.documents.push(d); await save(); return d; },
+    async renameDocument(id,dn){ const d=db.documents.find(x=>x.id===id); if(d) d.name=dn; await save(); },
     async deleteDocument(id){ const cids=new Set(db.codings.filter(c=>c.document_id===id).map(c=>c.id)); db.documents=db.documents.filter(d=>d.id!==id); db.doc_values=db.doc_values.filter(v=>v.document_id!==id); db.codings=db.codings.filter(c=>c.document_id!==id); db.memos=db.memos.filter(m=>!(m.scope==='document'&&m.target_id===id) && !(m.scope==='coding'&&cids.has(m.target_id))); await save(); },
     async clearProject(){ db.documents=[]; db.categories=[]; db.doc_values=[]; db.codes=[]; db.codings=[]; db.memos=db.memos.filter(m=>m.scope==='project'); await save(); },
     listCategories(){ return P(db.categories.slice().sort((a,b)=>a.position-b.position)); },
@@ -1868,6 +1869,7 @@ function LocalStore(){
     async setProjectMode(){ return P(); },
     listDocuments(){ return P(db.documents.slice()); },
     addDocument(pid,{id,name:dn,content}){ const d={id:id||uid(),name:dn,content,created_at:new Date().toISOString()}; db.documents.push(d); save(); return P(d); },
+    renameDocument(id,dn){ const d=db.documents.find(x=>x.id===id); if(d) d.name=dn; save(); return P(); },
     deleteDocument(id){ const cids=new Set(db.codings.filter(c=>c.document_id===id).map(c=>c.id)); db.documents=db.documents.filter(d=>d.id!==id); db.doc_values=db.doc_values.filter(v=>v.document_id!==id); db.codings=db.codings.filter(c=>c.document_id!==id); db.memos=db.memos.filter(m=>!(m.scope==='document'&&m.target_id===id) && !(m.scope==='coding'&&cids.has(m.target_id))); save(); return P(); },
     clearProject(){ const keepMemos=(db.memos||[]).filter(m=>m.scope==='project'); db={ documents:[], categories:[], doc_values:[], codes:[], codings:[], memos:keepMemos }; save(); return P(); },
     listCategories(){ return P(db.categories.slice().sort((a,b)=>a.position-b.position)); },
@@ -1968,6 +1970,7 @@ function SupabaseStore(sb){
     async setProjectMode(pid, pmode, authorName){ must(await sb.rpc('set_project_mode',{ p_project:pid, p_mode:pmode, p_author:authorName||'pesquisador' })); },
     async listDocuments(pid){ return must(await sb.from('documents').select('*').eq('project_id',pid).order('created_at')); },
     async addDocument(pid,{id,name:dn,content}){ const row={project_id:pid,name:dn,content,created_by:user.id}; if(id) row.id=id; return must(await sb.from('documents').insert(row).select().single()); },
+    async renameDocument(id,dn){ must(await sb.from('documents').update({name:dn}).eq('id',id)); },
     async deleteDocument(id){ let cids=[]; try{ cids=(await sb.from('codings').select('id').eq('document_id',id)).data?.map(r=>r.id)||[]; }catch(e){} must(await sb.from('documents').delete().eq('id',id)); await sb.from('memos').delete().eq('scope','document').eq('target_id',id); if(cids.length) await sb.from('memos').delete().eq('scope','coding').in('target_id',cids); },
     async clearProject(pid){
       await sb.from('codings').delete().eq('project_id',pid);
@@ -2158,6 +2161,7 @@ function App(){
 
   const [docs, setDocs] = useState([]);
   const [activeId, setActiveId] = useState(null);
+  const [renamingDoc, setRenamingDoc] = useState(null); // nome em edição do documento ativo (null = não editando)
   const [cats, setCats] = useState([]);
   const [dragCatId, setDragCatId] = useState(null); // drag-and-drop pra reordenar categorias (mesmo estado serve pros dois lugares que listam CategoryEditor)
   const [values, setValues] = useState([]);
@@ -2557,6 +2561,7 @@ function App(){
   }
   async function addPasted(name, content){ const doc = await store.addDocument(project.id,{name:name||'Documento',content}); setDocs(d=>[...d,doc]); setActiveId(doc.id); }
   async function delDoc(id){ await store.deleteDocument(id); setDocs(d=>d.filter(x=>x.id!==id)); if(activeId===id) setActiveId(docs.find(x=>x.id!==id)?.id||null); }
+  async function renameDoc(id, name){ const nm=(name||'').trim(); if(!nm) return; await store.renameDocument(id, nm); setDocs(d=>d.map(x=>x.id===id?{...x,name:nm}:x)); }
 
   async function setValue(catId, value){
     if(projectMode==='individual') await store.setFinalValue(project.id, activeId, catId, value);
@@ -3105,10 +3110,15 @@ function App(){
       <!-- ESQUERDA: documento -->
       <section class="pane left">
         <div class="pane-head" style="flex-wrap:nowrap">
-          <select class="opt" style="max-width:840px;min-width:0" value=${activeId||''} onChange=${e=>setActiveId(e.target.value)}>
-            ${docs.length===0 && html`<option value="">sem documentos</option>`}
-            ${docs.map(d=>html`<option value=${d.id}>${d.name}</option>`)}
-          </select>
+          ${renamingDoc!==null && activeDoc
+            ? html`<input class="txtin" autoFocus style="max-width:840px;min-width:0" value=${renamingDoc}
+                onInput=${e=>setRenamingDoc(e.target.value)}
+                onKeyDown=${e=>{ if(e.key==='Enter'){ renameDoc(activeDoc.id, renamingDoc); setRenamingDoc(null); } else if(e.key==='Escape') setRenamingDoc(null); }}
+                onBlur=${()=>{ if((renamingDoc||'').trim()) renameDoc(activeDoc.id, renamingDoc); setRenamingDoc(null); }} />`
+            : html`<select class="opt" style="max-width:840px;min-width:0" value=${activeId||''} onChange=${e=>setActiveId(e.target.value)}>
+                ${docs.length===0 && html`<option value="">sem documentos</option>`}
+                ${docs.map(d=>html`<option value=${d.id}>${d.name}</option>`)}
+              </select>`}
           <label class="btn sm">＋ enviar
             <input type="file" multiple accept=".txt,.md,.markdown,.pdf,.docx" style="display:none" onChange=${e=>{onUpload(e.target.files); e.target.value='';}} />
           </label>
@@ -3126,6 +3136,7 @@ function App(){
               ${readerPrefs.theme==='light'?'☀':readerPrefs.theme==='sepia'?'📜':'🌙'}
             </button>
           </div>`}
+          ${activeDoc && renamingDoc===null && html`<button class="icon-btn" title="Renomear documento" onClick=${()=>setRenamingDoc(activeDoc.name)}>✏️</button>`}
           ${activeDoc && html`<button class="icon-btn" title="Remover documento" onClick=${()=>delDoc(activeDoc.id)}>🗑</button>`}
         </div>
 
@@ -3292,7 +3303,7 @@ function App(){
       <section class="pane" style="flex:0 0 270px;min-width:0;border-right:1px solid var(--line)">
         <div class="pane-body scroll" style="padding:0">
           <${MemoNav} project=${project} docs=${docs} codes=${codes} codings=${allCodings} memos=${memos}
-            sel=${memoSel} onSel=${setMemoSel} />
+            sel=${memoSel} onSel=${setMemoSel} onRenameDoc=${renameDoc} />
         </div>
       </section>
       <!-- MEMOS direita: editor -->
@@ -4615,10 +4626,14 @@ function barRows(items, color){
 /* ============ MemoNav — painel esquerdo da aba Memos ============
    Memo do projeto + lista de documentos + árvore de códigos. Visual idêntico
    ao painel de Codificação/Visualização (mesmas classes .node-row etc). */
-function MemoNav({ project, docs, codes, codings, memos, sel, onSel }){
+function MemoNav({ project, docs, codes, codings, memos, sel, onSel, onRenameDoc }){
   const [docsOpen, setDocsOpen] = useState(true);
   const [codesOpen, setCodesOpen] = useState(false);
   const [trechosOpen, setTrechosOpen] = useState(true);
+  const [renamingId, setRenamingId] = useState(null); // doc em edição de nome
+  const [renameVal, setRenameVal] = useState('');
+  const startRename = (d)=>{ setRenamingId(d.id); setRenameVal(d.name); };
+  const commitRename = ()=>{ if(renamingId && renameVal.trim()) onRenameDoc?.(renamingId, renameVal); setRenamingId(null); };
   const hasMemo = (scope, targetId)=> memos.some(m=>m.scope===scope && m.target_id===targetId && m.content);
   const tops = codes.filter(c=>!c.parent_id);
   const childrenOf = (id)=>codes.filter(c=>c.parent_id===id);
@@ -4644,10 +4659,19 @@ function MemoNav({ project, docs, codes, codings, memos, sel, onSel }){
         <span class="caret">${docsOpen?'▾':'▸'}</span>
         <span class="node-name" style="font-weight:600">Documentos</span>
       </div>
-      ${docsOpen && docs.map(d=>html`<div key=${d.id} class="node-row ${sel.scope==='document'&&sel.targetId===d.id?'sel':''}"
+      ${docsOpen && docs.map(d=> renamingId===d.id
+        ? html`<div key=${d.id} class="node-row" style="padding:5px 14px 5px 28px">
+            <input class="txtin" autoFocus style="font-size:12.5px;padding:2px 6px" value=${renameVal}
+              onClick=${e=>e.stopPropagation()}
+              onInput=${e=>setRenameVal(e.target.value)}
+              onKeyDown=${e=>{ if(e.key==='Enter') commitRename(); else if(e.key==='Escape') setRenamingId(null); }}
+              onBlur=${commitRename} />
+          </div>`
+        : html`<div key=${d.id} class="node-row ${sel.scope==='document'&&sel.targetId===d.id?'sel':''}"
           style="padding:5px 14px 5px 28px;cursor:pointer" onClick=${()=>onSel({scope:'document', targetId:d.id})}>
         <span class="node-name" style="font-size:12.5px" title=${d.name}>${d.name}</span>
         ${hasMemo('document', d.id) && html`<span class="count">●</span>`}
+        ${onRenameDoc && html`<button class="icon-btn" title="Renomear documento" style="margin-left:auto;font-size:12px" onClick=${e=>{ e.stopPropagation(); startRename(d); }}>✏️</button>`}
       </div>`)}
       ${docsOpen && docs.length===0 && html`<div class="meta" style="padding:6px 28px">Nenhum documento.</div>`}
     </div>
