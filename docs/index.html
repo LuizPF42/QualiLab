@@ -4697,7 +4697,7 @@ function svgHBars(items, opt={}){
    o resto quando há poucas colunas (e rolam horizontalmente quando há muitas).
    rows:[{id,label}], cols:[...], getN(row,col)->n */
 function svgHeat(rows, cols, getN, max, opt={}){
-  const { onClick, selId, colLabel=(c)=>c, sel2=null, W=900 } = opt;
+  const { onClick, selId, colLabel=(c)=>c, sel2=null, W=900, rowColor=null, colColor=null } = opt;
   const cellH=24, topH=112, padR=12, padB=10, CH=6.4;
   const longest = rows.reduce((m,r)=>Math.max(m,String(r.label).length),0);
   const leftW = Math.round(Math.min(W*0.45, Math.max(W*0.18, Math.min(longest*CH+12, 480))));
@@ -4705,14 +4705,15 @@ function svgHeat(rows, cols, getN, max, opt={}){
   const avail = W-leftW-padR;
   const cellW = Math.max(40, Math.min(140, Math.floor(avail/Math.max(1,cols.length)))); // preenche, sem esticar absurdo
   const w=Math.max(W, leftW+cols.length*cellW+padR), h=topH+rows.length*cellH+padB;
-  const heatFn=(n)=>{ if(!n) return 'transparent'; const a=0.12+0.78*(n/Math.max(1,max)); return `hsl(205 62% 42% / ${a.toFixed(2)})`; };
+  // células em tons de CINZA (cor fica só nos rótulos dos códigos) — intensidade ∝ contagem.
+  const heatFn=(n)=>{ if(!n) return 'transparent'; const a=0.10+0.72*(n/Math.max(1,max)); return `hsl(220 8% 45% / ${a.toFixed(2)})`; };
   return html`<svg viewBox="0 0 ${w} ${h}" width=${w} style="max-width:100%;font-family:var(--sans)" xmlns="http://www.w3.org/2000/svg">
-    ${cols.map((c,ci)=>{ const x=leftW+ci*cellW+cellW*0.62, yy=topH-7;
-      return html`<text key=${'h'+ci} x=${x} y=${yy} transform=${`rotate(-45 ${x} ${yy})`} text-anchor="start" font-size="10.5" fill="var(--ink-soft)">${chTrunc(colLabel(c),20)}</text>`; })}
-    ${rows.map((r,ri)=>{ const y=topH+ri*cellH, cy=y+cellH/2, sel=selId!=null&&r.id===selId;
+    ${cols.map((c,ci)=>{ const x=leftW+ci*cellW+cellW*0.62, yy=topH-7; const cc=colColor&&colColor(c);
+      return html`<text key=${'h'+ci} x=${x} y=${yy} transform=${`rotate(-45 ${x} ${yy})`} text-anchor="start" font-size="10.5" fill=${cc||'var(--ink-soft)'} font-weight=${cc?'600':'400'}>${chTrunc(colLabel(c),20)}</text>`; })}
+    ${rows.map((r,ri)=>{ const y=topH+ri*cellH, cy=y+cellH/2, sel=selId!=null&&r.id===selId; const rc=rowColor&&rowColor(r);
       return html`<g key=${r.id||ri}>
         <title>${r.label}</title>
-        <text x=${leftW-6} y=${cy} dominant-baseline="middle" text-anchor="end" font-size="11.5" fill=${sel?'var(--teal)':'var(--ink)'} font-weight=${sel?'600':'400'}>${chTrunc(r.label,maxChars)}</text>
+        <text x=${leftW-6} y=${cy} dominant-baseline="middle" text-anchor="end" font-size="11.5" fill=${sel?'var(--teal)':(rc||'var(--ink)')} font-weight=${(sel||rc)?'600':'400'}>${chTrunc(r.label,maxChars)}</text>
         ${cols.map((c,ci)=>{ const n=getN(r,c), x=leftW+ci*cellW;
           const hot=sel2&&selId===r.id&&sel2===c;
           return html`<g key=${ci} style=${onClick?'cursor:pointer':''} onClick=${onClick?()=>onClick(r,c,n):null}>
@@ -6274,12 +6275,17 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
   const [catFilter,setCatFilter] = useState({});
   const [hideRedaction,setHideRedaction] = useState(true); // "ignorar censura" (padrão ligado): tira códigos is_redaction
   const isRedactionCoding = (c)=> !!codeById[c.code_id]?.is_redaction;
-  const [cloudCodes,setCloudCodes] = useState(()=>new Set()); // filtro multi-código da NUVEM (cada um + descendentes); vazio = todos
-  const onPickCloud = (id)=> setCloudCodes(prev=>{ const n=new Set(prev); n.has(id)?n.delete(id):n.add(id); return n; });
+  const [cloudCodes,setCloudCodes] = useState(()=>new Set()); // filtro multi-código da NUVEM; vazio = todos
   // co-ocorrência: códigos escolhidos para cada eixo da matriz (vazio = top por frequência)
   const [coocX,setCoocX] = useState(()=>new Set()); // eixo X = colunas
   const [coocY,setCoocY] = useState(()=>new Set()); // eixo Y = linhas
-  const toggleIn = (setter)=>(id)=> setter(prev=>{ const n=new Set(prev); n.has(id)?n.delete(id):n.add(id); return n; });
+  // família = o código + toda a subárvore. Marcar um pai (Hierarquia 0 ou não) marca TODOS os
+  // descendentes; desmarcar tira a subárvore. (Depois dá pra desmarcar filhos individualmente.)
+  const familyOf = (id)=>{ const ids=new Set([id]); let added=true;
+    while(added){ added=false; codes.forEach(c=>{ if(c.parent_id && ids.has(c.parent_id) && !ids.has(c.id)){ ids.add(c.id); added=true; } }); } return ids; };
+  const toggleFamily = (setter)=>(id)=> setter(prev=>{ const n=new Set(prev); const off=n.has(id);
+    familyOf(id).forEach(f=> off ? n.delete(f) : n.add(f)); return n; });
+  const onPickCloud = toggleFamily(setCloudCodes);
   const matchingDocIds = useMemo(()=>{
     const s=new Set();
     docs.forEach(d=>{
@@ -6333,13 +6339,9 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
     Object.entries(direct).forEach(([id,n])=>{ let p=parentOf[id]; while(p){ agg[p]=(agg[p]||0)+n; p=parentOf[p]; } });
     return agg;
   }, [cod, codes]);
-  // códigos selecionados + todos os descendentes de cada um (família agrega os subcódigos)
-  const cloudCodeSet = useMemo(()=>{
-    if(!cloudCodes.size) return null;
-    const ids=new Set(cloudCodes); let added=true;
-    while(added){ added=false; codes.forEach(c=>{ if(c.parent_id && ids.has(c.parent_id) && !ids.has(c.id)){ ids.add(c.id); added=true; } }); }
-    return ids;
-  }, [cloudCodes, codes]);
+  // marcar um pai já marca a subárvore (toggleFamily), então a seleção é literal — sem
+  // re-expandir aqui (senão desmarcar um filho não teria efeito).
+  const cloudCodeSet = useMemo(()=> cloudCodes.size ? cloudCodes : null, [cloudCodes]);
 
   // ---- nuvem de palavras: tokens dos trechos codificados, cor herdada do código dominante.
   // usa `cod` (já respeita filtro de categorias, "Ver:" e "ignorar censura"); se houver código
@@ -6447,11 +6449,11 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
       : 'Trechos sobrepostos no mesmo documento (12 códigos mais frequentes em cada eixo — escolha os eixos no painel à esquerda).';
     chart = (cooc.rows.length===0 || cooc.cols.length===0) ? null
       : svgHeat(cooc.rows, cooc.cols, (r,c)=> r.id===c?null:(cooc.m[r.id]?.[c]||0), cooc.max, {
-          W:cw, colLabel:(id)=>codeLabelOf(id) });
+          W:cw, colLabel:(id)=>codeLabelOf(id), rowColor:(r)=>codeColorOf(r.id), colColor:(id)=>codeColorOf(id) });
   } else if(tab==='cruz'){
     hint = 'Nº de trechos de cada código nos documentos com cada valor da categoria.';
     chart = (!cat || crossTab.rows.length===0) ? null
-      : svgHeat(crossTab.rows, crossTab.cols, (r,c)=>r.cells[c]||0, crossTab.max, { W:cw, colLabel:(v)=>v });
+      : svgHeat(crossTab.rows, crossTab.cols, (r,c)=>r.cells[c]||0, crossTab.max, { W:cw, colLabel:(v)=>v, rowColor:(r)=>codeColorOf(r.id) });
   } else if(tab==='tempo'){
     hint = 'Trechos codificados por ano (data consolidada do documento).';
     chart = timeData.length===0 ? null : svgHBars(timeData, { w:cw, color:'var(--teal-deep)' });
@@ -6522,7 +6524,7 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
           ${coocX.size>0 && html`<div style="padding:0 14px 6px"><button class="btn sm ghost" style="width:100%" onClick=${()=>setCoocX(new Set())}>limpar X</button></div>`}
           <div class="tree" style="padding:4px 6px">
             ${tops.map(t=>html`<${CloudCodeNode} key=${'x'+t.id} code=${t} childrenOf=${childrenOf}
-              counts=${codeCounts} selectedIds=${coocX} onToggle=${toggleIn(setCoocX)} depthPad=${0} />`)}
+              counts=${codeCounts} selectedIds=${coocX} onToggle=${toggleFamily(setCoocX)} depthPad=${0} />`)}
           </div>
         </div>
         <div style="border-top:1px solid var(--line-soft)">
@@ -6534,7 +6536,7 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
           ${coocY.size>0 && html`<div style="padding:0 14px 6px"><button class="btn sm ghost" style="width:100%" onClick=${()=>setCoocY(new Set())}>limpar Y</button></div>`}
           <div class="tree" style="padding:4px 6px">
             ${tops.map(t=>html`<${CloudCodeNode} key=${'y'+t.id} code=${t} childrenOf=${childrenOf}
-              counts=${codeCounts} selectedIds=${coocY} onToggle=${toggleIn(setCoocY)} depthPad=${0} />`)}
+              counts=${codeCounts} selectedIds=${coocY} onToggle=${toggleFamily(setCoocY)} depthPad=${0} />`)}
           </div>
         </div>
       </div>`}
