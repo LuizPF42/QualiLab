@@ -3194,7 +3194,10 @@ function App(){
                 // cinza e preto tem o mesmo tom claro de fundo (tint), praticamente
                 // indistinguiveis sem essa borda; a caixa fechada tambem lembra visualmente o
                 // "tarjao" classico de redacao, reforcando que e censura.
-                const border = code?.is_redaction ? `border:2px solid ${col.solid}`
+                // em fundo escuro de leitura (tema escuro do leitor, ou modo escuro do app que
+                // escurece sépia/claro também) a borda preta da censura some — usa branca.
+                const readerDark = readerPrefs.theme==='dark' || darkMode;
+                const border = code?.is_redaction ? `border:2px solid ${readerDark ? '#fff' : col.solid}`
                   : run.codings.length>1 ? `border-bottom:2px solid ${col.solid}` : '';
                 return html`<span key=${i} data-start=${run.start} data-end=${run.end} data-c="1" title=${title} ...${matchAttrs}
                    class=${isCurrent?'current':''}
