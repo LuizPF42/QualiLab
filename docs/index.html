@@ -4243,8 +4243,8 @@ function MemoEditor({ sel, project, codeById, codePath, memos, onSave }){
 // O array tambem decide a ordem dos botoes de provedor.
 const AI_PROVIDERS = [
   { id:'gemini', label:'Google Gemini', models:[
-    { id:'gemini-3.1-flash-lite',  label:'Flash Lite', note:'mais rápido e barato' },
-    { id:'gemini-3.5-flash',       label:'Flash',      note:'padrão — equilíbrio', def:true },
+    { id:'gemini-3.1-flash-lite',  label:'Flash Lite', note:'padrão — mais rápido e barato', def:true },
+    { id:'gemini-3.5-flash',       label:'Flash',      note:'equilíbrio' },
     { id:'gemini-3.1-pro-preview', label:'Pro',        note:'mais capaz — mais lento e caro' },
   ]},
   { id:'openai', label:'OpenAI', models:[
