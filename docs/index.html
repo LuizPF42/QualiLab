@@ -2207,6 +2207,15 @@ function App(){
   const undoStackRef = useRef([]);
   const [busy, setBusy] = useState(null);
   const [progress, setProgress] = useState(null); // {done,total} durante import grande
+  // avisa antes de fechar/recarregar a aba enquanto há importação/upload em andamento
+  // (trocar de aba do navegador não interrompe — MessageChannel/Worker seguem —, mas fechar
+  // ou recarregar no meio perde o progresso). Só ativo enquanto 'busy'.
+  useEffect(()=>{
+    if(!busy) return;
+    const h = (e)=>{ e.preventDefault(); e.returnValue=''; return ''; };
+    window.addEventListener('beforeunload', h);
+    return ()=> window.removeEventListener('beforeunload', h);
+  }, [busy]);
   const [online, setOnline] = useState(navigator.onLine);
   const [pending, setPending] = useState(0); // escritas em fila (cloud offline)
   const [saveError, setSaveError] = useState(null); // ultima falha de gravacao local/arquivo (null = ok)
