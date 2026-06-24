@@ -489,7 +489,7 @@ function maskSlice(content, start, end, ranges){
   if(pos<end) out+=content.slice(pos,end);
   return out;
 }
-function buildWebAnnotations(docs, codes, allC, memos, project){
+function buildWebAnnotations(docs, codes, allC, memos, project, anonymize){
   const docById={}; docs.forEach(d=>docById[d.id]=d);
   const { codeMemo, docMemo, codingMemo, projectMemo } = indexMemos(memos);
   const redactionCodeIds = new Set(codes.filter(c=>c.is_redaction).map(c=>c.id));
@@ -508,7 +508,7 @@ function buildWebAnnotations(docs, codes, allC, memos, project){
     const ann = {
       id:'urn:uuid:'+(c.id||uid()), type:'Annotation',
       created: c.created_at || undefined,
-      creator: c.author_name ? { type:'Person', name:c.author_name } : undefined,
+      creator: (!anonymize && c.author_name) ? { type:'Person', name:c.author_name } : undefined,
       body,
       target:{
         source:'urn:qualilab:document:'+c.document_id,
@@ -535,9 +535,9 @@ function buildWebAnnotations(docs, codes, allC, memos, project){
   };
   return collection;
 }
-function exportWebAnnotations(docs, codes, allC, memos, project){
-  download((project?.name||'projeto').replace(/[^\w\-]+/g,'_')+'_anotacoes.json',
-    JSON.stringify(buildWebAnnotations(docs, codes, allC, memos, project),null,2), 'application/ld+json');
+function exportWebAnnotations(docs, codes, allC, memos, project, anonymize){
+  download((project?.name||'projeto').replace(/[^\w\-]+/g,'_')+(anonymize?'_anon':'')+'_anotacoes.json',
+    JSON.stringify(buildWebAnnotations(docs, codes, allC, memos, project, anonymize),null,2), 'application/ld+json');
 }
 
 /* Leitor de Transparência: página HTML auto-contida (sem rede, sem build) que mostra
@@ -545,7 +545,7 @@ function exportWebAnnotations(docs, codes, allC, memos, project){
    o excerto e a autoria — o equivalente ao overlay do ATI, mas hospedável por você (ex.:
    uma subpasta do GitHub Pages). Reaproveita buildRuns/codeColor; pré-renderiza os runs
    pra não precisar embarcar lógica do app. */
-function buildTransparencyReaderHTML(docs, codes, allC, memos, project){
+function buildTransparencyReaderHTML(docs, codes, allC, memos, project, anonymize){
   const codeById={}; codes.forEach(c=>codeById[c.id]=c);
   const colorOf = (id)=>{ const c=codeById[id]; return c ? codeColor(c.hue, c.depth, c.hue_deg) : {tint:'#eee',solid:'#888'}; };
   const { codeMemo, docMemo, codingMemo, projectMemo } = indexMemos(memos);
@@ -568,7 +568,7 @@ function buildTransparencyReaderHTML(docs, codes, allC, memos, project){
       if(!vis.length){ body += t; return; }
       const col = colorOf(vis[0].code_id);
       vis.forEach(c=>{ if(!anns[c.id]){ const p=codePathFor(codes,c.code_id);
-        anns[c.id]={ code:p.join(' › '), color:colorOf(c.code_id).solid, author:c.author_name||'',
+        anns[c.id]={ code:p.join(' › '), color:colorOf(c.code_id).solid, author:anonymize?'':(c.author_name||''),
           note:codingMemo[c.id]||codeMemo[c.code_id]||'' }; } });
       const bb = vis.length>1 ? `border-bottom:2px solid ${col.solid}` : '';
       body += `<span class="hl" data-ann="${vis.map(c=>c.id).join(' ')}" style="background:${col.tint};${bb}">${t}</span>`;
@@ -675,9 +675,9 @@ document.addEventListener('click',function(e){
 });
 <\/script></body></html>`;
 }
-function exportTransparencyReader(docs, codes, allC, memos, project){
-  const htmlStr = buildTransparencyReaderHTML(docs, codes, allC, memos, project);
-  download((project?.name||'projeto').replace(/[^\w\-]+/g,'_')+'_transparencia.html', htmlStr, 'text/html;charset=utf-8');
+function exportTransparencyReader(docs, codes, allC, memos, project, anonymize){
+  const htmlStr = buildTransparencyReaderHTML(docs, codes, allC, memos, project, anonymize);
+  download((project?.name||'projeto').replace(/[^\w\-]+/g,'_')+(anonymize?'_anon':'')+'_transparencia.html', htmlStr, 'text/html;charset=utf-8');
 }
 
 async function exportQDPX(docs, cats, allV, codes, allC, project){
@@ -3128,6 +3128,7 @@ function App(){
                 ${docs.length===0 && html`<option value="">sem documentos</option>`}
                 ${docs.map(d=>html`<option value=${d.id}>${d.name}</option>`)}
               </select>`}
+          ${activeDoc && renamingDoc===null && html`<button class="icon-btn" title="Renomear documento" onClick=${()=>setRenamingDoc(activeDoc.name)}>✏️</button>`}
           <label class="btn sm">＋ enviar
             <input type="file" multiple accept=".txt,.md,.markdown,.pdf,.docx" style="display:none" onChange=${e=>{onUpload(e.target.files); e.target.value='';}} />
           </label>
@@ -3145,7 +3146,6 @@ function App(){
               ${readerPrefs.theme==='light'?'☀':readerPrefs.theme==='sepia'?'📜':'🌙'}
             </button>
           </div>`}
-          ${activeDoc && renamingDoc===null && html`<button class="icon-btn" title="Renomear documento" onClick=${()=>setRenamingDoc(activeDoc.name)}>✏️</button>`}
           ${activeDoc && html`<button class="icon-btn" title="Remover documento" onClick=${()=>delDoc(activeDoc.id)}>🗑</button>`}
         </div>
 
@@ -3319,7 +3319,7 @@ function App(){
       <section class="pane" style="flex:1;min-width:0;background:var(--paper)">
         <div class="pane-body scroll" style="padding:0">
           <${MemoEditor} sel=${memoSel} project=${project} codeById=${codeById} codePath=${codePath}
-            codings=${allCodings} memos=${memos} onSave=${saveMemo} />
+            codings=${allCodings} docs=${docs} memos=${memos} onSave=${saveMemo} onRenameDoc=${renameDoc} />
         </div>
       </section>
     </div>`
@@ -4735,14 +4735,16 @@ function MemoCodeNode({ code, childrenOf, sel, onSel, hasMemo, depthPad }){
 
 /* ============ MemoEditor — painel direito da aba Memos ============
    Editor de texto livre com autosave (debounce), mostrando autor/data da última edição. */
-function MemoEditor({ sel, project, codeById, codePath, codings, memos, onSave }){
+function MemoEditor({ sel, project, codeById, codePath, codings, docs, memos, onSave, onRenameDoc }){
   const targetId = sel.scope==='project' ? project?.id : sel.targetId;
   const current = memos.find(m=>m.scope===sel.scope && m.target_id===targetId);
   const [text, setText] = useState(current?.content||'');
   const [saving, setSaving] = useState(false);
+  const [editingName, setEditingName] = useState(false); // renomear documento inline no topo do memo
+  const [nameVal, setNameVal] = useState('');
   const debRef = useRef(null);
 
-  useEffect(()=>{ setText(current?.content||''); }, [sel.scope, targetId]); // eslint-disable-line
+  useEffect(()=>{ setText(current?.content||''); setEditingName(false); }, [sel.scope, targetId]); // eslint-disable-line
 
   if(!targetId) return html`<div class="empty">
     <div class="t">Selecione um alvo</div>
@@ -4750,6 +4752,7 @@ function MemoEditor({ sel, project, codeById, codePath, codings, memos, onSave }
   </div>`;
 
   const coding = sel.scope==='coding' ? (codings||[]).find(c=>c.id===targetId) : null;
+  const doc = sel.scope==='document' ? (docs||[]).find(d=>d.id===targetId) : null;
   const label = sel.scope==='project' ? 'Memo do projeto'
     : sel.scope==='document' ? 'Memo do documento'
     : sel.scope==='coding' ? 'Nota analítica do trecho'
@@ -4765,6 +4768,15 @@ function MemoEditor({ sel, project, codeById, codePath, codings, memos, onSave }
 
   return html`<div class="section" style="max-width:760px;margin:0 auto">
     <p class="h" style="margin-bottom:2px">${label}</p>
+    ${doc && html`<div class="row" style="gap:6px;align-items:center;margin:0 0 4px">
+      ${editingName
+        ? html`<input class="txtin" autoFocus style="max-width:460px;font-size:14px;padding:3px 8px" value=${nameVal}
+            onInput=${e=>setNameVal(e.target.value)}
+            onKeyDown=${e=>{ if(e.key==='Enter'){ if(nameVal.trim()) onRenameDoc?.(doc.id, nameVal); setEditingName(false); } else if(e.key==='Escape') setEditingName(false); }}
+            onBlur=${()=>{ if(nameVal.trim()) onRenameDoc?.(doc.id, nameVal); setEditingName(false); }} />`
+        : html`<span style="font-weight:600;font-size:15px">${doc.name}</span>
+          ${onRenameDoc && html`<button class="icon-btn" title="Renomear documento" style="font-size:13px" onClick=${()=>{ setNameVal(doc.name); setEditingName(true); }}>✏️</button>`}`}
+    </div>`}
     ${subtitle && html`<p class="hint" style="margin:0 0 4px">${subtitle}</p>`}
     ${coding && coding.quote && html`<blockquote style="margin:0 0 8px;padding:8px 12px;background:var(--surface);border-left:3px solid var(--teal);font-family:var(--serif);font-size:14px;max-height:140px;overflow:auto">${coding.quote}</blockquote>`}
     <p class="hint" style="margin:0 0 10px">
@@ -4978,6 +4990,7 @@ function ReportView({ project, projectMode, docs, cats, codes, codeById, codePat
   const [enabled, setEnabled] = useState(()=>new Set(['credito','resumo','freq']));
   const [title, setTitle] = useState('');
   const [rmode, setRmode] = useState('ati'); // ati | padrao | w3c — interativo é o padrão (incentivar)
+  const [anonAuthors, setAnonAuthors] = useState(false); // ocultar autoria (revisão cega) nas saídas de transparência
   const toggle = (id)=> setEnabled(s=>{ const n=new Set(s); n.has(id)?n.delete(id):n.add(id); return n; });
   const on = (id)=> enabled.has(id);
 
@@ -5097,12 +5110,12 @@ function ReportView({ project, projectMode, docs, cats, codes, codeById, codePat
   }
 
   // --- modos de transparência: prévia ao vivo + exportação (só constrói no modo ativo) ---
-  const readerHTML = useMemo(()=> rmode==='ati' ? buildTransparencyReaderHTML(docs, codes, allCodings, memos||[], project) : ''
-  , [rmode, docs, codes, allCodings, memos, project]);
-  const w3cText = useMemo(()=> rmode==='w3c' ? JSON.stringify(buildWebAnnotations(docs, codes, allCodings, memos||[], project), null, 2) : ''
-  , [rmode, docs, codes, allCodings, memos, project]);
-  const w3cTotal = useMemo(()=> rmode==='w3c' ? (buildWebAnnotations(docs, codes, allCodings, memos||[], project).total||0) : 0
-  , [rmode, docs, codes, allCodings, memos, project]);
+  const readerHTML = useMemo(()=> rmode==='ati' ? buildTransparencyReaderHTML(docs, codes, allCodings, memos||[], project, anonAuthors) : ''
+  , [rmode, docs, codes, allCodings, memos, project, anonAuthors]);
+  const w3cText = useMemo(()=> rmode==='w3c' ? JSON.stringify(buildWebAnnotations(docs, codes, allCodings, memos||[], project, anonAuthors), null, 2) : ''
+  , [rmode, docs, codes, allCodings, memos, project, anonAuthors]);
+  const w3cTotal = useMemo(()=> rmode==='w3c' ? (buildWebAnnotations(docs, codes, allCodings, memos||[], project, anonAuthors).total||0) : 0
+  , [rmode, docs, codes, allCodings, memos, project, anonAuthors]);
   const RMODES = [
     { id:'ati',    label:'Relatório Interativo (ATI)', desc:'Documentos com grifos clicáveis e nota analítica. HTML publicável.' },
     { id:'padrao', label:'Relatório Padrão',         desc:'Resumo: contagens, frequências, trechos. Imprimir/PDF ou copiar.' },
@@ -5115,8 +5128,8 @@ function ReportView({ project, projectMode, docs, cats, codes, codeById, codePat
       <div class="row" style="gap:8px;flex-wrap:wrap">
         ${rmode==='padrao' && html`<button class="btn sm" onClick=${copy} disabled=${enabled.size===0}>${copied?'Copiado ✓':'Copiar texto'}</button>
           <button class="btn sm primary" onClick=${()=>window.print()} disabled=${enabled.size===0}>Imprimir / PDF</button>`}
-        ${rmode==='ati' && html`<button class="btn sm primary" onClick=${()=>exportTransparencyReader(docs, codes, allCodings, memos||[], project)} disabled=${docs.length===0}>Exportar HTML</button>`}
-        ${rmode==='w3c' && html`<button class="btn sm primary" onClick=${()=>exportWebAnnotations(docs, codes, allCodings, memos||[], project)} disabled=${docs.length===0}>Exportar JSON</button>`}
+        ${rmode==='ati' && html`<button class="btn sm primary" onClick=${()=>exportTransparencyReader(docs, codes, allCodings, memos||[], project, anonAuthors)} disabled=${docs.length===0}>Exportar HTML</button>`}
+        ${rmode==='w3c' && html`<button class="btn sm primary" onClick=${()=>exportWebAnnotations(docs, codes, allCodings, memos||[], project, anonAuthors)} disabled=${docs.length===0}>Exportar JSON</button>`}
       </div>
     </div>
     <div class="pane-body scroll" style="display:flex;gap:0;align-items:flex-start">
@@ -5167,6 +5180,10 @@ function ReportView({ project, projectMode, docs, cats, codes, codeById, codePat
           Anotações no padrão aberto <b>W3C Web Annotation</b> (JSON-LD) — a língua de dados sob o ATI do QDR, hypothes.is, Anno-REP e Dataverse. Cada trecho vira uma anotação com seletor de posição/citação + nota analítica.
           <p style="margin:8px 0 0">${w3cTotal} anotação(ões). Censura mascarada.</p>
         </div>`}
+        ${rmode!=='padrao' && html`<label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer;margin-top:14px;padding-top:12px;border-top:1px solid var(--line);font-size:12px;color:var(--ink-soft)">
+          <input type="checkbox" checked=${anonAuthors} onChange=${()=>setAnonAuthors(v=>!v)} style="margin-top:2px" />
+          <span><b>Ocultar autoria</b> (revisão cega) — remove o nome dos codificadores da prévia e da exportação. Use ao preparar o material para avaliador cego (double-blind).</span>
+        </label>`}
       </aside>
 
       ${rmode==='padrao' && html`
