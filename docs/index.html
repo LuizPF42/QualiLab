@@ -50,7 +50,7 @@
   #app{height:100%;}
   ::selection{background:rgba(0,66,122,.18);}
   button{font-family:var(--sans);cursor:pointer;}
-  input,select,textarea{font-family:var(--sans);}
+  input,select,textarea{font-family:var(--sans);color:var(--ink);}
   .scroll::-webkit-scrollbar{width:10px;height:10px;}
   .scroll::-webkit-scrollbar-thumb{background:var(--line);border-radius:8px;}
   :focus-visible{outline:2px solid var(--sky);outline-offset:2px;}
@@ -115,6 +115,11 @@
   .field-label{font-size:12.5px;font-weight:600;margin-bottom:6px;display:flex;align-items:center;gap:7px;}
   .opt{font-size:12.5px;padding:5px 11px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);}
   .opt.on{background:var(--teal);border-color:var(--teal);color:#fff;font-weight:600;}
+  /* descricao (.meta) dentro de um .opt selecionado: no claro o fundo e navy (texto claro);
+     no escuro o --teal vira azul-claro, entao texto/descricao ficam ESCUROS pra contrastar. */
+  .opt.on .meta{color:rgba(255,255,255,.82);}
+  [data-theme="dark"] .opt.on{color:#0A1A2A;}
+  [data-theme="dark"] .opt.on .meta{color:rgba(8,20,33,.72);}
   .txtin{width:100%;font-size:13px;padding:7px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);}
   .meta{font-size:11px;color:var(--ink-faint);}
 
