@@ -444,6 +444,208 @@ function exportQDC(codes, project){
   download((project?.name||'codebook').replace(/[^\w\-]+/g,'_')+'.qdc', qdc, 'application/xml');
 }
 
+/* ============ Web Annotation (W3C) + Leitor de Transparência ============
+   Liga o QualiLab ao ecossistema de transparência qualitativa (DA-RT / QDR / ATI).
+   O padrão de fato sob o ATI do QDR, hypothes.is, Anno-REP e Dataverse é o W3C Web
+   Annotation Data Model (JSON-LD). Miramos NELE — interoperável sem casar com nenhum
+   fornecedor. Cada trecho codificado vira uma Annotation: target com TextQuoteSelector
+   (exact/prefix/suffix) + TextPositionSelector (start/end); o código vira um body de
+   "tagging" e o memo do código, quando existe, um body de "commenting" (a "nota
+   analítica" do ATI). Memos de documento/projeto entram como metadados da coleção.
+   Para qual camada usar: prefere o gabarito (final); se não houver, as individuais
+   (mesma regra do QDPX). Ver CLAUDE.md. */
+function pickTransparencyLayer(allC){
+  const finalC = allC.filter(c=>c.layer==='final');
+  return finalC.length ? finalC : allC.filter(c=>(c.layer||'individual')!=='final');
+}
+function indexMemos(memos){
+  const codeMemo={}, docMemo={}, codingMemo={}; let projectMemo='';
+  (memos||[]).forEach(m=>{ if(!m.content||!String(m.content).trim()) return;
+    if(m.scope==='code') codeMemo[m.target_id]=m.content;
+    else if(m.scope==='document') docMemo[m.target_id]=m.content;
+    else if(m.scope==='coding') codingMemo[m.target_id]=m.content;
+    else if(m.scope==='project') projectMemo=m.content; });
+  return { codeMemo, docMemo, codingMemo, projectMemo };
+}
+/* CENSURA nos exports de transparência: por padrão NADA marcado com código is_redaction pode
+   vazar num apêndice público. Como esses exports são artefatos para terceiros, mascaramos sempre
+   (sem o toggle por-código que o Relatório tem). Duas frentes: (1) excluir as próprias codings
+   de censura das anotações/legenda; (2) substituir por "[trecho censurado]" qualquer pedaço de
+   texto (do documento OU do excerto de outra coding) que caia sobre uma faixa censurada.
+   maskRedactedContent muda o tamanho do texto (desalinha offsets), então aqui trabalhamos por
+   faixa/posição: redactionRanges (faixas mescladas, de TODAS as camadas — nunca vaza) + maskSlice
+   (recorta [start,end) trocando só a sobreposição). */
+function redactionRanges(allC, redactionCodeIds, docId){
+  const r = allC.filter(c=>c.document_id===docId && redactionCodeIds.has(c.code_id) && c.span_start>=0 && c.span_end>c.span_start)
+    .map(c=>[c.span_start,c.span_end]).sort((a,b)=>a[0]-b[0]);
+  const m=[]; for(const x of r){ const last=m[m.length-1]; if(last && x[0]<=last[1]) last[1]=Math.max(last[1],x[1]); else m.push([...x]); }
+  return m;
+}
+function maskSlice(content, start, end, ranges){
+  if(!ranges || !ranges.length) return content.slice(start,end);
+  let out='', pos=start;
+  for(const [s,e] of ranges){ if(e<=start||s>=end) continue; const a=Math.max(s,start), b=Math.min(e,end);
+    if(a>pos) out+=content.slice(pos,a); out+='[trecho censurado]'; pos=Math.max(pos,b); }
+  if(pos<end) out+=content.slice(pos,end);
+  return out;
+}
+function exportWebAnnotations(docs, codes, allC, memos, project){
+  const docById={}; docs.forEach(d=>docById[d.id]=d);
+  const { codeMemo, docMemo, codingMemo, projectMemo } = indexMemos(memos);
+  const redactionCodeIds = new Set(codes.filter(c=>c.is_redaction).map(c=>c.id));
+  const rangesByDoc = {}; docs.forEach(d=>rangesByDoc[d.id]=redactionRanges(allC, redactionCodeIds, d.id));
+  const CTX = 32; // palavras de contexto (prefix/suffix) p/ reancoragem robusta
+  const useC = pickTransparencyLayer(allC)
+    .filter(c=>c.span_start>=0 && c.span_end>c.span_start && !redactionCodeIds.has(c.code_id));
+  const items = useC.map(c=>{
+    const content = docById[c.document_id]?.content || '';
+    const ranges = rangesByDoc[c.document_id] || [];
+    const path = codePathFor(codes, c.code_id);
+    // nota analítica: a do TRECHO (coding) tem prioridade; cai pra do código se não houver
+    const note = codingMemo[c.id] || codeMemo[c.code_id];
+    const body = [{ type:'TextualBody', purpose:'tagging', value: path.join(' > ') }];
+    if(note) body.push({ type:'TextualBody', purpose:'commenting', value: note });
+    const ann = {
+      id:'urn:uuid:'+(c.id||uid()), type:'Annotation',
+      created: c.created_at || undefined,
+      creator: c.author_name ? { type:'Person', name:c.author_name } : undefined,
+      body,
+      target:{
+        source:'urn:qualilab:document:'+c.document_id,
+        selector:[
+          { type:'TextQuoteSelector', exact: maskSlice(content, c.span_start, c.span_end, ranges) || c.quote || '',
+            prefix: maskSlice(content, Math.max(0,c.span_start-CTX), c.span_start, ranges),
+            suffix: maskSlice(content, c.span_end, c.span_end+CTX, ranges) },
+          { type:'TextPositionSelector', start:c.span_start, end:c.span_end }
+        ]
+      }
+    };
+    return ann;
+  });
+  const collection = {
+    '@context':'http://www.w3.org/ns/anno.jsonld',
+    type:'AnnotationCollection',
+    label: project?.name || 'Projeto QualiLab',
+    generator:{ type:'Software', name:'QualiLab', homepage:'https://luizpf42.github.io/QualiLab/' },
+    total: items.length,
+    // metadados não-normativos (extensão QualiLab): visão geral + fontes referenciadas
+    'qualilab:overview': projectMemo || undefined,
+    'qualilab:sources': docs.map(d=>({ id:'urn:qualilab:document:'+d.id, name:d.name, note: docMemo[d.id]||undefined })),
+    first:{ type:'AnnotationPage', items }
+  };
+  download((project?.name||'projeto').replace(/[^\w\-]+/g,'_')+'_anotacoes.json',
+    JSON.stringify(collection,null,2), 'application/ld+json');
+}
+
+/* Leitor de Transparência: página HTML auto-contida (sem rede, sem build) que mostra
+   cada documento com os trechos grifados e, ao clicar, a "nota analítica" (memo do código),
+   o excerto e a autoria — o equivalente ao overlay do ATI, mas hospedável por você (ex.:
+   uma subpasta do GitHub Pages). Reaproveita buildRuns/codeColor; pré-renderiza os runs
+   pra não precisar embarcar lógica do app. */
+function buildTransparencyReaderHTML(docs, codes, allC, memos, project){
+  const codeById={}; codes.forEach(c=>codeById[c.id]=c);
+  const colorOf = (id)=>{ const c=codeById[id]; return c ? codeColor(c.hue, c.depth, c.hue_deg) : {tint:'#eee',solid:'#888'}; };
+  const { codeMemo, docMemo, codingMemo, projectMemo } = indexMemos(memos);
+  const redactionCodeIds = new Set(codes.filter(c=>c.is_redaction).map(c=>c.id));
+  const useC = pickTransparencyLayer(allC).filter(c=>!redactionCodeIds.has(c.code_id));
+  const anns = {}; // id -> detalhes p/ o painel
+  const docsHtml = docs.map(d=>{
+    const content = d.content || '';
+    const ranges = redactionRanges(allC, redactionCodeIds, d.id);
+    const overlapsRedaction = (s,e)=> ranges.some(([a,b])=>a<e && b>s);
+    // inclui as codings de censura só pra cortar os runs nas bordas certas (não viram grifo)
+    const redC = allC.filter(c=>c.document_id===d.id && redactionCodeIds.has(c.code_id) && c.span_start>=0 && c.span_end>c.span_start);
+    const dc = useC.filter(c=>c.document_id===d.id && c.span_start>=0 && c.span_end>c.span_start).concat(redC);
+    let body='', prevMasked=false;
+    buildRuns(content, dc).forEach(r=>{
+      if(overlapsRedaction(r.start, r.end)){ if(!prevMasked){ body += '<span class="redacted">[trecho censurado]</span>'; prevMasked=true; } return; }
+      prevMasked=false;
+      const vis = r.codings.filter(c=>!redactionCodeIds.has(c.code_id));
+      const t = xmlEsc(r.text).replace(/\n/g,'<br>');
+      if(!vis.length){ body += t; return; }
+      const col = colorOf(vis[0].code_id);
+      vis.forEach(c=>{ if(!anns[c.id]){ const p=codePathFor(codes,c.code_id);
+        anns[c.id]={ code:p.join(' › '), color:colorOf(c.code_id).solid, author:c.author_name||'',
+          note:codingMemo[c.id]||codeMemo[c.code_id]||'', exact:maskSlice(content, c.span_start, c.span_end, ranges) }; } });
+      const bb = vis.length>1 ? `border-bottom:2px solid ${col.solid}` : '';
+      body += `<span class="hl" data-ann="${vis.map(c=>c.id).join(' ')}" style="background:${col.tint};${bb}">${t}</span>`;
+    });
+    const dm = docMemo[d.id] ? `<div class="docnote">${xmlEsc(docMemo[d.id]).replace(/\n/g,'<br>')}</div>` : '';
+    return `<section class="doc"><h2>${xmlEsc(d.name)}</h2>${dm}<div class="reader">${body}</div></section>`;
+  }).join('\n');
+  // legenda só com os códigos visíveis (já sem censura, pois useC a exclui)
+  const usedCodes = [...new Set(useC.map(c=>c.code_id))].map(id=>codeById[id]).filter(Boolean);
+  const legend = usedCodes.map(c=>{ const col=codeColor(c.hue,c.depth,c.hue_deg);
+    return `<span class="leg"><i style="background:${col.solid}"></i>${xmlEsc(codePathFor(codes,c.id).join(' › '))}</span>`; }).join('');
+  const overview = projectMemo ? `<div class="overview"><h3>Visão geral</h3><div>${xmlEsc(projectMemo).replace(/\n/g,'<br>')}</div></div>` : '';
+  const dataJson = JSON.stringify(anns).replace(/</g,'\\u003c');
+  const title = xmlEsc(project?.name || 'Projeto QualiLab');
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${title} — Apêndice de Transparência</title>
+<style>
+:root{--teal:#00427A;--ink:#1a2330;--muted:#5b6675;--line:#e2e8f0;--paper:#fff}
+*{box-sizing:border-box}
+body{margin:0;font-family:Georgia,'Newsreader',serif;color:var(--ink);background:#f6f8fb;line-height:1.6}
+header{background:var(--teal);color:#fff;padding:18px 24px;font-family:system-ui,sans-serif}
+header h1{margin:0;font-size:20px}
+header .sub{opacity:.85;font-size:13px;margin-top:4px}
+.wrap{display:flex;gap:20px;max-width:1180px;margin:0 auto;padding:24px;align-items:flex-start}
+.main{flex:1;min-width:0}
+.aside{width:340px;flex:none;position:sticky;top:24px}
+.overview,.legend,.doc,#panel{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin-bottom:18px}
+.legend{font-family:system-ui,sans-serif;font-size:13px}
+.leg{display:inline-flex;align-items:center;gap:6px;margin:3px 12px 3px 0}
+.leg i{width:12px;height:12px;border-radius:3px;display:inline-block}
+.doc h2{font-size:18px;margin:0 0 10px;color:var(--teal)}
+.docnote{font-style:italic;color:var(--muted);border-left:3px solid var(--line);padding-left:12px;margin-bottom:12px;font-size:14px}
+.reader{white-space:normal}
+.hl{border-radius:2px;cursor:pointer;padding:1px 0}
+.hl.active{outline:2px solid var(--teal);outline-offset:1px}
+.redacted{background:#1a2330;color:#cbd5e1;border-radius:2px;padding:0 5px;font-family:system-ui,sans-serif;font-size:12px;letter-spacing:.02em;user-select:none}
+#panel{font-family:system-ui,sans-serif;font-size:14px}
+#panel h3{margin:0 0 10px;font-size:14px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.ann{border-top:1px solid var(--line);padding-top:12px;margin-top:12px}
+.ann:first-child{border-top:0;padding-top:0;margin-top:0}
+.ann-code{font-weight:700}
+.ann-meta{color:var(--muted);font-size:12px;margin:2px 0 8px}
+.ann blockquote{margin:0 0 8px;padding:8px 12px;background:#f6f8fb;border-left:3px solid var(--teal);font-family:Georgia,serif;font-size:14px}
+.ann-note{white-space:pre-wrap}
+.ann-empty,.muted{color:var(--muted);font-style:italic}
+footer{text-align:center;color:var(--muted);font-family:system-ui,sans-serif;font-size:12px;padding:24px}
+footer a{color:var(--teal)}
+</style></head><body>
+<header><h1>${title}</h1><div class="sub">Apêndice de Transparência — gerado pelo QualiLab</div></header>
+<div class="wrap">
+  <div class="main">${overview}${legend?`<div class="legend">${legend}</div>`:''}${docsHtml}</div>
+  <div class="aside"><div id="panel"><h3>Nota analítica</h3><p class="muted">Clique num trecho grifado para ver o código, o excerto e a nota.</p></div></div>
+</div>
+<footer>Gerado com <a href="https://luizpf42.github.io/QualiLab/">QualiLab</a> · padrão de anotação compatível com W3C Web Annotation / ATI</footer>
+<script>
+var ANNS = JSON.parse(${JSON.stringify(dataJson)});
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+document.addEventListener('click',function(e){
+  var sp=e.target.closest?e.target.closest('.hl'):null; if(!sp) return;
+  var panel=document.getElementById('panel');
+  var ids=sp.getAttribute('data-ann').split(' '), out='<h3>Nota analítica</h3>';
+  ids.forEach(function(id){ var a=ANNS[id]; if(!a) return;
+    out+='<div class="ann"><div class="ann-code" style="color:'+a.color+'">'+esc(a.code)+'</div>'
+      +(a.author?'<div class="ann-meta">'+esc(a.author)+'</div>':'')
+      +'<blockquote>'+esc(a.exact)+'</blockquote>'
+      +(a.note?'<div class="ann-note">'+esc(a.note)+'</div>':'<div class="ann-empty">Sem nota analítica.</div>')
+      +'</div>';
+  });
+  panel.innerHTML=out;
+  var prev=document.querySelector('.hl.active'); if(prev)prev.classList.remove('active');
+  sp.classList.add('active');
+});
+<\/script></body></html>`;
+}
+function exportTransparencyReader(docs, codes, allC, memos, project){
+  const htmlStr = buildTransparencyReaderHTML(docs, codes, allC, memos, project);
+  download((project?.name||'projeto').replace(/[^\w\-]+/g,'_')+'_transparencia.html', htmlStr, 'text/html;charset=utf-8');
+}
+
 async function exportQDPX(docs, cats, allV, codes, allC, project){
   const JSZip = await getJSZip();
   const zip = new JSZip();
@@ -1072,20 +1274,23 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress){
     // invariante que o RPC set_project_mode garante ao converter collective->individual) —
     // ignora a camada original do arquivo de origem, que pode ter sido exportado de um
     // projeto coletivo com codificações ainda 'individual'.
+    const codingMap = {}; // id antigo -> id novo (p/ remapear memos de trecho)
     for(const c of (db.codings||[])){
       if(docMap[c.document_id] && codeMap[c.code_id]){
         const layer = projectMode==='individual' ? codLayer : (c.layer||codLayer);
-        await store.addCoding(projectId, { created_by:null, layer, document_id:docMap[c.document_id], code_id:codeMap[c.code_id], span_start:c.span_start, span_end:c.span_end, quote:c.quote, author_name:c.author_name||'importado' });
+        const nc = await store.addCoding(projectId, { created_by:null, layer, document_id:docMap[c.document_id], code_id:codeMap[c.code_id], span_start:c.span_start, span_end:c.span_end, quote:c.quote, author_name:c.author_name||'importado' });
+        if(c.id && nc?.id) codingMap[c.id] = nc.id;
       }
       await tick();
     }
 
-    // memos: remapeia o alvo (documento/código); memo de projeto vira o memo do projeto de destino
+    // memos: remapeia o alvo (documento/código/trecho); memo de projeto vira o memo do projeto de destino
     if(store.setMemo){
       for(const m of (db.memos||[])){
         let targetId = m.target_id;
         if(m.scope==='document') targetId = docMap[m.target_id];
         else if(m.scope==='code') targetId = codeMap[m.target_id];
+        else if(m.scope==='coding') targetId = codingMap[m.target_id];
         else if(m.scope==='project') targetId = projectId;
         if(targetId) await store.setMemo(projectId, m.scope, targetId, m.content, m.author_name);
         await tick();
@@ -1479,7 +1684,7 @@ async function createFileStore(fileHandle, isNew){
     realtime(){ return ()=>{}; },
     listDocuments(){ return P(db.documents.slice()); },
     async addDocument(pid,{id,name:dn,content}){ const d={id:id||uid(),name:dn,content,created_at:new Date().toISOString()}; db.documents.push(d); await save(); return d; },
-    async deleteDocument(id){ db.documents=db.documents.filter(d=>d.id!==id); db.doc_values=db.doc_values.filter(v=>v.document_id!==id); db.codings=db.codings.filter(c=>c.document_id!==id); db.memos=db.memos.filter(m=>!(m.scope==='document'&&m.target_id===id)); await save(); },
+    async deleteDocument(id){ const cids=new Set(db.codings.filter(c=>c.document_id===id).map(c=>c.id)); db.documents=db.documents.filter(d=>d.id!==id); db.doc_values=db.doc_values.filter(v=>v.document_id!==id); db.codings=db.codings.filter(c=>c.document_id!==id); db.memos=db.memos.filter(m=>!(m.scope==='document'&&m.target_id===id) && !(m.scope==='coding'&&cids.has(m.target_id))); await save(); },
     async clearProject(){ db.documents=[]; db.categories=[]; db.doc_values=[]; db.codes=[]; db.codings=[]; db.memos=db.memos.filter(m=>m.scope==='project'); await save(); },
     listCategories(){ return P(db.categories.slice().sort((a,b)=>a.position-b.position)); },
     async addCategory(pid,cat){ const c={id:uid(),position:db.categories.length,...cat}; db.categories.push(c); await save(); return c; },
@@ -1492,10 +1697,10 @@ async function createFileStore(fileHandle, isNew){
     listCodes(){ return P(db.codes.slice().sort((a,b)=>a.depth-b.depth||a.position-b.position)); },
     async addCode(pid,code){ const c={id:uid(),position:db.codes.length,...code}; db.codes.push(c); await save(); return c; },
     async updateCode(id,patch){ db.codes=db.codes.map(c=>c.id===id?{...c,...patch}:c); await save(); },
-    async deleteCode(id){ const kill=new Set([id]); let added=true; while(added){added=false; db.codes.forEach(c=>{if(c.parent_id&&kill.has(c.parent_id)&&!kill.has(c.id)){kill.add(c.id);added=true;}});} db.codes=db.codes.filter(c=>!kill.has(c.id)); db.codings=db.codings.filter(c=>!kill.has(c.code_id)); db.memos=db.memos.filter(m=>!(m.scope==='code'&&kill.has(m.target_id))); await save(); },
+    async deleteCode(id){ const kill=new Set([id]); let added=true; while(added){added=false; db.codes.forEach(c=>{if(c.parent_id&&kill.has(c.parent_id)&&!kill.has(c.id)){kill.add(c.id);added=true;}});} const cids=new Set(db.codings.filter(c=>kill.has(c.code_id)).map(c=>c.id)); db.codes=db.codes.filter(c=>!kill.has(c.id)); db.codings=db.codings.filter(c=>!kill.has(c.code_id)); db.memos=db.memos.filter(m=>!(m.scope==='code'&&kill.has(m.target_id)) && !(m.scope==='coding'&&cids.has(m.target_id))); await save(); },
     async listCodings(pid,docId){ return db.codings.filter(c=>c.document_id===docId); },
     async addCoding(pid,co){ const c={id:uid(),author_name:name,created_at:new Date().toISOString(),...co}; db.codings.push(c); await save(); return c; },
-    async deleteCoding(id){ db.codings=db.codings.filter(c=>c.id!==id); await save(); },
+    async deleteCoding(id){ db.codings=db.codings.filter(c=>c.id!==id); db.memos=db.memos.filter(m=>!(m.scope==='coding'&&m.target_id===id)); await save(); },
     async listMemos(){ return db.memos.slice(); },
     async setMemo(pid, scope, targetId, content, authorName){
       db.memos = db.memos.filter(m=>!(m.scope===scope && m.target_id===targetId));
@@ -1629,7 +1834,7 @@ function LocalStore(){
     async setProjectMode(){ return P(); },
     listDocuments(){ return P(db.documents.slice()); },
     addDocument(pid,{id,name:dn,content}){ const d={id:id||uid(),name:dn,content,created_at:new Date().toISOString()}; db.documents.push(d); save(); return P(d); },
-    deleteDocument(id){ db.documents=db.documents.filter(d=>d.id!==id); db.doc_values=db.doc_values.filter(v=>v.document_id!==id); db.codings=db.codings.filter(c=>c.document_id!==id); db.memos=db.memos.filter(m=>!(m.scope==='document'&&m.target_id===id)); save(); return P(); },
+    deleteDocument(id){ const cids=new Set(db.codings.filter(c=>c.document_id===id).map(c=>c.id)); db.documents=db.documents.filter(d=>d.id!==id); db.doc_values=db.doc_values.filter(v=>v.document_id!==id); db.codings=db.codings.filter(c=>c.document_id!==id); db.memos=db.memos.filter(m=>!(m.scope==='document'&&m.target_id===id) && !(m.scope==='coding'&&cids.has(m.target_id))); save(); return P(); },
     clearProject(){ const keepMemos=(db.memos||[]).filter(m=>m.scope==='project'); db={ documents:[], categories:[], doc_values:[], codes:[], codings:[], memos:keepMemos }; save(); return P(); },
     listCategories(){ return P(db.categories.slice().sort((a,b)=>a.position-b.position)); },
     addCategory(pid,cat){ const c={id:uid(),position:db.categories.length,...cat}; db.categories.push(c); save(); return P(c); },
@@ -1645,10 +1850,10 @@ function LocalStore(){
     listCodes(){ return P(db.codes.slice().sort((a,b)=>a.depth-b.depth||a.position-b.position)); },
     addCode(pid,code){ const c={id:uid(),position:db.codes.length,...code}; db.codes.push(c); save(); return P(c); },
     updateCode(id,patch){ db.codes=db.codes.map(c=>c.id===id?{...c,...patch}:c); save(); return P(); },
-    deleteCode(id){ const kill=new Set([id]); let added=true; while(added){added=false; db.codes.forEach(c=>{if(c.parent_id&&kill.has(c.parent_id)&&!kill.has(c.id)){kill.add(c.id);added=true;}});} db.codes=db.codes.filter(c=>!kill.has(c.id)); db.codings=db.codings.filter(c=>!kill.has(c.code_id)); db.memos=db.memos.filter(m=>!(m.scope==='code'&&kill.has(m.target_id))); save(); return P(); },
+    deleteCode(id){ const kill=new Set([id]); let added=true; while(added){added=false; db.codes.forEach(c=>{if(c.parent_id&&kill.has(c.parent_id)&&!kill.has(c.id)){kill.add(c.id);added=true;}});} const cids=new Set(db.codings.filter(c=>kill.has(c.code_id)).map(c=>c.id)); db.codes=db.codes.filter(c=>!kill.has(c.id)); db.codings=db.codings.filter(c=>!kill.has(c.code_id)); db.memos=db.memos.filter(m=>!(m.scope==='code'&&kill.has(m.target_id)) && !(m.scope==='coding'&&cids.has(m.target_id))); save(); return P(); },
     listCodings(pid,docId){ return P(db.codings.filter(c=>c.document_id===docId)); },
     addCoding(pid,co){ const c={id:uid(),author_name:name,created_at:new Date().toISOString(),...co}; db.codings.push(c); save(); return P(c); },
-    deleteCoding(id){ db.codings=db.codings.filter(c=>c.id!==id); save(); return P(); },
+    deleteCoding(id){ db.codings=db.codings.filter(c=>c.id!==id); db.memos=db.memos.filter(m=>!(m.scope==='coding'&&m.target_id===id)); save(); return P(); },
   };
 }
 
@@ -1729,7 +1934,7 @@ function SupabaseStore(sb){
     async setProjectMode(pid, pmode, authorName){ must(await sb.rpc('set_project_mode',{ p_project:pid, p_mode:pmode, p_author:authorName||'pesquisador' })); },
     async listDocuments(pid){ return must(await sb.from('documents').select('*').eq('project_id',pid).order('created_at')); },
     async addDocument(pid,{id,name:dn,content}){ const row={project_id:pid,name:dn,content,created_by:user.id}; if(id) row.id=id; return must(await sb.from('documents').insert(row).select().single()); },
-    async deleteDocument(id){ must(await sb.from('documents').delete().eq('id',id)); await sb.from('memos').delete().eq('scope','document').eq('target_id',id); },
+    async deleteDocument(id){ let cids=[]; try{ cids=(await sb.from('codings').select('id').eq('document_id',id)).data?.map(r=>r.id)||[]; }catch(e){} must(await sb.from('documents').delete().eq('id',id)); await sb.from('memos').delete().eq('scope','document').eq('target_id',id); if(cids.length) await sb.from('memos').delete().eq('scope','coding').in('target_id',cids); },
     async clearProject(pid){
       await sb.from('codings').delete().eq('project_id',pid);
       await sb.from('doc_values').delete().eq('project_id',pid);
@@ -1783,7 +1988,7 @@ function SupabaseStore(sb){
       if(hasCB && co.created_by===null) row.created_by = null;
       return must(await sb.from('codings').insert(row).select().single());
     },
-    async deleteCoding(id){ must(await sb.from('codings').delete().eq('id',id)); },
+    async deleteCoding(id){ must(await sb.from('codings').delete().eq('id',id)); await sb.from('memos').delete().eq('scope','coding').eq('target_id',id); },
     // memos: nota unica compartilhada por alvo (projeto/documento/codigo); ultima edicao vale
     async listMemos(pid){ try{ return must(await sb.from('memos').select('*').eq('project_id',pid)); }catch(e){ return []; } },
     async setMemo(pid, scope, targetId, content, authorName){
@@ -1937,6 +2142,7 @@ function App(){
   const [vizCross,      setVizCross]      = useState(['','']);
 
   const [sel, setSel] = useState(null);
+  const [codingMemoTarget, setCodingMemoTarget] = useState(null); // { id, quote, codePath } -> abre CodingMemoModal (nota por trecho)
   const [ctxMenu, setCtxMenu] = useState(null); // menu de contexto (botão direito) p/ aplicar/remover código
   const [ctxCreating, setCtxCreating] = useState(false); // mini-formulário "criar novo código" dentro do menu
   const [ctxNewName, setCtxNewName] = useState('');
@@ -2262,7 +2468,7 @@ function App(){
     }
     setAllValues(V); setAllCodings(C);
   }, [store, project, docs]);
-  useEffect(()=>{ if(phase==='work' && (mainView==='visualizar'||mainView==='graficos'||mainView==='ia_analisar'||mainView==='esquema'||mainView==='relatorio'||mainView==='reconciliar')) loadAll(); }, [phase, mainView, loadAll, codings]);
+  useEffect(()=>{ if(phase==='work' && (mainView==='visualizar'||mainView==='graficos'||mainView==='ia_analisar'||mainView==='esquema'||mainView==='relatorio'||mainView==='reconciliar'||mainView==='memos')) loadAll(); }, [phase, mainView, loadAll, codings]);
   // categoria padrão no modo "(Todos os documentos)" da Reconciliação
   useEffect(()=>{ if(!cats.find(c=>c.id===reconCat)) setReconCat(cats[0]?.id || ''); }, [cats]); // eslint-disable-line
 
@@ -2271,7 +2477,7 @@ function App(){
     if(!store || !project || !store.listMemos){ setMemos([]); return; }
     try{ setMemos(await store.listMemos(project.id) || []); }catch(e){ setMemos([]); }
   }, [store, project]);
-  useEffect(()=>{ if(phase==='work' && (mainView==='memos'||mainView==='ia_analisar')) loadMemos(); }, [phase, mainView, loadMemos]);
+  useEffect(()=>{ if(phase==='work' && (mainView==='memos'||mainView==='ia_analisar'||mainView==='codificar')) loadMemos(); }, [phase, mainView, loadMemos]);
   async function saveMemo(scope, targetId, content){
     await store.setMemo(project.id, scope, targetId, content, user?.name||'anônimo');
     await loadMemos();
@@ -2516,6 +2722,10 @@ function App(){
         const finalCods = allC.filter(c=>c.layer==='final');
         const codForQdpx = finalCods.length > 0 ? finalCods : allC.filter(c=>(c.layer||'individual')!=='final');
         await exportQDPX(docs, cats, Object.values(pick), codes, codForQdpx, project);
+      } else if(kind==='ati' || kind==='leitor'){
+        let memosForExport=[]; try{ memosForExport=(await store.listMemos?.(project.id))||[]; }catch(e){}
+        if(kind==='ati') exportWebAnnotations(docs, codes, allC, memosForExport, project);
+        else exportTransparencyReader(docs, codes, allC, memosForExport, project);
       }
     }catch(e){ setErr('Falha ao exportar: '+(e.message||e)); }
   }
@@ -2818,6 +3028,8 @@ function App(){
               <button onClick=${()=>doExport('documentos')}>CSV (atributos por documento)</button>
               <button onClick=${()=>doExport('qdpx')}>QDPX (ATLAS.ti / MAXQDA / NVivo)</button>
               <button title="Exporta só o livro de códigos, sem documentos nem codificações" onClick=${()=>{ setExpOpen(false); exportQDC(codes, project); }}>QDC (codebook REFI-QDA)</button>
+              <button title="Anotações no padrão aberto W3C Web Annotation (JSON-LD) — a língua de dados sob o ATI do QDR, hypothes.is, Anno-REP e Dataverse. Cada trecho codificado vira uma anotação com excerto e nota analítica (memo do código)." onClick=${()=>doExport('ati')}>Web Annotation (W3C / ATI · transparência)</button>
+              <button title="Página HTML auto-contida (sem rede): mostra cada documento com os trechos grifados e, ao clicar, a nota analítica e o excerto. Equivalente ao overlay do ATI, hospedável por você (ex.: GitHub Pages)." onClick=${()=>doExport('leitor')}>Leitor de Transparência (HTML publicável)</button>
             </div>
           </div>`}
         </div>`}
@@ -3046,7 +3258,7 @@ function App(){
       <!-- MEMOS esquerda: navegação por alvo -->
       <section class="pane" style="flex:0 0 270px;min-width:0;border-right:1px solid var(--line)">
         <div class="pane-body scroll" style="padding:0">
-          <${MemoNav} project=${project} docs=${docs} codes=${codes} memos=${memos}
+          <${MemoNav} project=${project} docs=${docs} codes=${codes} codings=${allCodings} memos=${memos}
             sel=${memoSel} onSel=${setMemoSel} />
         </div>
       </section>
@@ -3054,7 +3266,7 @@ function App(){
       <section class="pane" style="flex:1;min-width:0;background:var(--paper)">
         <div class="pane-body scroll" style="padding:0">
           <${MemoEditor} sel=${memoSel} project=${project} codeById=${codeById} codePath=${codePath}
-            memos=${memos} onSave=${saveMemo} />
+            codings=${allCodings} memos=${memos} onSave=${saveMemo} />
         </div>
       </section>
     </div>`
@@ -3175,6 +3387,11 @@ function App(){
           <span class="swatch" style=${`background:${col.solid};display:inline-block;margin-right:7px;vertical-align:middle;flex-shrink:0`}></span>${code?.is_redaction?'🚫 ':''}${path||'(código removido)'}${c.layer==='final'?' · gabarito':alien&&c.author_name?` · ${c.author_name}`:''}
         </button>`; })}
       </${CtxSection}>`}
+      ${removable.length>0 && html`<${CtxSection} title="Anotar trecho (nota analítica)" count=${removable.length}>
+        ${removable.map(c=>{ const code=codeById[c.code_id]; const path=codePath(c.code_id).join(' ▸ '); const col=code ? codeColor(code.hue,code.depth,code.hue_deg) : codeColor(0,0); const hasNote=memos.some(m=>m.scope==='coding'&&m.target_id===c.id&&m.content); return html`<button key=${'memo'+c.id} onClick=${()=>{ closeCtxMenu(); setCodingMemoTarget({ id:c.id, quote, codePath:codePath(c.code_id).join(' ▸ ') }); }} style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;width:100%;box-sizing:border-box" title=${`Escrever/editar a nota analítica deste trecho: ${path}`}>
+          <span class="swatch" style=${`background:${col.solid};display:inline-block;margin-right:7px;vertical-align:middle;flex-shrink:0`}></span>✎ ${path||'(código)'}${hasNote?' ●':''}
+        </button>`; })}
+      </${CtxSection}>`}
       ${ctxMenu.sel && (orderedCodes.length===0 && !ctxCreating
         ? html`<div style="padding:9px 12px;color:var(--ink-faint);font-size:12.5px">Nenhum código criado ainda.</div>`
         : orderedCodes.map(c=>{ const col=codeColor(c.hue,c.depth,c.hue_deg); return html`<button key=${c.id} onClick=${()=>applyCode(c.id, ctxMenu.sel)} style=${`padding-left:${12+c.depth*14}px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;width:100%;box-sizing:border-box`} title=${c.name}>
@@ -3200,6 +3417,10 @@ function App(){
       ${!ctxMenu.sel && removable.length===0 && html`<div style="padding:9px 12px;color:var(--ink-faint);font-size:12.5px">Nenhum código removível neste trecho.</div>`}
     </div>
   </div>`; })()}
+
+  ${codingMemoTarget && html`<${CodingMemoModal} target=${codingMemoTarget} memos=${memos}
+    onClose=${()=>setCodingMemoTarget(null)}
+    onSave=${async(content)=>{ await saveMemo('coding', codingMemoTarget.id, content); }} />`}
 
   ${account && html`<${AccountModal} user=${user} projects=${myProjects}
     onClose=${()=>setAccount(false)} onChangePassword=${changePassword} onChangeName=${changeDisplayName}
@@ -4361,13 +4582,18 @@ function barRows(items, color){
 /* ============ MemoNav — painel esquerdo da aba Memos ============
    Memo do projeto + lista de documentos + árvore de códigos. Visual idêntico
    ao painel de Codificação/Visualização (mesmas classes .node-row etc). */
-function MemoNav({ project, docs, codes, memos, sel, onSel }){
+function MemoNav({ project, docs, codes, codings, memos, sel, onSel }){
   const [docsOpen, setDocsOpen] = useState(true);
   const [codesOpen, setCodesOpen] = useState(false);
+  const [trechosOpen, setTrechosOpen] = useState(true);
   const hasMemo = (scope, targetId)=> memos.some(m=>m.scope===scope && m.target_id===targetId && m.content);
   const tops = codes.filter(c=>!c.parent_id);
   const childrenOf = (id)=>codes.filter(c=>c.parent_id===id);
   const isSelProject = sel.scope==='project';
+  // trechos anotados: memos de coding cruzados com a coding (p/ rótulo = código + citação)
+  const codingById = {}; (codings||[]).forEach(c=>codingById[c.id]=c);
+  const codeName = (id)=>{ const by={}; codes.forEach(c=>by[c.id]=c); const o=[]; let c=by[id],g=0; while(c&&g++<12){o.unshift(c.name);c=c.parent_id?by[c.parent_id]:null;} return o.join(' ▸ '); };
+  const trechoMemos = memos.filter(m=>m.scope==='coding' && m.content).map(m=>({ m, co:codingById[m.target_id] }));
 
   return html`<div style="background:var(--surface);display:flex;flex-direction:column;height:100%">
 
@@ -4392,6 +4618,22 @@ function MemoNav({ project, docs, codes, memos, sel, onSel }){
       </div>`)}
       ${docsOpen && docs.length===0 && html`<div class="meta" style="padding:6px 28px">Nenhum documento.</div>`}
     </div>
+
+    <!-- trechos anotados (notas por coding) -->
+    ${trechoMemos.length>0 && html`<div style="border-bottom:1px solid var(--line-soft)">
+      <div class="node-row" style="padding:6px 14px;cursor:pointer;border-radius:0" onClick=${()=>setTrechosOpen(o=>!o)}>
+        <span class="caret">${trechosOpen?'▾':'▸'}</span>
+        <span class="node-name" style="font-weight:600">Trechos anotados</span>
+        <span class="count">${trechoMemos.length}</span>
+      </div>
+      ${trechosOpen && trechoMemos.map(({m,co})=>html`<div key=${m.target_id}
+          class="node-row ${sel.scope==='coding'&&sel.targetId===m.target_id?'sel':''}"
+          style="padding:5px 14px 5px 28px;cursor:pointer;flex-direction:column;align-items:flex-start;gap:1px"
+          onClick=${()=>onSel({scope:'coding', targetId:m.target_id})}>
+        <span class="node-name" style="font-size:12px;color:var(--ink-soft)" title=${co?codeName(co.code_id):''}>${co?codeName(co.code_id):'(trecho removido)'}</span>
+        <span style="font-size:11.5px;color:var(--ink-faint);font-family:var(--serif);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:210px">${co?.quote||m.content.slice(0,60)}</span>
+      </div>`)}
+    </div>`}
 
     <!-- códigos -->
     <div class="scroll" style="flex:1;overflow-y:auto">
@@ -4427,7 +4669,7 @@ function MemoCodeNode({ code, childrenOf, sel, onSel, hasMemo, depthPad }){
 
 /* ============ MemoEditor — painel direito da aba Memos ============
    Editor de texto livre com autosave (debounce), mostrando autor/data da última edição. */
-function MemoEditor({ sel, project, codeById, codePath, memos, onSave }){
+function MemoEditor({ sel, project, codeById, codePath, codings, memos, onSave }){
   const targetId = sel.scope==='project' ? project?.id : sel.targetId;
   const current = memos.find(m=>m.scope===sel.scope && m.target_id===targetId);
   const [text, setText] = useState(current?.content||'');
@@ -4438,13 +4680,16 @@ function MemoEditor({ sel, project, codeById, codePath, memos, onSave }){
 
   if(!targetId) return html`<div class="empty">
     <div class="t">Selecione um alvo</div>
-    <div>Escolha o projeto, um documento ou um código à esquerda para escrever um memo.</div>
+    <div>Escolha o projeto, um documento, um código ou um trecho à esquerda para escrever um memo.</div>
   </div>`;
 
+  const coding = sel.scope==='coding' ? (codings||[]).find(c=>c.id===targetId) : null;
   const label = sel.scope==='project' ? 'Memo do projeto'
     : sel.scope==='document' ? 'Memo do documento'
+    : sel.scope==='coding' ? 'Nota analítica do trecho'
     : 'Memo do código';
-  const subtitle = sel.scope==='code' ? codePath(targetId).join(' ▸ ') : null;
+  const subtitle = sel.scope==='code' ? codePath(targetId).join(' ▸ ')
+    : sel.scope==='coding' && coding ? codePath(coding.code_id).join(' ▸ ') : null;
 
   const change = (val)=>{
     setText(val);
@@ -4455,6 +4700,7 @@ function MemoEditor({ sel, project, codeById, codePath, memos, onSave }){
   return html`<div class="section" style="max-width:760px;margin:0 auto">
     <p class="h" style="margin-bottom:2px">${label}</p>
     ${subtitle && html`<p class="hint" style="margin:0 0 4px">${subtitle}</p>`}
+    ${coding && coding.quote && html`<blockquote style="margin:0 0 8px;padding:8px 12px;background:var(--surface);border-left:3px solid var(--teal);font-family:var(--serif);font-size:14px;max-height:140px;overflow:auto">${coding.quote}</blockquote>`}
     <p class="hint" style="margin:0 0 10px">
       Nota única, compartilhada entre todos os pesquisadores do projeto — qualquer membro pode editar.
       ${current && html` Última edição: <b>${current.author_name||'anônimo'}</b>${current.updated_at?` em ${new Date(current.updated_at).toLocaleString('pt-BR')}`:''}.`}
@@ -4463,6 +4709,35 @@ function MemoEditor({ sel, project, codeById, codePath, memos, onSave }){
       placeholder="Escreva aqui suas anotações analíticas, definições, decisões metodológicas…"
       value=${text} onInput=${e=>change(e.target.value)}></textarea>
     <div class="row" style="margin-top:6px"><span class="meta">${saving?'salvando…':'salvo automaticamente'}</span></div>
+  </div>`;
+}
+
+/* ============ CodingMemoModal — nota analítica por TRECHO (scope='coding') ============
+   Aberto pelo menu de contexto do leitor sobre um grifo. É a "anotação por trecho" (base da
+   transparência ativa): a nota que o export de transparência prefere sobre o memo do código.
+   Nota única por coding, compartilhada entre membros (mesma semântica de setMemo). */
+function CodingMemoModal({ target, memos, onClose, onSave }){
+  const current = (memos||[]).find(m=>m.scope==='coding' && m.target_id===target.id);
+  const [text, setText] = useState(current?.content||'');
+  const [saving, setSaving] = useState(false);
+  useEffect(()=>{ setText(current?.content||''); }, [target.id]); // eslint-disable-line
+  const save = async ()=>{ setSaving(true); await onSave(text); setSaving(false); onClose(); };
+  return html`<div class="modal-bg" onClick=${onClose}>
+    <div class="modal" style="max-width:620px" onClick=${e=>e.stopPropagation()}>
+      <h3 style="margin:0 0 2px">Nota analítica do trecho</h3>
+      <p class="hint" style="margin:0 0 8px">${target.codePath||''}</p>
+      <blockquote style="margin:0 0 10px;padding:8px 12px;background:var(--surface);border-left:3px solid var(--teal);font-family:var(--serif);font-size:14px;max-height:120px;overflow:auto">${target.quote||''}</blockquote>
+      <p class="hint" style="margin:0 0 8px">
+        Explique como este trecho sustenta a interpretação/inferência (o que vira a "nota analítica" no apêndice de transparência). Nota única, compartilhada entre membros.
+        ${current && html` Última edição: <b>${current.author_name||'anônimo'}</b>${current.updated_at?` em ${new Date(current.updated_at).toLocaleString('pt-BR')}`:''}.`}
+      </p>
+      <textarea class="txtin" rows="7" autofocus style="font-family:var(--serif);font-size:15px;line-height:1.6;resize:vertical"
+        placeholder="Ex.: este trecho evidencia a contradição porque…" value=${text} onInput=${e=>setText(e.target.value)}></textarea>
+      <div class="row" style="gap:8px;justify-content:flex-end;margin-top:10px">
+        <button class="btn ghost" onClick=${onClose}>cancelar</button>
+        <button class="btn primary" disabled=${saving} onClick=${save}>${saving?'salvando…':'salvar nota'}</button>
+      </div>
+    </div>
   </div>`;
 }
 
