@@ -4486,6 +4486,28 @@ function VizCodeNode({ code, childrenOf, counts, sel, onSel, depthPad }){
   </div>`;
 }
 
+/* Nó de árvore com MULTI-seleção por checkbox (filtro de código da Nuvem em Gráficos).
+   Espelha o VizCodeNode (mesma profundidade/visual), mas com checkbox em vez de seleção
+   única — e sem arrastar/excluir (diferente do SchemaTreeNode). selectedIds é um Set. */
+function CloudCodeNode({ code, childrenOf, counts, selectedIds, onToggle, depthPad }){
+  const [open,setOpen]=useState(false);
+  const kids = childrenOf(code.id);
+  const col = codeColor(code.hue, code.depth, code.hue_deg);
+  const checked = selectedIds.has(code.id);
+  return html`<div class="node">
+    <div class="node-row ${checked?'sel':''}" style=${`padding-left:${6+depthPad*16}px;cursor:pointer`}
+      onClick=${()=>onToggle(code.id)}>
+      ${kids.length>0 ? html`<span class="caret" onClick=${e=>{e.stopPropagation();setOpen(!open);}}>${open?'▾':'▸'}</span>` : html`<span class="caret"></span>`}
+      <input type="checkbox" checked=${checked} onClick=${e=>e.stopPropagation()} onChange=${()=>onToggle(code.id)} style="margin-right:2px" />
+      <span class="swatch" style=${`background:${col.solid}`}></span>
+      <span class="node-name" title=${code.name}>${code.is_redaction?'🚫 ':''}${code.name}</span>
+      ${counts[code.id] ? html`<span class="count">${counts[code.id]}</span>` : ''}
+    </div>
+    ${open && kids.map(k=>html`<${CloudCodeNode} key=${k.id} code=${k} childrenOf=${childrenOf}
+      counts=${counts} selectedIds=${selectedIds} onToggle=${onToggle} depthPad=${depthPad+1} />`)}
+  </div>`;
+}
+
 /* ============ VizExcerpts — painel direito da Visualização ============
    Trechos do código selecionado, legíveis, agrupados por documento. */
 function VizExcerpts({ docs, codes, codeById, codePath, allCodings, allValues,
@@ -6252,6 +6274,8 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
   const [catFilter,setCatFilter] = useState({});
   const [hideRedaction,setHideRedaction] = useState(true); // "ignorar censura" (padrão ligado): tira códigos is_redaction
   const isRedactionCoding = (c)=> !!codeById[c.code_id]?.is_redaction;
+  const [cloudCodes,setCloudCodes] = useState(()=>new Set()); // filtro multi-código da NUVEM (cada um + descendentes); vazio = todos
+  const onPickCloud = (id)=> setCloudCodes(prev=>{ const n=new Set(prev); n.has(id)?n.delete(id):n.add(id); return n; });
   const matchingDocIds = useMemo(()=>{
     const s=new Set();
     docs.forEach(d=>{
@@ -6294,12 +6318,33 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
     }).filter(i=>i.chars>0).sort((a,b)=>b.value-a.value);
   }, [cod, corpusLen, codePath]);
 
+  // ---- árvore de códigos do painel esquerdo (filtro da nuvem), no padrão da Visualização.
+  const tops = useMemo(()=> codes.filter(c=>!c.parent_id), [codes]);
+  const childrenOf = (id)=> codes.filter(c=>c.parent_id===id);
+  // contagem por código (direta + agregada nos ancestrais) no recorte atual — igual ao VizNav.
+  const codeCounts = useMemo(()=>{
+    const direct={}; cod.forEach(c=>{ direct[c.code_id]=(direct[c.code_id]||0)+1; });
+    const parentOf={}; codes.forEach(c=>{ parentOf[c.id]=c.parent_id; });
+    const agg={...direct};
+    Object.entries(direct).forEach(([id,n])=>{ let p=parentOf[id]; while(p){ agg[p]=(agg[p]||0)+n; p=parentOf[p]; } });
+    return agg;
+  }, [cod, codes]);
+  // códigos selecionados + todos os descendentes de cada um (família agrega os subcódigos)
+  const cloudCodeSet = useMemo(()=>{
+    if(!cloudCodes.size) return null;
+    const ids=new Set(cloudCodes); let added=true;
+    while(added){ added=false; codes.forEach(c=>{ if(c.parent_id && ids.has(c.parent_id) && !ids.has(c.id)){ ids.add(c.id); added=true; } }); }
+    return ids;
+  }, [cloudCodes, codes]);
+
   // ---- nuvem de palavras: tokens dos trechos codificados, cor herdada do código dominante.
-  // usa `cod` (já respeita filtro de categorias, "Ver:" e "ignorar censura").
+  // usa `cod` (já respeita filtro de categorias, "Ver:" e "ignorar censura"); se houver código
+  // selecionado na árvore, restringe à família dele (código + descendentes).
   const docContentById = useMemo(()=>{ const m={}; docs.forEach(d=>{ m[d.id]=d.content||''; }); return m; }, [docs]);
   const wordCloud = useMemo(()=>{
+    const src = cloudCodeSet ? cod.filter(c=>cloudCodeSet.has(c.code_id)) : cod;
     const wf={}; // palavra -> { total, codes:{codeId:n} }
-    cod.forEach(c=>{
+    src.forEach(c=>{
       const txt=(docContentById[c.document_id]||'').slice(c.span_start, c.span_end);
       tokenizeWords(txt).forEach(w=>{ const e=wf[w]||(wf[w]={total:0,codes:{}}); e.total++; e.codes[c.code_id]=(e.codes[c.code_id]||0)+1; });
     });
@@ -6307,7 +6352,7 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
       let best=null,bn=-1; for(const k in e.codes){ if(e.codes[k]>bn){ bn=e.codes[k]; best=k; } }
       return { key:w, label:w, value:e.total, color:codeColorOf(best) };
     }).sort((a,b)=>b.value-a.value);
-  }, [cod, docContentById, codeById]);
+  }, [cod, cloudCodeSet, docContentById, codeById]);
 
   // ---- co-ocorrência: matriz código×código (nº de pares de trechos sobrepostos no mesmo doc)
   const cooc = useMemo(()=>{
@@ -6378,7 +6423,11 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
     hint = 'Nº de trechos codificados com cada código.';
     chart = freqItems.length===0 ? null : svgHBars(freqItems.slice(0,topN), { w:cw });
   } else if(tab==='nuvem'){
-    hint = 'Palavras dos trechos codificados, coloridas pelo código predominante (tamanho ∝ frequência). Stopwords removidas; sem lematização.';
+    hint = cloudCodes.size===1
+      ? `Palavras do código «${codeLabelOf([...cloudCodes][0])}» e subcódigos (tamanho ∝ frequência). Stopwords removidas; sem lematização.`
+      : cloudCodes.size>1
+      ? `Palavras de ${cloudCodes.size} códigos selecionados (e subcódigos), coloridas pelo código (tamanho ∝ frequência). Stopwords removidas; sem lematização.`
+      : 'Palavras dos trechos codificados, coloridas pelo código predominante (tamanho ∝ frequência). Stopwords removidas; sem lematização.';
     chart = wordCloud.length===0 ? null : svgWordCloud(wordCloud.slice(0,topN), { w:cw, h:ch });
   } else if(tab==='cobertura'){
     hint = '% do corpus coberto por cada código (sobreposições mescladas) — peso real, não só contagem.';
@@ -6440,6 +6489,19 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
             <p class="meta" style="margin:12px 0 0;font-size:11px">${matchingDocIds.size} de ${docs.length} documento(s) no filtro.</p>
           </div>`}
       </div>
+      ${tab==='nuvem' && html`<div style="border-top:1px solid var(--line-soft)">
+        <div class="field-label" style="padding:10px 14px 2px;margin:0;display:flex;align-items:center;gap:8px">
+          🖍️ Códigos (filtram a nuvem)
+          ${cloudCodes.size>0 && html`<span class="pill" style="font-size:10px;padding:1px 8px">${cloudCodes.size}</span>`}
+        </div>
+        <p class="meta" style="margin:0;padding:0 14px 6px;font-size:11px">Marque um ou mais códigos para ver só o vocabulário deles (e dos subcódigos). Nenhum = todos.</p>
+        ${cloudCodes.size>0 && html`<div style="padding:0 14px 6px"><button class="btn sm ghost" style="width:100%" onClick=${()=>setCloudCodes(new Set())}>limpar seleção</button></div>`}
+        <div class="tree" style="padding:4px 6px">
+          ${tops.length===0 ? html`<span class="meta" style="padding:10px 8px;display:block">Nenhum código criado.</span>`
+            : tops.map(t=>html`<${CloudCodeNode} key=${t.id} code=${t} childrenOf=${childrenOf}
+                counts=${codeCounts} selectedIds=${cloudCodes} onToggle=${onPickCloud} depthPad=${0} />`)}
+        </div>
+      </div>`}
     </div>
   </section>
   <section class="pane left" style="flex:1;border-right:none;max-width:none;display:flex;flex-direction:column">
