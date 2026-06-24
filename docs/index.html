@@ -489,7 +489,7 @@ function maskSlice(content, start, end, ranges){
   if(pos<end) out+=content.slice(pos,end);
   return out;
 }
-function exportWebAnnotations(docs, codes, allC, memos, project){
+function buildWebAnnotations(docs, codes, allC, memos, project){
   const docById={}; docs.forEach(d=>docById[d.id]=d);
   const { codeMemo, docMemo, codingMemo, projectMemo } = indexMemos(memos);
   const redactionCodeIds = new Set(codes.filter(c=>c.is_redaction).map(c=>c.id));
@@ -533,8 +533,11 @@ function exportWebAnnotations(docs, codes, allC, memos, project){
     'qualilab:sources': docs.map(d=>({ id:'urn:qualilab:document:'+d.id, name:d.name, note: docMemo[d.id]||undefined })),
     first:{ type:'AnnotationPage', items }
   };
+  return collection;
+}
+function exportWebAnnotations(docs, codes, allC, memos, project){
   download((project?.name||'projeto').replace(/[^\w\-]+/g,'_')+'_anotacoes.json',
-    JSON.stringify(collection,null,2), 'application/ld+json');
+    JSON.stringify(buildWebAnnotations(docs, codes, allC, memos, project),null,2), 'application/ld+json');
 }
 
 /* Leitor de Transparência: página HTML auto-contida (sem rede, sem build) que mostra
@@ -566,18 +569,33 @@ function buildTransparencyReaderHTML(docs, codes, allC, memos, project){
       const col = colorOf(vis[0].code_id);
       vis.forEach(c=>{ if(!anns[c.id]){ const p=codePathFor(codes,c.code_id);
         anns[c.id]={ code:p.join(' › '), color:colorOf(c.code_id).solid, author:c.author_name||'',
-          note:codingMemo[c.id]||codeMemo[c.code_id]||'', exact:maskSlice(content, c.span_start, c.span_end, ranges) }; } });
+          note:codingMemo[c.id]||codeMemo[c.code_id]||'' }; } });
       const bb = vis.length>1 ? `border-bottom:2px solid ${col.solid}` : '';
       body += `<span class="hl" data-ann="${vis.map(c=>c.id).join(' ')}" style="background:${col.tint};${bb}">${t}</span>`;
     });
-    const dm = docMemo[d.id] ? `<div class="docnote">${xmlEsc(docMemo[d.id]).replace(/\n/g,'<br>')}</div>` : '';
-    return `<section class="doc"><h2>${xmlEsc(d.name)}</h2>${dm}<div class="reader">${body}</div></section>`;
+    // documento colapsável (vem colapsado): o TÍTULO (summary) abre/fecha; o ● é o link pro
+    // memo do documento (clicar nele não dispara o colapso — preventDefault no handler).
+    const hasDocMemo = !!docMemo[d.id];
+    const memoDot = hasDocMemo ? ` <span class="memo-dot linky" data-ann="doc:${xmlEsc(d.id)}" title="ver memo do documento">●</span>` : '';
+    return `<details class="doc"><summary class="doc-title">${xmlEsc(d.name)}${memoDot}</summary><div class="reader">${body}</div></details>`;
   }).join('\n');
-  // legenda só com os códigos visíveis (já sem censura, pois useC a exclui)
+  // legenda só com os códigos visíveis (já sem censura, pois useC a exclui); o swatch/código
+  // com memo vira "link" pro memo do código (abre no painel, igual o título e os grifos)
   const usedCodes = [...new Set(useC.map(c=>c.code_id))].map(id=>codeById[id]).filter(Boolean);
-  const legend = usedCodes.map(c=>{ const col=codeColor(c.hue,c.depth,c.hue_deg);
-    return `<span class="leg"><i style="background:${col.solid}"></i>${xmlEsc(codePathFor(codes,c.id).join(' › '))}</span>`; }).join('');
+  const legendItems = usedCodes.map(c=>{ const col=codeColor(c.hue,c.depth,c.hue_deg); const hasMemo=!!codeMemo[c.id];
+    return `<span class="leg${hasMemo?' linky':''}"${hasMemo?` data-ann="code:${xmlEsc(c.id)}"`:''}><i style="background:${col.solid}"></i>${xmlEsc(codePathFor(codes,c.id).join(' › '))}${hasMemo?' <span class="memo-dot">●</span>':''}</span>`; }).join('');
+  // muitos códigos (grounded theory) viram um paredão ilegível no topo: recolhe por padrão
+  // acima do limite, com filtro + altura limitada. <details> nativo, sem JS pra abrir/fechar.
+  const manyCodes = usedCodes.length > 12;
+  const legend = usedCodes.length ? `<details class="legend"${manyCodes?'':' open'}>`
+    + `<summary>Legenda de códigos (${usedCodes.length})</summary>`
+    + (manyCodes ? `<input class="legfilter" type="text" placeholder="filtrar códigos…" oninput="filterLeg(this.value)">` : '')
+    + `<div class="legitems${manyCodes?' capped':''}">${legendItems}</div></details>` : '';
+  // entradas de memo de documento/código no mesmo mapa do painel (chaves prefixadas, sem colidir com ids de coding)
+  docs.forEach(d=>{ if(docMemo[d.id]) anns['doc:'+d.id]={ code:d.name, color:'#00427A', author:'', note:docMemo[d.id] }; });
+  usedCodes.forEach(c=>{ if(codeMemo[c.id]) anns['code:'+c.id]={ code:codePathFor(codes,c.id).join(' › '), color:codeColor(c.hue,c.depth,c.hue_deg).solid, author:'', note:codeMemo[c.id] }; });
   const overview = projectMemo ? `<div class="overview"><h3>Visão geral</h3><div>${xmlEsc(projectMemo).replace(/\n/g,'<br>')}</div></div>` : '';
+  const docsCtrl = docs.length>1 ? `<div class="docctrl"><span>${docs.length} documentos</span><button onclick="allDocs(true)">expandir todos</button><button onclick="allDocs(false)">recolher todos</button></div>` : '';
   const dataJson = JSON.stringify(anns).replace(/</g,'\\u003c');
   const title = xmlEsc(project?.name || 'Projeto QualiLab');
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
@@ -595,11 +613,22 @@ header .sub{opacity:.85;font-size:13px;margin-top:4px}
 .aside{width:340px;flex:none;position:sticky;top:24px}
 .overview,.legend,.doc,#panel{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin-bottom:18px}
 .legend{font-family:system-ui,sans-serif;font-size:13px}
+.legend>summary{cursor:pointer;font-weight:600;color:var(--teal);list-style:revert}
+.legend[open]>summary{margin-bottom:10px}
+.legfilter{width:100%;padding:6px 9px;margin-bottom:10px;border:1px solid var(--line);border-radius:6px;font:inherit;font-size:12px}
+.legitems.capped{max-height:240px;overflow:auto;padding-right:4px}
 .leg{display:inline-flex;align-items:center;gap:6px;margin:3px 12px 3px 0}
-.leg i{width:12px;height:12px;border-radius:3px;display:inline-block}
-.doc h2{font-size:18px;margin:0 0 10px;color:var(--teal)}
-.docnote{font-style:italic;color:var(--muted);border-left:3px solid var(--line);padding-left:12px;margin-bottom:12px;font-size:14px}
+.leg i{width:12px;height:12px;border-radius:3px;display:inline-block;flex:none}
+.doc>summary{font-size:18px;color:var(--teal);font-weight:600;cursor:pointer;list-style:revert}
+.doc[open]>summary{margin-bottom:10px}
+.docctrl{display:flex;align-items:center;gap:10px;margin-bottom:14px;font-family:system-ui,sans-serif;font-size:12px;color:var(--muted)}
+.docctrl button{font:inherit;color:var(--teal);background:none;border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer}
+.docctrl button:hover{background:var(--paper)}
 .reader{white-space:normal}
+.linky{cursor:pointer}
+.leg.linky:hover{text-decoration:underline}
+.memo-dot{color:var(--muted);font-size:9px;vertical-align:middle}
+.leg.active,.doc-title.active{outline:2px solid var(--teal);outline-offset:2px;border-radius:4px}
 .hl{border-radius:2px;cursor:pointer;padding:1px 0}
 .hl.active{outline:2px solid var(--teal);outline-offset:1px}
 .redacted{background:#1a2330;color:#cbd5e1;border-radius:2px;padding:0 5px;font-family:system-ui,sans-serif;font-size:12px;letter-spacing:.02em;user-select:none}
@@ -609,7 +638,6 @@ header .sub{opacity:.85;font-size:13px;margin-top:4px}
 .ann:first-child{border-top:0;padding-top:0;margin-top:0}
 .ann-code{font-weight:700}
 .ann-meta{color:var(--muted);font-size:12px;margin:2px 0 8px}
-.ann blockquote{margin:0 0 8px;padding:8px 12px;background:#f6f8fb;border-left:3px solid var(--teal);font-family:Georgia,serif;font-size:14px}
 .ann-note{white-space:pre-wrap}
 .ann-empty,.muted{color:var(--muted);font-style:italic}
 footer{text-align:center;color:var(--muted);font-family:system-ui,sans-serif;font-size:12px;padding:24px}
@@ -617,26 +645,32 @@ footer a{color:var(--teal)}
 </style></head><body>
 <header><h1>${title}</h1><div class="sub">Apêndice de Transparência — gerado pelo QualiLab</div></header>
 <div class="wrap">
-  <div class="main">${overview}${legend?`<div class="legend">${legend}</div>`:''}${docsHtml}</div>
-  <div class="aside"><div id="panel"><h3>Nota analítica</h3><p class="muted">Clique num trecho grifado para ver o código, o excerto e a nota.</p></div></div>
+  <div class="main">${overview}${legend}${docsCtrl}${docsHtml}</div>
+  <div class="aside"><div id="panel"><h3>Nota analítica</h3><p class="muted">Clique no título de um documento para abrir/fechar. Para ver uma nota, clique num trecho grifado, ou no ● do título (memo do documento) ou de um código na legenda.</p></div></div>
 </div>
 <footer>Gerado com <a href="https://luizpf42.github.io/QualiLab/">QualiLab</a> · padrão de anotação compatível com W3C Web Annotation / ATI</footer>
 <script>
 var ANNS = JSON.parse(${JSON.stringify(dataJson)});
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function filterLeg(q){ q=(q||'').toLowerCase();
+  var els=document.querySelectorAll('.legitems .leg');
+  for(var i=0;i<els.length;i++){ els[i].style.display = els[i].textContent.toLowerCase().indexOf(q)>=0 ? '' : 'none'; }
+}
+function allDocs(open){ var d=document.querySelectorAll('details.doc'); for(var i=0;i<d.length;i++) d[i].open=open; }
 document.addEventListener('click',function(e){
-  var sp=e.target.closest?e.target.closest('.hl'):null; if(!sp) return;
+  var sp=e.target.closest?e.target.closest('[data-ann]'):null; if(!sp) return;
+  // clicar no ● (link de memo) dentro do título não deve abrir/fechar o documento
+  if(sp.closest('summary')) e.preventDefault();
   var panel=document.getElementById('panel');
   var ids=sp.getAttribute('data-ann').split(' '), out='<h3>Nota analítica</h3>';
   ids.forEach(function(id){ var a=ANNS[id]; if(!a) return;
     out+='<div class="ann"><div class="ann-code" style="color:'+a.color+'">'+esc(a.code)+'</div>'
       +(a.author?'<div class="ann-meta">'+esc(a.author)+'</div>':'')
-      +'<blockquote>'+esc(a.exact)+'</blockquote>'
       +(a.note?'<div class="ann-note">'+esc(a.note)+'</div>':'<div class="ann-empty">Sem nota analítica.</div>')
       +'</div>';
   });
   panel.innerHTML=out;
-  var prev=document.querySelector('.hl.active'); if(prev)prev.classList.remove('active');
+  var prev=document.querySelector('[data-ann].active'); if(prev)prev.classList.remove('active');
   sp.classList.add('active');
 });
 <\/script></body></html>`;
@@ -2477,7 +2511,7 @@ function App(){
     if(!store || !project || !store.listMemos){ setMemos([]); return; }
     try{ setMemos(await store.listMemos(project.id) || []); }catch(e){ setMemos([]); }
   }, [store, project]);
-  useEffect(()=>{ if(phase==='work' && (mainView==='memos'||mainView==='ia_analisar'||mainView==='codificar')) loadMemos(); }, [phase, mainView, loadMemos]);
+  useEffect(()=>{ if(phase==='work' && (mainView==='memos'||mainView==='ia_analisar'||mainView==='codificar'||mainView==='relatorio')) loadMemos(); }, [phase, mainView, loadMemos]);
   async function saveMemo(scope, targetId, content){
     await store.setMemo(project.id, scope, targetId, content, user?.name||'anônimo');
     await loadMemos();
@@ -3304,8 +3338,7 @@ function App(){
     : mainView==='relatorio' ? html`<${ReportView} project=${project} projectMode=${projectMode}
         docs=${docs} cats=${cats} codes=${codes} codeById=${codeById} codePath=${codePath}
         view=${viewCoder} onView=${setViewCoder} coders=${coders} userId=${user?.id} mode=${mode}
-        allCodings=${allCodings} allValues=${allValues} store=${store}
-        onExportTransparency=${doExport} />`
+        allCodings=${allCodings} allValues=${allValues} store=${store} memos=${memos} />`
     : mainView==='ia_codificar' ? html`<div class="split">
       <!-- CODIFICAR COM IA: tela inteira -->
       <section class="pane left" style="flex:1 1 100%;border-right:none;max-width:none">
@@ -4908,9 +4941,10 @@ const REPORT_GROUPS = [
   ]},
 ];
 
-function ReportView({ project, projectMode, docs, cats, codes, codeById, codePath, allCodings, allValues, store, view, onView, coders:projCoders, userId, mode, onExportTransparency }){
+function ReportView({ project, projectMode, docs, cats, codes, codeById, codePath, allCodings, allValues, store, view, onView, coders:projCoders, userId, mode, memos }){
   const [enabled, setEnabled] = useState(()=>new Set(['credito','resumo','freq']));
   const [title, setTitle] = useState('');
+  const [rmode, setRmode] = useState('ati'); // ati | padrao | w3c — interativo é o padrão (incentivar)
   const toggle = (id)=> setEnabled(s=>{ const n=new Set(s); n.has(id)?n.delete(id):n.add(id); return n; });
   const on = (id)=> enabled.has(id);
 
@@ -5029,21 +5063,44 @@ function ReportView({ project, projectMode, docs, cats, codes, codeById, codePat
     catch(e){ alert('Não foi possível copiar automaticamente. '+(e.message||'')); }
   }
 
+  // --- modos de transparência: prévia ao vivo + exportação (só constrói no modo ativo) ---
+  const readerHTML = useMemo(()=> rmode==='ati' ? buildTransparencyReaderHTML(docs, codes, allCodings, memos||[], project) : ''
+  , [rmode, docs, codes, allCodings, memos, project]);
+  const w3cText = useMemo(()=> rmode==='w3c' ? JSON.stringify(buildWebAnnotations(docs, codes, allCodings, memos||[], project), null, 2) : ''
+  , [rmode, docs, codes, allCodings, memos, project]);
+  const w3cTotal = useMemo(()=> rmode==='w3c' ? (buildWebAnnotations(docs, codes, allCodings, memos||[], project).total||0) : 0
+  , [rmode, docs, codes, allCodings, memos, project]);
+  const RMODES = [
+    { id:'ati',    label:'Relatório Interativo (ATI)', desc:'Documentos com grifos clicáveis e nota analítica. HTML publicável.' },
+    { id:'padrao', label:'Relatório Padrão',         desc:'Resumo: contagens, frequências, trechos. Imprimir/PDF ou copiar.' },
+    { id:'w3c',    label:'Web Annotation (W3C)',      desc:'Anotações JSON-LD no padrão aberto (Dataverse, hypothes.is, Anno-REP).' },
+  ];
+
   return html`<section class="pane left" style="flex:1 1 100%;border-right:none;max-width:none">
     <div class="pane-head no-print" style="flex:none;justify-content:space-between;flex-wrap:wrap;gap:8px">
-      <span class="field-label" style="margin:0">Relatório & Transparência</span>
+      <span class="field-label" style="margin:0">${(RMODES.find(m=>m.id===rmode)||{}).label}</span>
       <div class="row" style="gap:8px;flex-wrap:wrap">
-        <button class="btn sm" onClick=${copy} disabled=${enabled.size===0}>${copied?'Copiado ✓':'Copiar texto'}</button>
-        <button class="btn sm primary" onClick=${()=>window.print()} disabled=${enabled.size===0}>Imprimir / PDF</button>
-        <span style="width:1px;background:var(--line);align-self:stretch;margin:2px 2px"></span>
-        <button class="btn sm" title="Página HTML auto-contida: cada documento com os trechos grifados e, ao clicar, a nota analítica e o excerto. Equivalente ao overlay do ATI, hospedável (ex.: GitHub Pages). Censura mascarada." onClick=${()=>onExportTransparency('leitor')} disabled=${docs.length===0}>Leitor de Transparência (HTML)</button>
-        <button class="btn sm" title="Anotações no padrão aberto W3C Web Annotation (JSON-LD) — a língua de dados sob o ATI do QDR, hypothes.is, Anno-REP e Dataverse. Censura mascarada." onClick=${()=>onExportTransparency('ati')} disabled=${docs.length===0}>Web Annotation (W3C)</button>
+        ${rmode==='padrao' && html`<button class="btn sm" onClick=${copy} disabled=${enabled.size===0}>${copied?'Copiado ✓':'Copiar texto'}</button>
+          <button class="btn sm primary" onClick=${()=>window.print()} disabled=${enabled.size===0}>Imprimir / PDF</button>`}
+        ${rmode==='ati' && html`<button class="btn sm primary" onClick=${()=>exportTransparencyReader(docs, codes, allCodings, memos||[], project)} disabled=${docs.length===0}>Exportar HTML</button>`}
+        ${rmode==='w3c' && html`<button class="btn sm primary" onClick=${()=>exportWebAnnotations(docs, codes, allCodings, memos||[], project)} disabled=${docs.length===0}>Exportar JSON</button>`}
       </div>
     </div>
     <div class="pane-body scroll" style="display:flex;gap:0;align-items:flex-start">
 
-      <!-- montador (não imprime) -->
+      <!-- seletor de modo + montador (não imprime) -->
       <aside class="no-print" style="flex:0 0 280px;position:sticky;top:0;padding:16px;border-right:1px solid var(--line)">
+        <p class="field-label" style="margin:0 0 8px">Tipo de saída</p>
+        <div style="margin-bottom:16px">
+          ${RMODES.map(m=>html`<button key=${m.id} class="opt ${rmode===m.id?'on':''}"
+              style="display:block;width:100%;text-align:left;margin-bottom:6px;cursor:pointer;padding:9px 11px"
+              onClick=${()=>setRmode(m.id)}>
+            <span style="font-weight:600;display:block">${m.label}</span>
+            <span class="meta" style="font-size:11px">${m.desc}</span>
+          </button>`)}
+        </div>
+
+        ${rmode==='padrao' && html`<div>
         <label style="display:flex;gap:7px;align-items:center;cursor:pointer;margin:0 0 14px;font-size:12px;color:var(--ink-soft)">
           <input type="checkbox" checked=${on('credito')} onChange=${()=>toggle('credito')} />
           Creditar QualiLab no resumo
@@ -5067,8 +5124,19 @@ function ReportView({ project, projectMode, docs, cats, codes, codeById, codePat
               <span class="meta" style="font-size:11px">${s.desc}</span></span>
           </label>`)}
         </div>`)}
+        </div>`}
+
+        ${rmode==='ati' && html`<div class="meta" style="font-size:12px;line-height:1.6">
+          Página HTML auto-contida (sem rede): cada documento com os trechos grifados e, ao clicar, a nota analítica e o excerto. Equivalente ao <i>overlay</i> do ATI, hospedável (ex.: GitHub Pages).
+          <p style="margin:8px 0 0">A nota do <b>trecho</b> tem prioridade sobre a do código. Trechos de censura são mascarados.</p>
+        </div>`}
+        ${rmode==='w3c' && html`<div class="meta" style="font-size:12px;line-height:1.6">
+          Anotações no padrão aberto <b>W3C Web Annotation</b> (JSON-LD) — a língua de dados sob o ATI do QDR, hypothes.is, Anno-REP e Dataverse. Cada trecho vira uma anotação com seletor de posição/citação + nota analítica.
+          <p style="margin:8px 0 0">${w3cTotal} anotação(ões). Censura mascarada.</p>
+        </div>`}
       </aside>
 
+      ${rmode==='padrao' && html`
       <!-- relatório montado (imprime) -->
       <div id="report-print" style="flex:1;min-width:0;padding:24px 28px;max-width:840px">
         <h1 style="font-family:var(--serif);font-size:24px;margin:0 0 4px">${title.trim()||project?.name||'Relatório'}</h1>
@@ -5146,7 +5214,21 @@ function ReportView({ project, projectMode, docs, cats, codes, codeById, codePat
           ${unusedCodes.length===0 ? html`<span class="meta">Todos os códigos foram utilizados.</span>`
             : html`<ul style="margin:6px 0;padding-left:22px">${unusedCodes.map(c=>html`<li key=${c.id}>${swatch(c)} <span style="vertical-align:middle">${pathOf(c.id)}</span></li>`)}</ul>`}
         </section>`}
-      </div>
+      </div>`}
+
+      ${rmode==='ati' && html`<div style="flex:1;min-width:0;padding:14px;display:flex;flex-direction:column;height:calc(100vh - 150px)">
+        <p class="meta" style="margin:0 0 8px;flex:none">Prévia do leitor interativo (mesma página que será exportada):</p>
+        ${docs.length===0
+          ? html`<p class="hint">Nenhum documento para exibir.</p>`
+          : html`<iframe srcdoc=${readerHTML} style="flex:1;width:100%;min-height:0;border:1px solid var(--line);border-radius:8px;background:#fff"></iframe>`}
+      </div>`}
+
+      ${rmode==='w3c' && html`<div style="flex:1;min-width:0;padding:14px;display:flex;flex-direction:column;height:calc(100vh - 150px)">
+        <p class="meta" style="margin:0 0 8px;flex:none">Prévia do JSON-LD (W3C Web Annotation) que será exportado:</p>
+        ${docs.length===0
+          ? html`<p class="hint">Nenhum documento para exibir.</p>`
+          : html`<pre style="flex:1;min-height:0;margin:0;overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px;font-family:var(--mono);font-size:11.5px;line-height:1.5;white-space:pre-wrap;word-break:break-word">${w3cText}</pre>`}
+      </div>`}
     </div>
   </section>`;
 }
