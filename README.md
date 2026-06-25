@@ -12,6 +12,8 @@ QualiLab é uma ferramenta **gratuita e de código aberto** para análise qualit
 
 Acesse a ferramenta **[aqui](https://luizpf42.github.io/QualiLab)** / Baixe a ferramenta **[aqui](https://github.com/LuizPF42/QualiLab/releases/download/alpha/index.html)**
 
+📖 **Novo por aqui?** Comece pelo **[Manual de uso](MANUAL.md)** — guia completo, passo a passo, de todas as telas.
+
 ---
 
 ## Motivação
