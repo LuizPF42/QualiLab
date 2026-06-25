@@ -403,6 +403,18 @@ function hslToHex(h,s,l){
 function xmlEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function stripGuid(g){ return String(g||'').replace(/[{}]/g,'').trim(); }
 
+/* REFI-QDA conta posicoes de trecho em CARACTERES (code points); o app indexa strings em
+   UTF-16 (semantica de String do JS, span_start/span_end). Os dois so divergem quando ha
+   caractere FORA do BMP (emoji, alguns CJK estendidos): 1 code point = 2 unidades UTF-16
+   (surrogate pair). QualCoder (Python) lê code points — sem converter, no .qdpx todo trecho
+   APOS um char astral sai deslocado e o highlight ancora no texto errado (interop quebrada,
+   confirmado pelo harness de round-trip). Convertendo nos dois sentidos, o offset gravado no
+   .qdpx fica em code points (o que o ecossistema REFI-QDA espera) e o app continua correto ao
+   reimportar. No-op em texto sem char astral (a esmagadora maioria), entao nao muda nada nos
+   projetos comuns. Ver scripts/roundtrip/. */
+function u16ToCp(str, u16){ return [...str.slice(0, u16)].length; }   // offset UTF-16 -> indice de code point
+function cpToU16(str, cp){ let u=0,n=0; for(const ch of str){ if(n>=cp) break; u+=ch.length; n++; } return u; } // code point -> offset UTF-16
+
 /* markdown bem leve, so pra exibir as respostas da IA (que vem em markdown)
    sem precisar carregar uma lib: negrito/italico e quebras de linha. */
 function mdLite(text){
@@ -720,7 +732,9 @@ async function exportQDPX(docs, cats, allV, codes, allC, project){
       const codingGuid = uid();
       const au = ensureAuthor(c.author_name);
       const name = (c.quote||'').slice(0,80);
-      return `<PlainTextSelection guid="${stripGuid(c.id)}" name="${xmlEsc(name)}" startPosition="${c.span_start}" endPosition="${c.span_end}" creatingUser="${au}">`
+      // posicoes em code points (REFI-QDA/QualCoder), convertidas do offset UTF-16 interno
+      const cs = u16ToCp(d.content, c.span_start), ce = u16ToCp(d.content, c.span_end);
+      return `<PlainTextSelection guid="${stripGuid(c.id)}" name="${xmlEsc(name)}" startPosition="${cs}" endPosition="${ce}" creatingUser="${au}">`
         + `<Coding guid="${codingGuid}" creatingUser="${au}"><CodeRef targetGUID="${stripGuid(c.code_id)}"/></Coding>`
         + `</PlainTextSelection>`;
     }).join('');
@@ -731,7 +745,10 @@ async function exportQDPX(docs, cats, allV, codes, allC, project){
   const casesXml = docs.map(d=>{
     const vv = allV.filter(v=>v.document_id===d.id).map(v=>
       `<VariableValue><VariableRef targetGUID="${stripGuid(v.category_id)}"/><TextValue>${xmlEsc(v.value)}</TextValue></VariableValue>`).join('');
-    return `<Case guid="${uid()}" name="${xmlEsc(d.name)}"><SourceRef targetGUID="${stripGuid(d.id)}"/>${vv}</Case>`;
+    // ordem dos filhos do <Case> segue o XSD do REFI-QDA: CodeRef, VariableValue, SourceRef,
+    // SelectionRef. VariableValue ANTES de SourceRef — senao importadores estritos (MAXQDA/
+    // ATLAS.ti) recusam o .qdpx por invalidez de schema (confirmado pelo harness de round-trip).
+    return `<Case guid="${uid()}" name="${xmlEsc(d.name)}">${vv}<SourceRef targetGUID="${stripGuid(d.id)}"/></Case>`;
   }).join('');
 
   const usersXml = Object.entries(authorGuid).map(([name,g])=>`<User guid="${g}" name="${xmlEsc(name)}"/>`).join('');
@@ -1041,7 +1058,11 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
       let start = parseInt(sel.getAttribute('startPosition'),10);
       let end = parseInt(sel.getAttribute('endPosition'),10);
       let approx = false;
-      const offsetsOk = !geomPages && Number.isFinite(start) && Number.isFinite(end) && end>start && end<=content.length;
+      // startPosition/endPosition do REFI-QDA sao code points; converte pra UTF-16 (offset do
+      // app) antes de validar/fatiar. No-op em texto sem char astral. So no caminho de offset
+      // (sem geomPages: la o texto vem do pdf.js e a ancora e por nome, nao por posicao).
+      let offsetsOk = !geomPages && Number.isFinite(start) && Number.isFinite(end) && end>start;
+      if(offsetsOk){ start = cpToU16(content, start); end = cpToU16(content, end); offsetsOk = end>start && end<=content.length; }
       if(!offsetsOk){
         const sp = findQuoteSpan(index, sel.getAttribute('name'));
         if(!sp){ skipped.codingsNaoLocalizados += countCodings(sel); return; }
