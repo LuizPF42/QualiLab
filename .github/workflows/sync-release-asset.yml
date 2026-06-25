@@ -1,0 +1,26 @@
+name: Sincronizar asset do release
+
+# Mantem o asset "index.html" do release `alpha` sempre igual ao docs/index.html
+# servido pelo GitHub Pages. Dispara quando o docs/index.html muda no main.
+# Assim o link "Baixe a ferramenta" do README nunca fica desatualizado.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/index.html'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reenviar docs/index.html como asset do release alpha
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload alpha docs/index.html --clobber --repo "$GITHUB_REPOSITORY"
