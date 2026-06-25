@@ -250,7 +250,7 @@ Não há build. Sirva o arquivo e abra no navegador:
 ```bash
 python -m http.server 8000   # ou: npx serve .
 ```
-Teste com `examples/QualiLab_demo_artificial_stress_test.qdpx` (16 docs, 90 códigos, 2332 codificações, 7 "usuários" incluindo um "Gabarito experimental"). Não há suíte de testes automatizada — verificação é manual no navegador.
+Teste com `examples/QualiLab_synthetic_realistic_legal_ai_3.qualilab` (corpus fictício de demonstração: 9 docs, 22 códigos com 3 de censura, 288 trechos codificados, gabarito completo, co-ocorrência densa, 3 codificadores; importe por "Usar offline" → importar ▾ → .qualilab). Ele é gerado por `examples/gen_example_3.py` (edite o script e rode `py examples/gen_example_3.py` — nunca edite o `.qualilab` à mão; os offsets são computados). Não há suíte de testes automatizada — verificação é manual no navegador.
 
 ---
 

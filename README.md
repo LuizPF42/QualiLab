@@ -224,7 +224,7 @@ QualiLab/
 ├── supabase/
 │   └── schema.sql    # schema completo do backend (tabelas, RPCs, RLS, realtime)
 └── examples/
-    └── *.qdpx        # projeto de exemplo (REFI-QDA) para testes
+    └── *.qualilab    # projeto de exemplo (formato nativo) para testes/demonstração
 ```
 
 ---
