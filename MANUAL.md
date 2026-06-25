@@ -12,6 +12,26 @@ Este manual ensina a *usar* o QualiLab passo a passo. Para a lista de recursos e
 
 ---
 
+## ⚠️ Aviso importante — privacidade, segurança e responsabilidade
+
+**Leia antes de usar o QualiLab com dados reais.**
+
+O QualiLab é um **projeto pessoal, experimental e em desenvolvimento ativo**, distribuído sob licença **MIT, SEM QUALQUER GARANTIA** — de correção, disponibilidade ou segurança. **Bugs são esperados.** O software **não passou por auditoria de segurança** e não deve ser tratado como um cofre de dados.
+
+**Para onde vão os seus dados** depende do modo de uso:
+
+- **Arquivo / Local** — ficam **no seu dispositivo** e não saem dele.
+- **Nuvem** — são enviados a um **servidor de terceiros** (Supabase), ficam sujeitos aos termos desse provedor e saem do seu controle direto.
+- **Publicação** (Relatório Interativo / Web Annotation) — o que você divulgar fica **público**.
+
+**O QualiLab NÃO anonimiza nem identifica dados pessoais** (nomes, CPF, dados de saúde) no conteúdo dos documentos. A **censura** mascara apenas os trechos que **você** marcou à mão, **não** detecta sozinha o que é sensível e **não** cobre as exportações (QDPX/CSV/JSON saem com o texto cru). **Não há rede de segurança automática.**
+
+**A responsabilidade pelo tratamento dos dados é inteiramente sua.** Trabalhando com dados pessoais, sigilosos ou protegidos (LGPD, aprovação de comitê de ética/CEP, segredo de justiça, dados de saúde), cabe a você anonimizar, obter consentimento e escolher o modo adequado. **Para material sensível, use o modo Arquivo local, offline, e não o coloque na nuvem.**
+
+> **Isenção.** O QualiLab é um projeto pessoal de Luiz Pimenta Filho. **Não representa posição nem implica responsabilidade de qualquer instituição (incluindo a FGV).** O autor **não se responsabiliza** por perda de dados, vazamento, uso indevido ou quaisquer consequências do uso do software. Use por sua conta e risco, com as cautelas éticas e legais que a sua pesquisa exige.
+
+---
+
 ## Índice
 
 1. [Conceitos fundamentais](#1-conceitos-fundamentais) — o modelo mental antes de tudo
