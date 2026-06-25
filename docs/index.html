@@ -279,7 +279,7 @@ const isSpecialOpt = (o)=> o===NAO_INFO || o===OUTROS;
 async function extractText(file){
   const n = (file.name||'').toLowerCase();
   if(n.endsWith('.txt')||n.endsWith('.md')||n.endsWith('.markdown')|| (file.type||'').startsWith('text/'))
-    return await file.text();
+    return stripLeadingBom(await file.text());
   if(n.endsWith('.docx')){
     const ab = await file.arrayBuffer();
     const r = await (await getMammoth()).extractRawText({ arrayBuffer: ab });
@@ -414,6 +414,14 @@ function stripGuid(g){ return String(g||'').replace(/[{}]/g,'').trim(); }
    projetos comuns. Ver scripts/roundtrip/. */
 function u16ToCp(str, u16){ return [...str.slice(0, u16)].length; }   // offset UTF-16 -> indice de code point
 function cpToU16(str, cp){ let u=0,n=0; for(const ch of str){ if(n>=cp) break; u+=ch.length; n++; } return u; } // code point -> offset UTF-16
+
+/* Um BOM (U+FEFF) no inicio do texto e marcador de codificacao, NAO conteudo. Mantê-lo
+   desloca todos os offsets de trecho em 1 e quebra a interoperabilidade: o QualCoder (e o
+   leitor padrao, via utf-8-sig) descarta o BOM antes de contar posicoes, entao um .qdpx
+   importado dele traz os offsets SEM o BOM, mas o .txt COM o BOM. Removemos o BOM inicial na
+   ingestao (arquivo de texto, import QDPX) pra o conteudo guardado nunca conta-lo. Ver
+   scripts/roundtrip/ (round-trip real com o QualCoder). */
+function stripLeadingBom(s){ return (s && s.charCodeAt(0) === 0xFEFF) ? s.slice(1) : s; }
 
 /* markdown bem leve, so pra exibir as respostas da IA (que vem em markdown)
    sem precisar carregar uma lib: negrito/italico e quebras de linha. */
@@ -1021,13 +1029,15 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
   await Promise.all(Object.keys(zip.files).filter(k=>/\.(txt|html?|xml)$/i.test(k) && !/\.qde$/i.test(k))
     .map(async k=>{ try{ textCache[k] = await zip.files[k].async('string'); }catch(e){} }));
   function readPlainText(srcEl){
+    // descarta um BOM inicial: ferramentas como o QualCoder gravam o BOM no .txt mas contam os
+    // offsets SEM ele — mantê-lo desalinharia todo trecho do documento (ver stripLeadingBom).
     const inline = firstChild(srcEl, 'PlainTextContent');
-    if(inline) return inline.textContent || '';
+    if(inline) return stripLeadingBom(inline.textContent || '');
     const path = srcEl.getAttribute('plainTextPath') || '';
     if(path.startsWith('internal://')){
       const fname = path.replace('internal://','');
       const entry = Object.keys(textCache).find(k=>k.toLowerCase().endsWith('/'+fname.toLowerCase()) || k.toLowerCase()===('sources/'+fname.toLowerCase()) || k.toLowerCase().endsWith(fname.toLowerCase()));
-      if(entry) return textCache[entry];
+      if(entry) return stripLeadingBom(textCache[entry]);
     }
     if(path.startsWith('relative://') || path.startsWith('absolute://')){ skipped.fonteExterna++; }
     return null;
