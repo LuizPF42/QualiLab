@@ -1366,6 +1366,15 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress){
         await tick();
       }
     }
+
+    // diário de insights da IA: preserva memórias (conteúdo/origem/modelo/autor) do arquivo
+    if(store.addMemory){
+      for(const e of (db.ia_memory||[])){
+        if(!e || !e.content) continue;
+        const row = await store.addMemory(projectId, { content:e.content, reason:e.reason||'', source:e.source||'ai', ai_model:e.ai_model||'', mode_label:e.mode_label||'', author_name:e.author_name });
+        if(row?.id && e.active===false) await store.setMemoryActive?.(row.id, false);
+      }
+    }
   } finally {
     if(store.endBatch) await store.endBatch();
   }
@@ -1785,6 +1794,14 @@ async function createFileStore(fileHandle, isNew){
       db.ia_results.push(r); await save(); return r;
     },
     async deleteIaResult(id){ db.ia_results=(db.ia_results||[]).filter(r=>r.id!==id); await save(); },
+    async listMemory(){ return (db.ia_memory||[]).slice().reverse(); },
+    async addMemory(pid,{content,reason,source,ai_model,mode_label,author_name}){
+      if(!db.ia_memory) db.ia_memory=[];
+      const r={ id:uid(), project_id:pid, content, reason:reason||'', source:source||'ai', active:true, ai_model:ai_model||'', mode_label:mode_label||'', author_name:author_name||name, created_at:new Date().toISOString() };
+      db.ia_memory.push(r); await save(); return r;
+    },
+    async setMemoryActive(id,active){ const m=(db.ia_memory||[]).find(x=>x.id===id); if(m) m.active=!!active; await save(); },
+    async deleteMemory(id){ db.ia_memory=(db.ia_memory||[]).filter(r=>r.id!==id); await save(); },
   };
 }
 /* verifica suporte e reabre último arquivo */
@@ -1892,6 +1909,14 @@ function LocalStore(){
       db.ia_results.push(r); save(); return r;
     },
     async deleteIaResult(id){ db.ia_results=(db.ia_results||[]).filter(r=>r.id!==id); save(); },
+    async listMemory(){ return (db.ia_memory||[]).slice().reverse(); },
+    async addMemory(pid,{content,reason,source,ai_model,mode_label,author_name}){
+      if(!db.ia_memory) db.ia_memory=[];
+      const r={ id:uid(), project_id:pid, content, reason:reason||'', source:source||'ai', active:true, ai_model:ai_model||'', mode_label:mode_label||'', author_name:author_name||name, created_at:new Date().toISOString() };
+      db.ia_memory.push(r); save(); return r;
+    },
+    async setMemoryActive(id,active){ const m=(db.ia_memory||[]).find(x=>x.id===id); if(m) m.active=!!active; save(); },
+    async deleteMemory(id){ db.ia_memory=(db.ia_memory||[]).filter(r=>r.id!==id); save(); },
     async changePassword(){ throw new Error('Sem conta no modo local'); },
     async changeDisplayName(newName){ name = newName || name; try{ localStorage.setItem('qualilab:name', name); }catch(e){} },
     async createProject(pn,disp,pmode){ return { id:'local', name:pn||'Projeto local', code:'LOCAL', created_by:'local-user', mode:pmode||'individual' }; },
@@ -2082,6 +2107,14 @@ function SupabaseStore(sb){
       ).select().single());
     },
     async deleteIaResult(id){ must(await sb.from('ia_results').delete().eq('id',id)); },
+    async listMemory(pid){ try{ return must(await sb.from('ia_memory').select('*').eq('project_id',pid).order('created_at',{ascending:false})); }catch(e){ return []; } },
+    async addMemory(pid,{content,reason,source,ai_model,mode_label,author_name}){
+      return must(await sb.from('ia_memory').insert(
+        { project_id:pid, content, reason:reason||'', source:source||'ai', active:true, ai_model:ai_model||'', mode_label:mode_label||'', author_name:author_name||'anonimo', created_by:user?.id||null }
+      ).select().single());
+    },
+    async setMemoryActive(id,active){ must(await sb.from('ia_memory').update({ active:!!active }).eq('id',id)); },
+    async deleteMemory(id){ must(await sb.from('ia_memory').delete().eq('id',id)); },
     // sincronizacao ao vivo: dispara onChange a cada alteracao em codings/doc_values do projeto
     realtime(projectId, onChange){
       const ch = sb.channel('qualilab:'+projectId)
@@ -2209,6 +2242,7 @@ function App(){
   const [allValues, setAllValues] = useState([]);
   const [memos, setMemos] = useState([]);
   const [iaResults, setIaResults] = useState([]); // resultados salvos da aba "Analisar com IA"
+  const [aiMemory, setAiMemory] = useState([]); // diário de insights da IA (memória persistente do projeto)
   const [memoSel, setMemoSel] = useState({ scope:'project', targetId:null }); // alvo selecionado na aba Memos
   // estado da aba Visualização (elevado para poder usar o split nativo do app)
   const [vizCatFilter,  setVizCatFilter]  = useState({});
@@ -2581,6 +2615,26 @@ function App(){
     await loadIaResults();
   }
 
+  /* diário de insights da IA: memórias curadas do projeto, injetadas no prompt das chamadas
+     de IA. Só as ativas vão pro prompt (economia/transparência). Sobrevivem ao F5. */
+  const loadMemory = useCallback(async ()=>{
+    if(!store || !project || !store.listMemory){ setAiMemory([]); return; }
+    try{ setAiMemory(await store.listMemory(project.id) || []); }catch(e){ setAiMemory([]); }
+  }, [store, project]);
+  useEffect(()=>{ if(phase==='work' && (mainView==='ia_analisar'||mainView==='ia_codificar')) loadMemory(); }, [phase, mainView, loadMemory]);
+  async function addMemory(entry){
+    await store.addMemory(project.id, { ...entry, author_name:user?.name||'anônimo' });
+    await loadMemory();
+  }
+  async function toggleMemoryActive(id, active){
+    await store.setMemoryActive(id, active);
+    await loadMemory();
+  }
+  async function deleteMemory(id){
+    await store.deleteMemory(id);
+    await loadMemory();
+  }
+
   /* recarrega a visao atual (doc ativo + visualizacao, se aberta) — usado pelo realtime */
   const reloadRef = useRef(()=>{});
   reloadRef.current = ()=>{ loadDoc(); if(mainView==='visualizar') loadAll(); };
@@ -2748,11 +2802,12 @@ function App(){
       v.forEach(x=>doc_values.push({ id:x.id||uid(), document_id:d.id, category_id:x.category_id, value:x.value, set_by:x.set_by||'file-user', author_name:x.author_name||'anonimo', layer:x.layer||'individual' }));
       co.forEach(x=>codings.push({ id:x.id||uid(), document_id:x.document_id, code_id:x.code_id, span_start:x.span_start, span_end:x.span_end, quote:x.quote, layer:x.layer||'individual', created_by:x.created_by??null, author_name:x.author_name||'anonimo', created_at:x.created_at||new Date().toISOString() }));
     }
-    let memos=[], ia_results=[];
+    let memos=[], ia_results=[], ia_memory=[];
     try{ memos = (await store.listMemos?.(project.id))||[]; }catch(e){}
     try{ ia_results = ((await store.listIaResults?.(project.id))||[]).slice().reverse(); }catch(e){}
+    try{ ia_memory = ((await store.listMemory?.(project.id))||[]).slice().reverse(); }catch(e){}
     return { _meta:{ id:'file-project', name:project.name||'Projeto', code:'FILE', mode:projectMode||'individual', displayName:user?.name||'pesquisador' },
-      documents, categories, doc_values, codes:codesOut, codings, memos, ia_results };
+      documents, categories, doc_values, codes:codesOut, codings, memos, ia_results, ia_memory };
   }
   // salva o projeto inteiro como um arquivo .qualilab (mesmo formato do FileStore),
   // que pode ser reaberto depois via "abrir .qualilab". Funciona em qualquer modo
@@ -3096,9 +3151,7 @@ function App(){
           title="Gerenciar projeto" onClick=${()=>setProjEdit(true)}>
           ${store?.mode==='file'?'arquivo':mode==='cloud'?'nuvem':'local'} · ${project.name}${mode==='cloud'?` · ${project.code}`:''} · ${projectMode==='individual'?'individual':'coletivo'} ▾
         </button>`}
-        ${user && (mode==='cloud'
-          ? html`<button class="btn sm ghost" title=${'Minha conta'+(user.email?' · '+user.email:'')} onClick=${()=>setAccount(true)}>${user.name}${user.anon?' (visitante)':''}</button>`
-          : html`<span class="meta">${user.name}</span>`)}
+        ${user && html`<button class="btn sm ghost" title=${'Minha conta'+(user.email?' · '+user.email:'')} onClick=${()=>setAccount(true)}>${user.name}${user.anon?' (visitante)':''}</button>`}
         ${mode==='cloud' && html`<button class="btn sm ghost" onClick=${()=>{ try{localStorage.removeItem('qualilab:project');}catch(e){} setProject(null); setPhase('gate'); }}>trocar projeto</button>`}
         ${mode==='cloud' && user && html`<button class="btn sm ghost" onClick=${async()=>{ try{localStorage.removeItem('qualilab:project');}catch(e){} try{ await store.signOut(); }catch(e){} setProject(null); setUser(null); setDocs([]); setActiveId(null); setPhase('auth'); }}>sair</button>`}
         ${project && docs.length>0 && html`<div style="position:relative">
@@ -3403,7 +3456,8 @@ function App(){
           <div style="max-width:760px;margin:0 auto">
             <${IACodificarPanel} project=${project} docs=${docs} codes=${codes} codeById=${codeById} codePath=${codePath}
               store=${store} allCodings=${allCodings} count=${schemaCodingCount} isAdmin=${isAdmin}
-              reload=${()=>loadProject(store,project.id)} loadAll=${loadAll} onAdd=${addCode} memos=${memos} />
+              reload=${()=>loadProject(store,project.id)} loadAll=${loadAll} onAdd=${addCode} memos=${memos}
+              memory=${aiMemory} onAddMemory=${addMemory} />
           </div>
         </div>
       </section>
@@ -3416,13 +3470,14 @@ function App(){
           <div style="max-width:760px;margin:0 auto">
             <${IAAnalisarPanel} project=${project} docs=${docs} codes=${codes} codeById=${codeById} codePath=${codePath}
               activeDoc=${activeDoc} sel=${sel} store=${store} allCodings=${allCodings} memos=${memos} cats=${cats} allValues=${allValues}
-              onSave=${saveIaResult} />
+              memory=${aiMemory} onAddMemory=${addMemory} onSave=${saveIaResult} />
           </div>
         </div>
       </section>
-      <!-- ANALISAR COM IA direita: resultados salvos -->
+      <!-- ANALISAR COM IA direita: diário de memória + resultados salvos -->
       <section class="pane" style="flex:0 0 300px;min-width:0;border-left:1px solid var(--line);background:var(--paper)">
         <div class="pane-body scroll" style="padding:0">
+          <${MemoryPanel} memory=${aiMemory} onToggle=${toggleMemoryActive} onDelete=${deleteMemory} onAdd=${addMemory} />
           <${IAResultsPanel} results=${iaResults} onDelete=${deleteIaResult} />
         </div>
       </section>
@@ -5051,6 +5106,20 @@ const AI_PROVIDERS = [
   // servidor local (Ollama/vLLM) exposto numa URL publica (a Edge Function roda no servidor
   // do Supabase, nao alcanca localhost da maquina do pesquisador sem tunel).
   { id:'custom', label:'Personalizado', custom:true, models:[] },
+  // Ollama LOCAL: tambem formato classico da OpenAI (custom:true reusa a UI de URL+modelo),
+  // mas a flag local:true desvia a chamada pra DIRETA do navegador (askLocalChat), sem passar
+  // pela Edge Function ai-ask — que roda no servidor do Supabase e nao alcanca o localhost da
+  // maquina. Assim funciona offline/air-gapped, sem tunel. Requer iniciar o Ollama com
+  // OLLAMA_ORIGINS liberando a origem do navegador (CORS); ver hint em "Minha Conta".
+  { id:'ollama', label:'Ollama (local)', custom:true, local:true, models:[] },
+];
+// Sugestoes (NAO uma lista fixa) de modelos Ollama populares — viram <option> de um <datalist>
+// no campo de modelo (texto livre): o pesquisador clica numa sugestao OU digita qualquer outro
+// modelo que tenha baixado (ollama pull / ollama list). So nomes-base comuns; tags especificas
+// (ex.: llama3.1:70b) o usuario completa a mao. Manter curto e atualizavel.
+const OLLAMA_MODEL_SUGGESTIONS = [
+  'llama3.1', 'llama3.2', 'llama3.3', 'qwen2.5', 'qwen2.5-coder',
+  'gemma2', 'mistral', 'mistral-nemo', 'phi4', 'deepseek-r1',
 ];
 // configuracao pessoal de IA (BYOK) — guardada so no localStorage de quem configurou em
 // "Minha Conta". Ausente = usa a chave/modelo compartilhados do projeto (comportamento
@@ -5065,8 +5134,51 @@ function getAIConfig(){
     };
   }catch(e){ return { provider:'gemini', apiKey:'', model:'', baseUrl:'' }; }
 }
+// rótulo do modelo ativo, pra proveniência da memória (ex.: "anthropic:claude-opus-4-8",
+// ou "gemini:(padrão)" quando o modelo é o default do provedor). Auditoria em projeto coletivo.
+function currentModelLabel(){
+  const c = getAIConfig();
+  return `${c.provider}:${c.model || '(padrão)'}`;
+}
+// provedor "local" (Ollama/vLLM na maquina): a chamada NAO passa pela Edge Function ai-ask
+// (que roda no servidor do Supabase e nao alcanca o localhost do pesquisador) — o navegador
+// fala DIRETO com o servidor local. Marcado pela flag local:true em AI_PROVIDERS.
+function isLocalProvider(provider){
+  return !!AI_PROVIDERS.find(p=>p.id===provider)?.local;
+}
+// Chamada direta do navegador a um servidor local compativel com o formato classico da OpenAI
+// (/chat/completions). Mesmo corpo do callCustom da Edge Function, porem disparado no cliente —
+// funciona offline/air-gapped, sem tunel nem nuvem. Requer OLLAMA_ORIGINS liberando a origem do
+// navegador (CORS); e, se o app estiver em HTTPS (GitHub Pages), o navegador pode bloquear
+// http://localhost como conteudo misto — rodar o app localmente (http://localhost) contorna.
+// json=true ativa o "modo JSON" do servidor local (response_format json_object). Ollama/vLLM
+// compativeis com OpenAI restringem a saida a JSON valido via gramatica — essencial pros modelos
+// locais menores, que entendem a tarefa mas costumam ignorar a instrucao de "responda so JSON" e
+// devolvem prosa (ai o parseAIJson falha). So passar nas chamadas que esperam JSON (Codificar com
+// IA, "Sugerir memorias"); NUNCA na conversa em prosa do Analisar, senao quebraria a resposta.
+async function askLocalChat({ system, messages, signal, json }){
+  const cfg = getAIConfig();
+  const base = (cfg.baseUrl || 'http://localhost:11434/v1').replace(/\/+$/, '');
+  const msgs = [ ...(system ? [{ role:'system', content: system }] : []), ...(messages || []) ];
+  let res;
+  try{
+    res = await fetch(`${base}/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', ...(cfg.apiKey ? { Authorization:`Bearer ${cfg.apiKey}` } : {}) },
+      body: JSON.stringify({ model: cfg.model, messages: msgs, temperature: 0.3, stream: false, max_tokens: 8192, ...(json ? { response_format:{ type:'json_object' } } : {}) }),
+      ...(signal ? { signal } : {}),
+    });
+  }catch(e){
+    if(e && e.name === 'AbortError') throw e;
+    throw new Error(`Não consegui falar com o servidor local em ${base} — o Ollama está rodando e iniciado com OLLAMA_ORIGINS liberando este site? (Se o app estiver em HTTPS, rode-o localmente em http://localhost.)`);
+  }
+  if(!res.ok){ const t = await res.text().catch(()=> ''); throw new Error(`Servidor local (${res.status}): ${t || 'sem detalhe'}`); }
+  const data = await res.json().catch(()=>({}));
+  return data.choices?.[0]?.message?.content || '';
+}
 async function askAI(prompt){
   const cfg = getAIConfig();
+  if(isLocalProvider(cfg.provider)) return askLocalChat({ messages:[{ role:'user', content: prompt }] });
   const res = await fetch(`${SUPABASE_URL}/functions/v1/ai-ask`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
@@ -5088,8 +5200,9 @@ async function askAI(prompt){
 // senao o system (= todo o material) seria descartado e o modelo responderia sem contexto.
 // Esse caminho funciona em todos os provedores (Gemini/OpenAI/Anthropic/Azure/custom) sem
 // precisar redeploy da function. Mandamos body.system tambem, por compatibilidade/inocuo.
-async function askAIChat({ system, messages, signal }){
+async function askAIChat({ system, messages, signal, json }){
   const cfg = getAIConfig();
+  if(isLocalProvider(cfg.provider)) return askLocalChat({ system, messages, signal, json });
   const msgs = [ ...(system ? [{ role:'system', content: system }] : []), ...(messages || []) ];
   const res = await fetch(`${SUPABASE_URL}/functions/v1/ai-ask`, {
     method: 'POST',
@@ -5132,6 +5245,29 @@ function extractBalancedObjects(s){
 //      objetos {...} balanceados que parsearem individualmente — recupera as operacoes
 //      completas e descarta so a ultima cortada. Marca _salvaged pra UI avisar.
 // Devolve null se nada der. Quem chama trata o erro (e pode mostrar a resposta crua).
+// Bloco de "memória do projeto" (diário de insights) injetado no system prompt das chamadas
+// de IA. Só as entradas ATIVAS entram (o pesquisador escolhe quais usar — economia de tokens
+// e transparência). Recebe a lista completa de memórias e filtra aqui, pra ser uma única fonte.
+function memoryBlock(entries){
+  const active = (entries||[]).filter(m=>m && m.active);
+  if(!active.length) return 'Memória do projeto (decisões e insights já registrados pelo pesquisador): (nenhuma memória registrada ainda)';
+  return 'Memória do projeto (decisões e insights já registrados pelo pesquisador — leve em conta, não repita como novidade):\n'
+    + active.map(m=>`- ${m.content}`).join('\n');
+}
+
+// Valida/normaliza as memórias propostas pela IA (campo "memory" do JSON): só entradas com
+// content não-vazio; reason default ''; corta tamanho; até 8 (mesma disciplina do validateOps).
+function validateMemProps(raw){
+  const out = [];
+  for(const e of (Array.isArray(raw)?raw:[])){
+    const content = String(e?.content||'').trim();
+    if(!content) continue;
+    out.push({ content: content.slice(0,400), reason: String(e?.reason||'').trim().slice(0,300) });
+    if(out.length>=8) break;
+  }
+  return out;
+}
+
 function parseAIJson(text){
   if(!text) return null;
   let s = String(text).trim();
@@ -5504,12 +5640,15 @@ const IA_COD_SYS_REGRAS = `Sua tarefa é propor uma reorganização do esquema d
     { "op": "rename",   "id": "#c4", "newName": "Novo nome", "reason": "..." },
     { "op": "promote",  "id": "#c7", "reason": "..." }
   ],
-  "summary": "uma frase resumindo a lógica geral da proposta"
+  "summary": "uma frase resumindo a lógica geral da proposta",
+  "memory": [ { "content": "fato/decisão curto e durável sobre o projeto, em 1 frase", "reason": "por que vale lembrar, em 1 linha" } ]
 }
 Significado: merge = fundir códigos redundantes num só (survivor sobrevive, merged somem e seus trechos passam pro survivor); group = manter os códigos separados, mas agrupá-los como filhos de um pai (existente em "parent", ou novo com "newParentName" e parent=null); reparent = mover um código pra dentro de outro pai; rename = renomear; promote = tornar um código uma família de topo (Hierarquia 0).
-Regras: use SOMENTE os ids curtos que aparecem na lista de códigos (não invente ids nem use nomes no lugar do id); explique CADA operação no campo "reason" (em português, em UMA frase curta — não use quebras de linha dentro de strings JSON); prefira poucas famílias claras a muitos níveis; sinalize incerteza no próprio "reason" quando houver; não proponha operações triviais ou redundantes. Proponha NO MÁXIMO 20 operações por resposta — se houver mais a fazer, priorize as mais importantes e diga no "summary" que há mais a fazer numa próxima rodada (a resposta não pode ser longa demais ou será cortada). Se o esquema já estiver bem organizado, devolva "operations": [] e diga isso no "summary". Devolva apenas o JSON, sem texto antes nem depois, sem comentários.`;
+Regras: use SOMENTE os ids curtos que aparecem na lista de códigos (não invente ids nem use nomes no lugar do id); explique CADA operação no campo "reason" (em português, em UMA frase curta — não use quebras de linha dentro de strings JSON); prefira poucas famílias claras a muitos níveis; sinalize incerteza no próprio "reason" quando houver; não proponha operações triviais ou redundantes. Proponha NO MÁXIMO 20 operações por resposta — se houver mais a fazer, priorize as mais importantes e diga no "summary" que há mais a fazer numa próxima rodada (a resposta não pode ser longa demais ou será cortada). Se o esquema já estiver bem organizado, devolva "operations": [] e diga isso no "summary".
+O campo "memory" é OPCIONAL: inclua-o só se desta análise emergir algum fato ou decisão DURÁVEL sobre o projeto que valha registrar na memória do projeto (ex.: "as famílias X e Y foram consolidadas", "o esquema foi reorganizado em N famílias temáticas"). NÃO registre observações triviais ou transitórias. No máximo 8 entradas, cada "content" em UMA frase. Se não houver nada relevante, omita "memory" ou devolva [].
+Devolva apenas o JSON, sem texto antes nem depois, sem comentários.`;
 
-function IACodificarPanel({ project, docs, codes, codeById, codePath, store, allCodings, count, isAdmin, reload, loadAll, onAdd, memos }){
+function IACodificarPanel({ project, docs, codes, codeById, codePath, store, allCodings, count, isAdmin, reload, loadAll, onAdd, memos, memory, onAddMemory }){
   const [history, setHistory] = useState([]);   // [{role:'user'|'assistant', content}] enviado ao modelo
   const [ops, setOps] = useState([]);            // operacoes validas da ultima resposta, ja traduzidas+validadas
   const [summary, setSummary] = useState('');    // resumo textual da IA
@@ -5523,6 +5662,7 @@ function IACodificarPanel({ project, docs, codes, codeById, codePath, store, all
   const [err, setErr] = useState('');
   const [applyMsg, setApplyMsg] = useState('');
   const [showPrompt, setShowPrompt] = useState(false);
+  const [memProps, setMemProps] = useState([]);  // memorias propostas pela IA na ultima resposta (a revisar)
 
   // memo do projeto (mesma fonte que o IAAnalisarPanel usa pra contextualizar)
   const projectMemo = (memos||[]).find(m=>m.scope==='project' && (m.target_id==null || m.target_id===project.id));
@@ -5582,11 +5722,12 @@ function IACodificarPanel({ project, docs, codes, codeById, codePath, store, all
     return [
       'Você é um assistente de análise qualitativa especializado em organização de esquemas de códigos (codebooks), no espírito da grounded theory. Trabalha em português.',
       memo ? `MEMO DO PROJETO (objetivo da pesquisa): ${memo}` : '(Sem memo de projeto registrado.)',
+      memoryBlock(memory),
       'DESCRIÇÃO DO MATERIAL: abaixo está a lista COMPLETA dos códigos do projeto (com hierarquia e contagem de trechos) e, quando disponível, uma amostra ilustrativa de trechos por código. A amostra NÃO é exaustiva — não tire conclusões sobre a quantidade de trechos a partir dela. Não critique a cobertura nem a quantidade de codificação: o foco é só a ORGANIZAÇÃO dos códigos.',
       'MATERIAL:\n' + mat,
       IA_COD_SYS_REGRAS,
     ].join('\n\n');
-  }, [codeListBlock, excerptBlock, projectMemo]);
+  }, [codeListBlock, excerptBlock, projectMemo, memory]);
 
   // ---- VALIDACAO: traduz ids curtos -> reais e descarta operacoes invalidas ----
   const validateOps = (rawOps)=>{
@@ -5634,11 +5775,11 @@ function IACodificarPanel({ project, docs, codes, codeById, codePath, store, all
       : 'Analise a lista de códigos fornecida e proponha uma reorganização (mesclar redundâncias, agrupar em famílias coerentes, mover, renomear ou promover quando fizer sentido).');
     // reforco do formato no turno do usuario — modelos menores as vezes respondem em prosa
     const userTurn = base + ' Responda APENAS com o objeto JSON no formato especificado, sem texto antes ou depois.';
-    setErr(''); setApplyMsg(''); setRawFail(''); setSalvaged(false); setBusy(true);
+    setErr(''); setApplyMsg(''); setRawFail(''); setSalvaged(false); setMemProps([]); setBusy(true);
     const nextHistory = [...history, { role:'user', content: userTurn }];
     setHistory(nextHistory); setInstruction('');
     try{
-      const text = await askAIChat({ system: systemPrompt, messages: nextHistory });
+      const text = await askAIChat({ system: systemPrompt, messages: nextHistory, json: true });
       setHistory(h=>[...h, { role:'assistant', content: text }]);
       const parsed = parseAIJson(text);
       if(!parsed){
@@ -5652,6 +5793,7 @@ function IACodificarPanel({ project, docs, codes, codeById, codePath, store, all
       setOps(out); setDropped(bad); setSummary(String(parsed.summary||''));
       const dec = {}; out.forEach((o,i)=>{ dec[opKey(o,i)] = true; }); // default: aprovar tudo
       setDecided(dec);
+      setMemProps(validateMemProps(parsed.memory)); // memórias propostas (a revisar antes de gravar)
     }catch(e){ setErr(String(e?.message||e)); }
     finally{ setBusy(false); }
   }
@@ -5804,6 +5946,10 @@ function IACodificarPanel({ project, docs, codes, codeById, codePath, store, all
       </div>
     </div>`}
 
+    ${onAddMemory && html`<${MemoryProposalReview} proposals=${memProps} onCommit=${async (entries)=>{
+      for(const e of entries) await onAddMemory({ content:e.content, reason:e.reason, source:'ai', ai_model:currentModelLabel(), mode_label:'Organização de códigos' });
+    }} />`}
+
     ${history.length>0 && !ops.length && !summary && !busy && !err && html`<span class="meta">Sem operações na última resposta.</span>`}
   </div>`;
 }
@@ -5871,7 +6017,7 @@ const IA_MODES_DOCSCODES = [
 const IA_DOC_CHAR_LIMIT = 8000; // por documento
 const IA_TOTAL_CHAR_LIMIT = 40000; // total do material empírico, somando todos os itens selecionados
 
-function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings, memos, cats, allValues, onSave }){
+function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings, memos, cats, allValues, memory, onAddMemory, onSave }){
   const [scope, setScope] = useState('docs'); // docs | codes | docs_codes
   const [selDocs, setSelDocs] = useState([]);
   const [selCodes, setSelCodes] = useState([]);
@@ -5891,6 +6037,8 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [saved, setSaved] = useState(false);
+  const [memProps, setMemProps] = useState([]);     // memorias sugeridas pela IA (a revisar)
+  const [memBusy, setMemBusy] = useState(false);    // turno extra "Sugerir memorias" em andamento
 
   const changeScope = (s)=>{ setScope(s); setMode(modesFor(s)[0].id); };
   const isCustom = mode==='custom';
@@ -6072,6 +6220,7 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
   const buildSystem = ()=>{ const p = buildParts();
     return `${p.role}\n\n`
       + `Memo do projeto (objetivo e contexto da pesquisa):\n${p.memo}\n\n`
+      + `${memoryBlock(memory)}\n\n`
       + `Sobre o material que você recebeu:\n${p.materialDesc}\n\n`
       + `Material:\n${p.material}\n\n`
       + `Regras:\n- Baseie-se exclusivamente no material acima; não invente nada além dele.\n- ${p.cite}\n- Não comente o tamanho ou a abrangência da seleção: ela foi definida de propósito pelo pesquisador.\n\n`
@@ -6111,7 +6260,24 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
     finally{ setBusy(false); }
   };
 
-  const resetConv = ()=>{ setHistory([]); setConvSystem(''); setConvLabel(''); setFollowup(''); setErr(''); setSaved(false); };
+  const resetConv = ()=>{ setHistory([]); setConvSystem(''); setConvLabel(''); setFollowup(''); setErr(''); setSaved(false); setMemProps([]); };
+
+  // "Sugerir memórias desta conversa": turno EXTRA, à parte da conversa em prosa, pedindo só um
+  // JSON de memórias (não força a análise principal a virar JSON — preserva a UX conversacional).
+  // Reusa o system travado da conversa; parseia com a mesma tolerância das operações.
+  const suggestMemories = async ()=>{
+    if(!convSystem || memBusy || busy) return;
+    setMemBusy(true); setErr('');
+    const ask = { role:'user', content: 'Com base nesta conversa e no material, sugira memórias DURÁVEIS sobre o projeto que valham registrar (fatos/decisões, não observações triviais ou transitórias). Responda APENAS com um objeto JSON no formato { "memory": [ { "content": "fato/decisão em 1 frase", "reason": "por que vale lembrar, 1 linha" } ] }, no máximo 8 entradas. Se não houver nada relevante, devolva { "memory": [] }. Sem texto fora do JSON.' };
+    try{
+      const text = await askAIChat({ system: convSystem, messages: [...history, ask], json: true });
+      const parsed = parseAIJson(text);
+      const props = validateMemProps(parsed?.memory);
+      setMemProps(props);
+      if(!props.length) setErr('A IA não sugeriu nenhuma memória desta conversa.');
+    }catch(e){ setErr(String(e?.message || e)); }
+    finally{ setMemBusy(false); }
+  };
 
   // salva a conversa INTEIRA (todas as perguntas e respostas) como um resultado unico.
   const save = async ()=>{
@@ -6227,9 +6393,14 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
       <div class="row" style="gap:8px;margin-top:6px;align-items:center;flex-wrap:wrap">
         <button class="btn primary" disabled=${busy || !followup.trim()} onClick=${sendFollowup}>Enviar</button>
         <button class="btn sm ${saved?'ghost':'primary'}" disabled=${saved} onClick=${save}>${saved?'Salvo ✓':'Salvar conversa'}</button>
+        ${onAddMemory && html`<button class="btn sm ghost" disabled=${busy || memBusy} onClick=${suggestMemories}>${memBusy?'sugerindo…':'Sugerir memórias'}</button>`}
         <button class="btn sm ghost" disabled=${busy} onClick=${resetConv}>Limpar conversa</button>
         ${saved && html`<span class="meta">Disponível em "Resultados salvos" →</span>`}
       </div>
+
+      ${onAddMemory && html`<${MemoryProposalReview} proposals=${memProps} onCommit=${async (entries)=>{
+        for(const e of entries) await onAddMemory({ content:e.content, reason:e.reason, source:'ai', ai_model:currentModelLabel(), mode_label:convLabel || 'Análise com IA' });
+      }} />`}
     </div>`}
   </div>`;
 }
@@ -6259,6 +6430,99 @@ function IAResultsPanel({ results, onDelete }){
         </div>`}
       </div>`;
     })}
+  </div>`;
+}
+
+/* Revisão das memórias que a IA PROPÔS (campo "memory" do JSON, ou turno "Sugerir memórias").
+   Mesmo espírito da revisão de operações do IACodificarPanel: nada é gravado sem confirmação;
+   cada item pode ser aprovado/editado/recusado. onCommit recebe as entradas finais (editadas e
+   aprovadas) — o painel pai anexa source/ai_model/mode_label e grava via store.addMemory. */
+function MemoryProposalReview({ proposals, onCommit }){
+  const [decided, setDecided] = useState({});
+  const [edits, setEdits] = useState({});
+  const [editing, setEditing] = useState({});
+  const [done, setDone] = useState(false);
+  const [saving, setSaving] = useState(false);
+  useEffect(()=>{ const d={}; (proposals||[]).forEach((_,i)=>{ d[i]=true; }); setDecided(d); setEdits({}); setEditing({}); setDone(false); }, [proposals]);
+  if(!proposals || !proposals.length) return null;
+  if(done) return html`<div class="card" style="margin-top:10px"><span class="meta">✓ Memórias adicionadas ao diário do projeto.</span></div>`;
+  const val = (i,f)=> (edits[i] && edits[i][f]!=null) ? edits[i][f] : proposals[i][f];
+  const setVal = (i,f,v)=> setEdits(e=>({ ...e, [i]:{ ...(e[i]||{}), [f]:v } }));
+  const setAll = v=>{ const d={}; proposals.forEach((_,i)=>{ d[i]=v; }); setDecided(d); };
+  const approvedCount = proposals.filter((_,i)=>decided[i]).length;
+  async function commit(){
+    const entries = proposals
+      .map((p,i)=>({ content:String(val(i,'content')||'').trim(), reason:String(val(i,'reason')||'').trim(), keep:!!decided[i] }))
+      .filter(e=>e.keep && e.content)
+      .map(({content,reason})=>({content,reason}));
+    if(!entries.length) return;
+    setSaving(true);
+    try{ await onCommit(entries); setDone(true); }
+    finally{ setSaving(false); }
+  }
+  return html`<div class="card" style="margin-top:10px;border-color:var(--sky)">
+    <p class="h" style="margin:0 0 2px">A IA sugeriu ${proposals.length} memória${proposals.length===1?'':'s'} para o projeto</p>
+    <p class="hint" style="margin:0 0 8px">Revise antes de gravar — nada entra no diário sem sua confirmação.</p>
+    <div style="display:flex;gap:6px;margin-bottom:6px">
+      <button class="btn sm ghost" onClick=${()=>setAll(true)}>Aprovar todas</button>
+      <button class="btn sm ghost" onClick=${()=>setAll(false)}>Recusar todas</button>
+    </div>
+    ${proposals.map((p,i)=>html`<div key=${i} class="card" style="margin:6px 0;padding:8px 10px;${decided[i]?'':'opacity:.5'}">
+      <div style="display:flex;gap:8px;align-items:flex-start">
+        <input type="checkbox" checked=${!!decided[i]} onChange=${e=>setDecided(d=>({ ...d, [i]:e.target.checked }))} style="margin-top:3px" />
+        <div style="flex:1;min-width:0">
+          ${editing[i]
+            ? html`<textarea class="txtin" rows="2" style="width:100%;box-sizing:border-box;resize:vertical" value=${val(i,'content')} onInput=${e=>setVal(i,'content',e.target.value)}></textarea>
+                   <textarea class="txtin" rows="1" style="width:100%;box-sizing:border-box;resize:vertical;margin-top:4px" placeholder="motivo" value=${val(i,'reason')} onInput=${e=>setVal(i,'reason',e.target.value)}></textarea>`
+            : html`<div style="font-weight:600">${val(i,'content')}</div>
+                   ${val(i,'reason') && html`<div class="meta" style="margin-top:2px">${val(i,'reason')}</div>`}`}
+          <button class="btn sm ghost" style="margin-top:4px" onClick=${()=>setEditing(s=>({ ...s, [i]:!s[i] }))}>${editing[i]?'concluir':'editar'}</button>
+        </div>
+      </div>
+    </div>`)}
+    <button class="btn sm primary" disabled=${!approvedCount||saving} onClick=${commit}>${saving?'Gravando…':`Adicionar à memória (${approvedCount})`}</button>
+  </div>`;
+}
+
+/* Diário de insights da IA: lista as memórias curadas do projeto, com checkbox "usar na análise"
+   (controla o flag active → só as ativas entram no prompt, por economia/transparência), autoria
+   (membro) e o modelo que gerou (proveniência, auditoria em coletivo). Permite apagar e adicionar
+   memória manual. Reusa o layout em .card do IAResultsPanel. */
+function MemoryPanel({ memory, onToggle, onDelete, onAdd }){
+  const [draft, setDraft] = useState('');
+  const [adding, setAdding] = useState(false);
+  const list = memory||[];
+  const activeN = list.filter(m=>m.active).length;
+  async function addManual(){
+    const content = draft.trim();
+    if(!content) return;
+    setAdding(true);
+    try{ await onAdd({ content, reason:'', source:'manual', ai_model:'', mode_label:'' }); setDraft(''); }
+    finally{ setAdding(false); }
+  }
+  return html`<div class="section" style="padding:14px;border-bottom:1px solid var(--line)">
+    <p class="h" style="margin-bottom:2px">Memória do projeto</p>
+    <p class="hint" style="margin:0 0 10px">${activeN} de ${list.length} ativa${activeN===1?'':'s'} — só as marcadas entram no prompt da IA.
+      ${list.length>0 && html` <a href="#" onClick=${e=>{e.preventDefault(); list.forEach(m=>{ if(!m.active) onToggle(m.id,true); });}}>ativar todas</a> ·
+      <a href="#" onClick=${e=>{e.preventDefault(); list.forEach(m=>{ if(m.active) onToggle(m.id,false); });}}>desativar todas</a>`}
+    </p>
+    ${list.length===0 && html`<span class="meta">Nenhuma memória ainda. A IA pode sugerir após uma análise, ou adicione abaixo.</span>`}
+    ${list.map(m=>html`<div key=${m.id} class="card" style="margin-bottom:8px;padding:8px 10px;${m.active?'':'opacity:.55'}">
+      <label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer">
+        <input type="checkbox" checked=${!!m.active} onChange=${e=>onToggle(m.id, e.target.checked)} title="usar na análise" style="margin-top:3px" />
+        <span class="node-name" style="flex:1;min-width:0;font-weight:500">${m.content}</span>
+      </label>
+      <div class="meta" style="margin:4px 0 0 26px">
+        ${m.reason && html`${m.reason} · `}${m.author_name||'anônimo'}
+        · ${m.source==='manual' ? 'manual' : (m.ai_model || 'IA')}
+        ${m.created_at ? ' · '+new Date(m.created_at).toLocaleDateString('pt-BR') : ''}
+        · <a href="#" onClick=${e=>{e.preventDefault(); onDelete(m.id);}}>apagar</a>
+      </div>
+    </div>`)}
+    <div style="margin-top:8px">
+      <textarea class="txtin" rows="2" style="width:100%;box-sizing:border-box;resize:vertical" placeholder="adicionar memória manualmente (fato/decisão do projeto)…" value=${draft} onInput=${e=>setDraft(e.target.value)}></textarea>
+      <button class="btn sm" style="margin-top:4px" disabled=${!draft.trim()||adding} onClick=${addManual}>＋ adicionar à memória</button>
+    </div>
   </div>`;
 }
 
@@ -6991,6 +7255,7 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
   const provDef = AI_PROVIDERS.find(p=>p.id===aiProvider);
   const needsBaseUrl = !!provDef?.custom;
   const isAzure = !!provDef?.azure;
+  const isLocal = !!provDef?.local;
 
   const run = async (fn)=>{ setErr(null); setMsg(null); try{ await fn(); }catch(e){ setErr(String(e.message||e)); } };
 
@@ -7049,25 +7314,30 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
       <div class="field"><div class="field-label">Provedor</div>
         <div class="row" style="gap:6px;flex-wrap:wrap">
           ${AI_PROVIDERS.map(p=>html`<button key=${p.id} class="opt ${aiProvider===p.id?'on':''}"
-            onClick=${()=>{ setAiProvider(p.id); setAiModel(''); setAiBaseUrl(''); }}>${p.label}</button>`)}
+            onClick=${()=>{ setAiProvider(p.id); setAiModel(''); setAiBaseUrl(p.local ? 'http://localhost:11434/v1' : ''); }}>${p.label}</button>`)}
         </div>
       </div>
-      ${needsBaseUrl && html`<div class="field"><div class="field-label">${isAzure?'URL base (endpoint do recurso)':'URL base da API'}</div>
-        <input class="txtin" value=${aiBaseUrl} onInput=${e=>setAiBaseUrl(e.target.value)} placeholder=${isAzure?'ex.: https://SEU-RECURSO.openai.azure.com/openai/v1':'ex.: https://api.deepseek.com/v1 — precisa ser acessível pela internet (não funciona com localhost)'} />
+      ${needsBaseUrl && html`<div class="field"><div class="field-label">${isAzure?'URL base (endpoint do recurso)':isLocal?'URL do servidor local':'URL base da API'}</div>
+        <input class="txtin" value=${aiBaseUrl} onInput=${e=>setAiBaseUrl(e.target.value)} placeholder=${isAzure?'ex.: https://SEU-RECURSO.openai.azure.com/openai/v1':isLocal?'http://localhost:11434/v1':'ex.: https://api.deepseek.com/v1 — precisa ser acessível pela internet (não funciona com localhost)'} />
         <p class="hint" style="margin:6px 0 0">${isAzure
           ? html`Endpoint do seu recurso no portal do Azure, terminando em <code>/openai/v1</code> (superfície "v1"). A autenticação é por chave de API do recurso.`
+          : isLocal
+          ? html`O navegador chama o Ollama <b>direto</b> nesta URL — não passa pela nuvem, não precisa de túnel. Inicie o Ollama liberando este site no CORS: <code>OLLAMA_ORIGINS=*</code> (ou a origem exata). Se este app estiver em HTTPS, o navegador pode bloquear <code>http://localhost</code> como conteúdo misto — rode o app localmente (<code>http://localhost</code>) pra contornar.`
           : html`Qualquer API compatível com o formato clássico da OpenAI (<code>/chat/completions</code>) — cobre DeepSeek, Mistral, Qwen hospedado, ou um servidor próprio (Ollama/vLLM) exposto numa URL pública.`}</p>
       </div>`}
       <div class="field"><div class="field-label">Sua chave de API</div>
-        <input class="txtin" type="password" value=${aiKey} onInput=${e=>setAiKey(e.target.value)} placeholder=${isAzure?'obrigatória — chave de API do recurso Azure':needsBaseUrl?'deixe em branco se o servidor não exigir chave':'deixe em branco pra usar a chave compartilhada'} /></div>
+        <input class="txtin" type="password" value=${aiKey} onInput=${e=>setAiKey(e.target.value)} placeholder=${isAzure?'obrigatória — chave de API do recurso Azure':isLocal?'deixe em branco (Ollama local não exige chave)':needsBaseUrl?'deixe em branco se o servidor não exigir chave':'deixe em branco pra usar a chave compartilhada'} /></div>
       <div class="field" style="margin-bottom:4px"><div class="field-label">${isAzure?'Deployment':'Modelo'}</div>
         ${needsBaseUrl
-          ? html`<input class="txtin" value=${aiModel} onInput=${e=>setAiModel(e.target.value)} placeholder=${isAzure?'ex.: gpt-4.1-mini (nome do deployment)':'ex.: deepseek-chat'} />`
+          ? html`<input class="txtin" value=${aiModel} onInput=${e=>setAiModel(e.target.value)} list=${isLocal?'ollama-model-suggestions':undefined} placeholder=${isAzure?'ex.: gpt-4.1-mini (nome do deployment)':isLocal?'ex.: llama3.1 (ou qwen2.5, mistral…)':'ex.: deepseek-chat'} />
+            ${isLocal && html`<datalist id="ollama-model-suggestions">
+              ${OLLAMA_MODEL_SUGGESTIONS.map(m=>html`<option key=${m} value=${m}></option>`)}
+            </datalist>`}`
           : html`<div class="row" style="gap:6px;flex-wrap:wrap">
               ${(provDef?.models||[]).map(m=>html`<button key=${m.id} class="opt ${aiModel===m.id || (!aiModel && m.def) ? 'on':''}"
                 title=${m.note} onClick=${()=>setAiModel(m.id)}>${m.label}${m.def?html`<span style="opacity:.65;font-size:10px;margin-left:5px">padrão</span>`:''}</button>`)}
             </div>`}
-        <p class="hint" style="margin:6px 0 0">${isAzure ? 'Obrigatório — use o nome do deployment criado no portal do Azure (não o nome do modelo base, ex.: o deployment de um gpt-4.1-mini pode ter qualquer nome).' : needsBaseUrl ? 'Obrigatório para o provedor personalizado — use o id de modelo exatamente como o servidor espera.' : 'Modelo "vazio" usa o padrão do projeto pra esse provedor. Em geral, modelos maiores/mais capazes (à direita) são mais lentos e mais caros por uso do que os menores (à esquerda) — escolha conforme a complexidade da tarefa.'}</p>
+        <p class="hint" style="margin:6px 0 0">${isAzure ? 'Obrigatório — use o nome do deployment criado no portal do Azure (não o nome do modelo base, ex.: o deployment de um gpt-4.1-mini pode ter qualquer nome).' : isLocal ? html`Obrigatório — escolha uma sugestão ou digite <b>qualquer</b> modelo que você tenha baixado, com o nome exato (<code>ollama pull llama3.1</code>; confira com <code>ollama list</code>, incluindo tags como <code>llama3.1:70b</code>).` : needsBaseUrl ? 'Obrigatório para o provedor personalizado — use o id de modelo exatamente como o servidor espera.' : 'Modelo "vazio" usa o padrão do projeto pra esse provedor. Em geral, modelos maiores/mais capazes (à direita) são mais lentos e mais caros por uso do que os menores (à esquerda) — escolha conforme a complexidade da tarefa.'}</p>
       </div>
       <p class="hint" style="margin:0 0 8px">Temperatura padrão: <code>0,3</code> (respostas mais focadas e consistentes, menos "criativas"). Top-p: não definido pela aplicação — usa o padrão do provedor/modelo escolhido (em geral entre 0,9 e 1). Nenhum dos dois é configurável por aqui ainda.</p>
       <div class="row" style="gap:6px">
