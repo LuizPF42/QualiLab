@@ -5784,7 +5784,7 @@ function IACodificarPanel({ project, docs, codes, codeById, codePath, store, all
     // CENSURA POR SOBREPOSICAO: o codigo amostrado nunca e de censura (organizable exclui), mas o
     // quote dele pode COBRIR um trecho que OUTRO codificador censurou (coding separado, code_id de
     // censura). Sem mascarar, esse pedaco sensivel vaza. Mascara so a porcao sobreposta (preserva o
-    // resto como contexto de organizacao) — mesmo cuidado do isQuoteMasked do IAAnalisarPanel.
+    // resto como contexto de organizacao) — mesmo cuidado do maskQuoteText do IAAnalisarPanel.
     const overlap = (aS,aE,bS,bE)=> aS>=0 && aE>aS && bS>=0 && bE>bS && aS<bE && bS<aE;
     const maskQuote = (co)=>{
       let q = co.quote||'';
@@ -6280,7 +6280,7 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
   // desses codigos). Assim a opcao "excluir censura" aparece sempre que houver trecho
   // censurado no material — antes a deteccao por escopo era inconsistente e a opcao sumia
   // em Trechos+Codigo / Documentos+Trechos+Codigo. A MASCARA em si continua precisa:
-  // maskRedactedContent (texto integral) e isQuoteMasked (citacoes, por sobreposicao de span).
+  // maskRedactedContent (texto integral) e maskQuoteText (citacoes, mascara parcial por span).
   const docIdsInMaterial = scope==='codes'
     ? new Set((allCodings||[]).filter(c=>selCodes.includes(c.code_id)).map(c=>c.document_id))
     : new Set(selDocs);
@@ -6299,10 +6299,24 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
     }).join('\n\n');
   };
 
-  // mascara a citacao se o PROPRIO code_id estiver marcado, ou se algum outro coding do mesmo
-  // documento sobrepoe o span dela com um codigo de censura nao liberado em allowRedact.
-  const isQuoteMasked = (c)=> maskedCodeIds.has(c.code_id)
-    || (codingsByDoc[c.document_id]||[]).some(o=>o.id!==c.id && maskedCodeIds.has(o.code_id) && spansOverlap(c.span_start,c.span_end,o.span_start,o.span_end));
+  // mascara PARCIAL da citacao: se o PROPRIO code_id for censura (nao liberado), o trecho inteiro
+  // e sensivel -> "[trecho censurado]"; senao, mascara so as PORCOES cobertas por codings de
+  // censura de OUTROS codificadores que sobrepoem o span (preserva o entorno como contexto).
+  // Mesma logica do maskQuote do IACodificarPanel; respeita allowRedact (via maskedCodeIds).
+  const maskQuoteText = (c)=>{
+    let q = c.quote || '';
+    if(!maskedCodeIds.size) return q;
+    if(maskedCodeIds.has(c.code_id)) return '[trecho censurado]';
+    const base = c.span_start;
+    const ranges = (codingsByDoc[c.document_id]||[])
+      .filter(o=> o.id!==c.id && maskedCodeIds.has(o.code_id) && spansOverlap(c.span_start,c.span_end,o.span_start,o.span_end))
+      .map(o=>[Math.max(o.span_start,c.span_start)-base, Math.min(o.span_end,c.span_end)-base])
+      .sort((a,b)=>a[0]-b[0]);
+    if(!ranges.length) return q;
+    const merged=[]; for(const r of ranges){ const l=merged[merged.length-1]; if(l && r[0]<=l[1]) l[1]=Math.max(l[1],r[1]); else merged.push(r.slice()); }
+    for(let i=merged.length-1;i>=0;i--) q = q.slice(0,merged[i][0]) + '[censurado]' + q.slice(merged[i][1]);
+    return q;
+  };
 
   // colapsa codings pelo MESMO span (documento+offsets): em projeto coletivo, varios
   // pesquisadores codificando o trecho EXATO viram UMA entrada, listando quem aplicou — em vez
@@ -6327,7 +6341,7 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
     return selCodes.map(codeId=>{
       const memo = codeMemoLine(codeId);
       const quotes = collapseSpans(chosen.filter(c=>c.code_id===codeId))
-        .map(g=>`"${isQuoteMasked(g.rep)?'[trecho censurado]':g.rep.quote}" — documento: ${docNameOf(g.rep.document_id)} (categorias: ${docCatsLine(g.rep.document_id)}) [${spanCoders(g)}]`);
+        .map(g=>`"${maskQuoteText(g.rep)}" — documento: ${docNameOf(g.rep.document_id)} (categorias: ${docCatsLine(g.rep.document_id)}) [${spanCoders(g)}]`);
       return `--- Código: ${codePath(codeId).join(' ▸ ')}${memo?`\nMemo do código: ${memo}`:''} (${quotes.length} trechos) ---\n${quotes.join('\n')}`;
     }).join('\n\n');
   };
@@ -6342,7 +6356,7 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
         .forEach(c=>{ (codingsByCode[c.code_id]=codingsByCode[c.code_id]||[]).push(c); });
       const codeBlocks = Object.entries(codingsByCode).map(([codeId,cs])=>{
         const memo = codeMemoLine(codeId);
-        const quotes = collapseSpans(cs).map(g=>`"${isQuoteMasked(g.rep)?'[trecho censurado]':g.rep.quote}" (${spanCoders(g)})`);
+        const quotes = collapseSpans(cs).map(g=>`"${maskQuoteText(g.rep)}" (${spanCoders(g)})`);
         return `${codePath(codeId).join(' ▸ ')}${memo?` — memo: ${memo}`:''}:\n${quotes.join('\n')}`;
       });
       // rotulo filtro-ciente: quando ha filtro, "(nenhum)" significaria so "nenhum DOS SELECIONADOS",
@@ -6400,7 +6414,7 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
       cite = 'Ao fazer uma observação, cite a fonte (nome do documento e, quando for sobre um trecho, o código correspondente).';
     }
     if(maskedCodeIds.size){
-      materialDesc += ` Trechos marcados como censura (${[...maskedCodeIds].map(id=>codeById[id]?.name).join(', ')}) aparecem como "[trecho censurado]" — é uma omissão deliberada do pesquisador, não uma lacuna ou erro de extração.`;
+      materialDesc += ` Trechos marcados como censura (${[...maskedCodeIds].map(id=>codeById[id]?.name).join(', ')}) aparecem como "[censurado]" (quando só parte de uma citação é sensível) ou "[trecho censurado]" (citação inteira) — é uma omissão deliberada do pesquisador, não uma lacuna ou erro de extração.`;
     }
 
     // tarefa: modo pre-definido usa taskLead + instrucao; "Personalizado" usa a
