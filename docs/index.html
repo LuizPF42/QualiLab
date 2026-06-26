@@ -574,6 +574,27 @@ function maskSlice(content, start, end, ranges){
   if(pos<end) out+=content.slice(pos,end);
   return out;
 }
+/* mascara PARCIAL de uma citacao trabalhando sobre o PROPRIO quote (sem precisar do conteudo do
+   documento): troca por "[censurado]" so as porcoes do quote cobertas por codings de censura
+   (code_id em maskedIds) que sobrepoem o span; se o proprio code_id estiver em maskedIds, a
+   citacao inteira e sensivel -> "[trecho censurado]". codingsInDoc = todos os codings do mesmo
+   documento (qualquer camada — conservador). Usado por IACodificarPanel, IAAnalisarPanel e
+   ReportView, pra censura nunca vazar via quote de codigo analitico que cobre o mesmo trecho. */
+function maskQuoteSpans(coding, codingsInDoc, maskedIds){
+  let q = coding.quote || '';
+  if(!maskedIds || !maskedIds.size) return q;
+  if(maskedIds.has(coding.code_id)) return '[trecho censurado]';
+  const base = coding.span_start;
+  const ov = (bS,bE)=> bS>=0 && bE>bS && coding.span_start>=0 && coding.span_end>coding.span_start && coding.span_start<bE && bS<coding.span_end;
+  const ranges = (codingsInDoc||[])
+    .filter(o=> o.id!==coding.id && maskedIds.has(o.code_id) && ov(o.span_start,o.span_end))
+    .map(o=>[Math.max(o.span_start,coding.span_start)-base, Math.min(o.span_end,coding.span_end)-base])
+    .sort((a,b)=>a[0]-b[0]);
+  if(!ranges.length) return q;
+  const merged=[]; for(const r of ranges){ const l=merged[merged.length-1]; if(l && r[0]<=l[1]) l[1]=Math.max(l[1],r[1]); else merged.push(r.slice()); }
+  for(let i=merged.length-1;i>=0;i--) q = q.slice(0,merged[i][0]) + '[censurado]' + q.slice(merged[i][1]);
+  return q;
+}
 function buildWebAnnotations(docs, codes, allC, memos, project, anonymize){
   const docById={}; docs.forEach(d=>docById[d.id]=d);
   const { codeMemo, docMemo, codingMemo, projectMemo } = indexMemos(memos);
@@ -5409,6 +5430,12 @@ function ReportView({ project, projectMode, docs, cats, codes, codeById, codePat
   , [allCodings, view, userId, projectMode]);
 
   const docById = useMemo(()=>Object.fromEntries(docs.map(d=>[d.id,d])), [docs]);
+  // CENSURA: o relatorio (copia/impressao/tela) e feito pra compartilhar — mascara trechos
+  // censurados. Detecta censura em TODAS as camadas (allCodings, conservador), entao um trecho
+  // censurado por um codificador nao vaza via quote de codigo analitico (ou da propria censura).
+  const redactionIds = useMemo(()=> new Set(codes.filter(c=>c.is_redaction).map(c=>c.id)), [codes]);
+  const codingsByDoc = useMemo(()=>{ const m={}; (allCodings||[]).forEach(c=>{ (m[c.document_id]=m[c.document_id]||[]).push(c); }); return m; }, [allCodings]);
+  const maskQuote = (c)=> maskQuoteSpans(c, codingsByDoc[c.document_id], redactionIds);
   const pathOf = (id)=> codePath ? codePath(id).join(' ▸ ') : (codeById[id]?.name||id);
   const swatch = (c)=> html`<span class="swatch" style=${`display:inline-block;vertical-align:middle;background:${codeColor(c.hue,c.depth,c.hue_deg).solid}`}></span>`;
   const kindLabel = (k)=> (CAT_KINDS.find(x=>x.id===k)||{}).label || k;
@@ -5504,7 +5531,7 @@ function ReportView({ project, projectMode, docs, cats, codes, codeById, codePat
       if(!trechosByCode.length) L.push('(nenhum trecho codificado)');
       else trechosByCode.forEach(({code,docs:ds})=>{ L.push('',pathOf(code.id));
         ds.forEach(d=>{ L.push('',d.name+':');
-          d.cods.forEach(c=> L.push(`"${c.quote}"${c.author_name?' — '+c.author_name:''}`)); }); });
+          d.cods.forEach(c=> L.push(`"${maskQuote(c)}"${c.author_name?' — '+c.author_name:''}`)); }); });
     }
     if(on('unused')){ H('Códigos não utilizados');
       if(!unusedCodes.length) L.push('(todos os códigos foram utilizados)');
@@ -5663,7 +5690,7 @@ function ReportView({ project, projectMode, docs, cats, codes, codeById, codePat
                   <p class="meta" style="margin:0 0 3px">${d.name}</p>
                   ${d.cods.map(c=>html`<blockquote key=${c.id}
                     style="margin:0 0 4px;padding:2px 0 2px 10px;border-left:3px solid ${codeColor(code.hue,code.depth,code.hue_deg).solid};font-family:var(--serif);font-size:14px">
-                    “${c.quote}”${c.author_name?html`<span class="meta" style="font-family:var(--sans);font-size:11px"> — ${c.author_name}</span>`:''}</blockquote>`)}
+                    “${maskQuote(c)}”${c.author_name?html`<span class="meta" style="font-family:var(--sans);font-size:11px"> — ${c.author_name}</span>`:''}</blockquote>`)}
                 </div>`)}
               </div>`)}
         </section>`}
@@ -5783,24 +5810,9 @@ function IACodificarPanel({ project, docs, codes, codeById, codePath, store, all
     (allCodings||[]).forEach(c=>{ (byCode[c.code_id] = byCode[c.code_id]||[]).push(c); (byDoc[c.document_id] = byDoc[c.document_id]||[]).push(c); });
     // CENSURA POR SOBREPOSICAO: o codigo amostrado nunca e de censura (organizable exclui), mas o
     // quote dele pode COBRIR um trecho que OUTRO codificador censurou (coding separado, code_id de
-    // censura). Sem mascarar, esse pedaco sensivel vaza. Mascara so a porcao sobreposta (preserva o
-    // resto como contexto de organizacao) — mesmo cuidado do maskQuoteText do IAAnalisarPanel.
-    const overlap = (aS,aE,bS,bE)=> aS>=0 && aE>aS && bS>=0 && bE>bS && aS<bE && bS<aE;
-    const maskQuote = (co)=>{
-      let q = co.quote||'';
-      if(redactionIds.size){
-        const base = co.span_start;
-        const ranges = (byDoc[co.document_id]||[])
-          .filter(o=> redactionIds.has(o.code_id) && overlap(co.span_start,co.span_end,o.span_start,o.span_end))
-          .map(o=>[Math.max(o.span_start,co.span_start)-base, Math.min(o.span_end,co.span_end)-base])
-          .sort((a,b)=>a[0]-b[0]);
-        if(ranges.length){
-          const merged=[]; for(const r of ranges){ const l=merged[merged.length-1]; if(l && r[0]<=l[1]) l[1]=Math.max(l[1],r[1]); else merged.push(r.slice()); }
-          for(let i=merged.length-1;i>=0;i--) q = q.slice(0,merged[i][0]) + '[censurado]' + q.slice(merged[i][1]);
-        }
-      }
-      return q.slice(0,240);
-    };
+    // censura). maskQuoteSpans (top-level) mascara so a porcao sobreposta, preservando o resto como
+    // contexto de organizacao; depois corta em 240 chars.
+    const maskQuote = (co)=> maskQuoteSpans(co, byDoc[co.document_id], redactionIds).slice(0,240);
     // escolhe ate N trechos ILUSTRATIVOS e DISTINTOS por codigo (O(n), so um Set):
     //  1) dedup por span EXATO (documento+offsets) — varios pesquisadores codificando o MESMO
     //     trecho viram 1 (era o desperdicio: os 3 slots gastos com a mesma frase repetida);
@@ -6261,15 +6273,11 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
   };
   const docNameOf = (docId)=> docs.find(d=>d.id===docId)?.name || '(documento removido)';
 
-  // duas codificacoes "se sobrepoem" se os spans (no mesmo documento) se cruzam — usado pra
-  // detectar censura em scope='codes', onde a citacao mostrada e o c.quote de UM coding so
-  // (o do codigo analitico selecionado), que pode ocupar o MESMO trecho de uma censura
-  // aplicada como um coding separado (code_id diferente). Nos outros escopos (docs/docs_codes)
-  // isso ja "funciona de graca": maskRedactedContent reconstroi o texto inteiro por posicao,
-  // entao uma censura em qualquer code_id já apaga aquele intervalo independente de quem mais
-  // codificou o mesmo span.
-  const spansOverlap = (aStart,aEnd,bStart,bEnd)=>
-    aStart>=0 && aEnd>aStart && bStart>=0 && bEnd>bStart && aStart<bEnd && bStart<aEnd;
+  // censura em scope='codes' (e nas citacoes de docs_codes): a citacao mostrada e o c.quote de UM
+  // coding so (o do codigo analitico), que pode ocupar o MESMO trecho de uma censura aplicada como
+  // coding separado (code_id diferente). maskQuoteText (via maskQuoteSpans, sobre codingsByDoc)
+  // mascara isso. Nos escopos de texto integral (docs/docs_codes) o maskRedactedContent ja
+  // reconstroi o texto por posicao, entao a censura em qualquer code_id apaga o intervalo de graca.
   const codingsByDoc = useMemo(()=>{
     const m = {}; (allCodings||[]).forEach(c=>{ (m[c.document_id]=m[c.document_id]||[]).push(c); }); return m;
   }, [allCodings]);
@@ -6299,24 +6307,10 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
     }).join('\n\n');
   };
 
-  // mascara PARCIAL da citacao: se o PROPRIO code_id for censura (nao liberado), o trecho inteiro
-  // e sensivel -> "[trecho censurado]"; senao, mascara so as PORCOES cobertas por codings de
-  // censura de OUTROS codificadores que sobrepoem o span (preserva o entorno como contexto).
-  // Mesma logica do maskQuote do IACodificarPanel; respeita allowRedact (via maskedCodeIds).
-  const maskQuoteText = (c)=>{
-    let q = c.quote || '';
-    if(!maskedCodeIds.size) return q;
-    if(maskedCodeIds.has(c.code_id)) return '[trecho censurado]';
-    const base = c.span_start;
-    const ranges = (codingsByDoc[c.document_id]||[])
-      .filter(o=> o.id!==c.id && maskedCodeIds.has(o.code_id) && spansOverlap(c.span_start,c.span_end,o.span_start,o.span_end))
-      .map(o=>[Math.max(o.span_start,c.span_start)-base, Math.min(o.span_end,c.span_end)-base])
-      .sort((a,b)=>a[0]-b[0]);
-    if(!ranges.length) return q;
-    const merged=[]; for(const r of ranges){ const l=merged[merged.length-1]; if(l && r[0]<=l[1]) l[1]=Math.max(l[1],r[1]); else merged.push(r.slice()); }
-    for(let i=merged.length-1;i>=0;i--) q = q.slice(0,merged[i][0]) + '[censurado]' + q.slice(merged[i][1]);
-    return q;
-  };
+  // mascara PARCIAL da citacao (maskQuoteSpans top-level): se o PROPRIO code_id for censura (nao
+  // liberado), o trecho inteiro vira "[trecho censurado]"; senao mascara so as porcoes cobertas por
+  // codings de censura de OUTROS codificadores sobrepostos. Respeita allowRedact (via maskedCodeIds).
+  const maskQuoteText = (c)=> maskQuoteSpans(c, codingsByDoc[c.document_id], maskedCodeIds);
 
   // colapsa codings pelo MESMO span (documento+offsets): em projeto coletivo, varios
   // pesquisadores codificando o trecho EXATO viram UMA entrada, listando quem aplicou — em vez
