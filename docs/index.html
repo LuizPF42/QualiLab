@@ -3222,9 +3222,9 @@ function App(){
           <button class=${mainView==='graficos'?'on':''} onClick=${()=>setMainView('graficos')}>Gráficos</button>
           <button class=${mainView==='memos'?'on':''} onClick=${()=>setMainView('memos')}>Memos</button>
           <button class=${mainView==='esquema'?'on':''} onClick=${()=>setMainView('esquema')}>Esquema</button>
-          <button class=${mainView==='relatorio'?'on':''} onClick=${()=>setMainView('relatorio')}>Relatório</button>
           ${AI_ENABLED && html`<button class=${mainView==='ia_codificar'?'on':''} onClick=${()=>setMainView('ia_codificar')}>Codificar com IA</button>`}
           ${AI_ENABLED && html`<button class=${mainView==='ia_analisar'?'on':''} onClick=${()=>setMainView('ia_analisar')}>Analisar com IA</button>`}
+          <button class=${mainView==='relatorio'?'on':''} onClick=${()=>setMainView('relatorio')}>Relatório</button>
         </div>`}
       </div>
       <div class="top-row">
@@ -3538,6 +3538,7 @@ function App(){
       <!-- CODIFICAR COM IA: tela inteira (config | chat), operações inline no turno da IA -->
       <${IACodificarPanel} project=${project} docs=${docs} codes=${codes} codeById=${codeById} codePath=${codePath}
         store=${store} allCodings=${allCodings} count=${schemaCodingCount} isAdmin=${isAdmin}
+        cats=${cats} allValues=${allValues} projectMode=${projectMode} user=${user}
         reload=${()=>loadProject(store,project.id)} loadAll=${loadAll} onAdd=${addCode} memos=${memos}
         memory=${aiMemory} onAddMemory=${addMemory} onToggleMemory=${toggleMemoryActive} onDeleteMemory=${deleteMemory} />
     </div>`
@@ -5378,16 +5379,20 @@ function parseAIJson(text){
   for(const t of [core, core.replace(/,\s*([}\]])/g, '$1')]){ // crua e sem virgula-sobrando
     try{ return JSON.parse(t); }catch(e){}
   }
-  // salvamento de operacoes (cobre truncamento): varre o conteudo do array "operations"
-  const opsKey = s.search(/["']operations["']/);
-  const scanFrom = opsKey>=0 ? s.slice(s.indexOf('[', opsKey) + 1) : s;
-  const objs = extractBalancedObjects(scanFrom);
-  const ops = [];
-  for(const o of objs){ try{ const p = JSON.parse(o); if(p && typeof p==='object') ops.push(p); }catch(e){} }
-  const opLike = ops.filter(o=>o.op);
-  if(opLike.length){
-    const sum = s.match(/["']summary["']\s*:\s*"((?:[^"\\]|\\.)*)"/);
-    return { operations: opLike, summary: sum ? sum[1] : '', _salvaged: true };
+  // SALVAMENTO generico (cobre truncamento por max_tokens): acha o 1o array NOMEADO do objeto
+  // ("operations"/"values"/"codings"/"memory"...) e extrai dele os objetos {...} balanceados que
+  // parseiam individualmente — recupera os itens completos e descarta so o ultimo cortado. A chave
+  // detectada e PRESERVADA (parsed.operations, parsed.values, ...), pra cada painel ler a sua.
+  const arrKey = s.match(/["'](\w+)["']\s*:\s*\[/);
+  if(arrKey){
+    const items = [];
+    for(const o of extractBalancedObjects(s.slice(s.indexOf('[', arrKey.index) + 1))){
+      try{ const p = JSON.parse(o); if(p && typeof p==='object' && !Array.isArray(p)) items.push(p); }catch(e){}
+    }
+    if(items.length){
+      const sum = s.match(/["']summary["']\s*:\s*"((?:[^"\\]|\\.)*)"/);
+      return { [arrKey[1]]: items, summary: sum ? sum[1] : '', _salvaged: true };
+    }
   }
   return null;
 }
@@ -5758,7 +5763,7 @@ Regras: use SOMENTE os ids curtos que aparecem na lista de códigos (não invent
 O campo "memory" é OPCIONAL: inclua-o só se desta análise emergir algum fato ou decisão DURÁVEL sobre o projeto que valha registrar na memória do projeto (ex.: "as famílias X e Y foram consolidadas", "o esquema foi reorganizado em N famílias temáticas"). NÃO registre observações triviais ou transitórias. No máximo 8 entradas, cada "content" em UMA frase. Se não houver nada relevante, omita "memory" ou devolva [].
 Devolva apenas o JSON, sem texto antes nem depois, sem comentários.`;
 
-function IACodificarPanel({ project, docs, codes, codeById, codePath, store, allCodings, count, isAdmin, reload, loadAll, onAdd, memos, memory, onAddMemory, onToggleMemory, onDeleteMemory }){
+function IAOrganizarPanel({ project, docs, codes, codeById, codePath, store, allCodings, count, isAdmin, reload, loadAll, onAdd, memos, memory, onAddMemory, onToggleMemory, onDeleteMemory }){
   // history: a conversa inteira. Cada turno de IA carrega seus PROPRIOS dados estruturados
   // (operacoes ja traduzidas+validadas, resumo, memorias propostas, flags) — assim as operacoes
   // aparecem INLINE no balao da IA. So o ultimo turno de IA fica acionavel; os anteriores/aplicados
@@ -6080,8 +6085,7 @@ function IACodificarPanel({ project, docs, codes, codeById, codePath, store, all
     </div>`;
   };
 
-  return html`<section class="pane" style="flex:1 1 100%">
-    <div style="flex:1;min-height:0;display:flex">
+  return html`<div style="flex:1;min-height:0;display:flex">
 
     <!-- TELA ESQUERDA: configuração / material -->
     <div class="pane-body scroll" style="flex:0 0 400px;border-right:1px solid var(--line)">
@@ -6137,8 +6141,575 @@ function IACodificarPanel({ project, docs, codes, codeById, codePath, store, all
       </div>
     </div>
 
-    </div>
+    </div>`;
+}
+
+/* ============ CODIFICAR COM IA — wrapper de abas =========================================
+   Tres assistentes que compartilham o mesmo motor (askAIChat json + parseAIJson + revisao por
+   item + MemoryProposalReview), cada um num momento do trabalho:
+   - Organizar Codigos: reorganiza o esquema de codigos (merge/group/reparent/rename/promote).
+   - Sugerir Categorizacao: preenche o VALOR de categorias JA EXISTENTES por documento (doc_values).
+   - Sugerir Codificacao: propoe trechos a codificar com codigos EXISTENTES (segundo codificador).
+   O wrapper so mantem a aba ativa e o cabecalho com o seletor; cada sub-painel renderiza o
+   conteudo interno (duas telas: config | chat), sem a <section> externa (essa fica aqui). */
+function IACodificarPanel(props){
+  const [tab, setTab] = useState('organizar');
+  const TABS = [
+    { id:'organizar',   label:'Organizar Códigos' },
+    { id:'categorizar', label:'Sugerir Categorização' },
+    { id:'codificar',   label:'Sugerir Codificação' },
+  ];
+  return html`<section class="pane" style="flex:1 1 100%">
+    <div class="pane-head"><div class="seg">
+      ${TABS.map(t=>html`<button key=${t.id} class=${tab===t.id?'on':''} onClick=${()=>setTab(t.id)}>${t.label}</button>`)}
+    </div></div>
+    ${tab==='organizar' && html`<${IAOrganizarPanel} ...${props} />`}
+    ${tab==='categorizar' && html`<${IACategorizarPanel} ...${props} />`}
+    ${tab==='codificar' && html`<${IACodificacaoPanel} ...${props} />`}
   </section>`;
+}
+
+const IA_CAT_SYS_REGRAS = `Sua tarefa é sugerir o VALOR de cada categoria para cada documento, com base no conteúdo dele, e devolver SOMENTE um objeto JSON (sem texto fora dele), no formato:
+{
+  "values": [
+    { "doc": "#d1", "category": "#t2", "value": "valor sugerido", "reason": "..." }
+  ],
+  "summary": "uma frase resumindo a lógica geral",
+  "memory": [ { "content": "fato/decisão durável sobre o projeto, em 1 frase", "reason": "por que vale lembrar" } ]
+}
+Regras: use SOMENTE os ids de documento (#d...) e de categoria (#t...) que aparecem no material — não invente ids nem categorias novas. Para categorias de opção fechada (Texto Fechado / Múltipla Escolha / Caixa de Seleção), o "value" DEVE ser EXATAMENTE uma das opções listadas para aquela categoria (em Caixa de Seleção, junte várias com " | "). Para Data, use DD/MM/AAAA. Para Texto Aberto, seja curto e objetivo. Só inclua um par documento×categoria quando o texto der base real para o valor — se o documento não informa, use a opção de "não informado" quando ela existir, senão OMITA aquele par (nunca chute). Explique cada sugestão no "reason" (em português, UMA frase, sem quebras de linha dentro de strings JSON).
+IMPORTANTE — devolva só DIFERENÇAS: cada documento mostra os VALORES JÁ PREENCHIDOS. Inclua um par documento×categoria APENAS quando sua sugestão for DIFERENTE do valor já preenchido, ou quando ele estiver "(vazio)". Se você CONCORDA com o valor já preenchido, NÃO o inclua na resposta — devolver menos é melhor (e evita cortar a resposta). Se concordar com tudo, devolva "values": []. Proponha no máximo 40 itens por resposta; se faltar, diga no "summary".
+O campo "memory" é OPCIONAL (só fatos/decisões DURÁVEIS; no máximo 8). Devolva apenas o JSON, sem texto antes nem depois, sem comentários.`;
+
+/* ============ SUGERIR CATEGORIZACAO — preenche o VALOR de categorias JA EXISTENTES por documento.
+   NAO cria categorias (decisao do autor): le o texto dos documentos + o esquema de categorias e
+   propoe doc_values, revisados item a item e aplicados via setDocValue/setFinalValue (mesmo caminho
+   manual, espelhando projectMode). Censura mascarada no material. Espelha o IAOrganizarPanel. */
+function IACategorizarPanel({ project, docs, cats, allValues, store, isAdmin, projectMode, user, reload, loadAll, allCodings, codes, memos, memory, onAddMemory, onToggleMemory, onDeleteMemory }){
+  const [history, setHistory] = useState([]);
+  const [decided, setDecided] = useState({});
+  const [instruction, setInstruction] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const [applyMsg, setApplyMsg] = useState('');
+  const [selDocs, setSelDocs] = useState(()=>docs.map(d=>d.id));
+  const [selCats, setSelCats] = useState(()=>cats.map(c=>c.id));
+
+  const patchTurn = (idx,patch)=> setHistory(h=>h.map((t,i)=>i===idx?{...t,...patch}:t));
+  const lastAssistantIdx = (()=>{ for(let i=history.length-1;i>=0;i--){ if(history[i].role==='assistant') return i; } return -1; })();
+  const dkey = (ti,i)=> ti+':'+i;
+  const kindLabel = (k)=> (CAT_KINDS.find(x=>x.id===k)||{}).label || k;
+  const projectMemo = (memos||[]).find(m=>m.scope==='project' && (m.target_id==null || m.target_id===project.id));
+
+  // ids curtos estaveis: documentos #d1.. e categorias #t1..
+  const { d2i } = useMemo(()=>{ const a={}; docs.forEach((d,i)=>{a['d'+(i+1)]=d.id;}); return {d2i:a}; }, [docs]);
+  const { t2i } = useMemo(()=>{ const a={}; cats.forEach((c,i)=>{a['t'+(i+1)]=c.id;}); return {t2i:a}; }, [cats]);
+  const i2d = useMemo(()=>Object.fromEntries(Object.entries(d2i).map(([k,v])=>[v,k])), [d2i]);
+  const i2t = useMemo(()=>Object.fromEntries(Object.entries(t2i).map(([k,v])=>[v,k])), [t2i]);
+  const dShort = id=>i2d[id]||'?', tShort = id=>i2t[id]||'?';
+  const catById = useMemo(()=>Object.fromEntries(cats.map(c=>[c.id,c])), [cats]);
+  const docById = useMemo(()=>Object.fromEntries(docs.map(d=>[d.id,d])), [docs]);
+  const resolveDoc = ref=>{ const k=String(ref??'').replace(/^#/,'').trim(); return d2i[k] || (docById[k]?k:null); };
+  const resolveCat = ref=>{ const k=String(ref??'').replace(/^#/,'').trim(); return t2i[k] || (catById[k]?k:null); };
+
+  const selCatObjs = cats.filter(c=>selCats.includes(c.id));
+  const selDocObjs = docs.filter(d=>selDocs.includes(d.id));
+  const redactionIds = useMemo(()=> new Set((codes||[]).filter(c=>c.is_redaction).map(c=>c.id)), [codes]);
+  const toggle = (arr,set,id)=> set(arr.includes(id)?arr.filter(x=>x!==id):[...arr,id]);
+
+  // valor JA APLICADO para (documento, categoria) — robusto a como ele foi parar lá (import,
+  // reconciliação, resposta do próprio usuário): prefere o gabarito (final), senão a resposta do
+  // PROPRIO usuário, senão QUALQUER valor existente (ex.: importado com set_by de outro/null). É o
+  // que vai no prompt como "já preenchido" e na revisão como "atual" — a IA só mexe onde difere.
+  const curVal = (docId,catId)=>{ const vs=(allValues||[]).filter(v=>v.document_id===docId && v.category_id===catId);
+    const v = vs.find(x=>x.layer==='final') || vs.find(x=>x.layer!=='final' && x.set_by===user?.id) || vs[0];
+    return v?.value ?? null; };
+  const sameVal = (a,b)=> String(a??'').trim().toLowerCase() === String(b??'').trim().toLowerCase();
+
+  // ---- MATERIAL ----
+  const catBlock = useMemo(()=>{
+    const lines = selCatObjs.map(c=>{
+      let spec;
+      if(CAT_HAS_OPTIONS(c.kind)) spec = 'uma das opções: ' + (c.options||[]).map(o=>`"${o}"`).join(', ') + (c.kind==='checkbox'?' (pode marcar VÁRIAS, separadas por " | ")':'');
+      else if(c.kind==='date') spec = 'uma data DD/MM/AAAA';
+      else spec = 'texto livre curto';
+      return `#${tShort(c.id)} | "${c.name}"${c.description?` — ${c.description}`:''} | ${kindLabel(c.kind)} | valor esperado: ${spec}`;
+    });
+    return 'CATEGORIAS A PREENCHER (id | nome | tipo | valor esperado):\n' + (lines.join('\n') || '(nenhuma categoria selecionada)');
+  }, [selCatObjs, i2t]);
+
+  const docBlock = useMemo(()=>{
+    let total = 0; const parts = [];
+    for(const d of selDocObjs){
+      const masked = maskRedactedContent(d.content||'', (allCodings||[]).filter(c=>c.document_id===d.id), redactionIds);
+      const filled = selCatObjs.map(c=>{ const v=curVal(d.id,c.id); return `  - #${tShort(c.id)} "${c.name}": ${v!=null && v!==''?`"${v}"`:'(vazio)'}`; }).join('\n');
+      const chunk = `--- #${dShort(d.id)} "${d.name}" ---\nVALORES JÁ PREENCHIDOS (não devolva se concordar):\n${filled}\nTEXTO:\n${masked.slice(0, IA_DOC_CHAR_LIMIT)}`;
+      if(total + chunk.length > IA_TOTAL_CHAR_LIMIT){ parts.push('[...documentos restantes omitidos — limite de tamanho; selecione menos documentos...]'); break; }
+      parts.push(chunk); total += chunk.length;
+    }
+    return 'DOCUMENTOS:\n' + (parts.join('\n\n') || '(nenhum documento selecionado)');
+  }, [selDocObjs, selCatObjs, allCodings, redactionIds, i2d, i2t, allValues, user, projectMode]);
+
+  const systemPrompt = useMemo(()=> [
+    'Você é um assistente de análise qualitativa que ATRIBUI valores de categorias (atributos) a documentos, em português. Você NÃO cria categorias novas — usa apenas as categorias e as opções fornecidas.',
+    projectMemo?.content?.trim() ? `MEMO DO PROJETO (objetivo da pesquisa): ${projectMemo.content.trim()}` : '(Sem memo de projeto registrado.)',
+    memoryBlock(memory),
+    'DESCRIÇÃO DO MATERIAL: abaixo estão as categorias a preencher (com tipo e valores aceitos) e, para cada documento selecionado, os VALORES JÁ PREENCHIDOS seguidos do TEXTO. Sua função é só corrigir/completar — devolva apenas onde discordar ou onde estiver vazio.' + (redactionIds.size?' Trechos sensíveis podem aparecer como "[trecho censurado]" — é omissão deliberada do pesquisador, não lacuna nem erro.':''),
+    'MATERIAL:\n' + catBlock + '\n\n' + docBlock,
+    IA_CAT_SYS_REGRAS,
+  ].join('\n\n'), [catBlock, docBlock, projectMemo, memory, redactionIds]);
+
+  // ---- VALIDACAO: resolve ids e valida o valor contra o tipo/opcoes da categoria ----
+  const validateValues = (raw)=>{
+    const out=[]; let bad=0; const seen=new Set();
+    for(const v of (Array.isArray(raw)?raw:[])){
+      const docId=resolveDoc(v?.doc), catId=resolveCat(v?.category); const cat=catId?catById[catId]:null;
+      if(!docId || !cat){ bad++; continue; }
+      const key=docId+'|'+catId; if(seen.has(key)){ bad++; continue; }
+      let value=String(v?.value??'').trim(); const reason=String(v?.reason||'').trim();
+      if(!value){ bad++; continue; }
+      if(CAT_HAS_OPTIONS(cat.kind)){
+        const opts=(cat.options||[]); const match=(o)=> opts.find(x=>x.toLowerCase()===String(o).trim().toLowerCase());
+        if(cat.kind==='checkbox'){ const picked=value.split(/\s*[|;]\s*/).map(match).filter(Boolean); if(!picked.length){ bad++; continue; } value=[...new Set(picked)].join(CAT_MULTI_SEP); }
+        else { const m=match(value); if(!m){ bad++; continue; } value=m; }
+      }
+      if(sameVal(value, curVal(docId,catId))){ continue; } // concorda com o já preenchido: ignora (não é mudança)
+      seen.add(key); out.push({ docId, catId, value, reason });
+    }
+    return { out, bad };
+  };
+
+  async function send(){
+    if(busy) return;
+    if(!selDocObjs.length || !selCatObjs.length){ setErr('Selecione ao menos um documento e uma categoria.'); return; }
+    const base = instruction.trim() || (history.length ? 'Continue refinando as sugestões.' : 'Analise os documentos e sugira o valor de cada categoria para cada documento, quando o texto der base.');
+    const userTurn = base + ' Responda APENAS com o objeto JSON no formato especificado, sem texto antes ou depois.';
+    setErr(''); setApplyMsg(''); setBusy(true);
+    const nextHistory = [...history, { role:'user', content:userTurn, display:base }];
+    setHistory(nextHistory); setInstruction('');
+    const aIdx = nextHistory.length;
+    try{
+      const text = await askAIChat({ system: systemPrompt, messages: nextHistory, json: true });
+      const parsed = parseAIJson(text); let entry;
+      if(!parsed){ entry = { role:'assistant', content:text, values:[], summary:'', dropped:0, memProps:[], applied:false, rawFail:text||'(resposta vazia)', parseFailed:true }; }
+      else {
+        const { out, bad } = validateValues(parsed.values);
+        entry = { role:'assistant', content:text, values:out, summary:String(parsed.summary||''), dropped:bad, memProps:validateMemProps(parsed.memory), applied:false, rawFail:'', salvaged:!!parsed._salvaged };
+        if(out.length){ setDecided(d=>{ const n={...d}; out.forEach((_,i)=>{ n[dkey(aIdx,i)]=true; }); return n; }); }
+      }
+      setHistory(h=>[...h, entry]);
+    }catch(e){ setErr(String(e?.message||e)); }
+    finally{ setBusy(false); }
+  }
+
+  async function applyApproved(turnIdx){
+    const turn = history[turnIdx]; if(!turn) return;
+    const setVal = projectMode==='individual' ? store.setFinalValue : store.setDocValue;
+    if(!setVal){ setErr('Este armazenamento não suporta gravar valores de categoria.'); return; }
+    const approved = (turn.values||[]).filter((_,i)=>decided[dkey(turnIdx,i)]);
+    if(!approved.length){ setErr('Nenhuma sugestão aprovada para aplicar.'); return; }
+    setErr(''); setApplyMsg(''); setBusy(true);
+    let applied=0, skipped=0;
+    if(store.beginBatch) store.beginBatch();
+    try{
+      for(const v of approved){ try{ await setVal.call(store, project.id, v.docId, v.catId, v.value); applied++; }catch(e){ skipped++; } }
+    } finally { if(store.endBatch) await store.endBatch(); }
+    await reload(); await loadAll();
+    patchTurn(turnIdx, { applied:true });
+    setApplyMsg(`${applied} valor(es) aplicado(s)${skipped?`, ${skipped} falhou(aram)`:''}. Confira na aba Codificação (Categorias do documento) ou no Esquema.`);
+    setHistory(h=>[...h, { role:'user', content:`(Apliquei ${applied} valor(es) de categoria da sua sugestão.)` }]);
+    setBusy(false);
+  }
+
+  function reset(){ setHistory([]); setDecided({}); setErr(''); setApplyMsg(''); setInstruction(''); }
+
+  const turnApprovedCount = (t,idx)=> (t.values||[]).filter((_,i)=>decided[dkey(idx,i)]).length;
+
+  const valueLine = (v)=>{ const cat=catById[v.catId]; const doc=docById[v.docId]; const cur=curVal(v.docId,v.catId); const has=cur!=null && cur!=='';
+    const pill = has ? 'background:var(--teal-soft);border-color:var(--teal-soft);color:var(--teal-deep)' : 'background:transparent;border-color:var(--line);color:var(--ink-faint)';
+    return html`<span><b>${doc?.name||'(doc)'}</b> ▸ ${cat?.name||'(categoria)'} <span class="pill" style=${'margin:0 4px;'+pill}>${has?'já aplicada':'vazia'}</span> ${has?html`<span class="meta">“${cur}” → </span>`:''}<b>“${v.value}”</b></span>`; };
+
+  const assistantTurn = (t, idx)=>{
+    const vals = t.values || [];
+    const interactive = idx===lastAssistantIdx && !t.applied;
+    const appr = turnApprovedCount(t, idx);
+    return html`<div key=${'a'+idx} class="card" style="margin-bottom:10px">
+      <div class="field-label" style="margin-bottom:4px">IA</div>
+      ${t.summary && html`<div dangerouslySetInnerHTML=${{__html: mdLite(t.summary)}} />`}
+      ${t.parseFailed && html`<div class="banner err" style="margin-top:8px">A IA não devolveu um JSON válido. Se a resposta abaixo está cortada, selecione menos documentos/categorias.</div>`}
+      ${t.salvaged && html`<div class="banner warn" style="margin-top:8px">A resposta veio truncada (limite de tokens); recuperei os valores completos abaixo (o último pode ter sido descartado). Aplique estes e peça a continuação, ou selecione menos documentos/categorias.</div>`}
+      ${t.rawFail && html`<details style="margin-top:8px"><summary class="meta" style="cursor:pointer">Ver resposta crua (diagnóstico)</summary>
+        <pre style="white-space:pre-wrap;font-family:var(--mono);font-size:11px;background:var(--teal-soft);padding:10px;border-radius:8px;margin-top:6px;max-height:280px;overflow:auto">${t.rawFail}</pre></details>`}
+      ${vals.length>0 && html`<div style="margin-top:10px">
+        <div class="row" style="align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">
+          <b>${vals.length} valor(es) ${t.applied?'aplicado(s)':'sugerido(s)'}</b>
+          ${!t.applied && html`<span class="meta">${appr} marcado(s)</span>`}
+          ${t.dropped>0 && html`<span class="meta">(${t.dropped} descartado(s) por id/opção inválida)</span>`}
+          ${interactive && html`<div style="flex:1"></div>
+            <button class="btn sm ghost" onClick=${()=>setDecided(d=>{ const n={...d}; vals.forEach((_,i)=>{ n[dkey(idx,i)]=true; }); return n; })}>Aprovar todas</button>
+            <button class="btn sm ghost" onClick=${()=>setDecided(d=>{ const n={...d}; vals.forEach((_,i)=>{ n[dkey(idx,i)]=false; }); return n; })}>Recusar todas</button>`}
+        </div>
+        ${vals.map((v,i)=>{ const k=dkey(idx,i); const on=!!decided[k]; const struck=!t.applied && !on;
+          return html`<div key=${k} class="card" style=${`margin-bottom:8px;opacity:${struck?0.55:1}`}>
+          <div class="row" style="gap:10px;align-items:flex-start">
+            <div style="flex:1;min-width:0">
+              <div style=${`font-size:13px;${struck?'text-decoration:line-through;text-decoration-color:var(--ink-faint)':''}`}>${valueLine(v)}</div>
+              ${v.reason && html`<div class="meta" style="margin-top:4px">${v.reason}</div>`}
+            </div>
+            ${interactive && html`<div class="row" style="gap:6px;flex-shrink:0">
+              <button class=${`btn sm ${on?'primary':'ghost'}`} onClick=${()=>setDecided(d=>({...d,[k]:true}))}>${on?'✓ Aprovado':'Aprovar'}</button>
+              <button class=${`btn sm ${on?'ghost':''}`} onClick=${()=>setDecided(d=>({...d,[k]:false}))} style=${on?'':'background:var(--danger);color:#fff;border-color:var(--danger)'}>${on?'Recusar':'✕ Recusado'}</button>
+            </div>`}
+          </div>
+        </div>`; })}
+        ${interactive && html`<button class="btn primary" disabled=${busy || !appr} onClick=${()=>applyApproved(idx)}>Aplicar ${appr} valor(es)</button>`}
+        ${t.applied && html`<div class="meta" style="margin-top:4px">✓ Valores aplicados.</div>`}
+        ${!interactive && !t.applied && vals.length>0 && html`<div class="meta" style="margin-top:4px">Sugestão anterior — envie um refinamento para gerar nova.</div>`}
+      </div>`}
+      ${!vals.length && !t.rawFail && html`<span class="meta">Nenhuma alteração sugerida — a IA concordou com os valores já preenchidos (ou não encontrou base para mudar).</span>`}
+      ${onAddMemory && html`<${MemoryProposalReview} proposals=${t.memProps||[]} onCommit=${async (entries)=>{
+        for(const e of entries) await onAddMemory({ content:e.content, reason:e.reason, source:'ai', ai_model:currentModelLabel(), mode_label:'Sugestão de categorização' });
+        patchTurn(idx, { memProps:[] });
+      }} />`}
+    </div>`;
+  };
+
+  const canRun = selDocObjs.length>0 && selCatObjs.length>0;
+
+  return html`<div style="flex:1;min-height:0;display:flex">
+    <!-- ESQUERDA: configuração -->
+    <div class="pane-body scroll" style="flex:0 0 400px;border-right:1px solid var(--line)">
+      <div class="section">
+        <p class="hint" style="margin:0 0 10px">A IA lê os documentos e <b>sugere o valor</b> de categorias <b>já existentes</b> (não cria categorias). Ela vê o que <b>já está preenchido</b> e só devolve <b>diferenças ou campos vazios</b> — se concorda, não propõe nada. Você aprova ou recusa cada sugestão; <b>nada é gravado sem confirmação</b>.</p>
+        ${cats.length===0 && html`<div class="banner warn" style="margin-bottom:10px">Nenhuma categoria no projeto. Crie categorias na aba <b>Esquema ▸ Categorias</b> primeiro.</div>`}
+        ${projectMode==='individual' && !isAdmin && html`<div class="banner warn" style="margin-bottom:10px">Em projeto individual, gravar o valor exige permissão de administrador.</div>`}
+        <details class="collap field" open>
+          <summary class="field-label">Documentos${selDocs.length?` (${selDocs.length})`:''}</summary>
+          <div class="row" style="margin:6px 0;gap:8px">
+            <button class="btn sm ghost" onClick=${()=>setSelDocs(docs.map(d=>d.id))}>todos</button>
+            <button class="btn sm ghost" onClick=${()=>setSelDocs([])}>limpar</button>
+          </div>
+          <div class="card" style="margin-bottom:10px;max-height:220px;overflow:auto">
+            ${docs.length===0 && html`<span class="meta">Nenhum documento.</span>`}
+            ${docs.map(d=>html`<button key=${d.id} class="opt ${selDocs.includes(d.id)?'on':''}" style="display:flex;gap:6px;align-items:flex-start;width:100%;margin-bottom:4px;font-size:11px;line-height:1.35"
+              onClick=${()=>toggle(selDocs,setSelDocs,d.id)}>${selDocs.includes(d.id)?'☑':'☐'}<span style="flex:1;text-align:justify">${d.name}</span></button>`)}
+          </div>
+        </details>
+        <details class="collap field" open>
+          <summary class="field-label">Categorias${selCats.length?` (${selCats.length})`:''}</summary>
+          <div class="row" style="margin:6px 0;gap:8px">
+            <button class="btn sm ghost" onClick=${()=>setSelCats(cats.map(c=>c.id))}>todas</button>
+            <button class="btn sm ghost" onClick=${()=>setSelCats([])}>limpar</button>
+          </div>
+          <div class="card" style="margin-bottom:10px;max-height:220px;overflow:auto">
+            ${cats.length===0 && html`<span class="meta">Nenhuma categoria.</span>`}
+            ${cats.map(c=>html`<button key=${c.id} class="opt ${selCats.includes(c.id)?'on':''}" style="display:flex;gap:6px;align-items:center;width:100%;margin-bottom:4px;font-size:11px"
+              onClick=${()=>toggle(selCats,setSelCats,c.id)}>${selCats.includes(c.id)?'☑':'☐'}<span style="flex:1;text-align:left">${c.name} <span class="meta">· ${kindLabel(c.kind)}</span></span></button>`)}
+          </div>
+        </details>
+        <details class="collap field">
+          <summary class="field-label">Ver material enviado à IA</summary>
+          <pre style="white-space:pre-wrap;font-family:var(--mono);font-size:11px;background:var(--teal-soft);padding:10px;border-radius:8px;margin-top:8px;max-height:320px;overflow:auto">${systemPrompt}</pre>
+        </details>
+      </div>
+      ${onToggleMemory && html`<${MemoryPanel} memory=${memory} onToggle=${onToggleMemory} onDelete=${onDeleteMemory} showAdd=${false} />`}
+    </div>
+
+    <!-- DIREITA: chat -->
+    <div style="flex:1;min-width:0;display:flex;flex-direction:column;background:var(--paper)">
+      <div class="pane-head"><span class="field-label" style="margin:0">Conversa — preenchimento de categorias</span></div>
+      <div class="pane-body scroll" style="padding:16px">
+        ${history.length===0 && html`<div style="text-align:center;max-width:380px;margin:56px auto 0">
+          <p class="meta" style="font-size:13px;line-height:1.7;margin:0">Selecione documentos e categorias à esquerda e clique em <b>Sugerir preenchimento</b> abaixo. A IA propõe um valor por documento×categoria, que você aprova um a um.</p>
+        </div>`}
+        ${history.map((t,i)=> t.role==='user'
+          ? html`<div key=${'u'+i} class="card" style="margin-bottom:10px;background:var(--teal-soft);border-color:var(--teal-soft)">
+              <div class="field-label" style="margin-bottom:4px">${i===0?'Sua instrução':'Você'}</div>
+              <div style="white-space:pre-wrap;font-size:13px">${t.display || t.content}</div>
+            </div>`
+          : assistantTurn(t, i))}
+        ${busy && html`<div class="card" style="margin-bottom:10px"><div class="field-label" style="margin-bottom:6px">IA</div><div class="typing"><span></span><span></span><span></span></div></div>`}
+        ${err && html`<div class="banner err" style="margin-top:10px">${err}</div>`}
+        ${applyMsg && html`<div class="banner warn" style="margin-top:10px">${applyMsg}</div>`}
+      </div>
+      <div style="flex:none;border-top:1px solid var(--line);background:var(--surface);padding:10px 14px">
+        <textarea class="txtin" rows="2" style="resize:vertical"
+          placeholder=${history.length ? 'Refinar (ex.: "reavalie a categoria Cargo no ENT-03")… Enter envia, Shift+Enter quebra linha' : 'Instrução opcional… Enter envia, Shift+Enter quebra linha'}
+          value=${instruction} disabled=${busy} onInput=${e=>setInstruction(e.target.value)}
+          onKeyDown=${e=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); send(); } }}></textarea>
+        <div class="row" style="gap:8px;margin-top:6px;align-items:center;flex-wrap:wrap">
+          <button class="btn primary" disabled=${busy || !canRun} onClick=${send}>${history.length ? 'Enviar refinamento' : 'Sugerir preenchimento'}</button>
+          ${history.length>0 && html`<button class="btn sm ghost" disabled=${busy} onClick=${reset}>Limpar conversa</button>`}
+          ${busy && html`<span class="meta">pensando…</span>`}
+          ${!canRun && !busy && history.length===0 && html`<span class="meta">Selecione documentos e categorias.</span>`}
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+const IA_CODIF_SYS_REGRAS = `Sua tarefa é, atuando como SEGUNDA CODIFICADORA (recall), apontar trechos do texto que se encaixam nos CÓDIGOS EXISTENTES mas que ainda NÃO foram codificados, e devolver SOMENTE um objeto JSON (sem texto fora dele), no formato:
+{
+  "codings": [
+    { "doc": "#d1", "code": "#c3", "quote": "trecho copiado LITERALMENTE do texto", "reason": "..." }
+  ],
+  "summary": "uma frase resumindo a lógica geral",
+  "memory": [ { "content": "fato/decisão durável sobre o projeto, em 1 frase", "reason": "por que vale lembrar" } ]
+}
+Regras: use SOMENTE os ids de documento (#d...) e de código (#c...) que aparecem no material — NÃO crie códigos novos nem invente ids. O "quote" deve ser COPIADO LITERALMENTE do TEXTO INTEGRAL do documento (mesmas palavras e acentos, sem reescrever, resumir ou traduzir), curto o suficiente para ser localizado (uma frase ou trecho contínuo). Cada documento lista os TRECHOS JÁ CODIFICADOS — NÃO repita o que já está coberto por aquele código; aponte só o que ESCAPOU. Só proponha quando o trecho realmente corresponde ao sentido do código (precisão importa mais que recall). Explique cada um no "reason" (em português, UMA frase, sem quebras de linha dentro de strings JSON). Proponha NO MÁXIMO 30 por resposta; se faltar, diga no "summary". Se nada escapou, devolva "codings": [].
+O campo "memory" é OPCIONAL (só fatos/decisões DURÁVEIS; no máximo 8). Devolva apenas o JSON, sem texto antes nem depois, sem comentários.`;
+
+/* ============ SUGERIR CODIFICACAO — segundo codificador / recall (Fase 4). A IA le o documento +
+   o esquema de codigos e propoe trechos {doc, code, quote} usando codigos EXISTENTES; localiza o
+   quote->span com buildMatchIndex/findQuoteSpan (mesmo motor do import) e aplica via addCoding.
+   Espelha o IACategorizarPanel: ve o que JA esta codificado (nao repropoe), revisao item a item,
+   censura mascarada no material, salvamento generico do parseAIJson cobre truncamento. */
+function IACodificacaoPanel({ project, docs, codes, codeById, codePath, store, allCodings, isAdmin, projectMode, user, reload, loadAll, memos, memory, onAddMemory, onToggleMemory, onDeleteMemory }){
+  const [history, setHistory] = useState([]);
+  const [decided, setDecided] = useState({});
+  const [instruction, setInstruction] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const [applyMsg, setApplyMsg] = useState('');
+  const selectableCodes = useMemo(()=>codes.filter(c=>!c.is_redaction), [codes]); // censura não é codificada pela IA
+  const [selDocs, setSelDocs] = useState(()=>docs.map(d=>d.id));
+  const [selCodes, setSelCodes] = useState(()=>selectableCodes.map(c=>c.id));
+
+  const patchTurn = (idx,patch)=> setHistory(h=>h.map((t,i)=>i===idx?{...t,...patch}:t));
+  const lastAssistantIdx = (()=>{ for(let i=history.length-1;i>=0;i--){ if(history[i].role==='assistant') return i; } return -1; })();
+  const dkey = (ti,i)=> ti+':'+i;
+  const overlap = (aS,aE,bS,bE)=> aS>=0 && aE>aS && bS>=0 && bE>bS && aS<bE && bS<aE;
+  const projectMemo = (memos||[]).find(m=>m.scope==='project' && (m.target_id==null || m.target_id===project.id));
+
+  const { d2i } = useMemo(()=>{ const a={}; docs.forEach((d,i)=>{a['d'+(i+1)]=d.id;}); return {d2i:a}; }, [docs]);
+  const { c2i } = useMemo(()=>{ const a={}; codes.forEach((c,i)=>{a['c'+(i+1)]=c.id;}); return {c2i:a}; }, [codes]);
+  const i2d = useMemo(()=>Object.fromEntries(Object.entries(d2i).map(([k,v])=>[v,k])), [d2i]);
+  const i2c = useMemo(()=>Object.fromEntries(Object.entries(c2i).map(([k,v])=>[v,k])), [c2i]);
+  const dShort = id=>i2d[id]||'?', cShort = id=>i2c[id]||'?';
+  const docById = useMemo(()=>Object.fromEntries(docs.map(d=>[d.id,d])), [docs]);
+  const resolveDoc = ref=>{ const k=String(ref??'').replace(/^#/,'').trim(); return d2i[k] || (docById[k]?k:null); };
+  const resolveCode = ref=>{ const k=String(ref??'').replace(/^#/,'').trim(); return c2i[k] || (codeById[k]?k:null); };
+
+  const selDocObjs = docs.filter(d=>selDocs.includes(d.id));
+  const selCodeObjs = selectableCodes.filter(c=>selCodes.includes(c.id));
+  const redactionIds = useMemo(()=> new Set(codes.filter(c=>c.is_redaction).map(c=>c.id)), [codes]);
+  const codingsByDoc = useMemo(()=>{ const m={}; (allCodings||[]).forEach(c=>{ (m[c.document_id]=m[c.document_id]||[]).push(c); }); return m; }, [allCodings]);
+  const codeCount = useMemo(()=>{ const m={}; (allCodings||[]).forEach(c=>{m[c.code_id]=(m[c.code_id]||0)+1;}); return m; }, [allCodings]);
+  const toggle = (arr,set,id)=> set(arr.includes(id)?arr.filter(x=>x!==id):[...arr,id]);
+
+  // ---- MATERIAL ----
+  const codeListBlock = useMemo(()=>{
+    const lines = selCodeObjs.map(c=>`#${cShort(c.id)} | "${codePath(c.id).join(' ▸ ')}" | ${codeCount[c.id]||0} trechos`);
+    return 'CÓDIGOS DISPONÍVEIS PARA APLICAR (id | caminho | nº de trechos já aplicados):\n' + (lines.join('\n') || '(nenhum código selecionado)');
+  }, [selCodeObjs, i2c, codeCount]);
+
+  const docBlock = useMemo(()=>{
+    let total = 0; const parts = [];
+    for(const d of selDocObjs){
+      const inDoc = (allCodings||[]).filter(c=>c.document_id===d.id);
+      const already = inDoc.filter(c=>selCodes.includes(c.code_id))
+        .map(c=>`  - [#${cShort(c.code_id)} "${codeById[c.code_id]?.name||''}"] "${maskQuoteSpans(c, inDoc, redactionIds)}"`);
+      const masked = maskRedactedContent(d.content||'', inDoc, redactionIds);
+      const chunk = `--- #${dShort(d.id)} "${d.name}" ---\nTRECHOS JÁ CODIFICADOS (não repita):\n${already.join('\n') || '  (nenhum)'}\nTEXTO INTEGRAL:\n${masked.slice(0, IA_DOC_CHAR_LIMIT)}`;
+      if(total + chunk.length > IA_TOTAL_CHAR_LIMIT){ parts.push('[...documentos restantes omitidos — limite de tamanho; selecione menos documentos...]'); break; }
+      parts.push(chunk); total += chunk.length;
+    }
+    return 'DOCUMENTOS:\n' + (parts.join('\n\n') || '(nenhum documento selecionado)');
+  }, [selDocObjs, selCodes, allCodings, redactionIds, codeById, i2d, i2c]);
+
+  const systemPrompt = useMemo(()=> [
+    'Você é uma SEGUNDA CODIFICADORA de pesquisa qualitativa, em português. Você faz recall: aponta trechos que se encaixam nos códigos JÁ EXISTENTES e que escaparam da codificação. Você NÃO cria códigos novos.',
+    projectMemo?.content?.trim() ? `MEMO DO PROJETO (objetivo da pesquisa): ${projectMemo.content.trim()}` : '(Sem memo de projeto registrado.)',
+    memoryBlock(memory),
+    'DESCRIÇÃO DO MATERIAL: abaixo estão os códigos disponíveis e, para cada documento, os TRECHOS JÁ CODIFICADOS seguidos do TEXTO INTEGRAL. Aponte só trechos do texto que caibam num código existente e ainda não estejam codificados com ele.' + (redactionIds.size?' Trechos sensíveis aparecem como "[trecho censurado]" — não os cite nem proponha codificá-los.':''),
+    'MATERIAL:\n' + codeListBlock + '\n\n' + docBlock,
+    IA_CODIF_SYS_REGRAS,
+  ].join('\n\n'), [codeListBlock, docBlock, projectMemo, memory, redactionIds]);
+
+  // ---- VALIDACAO: resolve ids, LOCALIZA o quote no texto (quote->span) e descarta o que ja existe ----
+  const validateCodings = (raw)=>{
+    const out=[]; let bad=0, notFound=0, dup=0; const idxCache=new Map();
+    for(const item of (Array.isArray(raw)?raw:[])){
+      const docId=resolveDoc(item?.doc), codeId=resolveCode(item?.code);
+      if(!docId || !codeId || !selCodes.includes(codeId) || redactionIds.has(codeId)){ bad++; continue; }
+      const doc=docById[docId]; const quote=String(item?.quote||'').trim();
+      if(!doc || quote.length<3){ bad++; continue; }
+      let idx=idxCache.get(docId); if(!idx){ idx=buildMatchIndex(doc.content||''); idxCache.set(docId,idx); }
+      const sp=findQuoteSpan(idx, quote);
+      if(!sp){ notFound++; continue; }
+      // ja existe coding do MESMO codigo cobrindo esse span (no banco, ou ja aceito nesta resposta)?
+      const exists = (codingsByDoc[docId]||[]).some(c=>c.code_id===codeId && overlap(c.span_start,c.span_end,sp.start,sp.end))
+                  || out.some(o=>o.docId===docId && o.codeId===codeId && overlap(o.start,o.end,sp.start,sp.end));
+      if(exists){ dup++; continue; }
+      out.push({ docId, codeId, start:sp.start, end:sp.end, quote:(doc.content||'').slice(sp.start, sp.end), approx:!!sp.approx, reason:String(item?.reason||'').trim() });
+    }
+    return { out, bad, notFound, dup };
+  };
+
+  async function send(){
+    if(busy) return;
+    if(!selDocObjs.length || !selCodeObjs.length){ setErr('Selecione ao menos um documento e um código.'); return; }
+    const base = instruction.trim() || (history.length ? 'Continue, apontando mais trechos que escaparam.' : 'Percorra os documentos e aponte trechos que se encaixam nos códigos existentes mas não foram codificados.');
+    const userTurn = base + ' Responda APENAS com o objeto JSON no formato especificado, sem texto antes ou depois.';
+    setErr(''); setApplyMsg(''); setBusy(true);
+    const nextHistory = [...history, { role:'user', content:userTurn, display:base }];
+    setHistory(nextHistory); setInstruction('');
+    const aIdx = nextHistory.length;
+    try{
+      const text = await askAIChat({ system: systemPrompt, messages: nextHistory, json: true });
+      const parsed = parseAIJson(text); let entry;
+      if(!parsed){ entry = { role:'assistant', content:text, codings:[], summary:'', bad:0, notFound:0, dup:0, memProps:[], applied:false, rawFail:text||'(resposta vazia)', parseFailed:true }; }
+      else {
+        const { out, bad, notFound, dup } = validateCodings(parsed.codings);
+        entry = { role:'assistant', content:text, codings:out, summary:String(parsed.summary||''), bad, notFound, dup, memProps:validateMemProps(parsed.memory), applied:false, rawFail:'', salvaged:!!parsed._salvaged };
+        if(out.length){ setDecided(d=>{ const n={...d}; out.forEach((_,i)=>{ n[dkey(aIdx,i)]=true; }); return n; }); }
+      }
+      setHistory(h=>[...h, entry]);
+    }catch(e){ setErr(String(e?.message||e)); }
+    finally{ setBusy(false); }
+  }
+
+  async function applyApproved(turnIdx){
+    const turn = history[turnIdx]; if(!turn) return;
+    const approved = (turn.codings||[]).filter((_,i)=>decided[dkey(turnIdx,i)]);
+    if(!approved.length){ setErr('Nenhuma codificação aprovada para aplicar.'); return; }
+    setErr(''); setApplyMsg(''); setBusy(true);
+    const layer = projectMode==='individual' ? 'final' : 'individual';
+    let applied=0, skipped=0;
+    if(store.beginBatch) store.beginBatch();
+    try{
+      for(const o of approved){ try{ await store.addCoding(project.id, { document_id:o.docId, code_id:o.codeId, span_start:o.start, span_end:o.end, quote:o.quote, layer }); applied++; }catch(e){ skipped++; } }
+    } finally { if(store.endBatch) await store.endBatch(); }
+    await reload(); await loadAll();
+    patchTurn(turnIdx, { applied:true });
+    setApplyMsg(`${applied} codificação(ões) aplicada(s)${skipped?`, ${skipped} falhou(aram)`:''}. Confira no leitor (aba Codificação) ou na Visualização.`);
+    setHistory(h=>[...h, { role:'user', content:`(Apliquei ${applied} codificação(ões) da sua proposta.)` }]);
+    setBusy(false);
+  }
+
+  function reset(){ setHistory([]); setDecided({}); setErr(''); setApplyMsg(''); setInstruction(''); }
+
+  const turnApprovedCount = (t,idx)=> (t.codings||[]).filter((_,i)=>decided[dkey(idx,i)]).length;
+
+  const codingLine = (o)=>{ const doc=docById[o.docId]; const path=codePath(o.codeId).join(' ▸ ');
+    return html`<div>
+      <div style="font-size:13px"><b>${doc?.name||'(doc)'}</b> ▸ ${path}
+        <span class="pill" style="margin:0 4px;background:var(--teal-soft);border-color:var(--teal-soft);color:var(--teal-deep)">novo</span>${o.approx?html`<span class="pill" style="margin:0 4px;background:transparent;border-color:var(--line);color:var(--ink-faint)">≈ localização aproximada</span>`:''}</div>
+      <blockquote style="margin:4px 0 0;padding:2px 0 2px 10px;border-left:3px solid ${codeColor(codeById[o.codeId]?.hue,codeById[o.codeId]?.depth,codeById[o.codeId]?.hue_deg).solid};font-family:var(--serif);font-size:13px">“${o.quote}”</blockquote>
+    </div>`; };
+
+  const assistantTurn = (t, idx)=>{
+    const cods = t.codings || [];
+    const interactive = idx===lastAssistantIdx && !t.applied;
+    const appr = turnApprovedCount(t, idx);
+    const drops = (t.bad||0)+(t.notFound||0)+(t.dup||0);
+    return html`<div key=${'a'+idx} class="card" style="margin-bottom:10px">
+      <div class="field-label" style="margin-bottom:4px">IA</div>
+      ${t.summary && html`<div dangerouslySetInnerHTML=${{__html: mdLite(t.summary)}} />`}
+      ${t.parseFailed && html`<div class="banner err" style="margin-top:8px">A IA não devolveu um JSON válido. Se a resposta abaixo está cortada, selecione menos documentos/códigos.</div>`}
+      ${t.salvaged && html`<div class="banner warn" style="margin-top:8px">A resposta veio truncada (limite de tokens); recuperei as codificações completas abaixo. Aplique e peça a continuação, ou selecione menos documentos.</div>`}
+      ${t.rawFail && html`<details style="margin-top:8px"><summary class="meta" style="cursor:pointer">Ver resposta crua (diagnóstico)</summary>
+        <pre style="white-space:pre-wrap;font-family:var(--mono);font-size:11px;background:var(--teal-soft);padding:10px;border-radius:8px;margin-top:6px;max-height:280px;overflow:auto">${t.rawFail}</pre></details>`}
+      ${cods.length>0 && html`<div style="margin-top:10px">
+        <div class="row" style="align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">
+          <b>${cods.length} trecho(s) ${t.applied?'aplicado(s)':'sugerido(s)'}</b>
+          ${!t.applied && html`<span class="meta">${appr} marcado(s)</span>`}
+          ${drops>0 && html`<span class="meta">(${t.dup||0} já codificado(s), ${t.notFound||0} não localizado(s)${t.bad?`, ${t.bad} inválido(s)`:''})</span>`}
+          ${interactive && html`<div style="flex:1"></div>
+            <button class="btn sm ghost" onClick=${()=>setDecided(d=>{ const n={...d}; cods.forEach((_,i)=>{ n[dkey(idx,i)]=true; }); return n; })}>Aprovar todas</button>
+            <button class="btn sm ghost" onClick=${()=>setDecided(d=>{ const n={...d}; cods.forEach((_,i)=>{ n[dkey(idx,i)]=false; }); return n; })}>Recusar todas</button>`}
+        </div>
+        ${cods.map((o,i)=>{ const k=dkey(idx,i); const on=!!decided[k]; const struck=!t.applied && !on;
+          return html`<div key=${k} class="card" style=${`margin-bottom:8px;opacity:${struck?0.55:1}`}>
+          <div class="row" style="gap:10px;align-items:flex-start">
+            <div style="flex:1;min-width:0">${codingLine(o)}${o.reason && html`<div class="meta" style="margin-top:4px">${o.reason}</div>`}</div>
+            ${interactive && html`<div class="row" style="gap:6px;flex-shrink:0">
+              <button class=${`btn sm ${on?'primary':'ghost'}`} onClick=${()=>setDecided(d=>({...d,[k]:true}))}>${on?'✓ Aprovado':'Aprovar'}</button>
+              <button class=${`btn sm ${on?'ghost':''}`} onClick=${()=>setDecided(d=>({...d,[k]:false}))} style=${on?'':'background:var(--danger);color:#fff;border-color:var(--danger)'}>${on?'Recusar':'✕ Recusado'}</button>
+            </div>`}
+          </div>
+        </div>`; })}
+        ${interactive && html`<button class="btn primary" disabled=${busy || !appr} onClick=${()=>applyApproved(idx)}>Aplicar ${appr} codificação(ões)</button>`}
+        ${t.applied && html`<div class="meta" style="margin-top:4px">✓ Codificações aplicadas.</div>`}
+        ${!interactive && !t.applied && cods.length>0 && html`<div class="meta" style="margin-top:4px">Sugestão anterior — envie um refinamento para gerar nova.</div>`}
+      </div>`}
+      ${!cods.length && !t.rawFail && html`<span class="meta">Nenhum trecho novo sugerido${(t.dup||t.notFound)?` (${t.dup||0} já codificado(s), ${t.notFound||0} não localizado(s))`:''}.</span>`}
+      ${onAddMemory && html`<${MemoryProposalReview} proposals=${t.memProps||[]} onCommit=${async (entries)=>{
+        for(const e of entries) await onAddMemory({ content:e.content, reason:e.reason, source:'ai', ai_model:currentModelLabel(), mode_label:'Sugestão de codificação' });
+        patchTurn(idx, { memProps:[] });
+      }} />`}
+    </div>`;
+  };
+
+  const canRun = selDocObjs.length>0 && selCodeObjs.length>0;
+
+  return html`<div style="flex:1;min-height:0;display:flex">
+    <div class="pane-body scroll" style="flex:0 0 400px;border-right:1px solid var(--line)">
+      <div class="section">
+        <p class="hint" style="margin:0 0 10px">A IA atua como <b>segunda codificadora</b>: lê os documentos e aponta trechos que se encaixam em <b>códigos existentes</b> mas escaparam (recall). Ela vê o que <b>já está codificado</b> e não repete. Você aprova ou recusa cada trecho — <b>nada é gravado sem confirmação</b>.</p>
+        ${selectableCodes.length===0 && html`<div class="banner warn" style="margin-bottom:10px">Nenhum código no projeto. Crie códigos na aba <b>Esquema</b> primeiro.</div>`}
+        <details class="collap field" open>
+          <summary class="field-label">Documentos${selDocs.length?` (${selDocs.length})`:''}</summary>
+          <div class="row" style="margin:6px 0;gap:8px">
+            <button class="btn sm ghost" onClick=${()=>setSelDocs(docs.map(d=>d.id))}>todos</button>
+            <button class="btn sm ghost" onClick=${()=>setSelDocs([])}>limpar</button>
+          </div>
+          <div class="card" style="margin-bottom:10px;max-height:200px;overflow:auto">
+            ${docs.length===0 && html`<span class="meta">Nenhum documento.</span>`}
+            ${docs.map(d=>html`<button key=${d.id} class="opt ${selDocs.includes(d.id)?'on':''}" style="display:flex;gap:6px;align-items:flex-start;width:100%;margin-bottom:4px;font-size:11px;line-height:1.35"
+              onClick=${()=>toggle(selDocs,setSelDocs,d.id)}>${selDocs.includes(d.id)?'☑':'☐'}<span style="flex:1;text-align:justify">${d.name}</span></button>`)}
+          </div>
+        </details>
+        <details class="collap field">
+          <summary class="field-label">Códigos disponíveis${selCodes.length?` (${selCodes.length})`:''}</summary>
+          <div class="row" style="margin:6px 0;gap:8px">
+            <button class="btn sm ghost" onClick=${()=>setSelCodes(selectableCodes.map(c=>c.id))}>todos</button>
+            <button class="btn sm ghost" onClick=${()=>setSelCodes([])}>limpar</button>
+          </div>
+          <div class="card" style="margin-bottom:10px;max-height:240px;overflow:auto">
+            ${selectableCodes.length===0 && html`<span class="meta">Nenhum código.</span>`}
+            ${selectableCodes.map(c=>html`<button key=${c.id} class="opt ${selCodes.includes(c.id)?'on':''}" style="display:flex;gap:6px;align-items:center;width:100%;margin-bottom:4px;font-size:11px"
+              onClick=${()=>toggle(selCodes,setSelCodes,c.id)}>${selCodes.includes(c.id)?'☑':'☐'}<span style="flex:1;text-align:left">${codePath(c.id).join(' ▸ ')}</span></button>`)}
+          </div>
+        </details>
+        <details class="collap field">
+          <summary class="field-label">Ver material enviado à IA</summary>
+          <pre style="white-space:pre-wrap;font-family:var(--mono);font-size:11px;background:var(--teal-soft);padding:10px;border-radius:8px;margin-top:8px;max-height:320px;overflow:auto">${systemPrompt}</pre>
+        </details>
+      </div>
+      ${onToggleMemory && html`<${MemoryPanel} memory=${memory} onToggle=${onToggleMemory} onDelete=${onDeleteMemory} showAdd=${false} />`}
+    </div>
+
+    <div style="flex:1;min-width:0;display:flex;flex-direction:column;background:var(--paper)">
+      <div class="pane-head"><span class="field-label" style="margin:0">Conversa — codificação assistida (recall)</span></div>
+      <div class="pane-body scroll" style="padding:16px">
+        ${history.length===0 && html`<div style="text-align:center;max-width:380px;margin:56px auto 0">
+          <p class="meta" style="font-size:13px;line-height:1.7;margin:0">Selecione documentos e códigos à esquerda e clique em <b>Sugerir trechos</b> abaixo. A IA aponta trechos que se encaixam nos códigos existentes mas escaparam; você aprova um a um.</p>
+        </div>`}
+        ${history.map((t,i)=> t.role==='user'
+          ? html`<div key=${'u'+i} class="card" style="margin-bottom:10px;background:var(--teal-soft);border-color:var(--teal-soft)">
+              <div class="field-label" style="margin-bottom:4px">${i===0?'Sua instrução':'Você'}</div>
+              <div style="white-space:pre-wrap;font-size:13px">${t.display || t.content}</div>
+            </div>`
+          : assistantTurn(t, i))}
+        ${busy && html`<div class="card" style="margin-bottom:10px"><div class="field-label" style="margin-bottom:6px">IA</div><div class="typing"><span></span><span></span><span></span></div></div>`}
+        ${err && html`<div class="banner err" style="margin-top:10px">${err}</div>`}
+        ${applyMsg && html`<div class="banner warn" style="margin-top:10px">${applyMsg}</div>`}
+      </div>
+      <div style="flex:none;border-top:1px solid var(--line);background:var(--surface);padding:10px 14px">
+        <textarea class="txtin" rows="2" style="resize:vertical"
+          placeholder=${history.length ? 'Refinar (ex.: "foque no código Confidencialidade")… Enter envia, Shift+Enter quebra linha' : 'Instrução opcional… Enter envia, Shift+Enter quebra linha'}
+          value=${instruction} disabled=${busy} onInput=${e=>setInstruction(e.target.value)}
+          onKeyDown=${e=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); send(); } }}></textarea>
+        <div class="row" style="gap:8px;margin-top:6px;align-items:center;flex-wrap:wrap">
+          <button class="btn primary" disabled=${busy || !canRun} onClick=${send}>${history.length ? 'Enviar refinamento' : 'Sugerir trechos'}</button>
+          ${history.length>0 && html`<button class="btn sm ghost" disabled=${busy} onClick=${reset}>Limpar conversa</button>`}
+          ${busy && html`<span class="meta">pensando…</span>`}
+          ${!canRun && !busy && history.length===0 && html`<span class="meta">Selecione documentos e códigos.</span>`}
+        </div>
+      </div>
+    </div>
+  </div>`;
 }
 
 /* ============ ANALISAR COM IA ============
