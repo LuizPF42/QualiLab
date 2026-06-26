@@ -5440,8 +5440,14 @@ function ReportView({ project, projectMode, docs, cats, codes, codeById, codePat
   const swatch = (c)=> html`<span class="swatch" style=${`display:inline-block;vertical-align:middle;background:${codeColor(c.hue,c.depth,c.hue_deg).solid}`}></span>`;
   const kindLabel = (k)=> (CAT_KINDS.find(x=>x.id===k)||{}).label || k;
 
-  const topCodes = useMemo(()=>codes.filter(c=>!c.parent_id), [codes]);
-  const subCodes = useMemo(()=>codes.filter(c=>c.parent_id), [codes]);
+  // CENSURA fora do relatorio: codigos is_redaction nao sao categorias analiticas (marcacao de
+  // conteudo sensivel) — saem de TODAS as secoes derivadas de codigo (esquema, frequencia, trechos,
+  // nao-utilizados) e das contagens do resumo. Os exports de transparencia ja os excluem; o
+  // relatorio padrao tambem deve. (As citacoes que sobram, de codigos analiticos, seguem mascaradas
+  // por maskQuote onde sobreponham censura.)
+  const analyticCodes = useMemo(()=>codes.filter(c=>!c.is_redaction), [codes]);
+  const topCodes = useMemo(()=>analyticCodes.filter(c=>!c.parent_id), [analyticCodes]);
+  const subCodes = useMemo(()=>analyticCodes.filter(c=>c.parent_id), [analyticCodes]);
 
   // contagem (direta) por código
   const countMap = useMemo(()=>{
@@ -5449,9 +5455,9 @@ function ReportView({ project, projectMode, docs, cats, codes, codeById, codePat
   }, [codingsForReport]);
   // frequência por código, do mais usado ao menos
   const freq = useMemo(()=>
-    codes.map(c=>({ code:c, n:countMap[c.id]||0 })).filter(x=>x.n>0).sort((a,b)=>b.n-a.n)
-  , [countMap, codes]);
-  const unusedCodes = useMemo(()=>codes.filter(c=>!countMap[c.id]), [countMap, codes]);
+    analyticCodes.map(c=>({ code:c, n:countMap[c.id]||0 })).filter(x=>x.n>0).sort((a,b)=>b.n-a.n)
+  , [countMap, analyticCodes]);
+  const unusedCodes = useMemo(()=>analyticCodes.filter(c=>!countMap[c.id]), [countMap, analyticCodes]);
   const anyEsq = ['cat_count','cat_list','code_count','sub_count','code_list','sub_list'].some(on);
 
   // distribuição por categoria fechada: contagem de documentos por valor (usa gabarito quando há)
@@ -5486,16 +5492,18 @@ function ReportView({ project, projectMode, docs, cats, codes, codeById, codePat
     }).filter(x=>x.docs.length>0);
   }, [codingsForReport, freq, docById]);
 
-  const totalCodings = codingsForReport.length;
+  const totalCodings = codingsForReport.filter(c=>!redactionIds.has(c.code_id)).length;
 
   // codificadores: nomes distintos das codificações individuais (o trabalho de codificação).
   // Só faz sentido em projeto coletivo; ordena alfabeticamente.
   const coders = useMemo(()=>{
     if(projectMode!=='collective') return [];
     const s=new Set();
-    allCodings.filter(c=>c.layer!=='final').forEach(c=>{ const n=(c.author_name||'').trim(); if(n) s.add(n); });
+    // censura nao conta como trabalho analitico no relatorio: quem so marcou censura nao vira
+    // "codificador" aqui (consistente com a exclusao dos codigos is_redaction das demais secoes).
+    allCodings.filter(c=>c.layer!=='final' && !redactionIds.has(c.code_id)).forEach(c=>{ const n=(c.author_name||'').trim(); if(n) s.add(n); });
     return [...s].sort((a,b)=>a.localeCompare(b,'pt-BR'));
-  }, [allCodings, projectMode]);
+  }, [allCodings, projectMode, redactionIds]);
 
   // monta o relatório como texto simples (sem marcações .md) — para colar direto em Word/Docs
   function buildText(){
@@ -5503,7 +5511,7 @@ function ReportView({ project, projectMode, docs, cats, codes, codeById, codePat
     L.push(title.trim()||project?.name||'Relatório');
     L.push('Gerado em '+new Date().toLocaleDateString('pt-BR')+(projectMode==='collective'?' · Ver: '+viewLabel(view, projCoders):''));
     if(on('resumo')){ H('Resumo');
-      L.push(`Projeto ${project?.name||''} (${projectMode==='collective'?'coletivo':'individual'}), com ${docs.length} documento(s), ${codes.length} código(s), ${cats.length} categoria(s) e ${totalCodings} codificação(ões).`+(on('credito')?' O projeto foi codificado por meio da ferramenta QualiLab.':''));
+      L.push(`Projeto ${project?.name||''} (${projectMode==='collective'?'coletivo':'individual'}), com ${docs.length} documento(s), ${analyticCodes.length} código(s), ${cats.length} categoria(s) e ${totalCodings} codificação(ões).`+(on('credito')?' O projeto foi codificado por meio da ferramenta QualiLab.':''));
       if(coders.length) L.push('', 'Codificado por: '+coders.join(', ')+'.');
     }
     if(on('docs_list')){ H('Documentos');
@@ -5633,7 +5641,7 @@ function ReportView({ project, projectMode, docs, cats, codes, codeById, codePat
         ${on('resumo') && html`<section style="margin-bottom:26px">
           <h2 style="font-family:var(--serif);font-size:18px;border-bottom:2px solid var(--teal);padding-bottom:4px">Resumo</h2>
           <p>Projeto <b>${project?.name||''}</b> (${projectMode==='collective'?'coletivo':'individual'}), com ${' '}
-            <b>${docs.length}</b>${' '} documento(s), <b>${codes.length}</b>${' '} código(s), ${' '}
+            <b>${docs.length}</b>${' '} documento(s), <b>${analyticCodes.length}</b>${' '} código(s), ${' '}
             <b>${cats.length}</b>${' '} categoria(s) e <b>${totalCodings}</b>${' '} codificação(ões)${projectMode==='collective'?' na camada final/individual considerada':''}.${on('credito')?' O projeto foi codificado por meio da ferramenta QualiLab.':''}</p>
           ${coders.length>0 && html`<p style="margin:6px 0 0">Codificado por: <b>${coders.join(', ')}</b>.</p>`}
         </section>`}
