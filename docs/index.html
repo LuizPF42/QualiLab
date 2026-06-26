@@ -123,6 +123,16 @@
   .txtin{width:100%;font-size:13px;padding:7px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);}
   .meta{font-size:11px;color:var(--ink-faint);}
 
+  /* render de markdown leve das respostas da IA (mdLite) */
+  .md{font-size:13px;line-height:1.55;}
+  .md-h{font-weight:600;margin:8px 0 3px;line-height:1.3;}
+  .md-h:first-child{margin-top:0;}
+  .md-h1{font-size:15px;} .md-h2{font-size:14px;} .md-h3,.md-h4{font-size:13px;}
+  .md ul,.md ol{margin:4px 0 6px;padding-left:20px;}
+  .md li{margin:2px 0;}
+  .md code{font-family:var(--mono);font-size:12px;background:var(--paper);padding:1px 4px;border-radius:4px;}
+  .md hr{border:none;border-top:1px solid var(--line);margin:8px 0;}
+
   .tree{margin-top:6px;}
   .node{}
   .node-row{display:flex;align-items:center;gap:7px;padding:5px 6px;border-radius:8px;}
@@ -133,6 +143,24 @@
   .node-name{font-size:13px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .count{font-family:var(--mono);font-size:11px;color:var(--ink-faint);}
   .caret{width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;color:var(--ink-faint);cursor:pointer;flex:none;}
+  /* <details> colapsavel com caret proprio — o marcador nativo some quando o <summary> e
+     display:flex (ex.: .field-label), entao desenhamos com ::before e alternamos por [open]. */
+  .collap>summary{cursor:pointer;list-style:none;}
+  .collap>summary::-webkit-details-marker{display:none;}
+  .collap>summary::before{content:'▸';color:var(--ink-faint);font-size:10px;flex:none;}
+  .collap[open]>summary::before{content:'▾';}
+  /* dica clicavel em negrito dentro do summary; alterna "ver"/"ocultar" conforme [open] */
+  .collap>summary .clickhint{margin-top:4px;font-weight:700;color:var(--teal);font-size:11.5px;}
+  .collap>summary .clickhint.on-closed{display:block;}
+  .collap>summary .clickhint.on-open{display:none;}
+  .collap[open]>summary .clickhint.on-closed{display:none;}
+  .collap[open]>summary .clickhint.on-open{display:block;}
+  /* indicador "pensando" (tres bolinhas) enquanto a IA processa */
+  .typing{display:inline-flex;gap:5px;align-items:center;}
+  .typing span{width:7px;height:7px;border-radius:50%;background:var(--teal);animation:typingDot 1s infinite ease-in-out;}
+  .typing span:nth-child(2){animation-delay:.16s;}
+  .typing span:nth-child(3){animation-delay:.32s;}
+  @keyframes typingDot{0%,70%,100%{opacity:.3;transform:translateY(0);}35%{opacity:1;transform:translateY(-4px);}}
   .crumb{font-size:11px;color:var(--ink-faint);font-family:var(--mono);}
 
   .docitem{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--line);border-radius:9px;margin-bottom:6px;background:var(--surface);}
@@ -425,11 +453,43 @@ function stripLeadingBom(s){ return (s && s.charCodeAt(0) === 0xFEFF) ? s.slice(
 
 /* markdown bem leve, so pra exibir as respostas da IA (que vem em markdown)
    sem precisar carregar uma lib: negrito/italico e quebras de linha. */
+/* markdown leve pra exibir respostas da IA. Antes so tratava negrito/italico/quebra
+   e os modelos vinham devolvendo cabecalhos "###", listas "- "/"1." e codigo `x`
+   que apareciam CRUS na tela (reclamacao real). Agora processa tambem esses blocos,
+   linha a linha, mantendo o inline. Saida embrulhada em .md (estilos no <style>). */
 function mdLite(text){
-  return xmlEsc(text)
+  const inline = s => s
     .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
     .replace(/(?<!\*)\*(?!\*)(.+?)\*(?!\*)/g, '<i>$1</i>')
-    .replace(/\n/g, '<br>');
+    .replace(/`([^`]+?)`/g, '<code>$1</code>');
+  const lines = xmlEsc(text==null ? '' : String(text)).split('\n');
+  const out = [];
+  let list = null; // 'ul' | 'ol' aberta no momento
+  const closeList = () => { if(list){ out.push('</'+list+'>'); list=null; } };
+  for(const line of lines){
+    let m;
+    if(m = line.match(/^\s*(#{1,6})\s+(.*\S)\s*$/)){          // cabecalho ###
+      closeList();
+      out.push('<div class="md-h md-h'+Math.min(4,m[1].length)+'">'+inline(m[2])+'</div>');
+    } else if(/^\s*([-*_])\1\1+\s*$/.test(line)){             // regua --- *** ___
+      closeList();
+      out.push('<hr>');
+    } else if(m = line.match(/^\s*[-*+]\s+(.*)$/)){           // item de lista "- "
+      if(list!=='ul'){ closeList(); out.push('<ul>'); list='ul'; }
+      out.push('<li>'+inline(m[1])+'</li>');
+    } else if(m = line.match(/^\s*\d+[.)]\s+(.*)$/)){         // item numerado "1. "
+      if(list!=='ol'){ closeList(); out.push('<ol>'); list='ol'; }
+      out.push('<li>'+inline(m[1])+'</li>');
+    } else if(line.trim()===''){                             // linha em branco
+      closeList();
+      out.push('<br>');
+    } else {
+      closeList();
+      out.push('<div>'+inline(line)+'</div>');
+    }
+  }
+  closeList();
+  return '<div class="md">'+out.join('')+'</div>';
 }
 
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
@@ -2605,7 +2665,7 @@ function App(){
     if(!store || !project || !store.listIaResults){ setIaResults([]); return; }
     try{ setIaResults(await store.listIaResults(project.id) || []); }catch(e){ setIaResults([]); }
   }, [store, project]);
-  useEffect(()=>{ if(phase==='work' && mainView==='ia_analisar') loadIaResults(); }, [phase, mainView, loadIaResults]);
+  useEffect(()=>{ if(phase==='work' && (mainView==='ia_analisar'||mainView==='memos')) loadIaResults(); }, [phase, mainView, loadIaResults]);
   async function saveIaResult(scope, modeLabel, result){
     await store.addIaResult(project.id, { scope, mode_label:modeLabel, result, author_name:user?.name||'anônimo' });
     await loadIaResults();
@@ -2621,7 +2681,7 @@ function App(){
     if(!store || !project || !store.listMemory){ setAiMemory([]); return; }
     try{ setAiMemory(await store.listMemory(project.id) || []); }catch(e){ setAiMemory([]); }
   }, [store, project]);
-  useEffect(()=>{ if(phase==='work' && (mainView==='ia_analisar'||mainView==='ia_codificar')) loadMemory(); }, [phase, mainView, loadMemory]);
+  useEffect(()=>{ if(phase==='work' && (mainView==='ia_analisar'||mainView==='ia_codificar'||mainView==='memos')) loadMemory(); }, [phase, mainView, loadMemory]);
   async function addMemory(entry){
     await store.addMemory(project.id, { ...entry, author_name:user?.name||'anônimo' });
     await loadMemory();
@@ -3401,14 +3461,19 @@ function App(){
       <section class="pane" style="flex:0 0 270px;min-width:0;border-right:1px solid var(--line)">
         <div class="pane-body scroll" style="padding:0">
           <${MemoNav} project=${project} docs=${docs} codes=${codes} codings=${allCodings} memos=${memos}
-            sel=${memoSel} onSel=${setMemoSel} onRenameDoc=${renameDoc} />
+            sel=${memoSel} onSel=${setMemoSel} onRenameDoc=${renameDoc}
+            aiMemory=${aiMemory} iaResults=${iaResults} />
         </div>
       </section>
-      <!-- MEMOS direita: editor -->
+      <!-- MEMOS direita: editor de memo OU painel de IA (memória / conversas salvas) -->
       <section class="pane" style="flex:1;min-width:0;background:var(--paper)">
         <div class="pane-body scroll" style="padding:0">
-          <${MemoEditor} sel=${memoSel} project=${project} codeById=${codeById} codePath=${codePath}
-            codings=${allCodings} docs=${docs} memos=${memos} onSave=${saveMemo} onRenameDoc=${renameDoc} />
+          ${memoSel?.scope==='ai_memory'
+            ? html`<${MemoryPanel} memory=${aiMemory} onToggle=${toggleMemoryActive} onDelete=${deleteMemory} onAdd=${addMemory} />`
+            : memoSel?.scope==='ia_results'
+            ? html`<${IAResultView} result=${(iaResults||[]).find(r=>r.id===memoSel.targetId)} onDelete=${deleteIaResult} />`
+            : html`<${MemoEditor} sel=${memoSel} project=${project} codeById=${codeById} codePath=${codePath}
+                codings=${allCodings} docs=${docs} memos=${memos} onSave=${saveMemo} onRenameDoc=${renameDoc} />`}
         </div>
       </section>
     </div>`
@@ -3463,24 +3528,11 @@ function App(){
       </section>
     </div>`
     : mainView==='ia_analisar' ? html`<div class="split">
-      <!-- ANALISAR COM IA esquerda: material/modalidade + resultado atual -->
-      <section class="pane" style="flex:1;min-width:0">
-        <div class="pane-head"><span class="h" style="margin:0">Analisar com IA</span></div>
-        <div class="pane-body scroll">
-          <div style="max-width:760px;margin:0 auto">
-            <${IAAnalisarPanel} project=${project} docs=${docs} codes=${codes} codeById=${codeById} codePath=${codePath}
-              activeDoc=${activeDoc} sel=${sel} store=${store} allCodings=${allCodings} memos=${memos} cats=${cats} allValues=${allValues}
-              memory=${aiMemory} onAddMemory=${addMemory} onSave=${saveIaResult} />
-          </div>
-        </div>
-      </section>
-      <!-- ANALISAR COM IA direita: diário de memória + resultados salvos -->
-      <section class="pane" style="flex:0 0 300px;min-width:0;border-left:1px solid var(--line);background:var(--paper)">
-        <div class="pane-body scroll" style="padding:0">
-          <${MemoryPanel} memory=${aiMemory} onToggle=${toggleMemoryActive} onDelete=${deleteMemory} onAdd=${addMemory} />
-          <${IAResultsPanel} results=${iaResults} onDelete=${deleteIaResult} />
-        </div>
-      </section>
+      <!-- ANALISAR COM IA: barra de Material no topo + duas telas (config | chat) -->
+      <${IAAnalisarPanel} project=${project} docs=${docs} codes=${codes} codeById=${codeById} codePath=${codePath}
+        activeDoc=${activeDoc} sel=${sel} store=${store} allCodings=${allCodings} memos=${memos} cats=${cats} allValues=${allValues}
+        memory=${aiMemory} onAddMemory=${addMemory} onToggleMemory=${toggleMemoryActive} onDeleteMemory=${deleteMemory}
+        onSave=${saveIaResult} />
     </div>`
     : html`<div class="split">
       <!-- VISUALIZACAO esquerda: navegação por código -->
@@ -4888,10 +4940,12 @@ function svgWordCloud(items, opt={}){
 /* ============ MemoNav — painel esquerdo da aba Memos ============
    Memo do projeto + lista de documentos + árvore de códigos. Visual idêntico
    ao painel de Codificação/Visualização (mesmas classes .node-row etc). */
-function MemoNav({ project, docs, codes, codings, memos, sel, onSel, onRenameDoc }){
+function MemoNav({ project, docs, codes, codings, memos, sel, onSel, onRenameDoc, aiMemory, iaResults }){
   const [docsOpen, setDocsOpen] = useState(true);
   const [codesOpen, setCodesOpen] = useState(false);
   const [trechosOpen, setTrechosOpen] = useState(true);
+  const [convsOpen, setConvsOpen] = useState(false);
+  const [memOpen, setMemOpen] = useState(false);
   const [renamingId, setRenamingId] = useState(null); // doc em edição de nome
   const [renameVal, setRenameVal] = useState('');
   const startRename = (d)=>{ setRenamingId(d.id); setRenameVal(d.name); };
@@ -4905,7 +4959,7 @@ function MemoNav({ project, docs, codes, codings, memos, sel, onSel, onRenameDoc
   const codeName = (id)=>{ const by={}; codes.forEach(c=>by[c.id]=c); const o=[]; let c=by[id],g=0; while(c&&g++<12){o.unshift(c.name);c=c.parent_id?by[c.parent_id]:null;} return o.join(' ▸ '); };
   const trechoMemos = memos.filter(m=>m.scope==='coding' && m.content).map(m=>({ m, co:codingById[m.target_id] }));
 
-  return html`<div style="background:var(--surface);display:flex;flex-direction:column;height:100%">
+  return html`<div style="background:var(--surface)">
 
     <!-- memo do projeto -->
     <div class="node-row ${isSelProject?'sel':''}" style="padding:8px 14px;cursor:pointer;border-bottom:1px solid var(--line-soft)"
@@ -4955,7 +5009,7 @@ function MemoNav({ project, docs, codes, codings, memos, sel, onSel, onRenameDoc
     </div>`}
 
     <!-- códigos -->
-    <div class="scroll" style="flex:1;overflow-y:auto">
+    <div style="border-bottom:1px solid var(--line-soft)">
       <div class="node-row" style="padding:6px 14px;cursor:pointer;border-radius:0" onClick=${()=>setCodesOpen(o=>!o)}>
         <span class="caret">${codesOpen?'▾':'▸'}</span>
         <span class="node-name" style="font-weight:600">Códigos</span>
@@ -4966,6 +5020,34 @@ function MemoNav({ project, docs, codes, codings, memos, sel, onSel, onRenameDoc
           sel=${sel} onSel=${onSel} hasMemo=${hasMemo} depthPad=${0} />`)}
       </div>`}
     </div>
+
+    <!-- IA: conversas salvas + memória do projeto (abaixo de Documentos e Códigos, mesmo formato) -->
+    ${AI_ENABLED && html`<div style="border-bottom:1px solid var(--line-soft)">
+      <div class="node-row" style="padding:6px 14px;cursor:pointer;border-radius:0"
+        onClick=${()=>setConvsOpen(o=>!o)}>
+        <span class="caret">${convsOpen?'▾':'▸'}</span>
+        <span class="node-name" style="font-weight:600">Conversas salvas</span>
+        ${(iaResults?.length||0)>0 && html`<span class="count">${iaResults.length}</span>`}
+      </div>
+      ${convsOpen && (iaResults||[]).map(r=>html`<div key=${r.id} class="node-row ${sel.scope==='ia_results'&&sel.targetId===r.id?'sel':''}"
+        style="padding:5px 14px 5px 28px;cursor:pointer" onClick=${()=>onSel({scope:'ia_results', targetId:r.id})}>
+        <span class="node-name" style="font-size:12.5px" title=${r.mode_label}>${r.mode_label}</span>
+      </div>`)}
+      ${convsOpen && (iaResults||[]).length===0 && html`<div class="meta" style="padding:6px 28px">Nenhuma conversa salva.</div>`}
+    </div>`}
+    ${AI_ENABLED && html`<div style="border-bottom:1px solid var(--line-soft)">
+      <div class="node-row" style="padding:6px 14px;cursor:pointer;border-radius:0"
+        onClick=${()=>{ setMemOpen(o=>!o); onSel({scope:'ai_memory'}); }}>
+        <span class="caret">${memOpen?'▾':'▸'}</span>
+        <span class="node-name" style="font-weight:600">Memória do projeto</span>
+        ${(aiMemory?.length||0)>0 && html`<span class="count">${aiMemory.length}</span>`}
+      </div>
+      ${memOpen && (aiMemory||[]).map(m=>html`<div key=${m.id} class="node-row ${sel.scope==='ai_memory'&&sel.targetId===m.id?'sel':''}"
+        style="padding:5px 14px 5px 28px;cursor:pointer" onClick=${()=>onSel({scope:'ai_memory', targetId:m.id})}>
+        <span class="node-name" style="font-size:12.5px" title=${m.content}>${m.content}</span>
+      </div>`)}
+      ${memOpen && (aiMemory||[]).length===0 && html`<div class="meta" style="padding:6px 28px">Nenhuma memória ainda.</div>`}
+    </div>`}
   </div>`;
 }
 function MemoCodeNode({ code, childrenOf, sel, onSel, hasMemo, depthPad }){
@@ -6017,7 +6099,7 @@ const IA_MODES_DOCSCODES = [
 const IA_DOC_CHAR_LIMIT = 8000; // por documento
 const IA_TOTAL_CHAR_LIMIT = 40000; // total do material empírico, somando todos os itens selecionados
 
-function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings, memos, cats, allValues, memory, onAddMemory, onSave }){
+function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings, memos, cats, allValues, memory, onAddMemory, onToggleMemory, onDeleteMemory, onSave }){
   const [scope, setScope] = useState('docs'); // docs | codes | docs_codes
   const [selDocs, setSelDocs] = useState([]);
   const [selCodes, setSelCodes] = useState([]);
@@ -6047,6 +6129,18 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
 
   const toggleIn = (arr, setArr, id)=> setArr(arr.includes(id) ? arr.filter(x=>x!==id) : [...arr, id]);
 
+  // codigos de censura nao sao categoria analitica — ficam fora da lista selecionavel do
+  // escopo "Trechos + Codigo" (sua inclusao no material e decidida pelo bloco de censura).
+  const selectableCodes = (codes||[]).filter(c=>!c.is_redaction);
+  // arvore de codigos (mesma hierarquia/visual da Visualizacao, via CloudCodeNode) pros
+  // seletores: filhos/topos a partir de selectableCodes (sem censura) + contagem por codigo.
+  const childrenOfSel = (id)=> selectableCodes.filter(c=>c.parent_id===id);
+  const selCodeIdSet = new Set(selectableCodes.map(c=>c.id));
+  const topSelCodes = selectableCodes.filter(c=> !c.parent_id || !selCodeIdSet.has(c.parent_id));
+  // contagem DIRETA por código (sem agregar descendentes) — de propósito: selecionar um código
+  // inclui no material só os trechos aplicados DIRETAMENTE nele (selCodes.includes(c.code_id)),
+  // não os dos subcódigos. Mostrar o agregado aqui enganaria (pareceria que os filhos entram).
+  const codeCounts = useMemo(()=>{ const m={}; (allCodings||[]).forEach(c=>{ m[c.code_id]=(m[c.code_id]||0)+1; }); return m; }, [allCodings]);
   const closedCats = (cats||[]).filter(c=>CAT_HAS_OPTIONS(c.kind));
   const hasDocFilter = Object.values(docFilter).some(Boolean);
   const matchingDocIds = useMemo(()=>{
@@ -6095,22 +6189,21 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
     const m = {}; (allCodings||[]).forEach(c=>{ (m[c.document_id]=m[c.document_id]||[]).push(c); }); return m;
   }, [allCodings]);
 
-  // codigos de censura (is_redaction) com trechos na selecao atual — um checkbox por codigo,
-  // default excluido (mascarado). So olha os codigos relevantes pro escopo atual: em
-  // scope='codes', inclui tanto o codigo de censura selecionado diretamente quanto qualquer
-  // censura cujo span se sobrepoe ao de algum coding dos codigos analiticos selecionados; nos
-  // outros dois escopos, e o que pode aparecer no texto integral dos documentos escolhidos
-  // (a sobreposicao ali ja e coberta por posicao em maskRedactedContent, sem precisar disso).
-  const relevantForRedaction = scope==='codes'
-    ? (()=>{
-        const chosen = (allCodings||[]).filter(c=>selCodes.includes(c.code_id));
-        const overlapping = chosen.flatMap(c=>(codingsByDoc[c.document_id]||[])
-          .filter(o=>o.id!==c.id && spansOverlap(c.span_start,c.span_end,o.span_start,o.span_end)));
-        return [...chosen, ...overlapping];
-      })()
-    : (allCodings||[]).filter(c=>selDocs.includes(c.document_id));
-  const redactionCodesPresent = [...new Set(relevantForRedaction.map(c=>c.code_id))]
-    .map(id=>codeById[id]).filter(c=>c && c.is_redaction);
+  // documentos cujo conteudo entra no material do escopo atual — base UNICA de deteccao de
+  // censura pros TRES escopos: docs/docs_codes mostram o texto integral dos documentos
+  // selecionados; codes mostra as citacoes dos codigos selecionados (logo, dos documentos
+  // desses codigos). Assim a opcao "excluir censura" aparece sempre que houver trecho
+  // censurado no material — antes a deteccao por escopo era inconsistente e a opcao sumia
+  // em Trechos+Codigo / Documentos+Trechos+Codigo. A MASCARA em si continua precisa:
+  // maskRedactedContent (texto integral) e isQuoteMasked (citacoes, por sobreposicao de span).
+  const docIdsInMaterial = scope==='codes'
+    ? new Set((allCodings||[]).filter(c=>selCodes.includes(c.code_id)).map(c=>c.document_id))
+    : new Set(selDocs);
+  // codigos de censura (is_redaction) presentes nesses documentos — um checkbox por codigo,
+  // default excluido (mascarado); marcar libera incluir aquele tipo nesta analise.
+  const redactionCodesPresent = [...new Set(
+      (allCodings||[]).filter(c=>docIdsInMaterial.has(c.document_id)).map(c=>c.code_id)
+    )].map(id=>codeById[id]).filter(c=>c && c.is_redaction);
   const maskedCodeIds = new Set(redactionCodesPresent.filter(c=>!allowRedact[c.id]).map(c=>c.id));
 
   const docsBlock = ()=>{
@@ -6287,31 +6380,42 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
     setSaved(true);
   };
 
-  return html`<div class="section">
-    <p class="h">Analisar com IA</p>
-    <p class="hint" style="margin:0 0 10px">O memo do projeto é sempre enviado como contexto. Escolha o material e a modalidade de análise.</p>
+  // seletor de Material numa barra horizontal no topo (libera espaço pras duas telas abaixo).
+  const SCOPES = [
+    { id:'docs',       label:'Documentos' },
+    { id:'codes',      label:'Trechos + Código' },
+    { id:'docs_codes', label:'Documentos + Trechos + Código' },
+  ];
 
-    <p class="field-label">Material</p>
-    <div class="seg" style="margin-bottom:10px;flex-wrap:wrap">
-      <button class=${scope==='docs'?'on':''} onClick=${()=>changeScope('docs')}>Documentos</button>
-      <button class=${scope==='codes'?'on':''} onClick=${()=>changeScope('codes')}>Trechos + Código</button>
-      <button class=${scope==='docs_codes'?'on':''} onClick=${()=>changeScope('docs_codes')}>Documentos + Trechos + Código</button>
+  return html`<section class="pane" style="flex:1 1 100%">
+    <div class="pane-head" style="gap:12px">
+      <div class="seg" style="flex-wrap:wrap">
+        ${SCOPES.map(s=>html`<button key=${s.id} class=${scope===s.id?'on':''} onClick=${()=>changeScope(s.id)}>${s.label}</button>`)}
+      </div>
     </div>
 
-    ${scope==='codes' ? html`<div>
-      <div class="row" style="margin-bottom:6px;gap:8px">
-        <button class="btn sm ghost" onClick=${()=>setSelCodes(codes.map(c=>c.id))}>selecionar todos</button>
+    <div style="flex:1;min-height:0;display:flex">
+
+    <!-- TELA ESQUERDA: configuração da análise -->
+    <div class="pane-body scroll" style="flex:0 0 400px;border-right:1px solid var(--line)">
+    <div class="section">
+    <p class="hint" style="margin:0 0 10px">O memo do projeto é sempre enviado como contexto. Escolha o material no topo e a modalidade abaixo.</p>
+
+    ${scope==='codes' ? html`<details class="collap field" open>
+      <summary class="field-label">Códigos${selCodes.length?` (${selCodes.length} selecionado${selCodes.length===1?'':'s'})`:''}</summary>
+      <div class="row" style="margin:6px 0;gap:8px">
+        <button class="btn sm ghost" onClick=${()=>setSelCodes(selectableCodes.map(c=>c.id))}>selecionar todos</button>
         <button class="btn sm ghost" onClick=${()=>setSelCodes([])}>limpar seleção</button>
       </div>
-      <div class="card" style="margin-bottom:10px;max-height:220px;overflow:auto">
-        ${codes.length===0 && html`<span class="meta">Nenhum código no projeto.</span>`}
-        ${codes.map(c=>html`<button key=${c.id} class="opt ${selCodes.includes(c.id)?'on':''}" style="display:flex;width:100%;margin-bottom:4px"
-          onClick=${()=>toggleIn(selCodes, setSelCodes, c.id)}>${selCodes.includes(c.id)?'☑':'☐'} ${codePath(c.id).join(' ▸ ')}</button>`)}
+      <div class="card tree" style="margin-bottom:10px;max-height:260px;overflow:auto;padding:8px">
+        ${selectableCodes.length===0 && html`<span class="meta">Nenhum código no projeto.</span>`}
+        ${topSelCodes.map(t=>html`<${CloudCodeNode} key=${t.id} code=${t} childrenOf=${childrenOfSel}
+          counts=${codeCounts} selectedIds=${new Set(selCodes)} onToggle=${id=>toggleIn(selCodes, setSelCodes, id)} depthPad=${0} />`)}
       </div>
-    </div>` : html`<div>
-      ${closedCats.length>0 && html`<div class="field" style="margin-bottom:8px">
-        <div class="field-label">Filtrar documentos por categoria (opcional, ajuda a marcar vários de uma vez)</div>
-        <div class="row" style="gap:8px;flex-wrap:wrap">
+    </details>` : html`<div>
+      ${closedCats.length>0 && html`<details class="collap field" style="margin-bottom:8px" open=${hasDocFilter}>
+        <summary class="field-label">Filtrar documentos por categoria${hasDocFilter?' (filtro ativo)':' (opcional, ajuda a marcar vários de uma vez)'}</summary>
+        <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px">
           ${closedCats.map(cat=>{ const opts=(cat.options||[]).filter(o=>!isSpecialOpt(o));
             return html`<select key=${cat.id} class="opt" style="min-width:160px"
               value=${docFilter[cat.id]||''} onChange=${e=>{ const v=e.target.value; setDocFilter(f=>{ const n={...f}; if(v) n[cat.id]=v; else delete n[cat.id]; return n; }); }}>
@@ -6321,115 +6425,125 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
           })}
           ${hasDocFilter && html`<button class="btn sm ghost" onClick=${()=>setDocFilter({})}>limpar filtro</button>`}
         </div>
-      </div>`}
-      <div class="row" style="margin-bottom:6px;gap:8px">
-        <button class="btn sm ghost" onClick=${()=>setSelDocs(visibleDocs.map(d=>d.id))}>selecionar ${hasDocFilter?'visíveis':'todos'}</button>
-        <button class="btn sm ghost" onClick=${()=>setSelDocs([])}>limpar seleção</button>
-      </div>
-      <div class="card" style="margin-bottom:10px;max-height:220px;overflow:auto">
-        ${visibleDocs.length===0 && html`<span class="meta">${docs.length===0?'Nenhum documento no projeto.':'Nenhum documento corresponde ao filtro.'}</span>`}
-        ${visibleDocs.map(d=>html`<button key=${d.id} class="opt ${selDocs.includes(d.id)?'on':''}" style="display:flex;width:100%;margin-bottom:4px"
-          onClick=${()=>toggleIn(selDocs, setSelDocs, d.id)}>${selDocs.includes(d.id)?'☑':'☐'} ${d.name}</button>`)}
-      </div>
-      ${scope==='docs_codes' && html`<div class="field" style="margin-bottom:10px">
-        <div class="field-label">Filtrar por código (opcional — vazio = todos os códigos do documento)</div>
-        <div class="row" style="margin-bottom:6px;gap:8px">
-          <button class="btn sm ghost" onClick=${()=>setSelCodes(codes.map(c=>c.id))}>selecionar todos</button>
+      </details>`}
+      <details class="collap field" open>
+        <summary class="field-label">Documentos${selDocs.length?` (${selDocs.length} selecionado${selDocs.length===1?'':'s'})`:''}</summary>
+        <div class="row" style="margin:6px 0;gap:8px">
+          <button class="btn sm ghost" onClick=${()=>setSelDocs(visibleDocs.map(d=>d.id))}>selecionar ${hasDocFilter?'visíveis':'todos'}</button>
+          <button class="btn sm ghost" onClick=${()=>setSelDocs([])}>limpar seleção</button>
+        </div>
+        <div class="card" style="margin-bottom:10px;max-height:220px;overflow:auto">
+          ${visibleDocs.length===0 && html`<span class="meta">${docs.length===0?'Nenhum documento no projeto.':'Nenhum documento corresponde ao filtro.'}</span>`}
+          ${visibleDocs.map(d=>html`<button key=${d.id} class="opt ${selDocs.includes(d.id)?'on':''}" style="display:flex;gap:6px;align-items:flex-start;width:100%;margin-bottom:4px;font-size:11px;line-height:1.35"
+            onClick=${()=>toggleIn(selDocs, setSelDocs, d.id)}>${selDocs.includes(d.id)?'☑':'☐'}<span style="flex:1;text-align:justify">${d.name}</span></button>`)}
+        </div>
+      </details>
+      ${scope==='docs_codes' && html`<details class="collap field" style="margin-bottom:10px">
+        <summary class="field-label">Códigos — filtro opcional${selCodes.length?` (${selCodes.length} selecionado${selCodes.length===1?'':'s'})`:' (vazio = todos)'}</summary>
+        <div class="row" style="margin:6px 0;gap:8px">
+          <button class="btn sm ghost" onClick=${()=>setSelCodes(selectableCodes.map(c=>c.id))}>selecionar todos</button>
           <button class="btn sm ghost" onClick=${()=>setSelCodes([])}>limpar seleção</button>
         </div>
-        <div class="card" style="max-height:200px;overflow:auto">
-          ${codes.length===0 && html`<span class="meta">Nenhum código no projeto.</span>`}
-          ${codes.map(c=>html`<button key=${c.id} class="opt ${selCodes.includes(c.id)?'on':''}" style="display:flex;width:100%;margin-bottom:4px"
-            onClick=${()=>toggleIn(selCodes, setSelCodes, c.id)}>${selCodes.includes(c.id)?'☑':'☐'} ${codePath(c.id).join(' ▸ ')}</button>`)}
+        <div class="card tree" style="max-height:240px;overflow:auto;padding:8px">
+          ${selectableCodes.length===0 && html`<span class="meta">Nenhum código no projeto.</span>`}
+          ${topSelCodes.map(t=>html`<${CloudCodeNode} key=${t.id} code=${t} childrenOf=${childrenOfSel}
+            counts=${codeCounts} selectedIds=${new Set(selCodes)} onToggle=${id=>toggleIn(selCodes, setSelCodes, id)} depthPad=${0} />`)}
         </div>
-      </div>`}
+      </details>`}
     </div>`}
 
     ${redactionCodesPresent.length>0 && html`<div class="card" style="margin-bottom:10px">
-      <div class="field-label">🚫 Trechos censurados na seleção</div>
-      <p class="hint" style="margin:0 0 6px">Por padrão, ficam fora do material enviado à IA. Marque os que valem como contexto para esta análise.</p>
+      <div class="field-label">🚫 Censura na seleção</div>
+      <p class="hint" style="margin:0 0 6px">Por padrão, ficam fora do material enviado à IA. Marque os que valem como contexto.</p>
       ${redactionCodesPresent.map(c=>html`<label key=${c.id} class="row" style="gap:6px;font-size:12.5px;cursor:pointer;align-items:center">
         <input type="checkbox" checked=${!!allowRedact[c.id]} onChange=${e=>setAllowRedact(x=>({...x,[c.id]:e.target.checked}))} />
         Incluir trechos de "${c.name}"
       </label>`)}
     </div>`}
 
-    <p class="field-label">Modalidade</p>
-    <div class="seg" style="margin-bottom:10px;flex-wrap:wrap">
-      ${modes.map(m=>html`<button key=${m.id} class=${mode===m.id?'on':''} onClick=${()=>setMode(m.id)}>${m.label}</button>`)}
-    </div>
-    ${!isCustom && html`<p class="hint" style="margin:0 0 10px">${modes.find(m=>m.id===mode).instr}</p>`}
-    ${isCustom && html`<div class="field" style="margin-bottom:10px">
-      <textarea class="txtin" rows="3" style="resize:vertical" placeholder="Escreva sua própria instrução de análise (ela vira a tarefa enviada à IA, com o memo, o material e as regras de citação em volta)…"
-        value=${customInstr} onInput=${e=>setCustomInstr(e.target.value)}></textarea>
-    </div>`}
-    <details style="margin:0 0 14px">
-      <summary class="hint" style="cursor:pointer">Ver prompt completo enviado à IA (material no system + 1ª tarefa)</summary>
-      <div class="card" style="margin-top:8px;white-space:pre-wrap;font-size:12.5px;max-height:300px;overflow:auto">${buildPreview()}</div>
-    </details>
     ${materialTruncated && html`<div class="banner warn" style="margin-bottom:10px">Material selecionado (~${rawMaterial.length} caracteres) excede o limite de tamanho por requisição e será truncado em ${IA_TOTAL_CHAR_LIMIT} caracteres antes de enviar — selecione menos itens para uma análise completa.</div>`}
-    ${history.length>0 && html`<p class="hint" style="margin:0 0 8px">Uma conversa está em andamento — os follow-ups continuam sobre o material desta análise. Mude a seleção e clique em <b>Analisar de novo</b> para recomeçar com outro material.</p>`}
+    ${history.length>0 && html`<p class="hint" style="margin:0">Conversa em andamento à direita. Mude a seleção e clique em <b>Analisar de novo</b> (no chat) para recomeçar com outro material.</p>`}
+    </div>
 
-    <button class="btn primary" disabled=${busy || !canRun} onClick=${analyze}>
-      ${history.length ? 'Analisar de novo' : (busy ? 'analisando…' : 'Analisar')}
-    </button>
+    ${onToggleMemory && html`<${MemoryPanel} memory=${memory} onToggle=${onToggleMemory} onDelete=${onDeleteMemory} showAdd=${false} />`}
+    </div>
 
-    ${err && html`<div class="banner err" style="margin-top:10px">${err}</div>`}
+    <!-- TELA DIREITA: chat da conversa (cabeçalho = modalidade) -->
+    <div style="flex:1;min-width:0;display:flex;flex-direction:column;background:var(--paper)">
+      <div class="pane-head" style="gap:8px;flex-wrap:wrap">
+        <span class="field-label" style="margin:0">Modalidade</span>
+        <div class="seg" style="flex-wrap:wrap">
+          ${modes.map(m=>html`<button key=${m.id} class=${mode===m.id?'on':''} onClick=${()=>setMode(m.id)}>${m.label}</button>`)}
+        </div>
+      </div>
+      ${!isCustom && html`<details class="collap" style="padding:8px 14px;border-bottom:1px solid var(--line-soft);background:var(--surface)">
+        <summary class="hint" style="margin:0">${modes.find(m=>m.id===mode).instr}<b class="clickhint on-closed">clique aqui para ver o prompt completo</b><b class="clickhint on-open">clique aqui para ocultar o prompt completo</b></summary>
+        <div class="meta" style="margin:8px 0 4px">Prompt completo enviado à IA (material no system + 1ª tarefa):</div>
+        <div class="card" style="white-space:pre-wrap;font-size:12.5px;max-height:300px;overflow:auto">${buildPreview()}</div>
+      </details>`}
+      ${isCustom && html`<div style="padding:8px 14px;border-bottom:1px solid var(--line-soft);background:var(--surface)">
+        <textarea class="txtin" rows="2" style="resize:vertical" placeholder="Escreva sua própria instrução de análise (ela vira a tarefa enviada à IA, com o memo, o material e as regras de citação em volta)…"
+          value=${customInstr} onInput=${e=>setCustomInstr(e.target.value)}></textarea>
+        <details class="collap" style="margin-top:6px">
+          <summary class="hint" style="margin:0"><b class="clickhint on-closed" style="margin:0">clique aqui para ver o prompt completo</b><b class="clickhint on-open" style="margin:0">clique aqui para ocultar o prompt completo</b></summary>
+          <div class="card" style="margin-top:8px;white-space:pre-wrap;font-size:12.5px;max-height:300px;overflow:auto">${buildPreview()}</div>
+        </details>
+      </div>`}
+      <div class="pane-body scroll" style="padding:16px">
+        ${history.length===0 && html`<div style="text-align:center;max-width:360px;margin:56px auto 0">
+          <p class="meta" style="font-size:13px;line-height:1.7;margin:0 0 16px">Configure o material à esquerda e escolha a modalidade acima, depois inicie a análise.</p>
+          <button class="btn primary" style="min-width:180px;justify-content:center" disabled=${busy || !canRun} onClick=${analyze}>${busy?'iniciando…':'Iniciar Análise'}</button>
+          ${!canRun && !busy && html`<p class="hint" style="margin:10px 0 0">Selecione ${scope==='codes'?'ao menos um código':'ao menos um documento'}${isCustom?' e escreva a instrução personalizada':''} para começar.</p>`}
+        </div>`}
+        ${history.map((t,i)=>html`<div key=${i} class="card" style=${`margin-bottom:10px;${t.role==='user'?'background:var(--teal-soft);border-color:var(--teal-soft)':''}`}>
+          <div class="field-label" style="margin-bottom:4px">${t.role==='user' ? (i===0?'Tarefa':'Você') : 'IA'}</div>
+          ${t.role==='user'
+            ? html`<div style="white-space:pre-wrap;font-size:13px">${t.content}</div>`
+            : html`<div dangerouslySetInnerHTML=${{__html: mdLite(t.content)}} />`}
+        </div>`)}
+        ${busy && html`<div class="card" style="margin-bottom:10px">
+          <div class="field-label" style="margin-bottom:6px">IA</div>
+          <div class="typing"><span></span><span></span><span></span></div>
+        </div>`}
+        ${err && html`<div class="banner err" style="margin-top:10px">${err}</div>`}
+        ${onAddMemory && html`<${MemoryProposalReview} proposals=${memProps} onCommit=${async (entries)=>{
+          for(const e of entries) await onAddMemory({ content:e.content, reason:e.reason, source:'ai', ai_model:currentModelLabel(), mode_label:convLabel || 'Análise com IA' });
+        }} />`}
+      </div>
 
-    ${history.length>0 && html`<div style="margin-top:14px">
-      ${history.map((t,i)=>html`<div key=${i} class="card" style="margin-bottom:8px">
-        <div class="field-label" style="margin-bottom:4px">${t.role==='user' ? (i===0?'Tarefa':'Você') : 'IA'}</div>
-        ${t.role==='user'
-          ? html`<div style="white-space:pre-wrap;font-size:13px">${t.content}</div>`
-          : html`<div dangerouslySetInnerHTML=${{__html: mdLite(t.content)}} />`}
-      </div>`)}
-      ${busy && html`<span class="meta">analisando…</span>`}
-
-      <div class="field" style="margin-top:8px">
-        <textarea class="txtin" rows="2" style="resize:vertical" placeholder="Continuar a conversa (ex.: &quot;desenvolva o ponto 2&quot;, &quot;compare com o outro documento&quot;)… Enter envia, Shift+Enter quebra linha"
+      ${history.length>0 && html`<div style="flex:none;border-top:1px solid var(--line);background:var(--surface);padding:10px 14px">
+        <textarea class="txtin" rows="2" style="resize:vertical" placeholder=${'Continuar a conversa (ex.: "desenvolva o ponto 2", "compare com o outro documento")… Enter envia, Shift+Enter quebra linha'}
           value=${followup} disabled=${busy} onInput=${e=>setFollowup(e.target.value)}
           onKeyDown=${e=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendFollowup(); } }}></textarea>
-      </div>
-      <div class="row" style="gap:8px;margin-top:6px;align-items:center;flex-wrap:wrap">
-        <button class="btn primary" disabled=${busy || !followup.trim()} onClick=${sendFollowup}>Enviar</button>
-        <button class="btn sm ${saved?'ghost':'primary'}" disabled=${saved} onClick=${save}>${saved?'Salvo ✓':'Salvar conversa'}</button>
-        ${onAddMemory && html`<button class="btn sm ghost" disabled=${busy || memBusy} onClick=${suggestMemories}>${memBusy?'sugerindo…':'Sugerir memórias'}</button>`}
-        <button class="btn sm ghost" disabled=${busy} onClick=${resetConv}>Limpar conversa</button>
-        ${saved && html`<span class="meta">Disponível em "Resultados salvos" →</span>`}
-      </div>
+        <div class="row" style="gap:8px;margin-top:6px;align-items:center;flex-wrap:wrap">
+          <button class="btn primary" disabled=${busy || !followup.trim()} onClick=${sendFollowup}>Enviar</button>
+          <button class="btn sm ${saved?'ghost':'primary'}" disabled=${saved} onClick=${save}>${saved?'Salvo ✓':'Salvar Conversa (Memos)'}</button>
+          ${onAddMemory && html`<button class="btn sm ghost" disabled=${busy || memBusy} onClick=${suggestMemories}>${memBusy?'sugerindo…':'Sugerir memórias'}</button>`}
+          <button class="btn sm ghost" disabled=${busy || !canRun} onClick=${analyze}>Analisar de novo</button>
+          <button class="btn sm ghost" disabled=${busy} onClick=${resetConv}>Limpar conversa</button>
+        </div>
+      </div>`}
+    </div>
 
-      ${onAddMemory && html`<${MemoryProposalReview} proposals=${memProps} onCommit=${async (entries)=>{
-        for(const e of entries) await onAddMemory({ content:e.content, reason:e.reason, source:'ai', ai_model:currentModelLabel(), mode_label:convLabel || 'Análise com IA' });
-      }} />`}
-    </div>`}
-  </div>`;
+    </div>
+  </section>`;
 }
 
-/* ============ Resultados salvos da aba "Analisar com IA" ============
-   Lista lateral, mais recente primeiro; cada item pode ser expandido e
-   apagado. Persistido via store (sobrevive ao F5 / fechar o navegador). */
-function IAResultsPanel({ results, onDelete }){
-  const [openId, setOpenId] = useState(null);
-  return html`<div class="section" style="padding:14px">
-    <p class="h" style="margin-bottom:2px">Resultados salvos</p>
-    <p class="hint" style="margin:0 0 10px">${results.length} salvo${results.length===1?'':'s'}</p>
-    ${results.length===0 && html`<span class="meta">Nenhum resultado salvo ainda.</span>`}
-    ${results.map(r=>{ const open = openId===r.id;
-      return html`<div key=${r.id} class="card" style="margin-bottom:8px;padding:8px 10px">
-        <div class="node-row" style="padding:0;cursor:pointer" onClick=${()=>setOpenId(open?null:r.id)}>
-          <span class="caret">${open?'▾':'▸'}</span>
-          <span class="node-name" style="font-weight:600">${r.mode_label}</span>
-        </div>
-        <div class="meta" style="margin:2px 0 0 18px">
-          ${r.scope==='docs'?'Documentos':r.scope==='codes'?'Trechos + Código':'Documentos + Trechos + Código'}
-          · ${r.author_name||'anônimo'} · ${r.created_at?new Date(r.created_at).toLocaleString('pt-BR'):''}
-        </div>
-        ${open && html`<div style="margin-top:8px">
-          <div dangerouslySetInnerHTML=${{__html: mdLite(r.result)}} />
-          <button class="btn sm ghost" style="margin-top:8px" onClick=${()=>onDelete(r.id)}>apagar</button>
-        </div>`}
-      </div>`;
-    })}
+/* ============ IAResultView — uma ÚNICA conversa salva (painel direito de Memos) ============
+   Espelha o MemoEditor: cabeçalho com título + procedência, conteúdo da conversa (markdown)
+   e botão de apagar. Mostrado quando se clica numa conversa na navegação. */
+function IAResultView({ result, onDelete }){
+  if(!result) return html`<div class="empty">
+    <div class="t">Selecione uma conversa</div>
+    <div>Escolha uma conversa salva à esquerda para ver o conteúdo.</div>
+  </div>`;
+  const r = result;
+  const scopeLabel = r.scope==='docs'?'Documentos':r.scope==='codes'?'Trechos + Código':'Documentos + Trechos + Código';
+  return html`<div class="section" style="max-width:760px;margin:0 auto">
+    <p class="h" style="margin-bottom:2px">${r.mode_label}</p>
+    <p class="hint" style="margin:0 0 12px">${scopeLabel} · ${r.author_name||'anônimo'}${r.created_at?` · ${new Date(r.created_at).toLocaleString('pt-BR')}`:''}</p>
+    <div class="card"><div dangerouslySetInnerHTML=${{__html: mdLite(r.result)}} /></div>
+    <div class="row" style="margin-top:10px"><button class="btn sm ghost" onClick=${()=>onDelete(r.id)}>apagar conversa</button></div>
   </div>`;
 }
 
@@ -6487,8 +6601,8 @@ function MemoryProposalReview({ proposals, onCommit }){
 /* Diário de insights da IA: lista as memórias curadas do projeto, com checkbox "usar na análise"
    (controla o flag active → só as ativas entram no prompt, por economia/transparência), autoria
    (membro) e o modelo que gerou (proveniência, auditoria em coletivo). Permite apagar e adicionar
-   memória manual. Reusa o layout em .card do IAResultsPanel. */
-function MemoryPanel({ memory, onToggle, onDelete, onAdd }){
+   memória manual (form opcional via showAdd). Lista em .card. */
+function MemoryPanel({ memory, onToggle, onDelete, onAdd, showAdd=true }){
   const [draft, setDraft] = useState('');
   const [adding, setAdding] = useState(false);
   const list = memory||[];
@@ -6502,27 +6616,28 @@ function MemoryPanel({ memory, onToggle, onDelete, onAdd }){
   }
   return html`<div class="section" style="padding:14px;border-bottom:1px solid var(--line)">
     <p class="h" style="margin-bottom:2px">Memória do projeto</p>
-    <p class="hint" style="margin:0 0 10px">${activeN} de ${list.length} ativa${activeN===1?'':'s'} — só as marcadas entram no prompt da IA.
-      ${list.length>0 && html` <a href="#" onClick=${e=>{e.preventDefault(); list.forEach(m=>{ if(!m.active) onToggle(m.id,true); });}}>ativar todas</a> ·
-      <a href="#" onClick=${e=>{e.preventDefault(); list.forEach(m=>{ if(m.active) onToggle(m.id,false); });}}>desativar todas</a>`}
-    </p>
-    ${list.length===0 && html`<span class="meta">Nenhuma memória ainda. A IA pode sugerir após uma análise, ou adicione abaixo.</span>`}
+    <p class="hint" style="margin:0 0 ${list.length>0?'8px':'10px'}">${activeN} de ${list.length} ativa${activeN===1?'':'s'} — só as marcadas entram no prompt da IA.</p>
+    ${list.length>0 && html`<div class="row" style="gap:6px;margin-bottom:10px">
+      <button class="btn sm ghost" onClick=${()=>list.forEach(m=>{ if(!m.active) onToggle(m.id,true); })}>ativar todas</button>
+      <button class="btn sm ghost" onClick=${()=>list.forEach(m=>{ if(m.active) onToggle(m.id,false); })}>desativar todas</button>
+    </div>`}
+    ${list.length===0 && html`<span class="meta">Nenhuma memória ainda. A IA pode sugerir após uma análise${showAdd?', ou adicione abaixo':''}.</span>`}
     ${list.map(m=>html`<div key=${m.id} class="card" style="margin-bottom:8px;padding:8px 10px;${m.active?'':'opacity:.55'}">
       <label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer">
         <input type="checkbox" checked=${!!m.active} onChange=${e=>onToggle(m.id, e.target.checked)} title="usar na análise" style="margin-top:3px" />
         <span class="node-name" style="flex:1;min-width:0;font-weight:500">${m.content}</span>
       </label>
-      <div class="meta" style="margin:4px 0 0 26px">
-        ${m.reason && html`${m.reason} · `}${m.author_name||'anônimo'}
-        · ${m.source==='manual' ? 'manual' : (m.ai_model || 'IA')}
-        ${m.created_at ? ' · '+new Date(m.created_at).toLocaleDateString('pt-BR') : ''}
-        · <a href="#" onClick=${e=>{e.preventDefault(); onDelete(m.id);}}>apagar</a>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin:4px 0 0 26px">
+        <span class="meta">${m.reason && html`${m.reason} · `}${m.author_name||'anônimo'}
+          · ${m.source==='manual' ? 'manual' : (m.ai_model || 'IA')}
+          ${m.created_at ? ' · '+new Date(m.created_at).toLocaleDateString('pt-BR') : ''}</span>
+        <button class="btn sm ghost" style="flex:none" onClick=${()=>onDelete(m.id)}>apagar</button>
       </div>
     </div>`)}
-    <div style="margin-top:8px">
+    ${showAdd && html`<div style="margin-top:8px">
       <textarea class="txtin" rows="2" style="width:100%;box-sizing:border-box;resize:vertical" placeholder="adicionar memória manualmente (fato/decisão do projeto)…" value=${draft} onInput=${e=>setDraft(e.target.value)}></textarea>
       <button class="btn sm" style="margin-top:4px" disabled=${!draft.trim()||adding} onClick=${addManual}>＋ adicionar à memória</button>
-    </div>
+    </div>`}
   </div>`;
 }
 
