@@ -5781,14 +5781,35 @@ function IACodificarPanel({ project, docs, codes, codeById, codePath, store, all
     if(!withSamples) return '';
     const byCode = {};
     (allCodings||[]).forEach(c=>{ (byCode[c.code_id] = byCode[c.code_id]||[]).push(c); });
+    // escolhe ate N trechos ILUSTRATIVOS e DISTINTOS por codigo (O(n), so um Set):
+    //  1) dedup por span EXATO (documento+offsets) — varios pesquisadores codificando o MESMO
+    //     trecho viram 1 (era o desperdicio: os 3 slots gastos com a mesma frase repetida);
+    //  2) round-robin por documento — alterna as fontes pra mostrar variacao entre casos, em
+    //     vez de 3 trechos do mesmo documento. (Mesmo span/texto identico = mesma chave; dois
+    //     trechos com texto igual mas spans diferentes sao ocorrencias distintas, ficam ambos.)
+    const pick = (list, n)=>{
+      const seen = new Set(); const byDoc = new Map();
+      for(const co of list){
+        const key = co.document_id+'|'+co.span_start+'|'+co.span_end;
+        if(seen.has(key)) continue; seen.add(key);
+        if(!byDoc.has(co.document_id)) byDoc.set(co.document_id, []);
+        byDoc.get(co.document_id).push(co);
+      }
+      const out = []; let round = 0, added = true;
+      while(added && out.length < n){ added = false;
+        for(const arr of byDoc.values()){ if(out.length>=n) break; if(arr[round]){ out.push(arr[round]); added = true; } }
+        round++;
+      }
+      return out;
+    };
     const blocks = organizable.map(c=>{
-      const list = (byCode[c.id]||[]).slice(0, 3); // ate 3 trechos ilustrativos por codigo
+      const list = pick(byCode[c.id]||[], 3);
       if(!list.length) return null;
       const quotes = list.map(co=> `- "${(co.quote||'').slice(0,240)}"`);
       return `#${shortOf(c.id)} "${c.name}":\n${quotes.join('\n')}`;
     }).filter(Boolean);
     if(!blocks.length) return '';
-    return '\n\nAMOSTRA DE TRECHOS POR CÓDIGO (até 3 por código, apenas ilustrativos — NÃO são todos os trechos):\n' + blocks.join('\n\n');
+    return '\n\nAMOSTRA DE TRECHOS POR CÓDIGO (até 3 por código, distintos e ilustrativos — NÃO são todos os trechos):\n' + blocks.join('\n\n');
   }, [organizable, allCodings, withSamples, idToShort]);
 
   const systemPrompt = useMemo(()=>{
@@ -6263,12 +6284,30 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
   const isQuoteMasked = (c)=> maskedCodeIds.has(c.code_id)
     || (codingsByDoc[c.document_id]||[]).some(o=>o.id!==c.id && maskedCodeIds.has(o.code_id) && spansOverlap(c.span_start,c.span_end,o.span_start,o.span_end));
 
+  // colapsa codings pelo MESMO span (documento+offsets): em projeto coletivo, varios
+  // pesquisadores codificando o trecho EXATO viram UMA entrada, listando quem aplicou — em vez
+  // de repetir a citacao por codificador (o que inflava frequencia/saturacao e gastava tokens).
+  // Dois trechos com texto igual mas spans diferentes sao ocorrencias distintas, ficam ambos.
+  const collapseSpans = (list)=>{
+    const map = new Map();
+    for(const c of list){
+      const key = c.document_id+'|'+c.span_start+'|'+c.span_end;
+      let g = map.get(key);
+      if(!g){ g = { rep:c, authors:[], hasFinal:false }; map.set(key, g); }
+      const a = c.author_name||'anônimo';
+      if(!g.authors.includes(a)) g.authors.push(a);
+      if(c.layer==='final') g.hasFinal = true;
+    }
+    return [...map.values()];
+  };
+  const spanCoders = (g)=> [...g.authors, ...(g.hasFinal?['final']:[])].join(', ');
+
   const codesBlock = ()=>{
     const chosen = (allCodings||[]).filter(c=>selCodes.includes(c.code_id));
     return selCodes.map(codeId=>{
       const memo = codeMemoLine(codeId);
-      const quotes = chosen.filter(c=>c.code_id===codeId)
-        .map(c=>`"${isQuoteMasked(c)?'[trecho censurado]':c.quote}" — documento: ${docNameOf(c.document_id)} (categorias: ${docCatsLine(c.document_id)}) [${c.author_name||'anônimo'}${c.layer==='final'?', final':''}]`);
+      const quotes = collapseSpans(chosen.filter(c=>c.code_id===codeId))
+        .map(g=>`"${isQuoteMasked(g.rep)?'[trecho censurado]':g.rep.quote}" — documento: ${docNameOf(g.rep.document_id)} (categorias: ${docCatsLine(g.rep.document_id)}) [${spanCoders(g)}]`);
       return `--- Código: ${codePath(codeId).join(' ▸ ')}${memo?`\nMemo do código: ${memo}`:''} (${quotes.length} trechos) ---\n${quotes.join('\n')}`;
     }).join('\n\n');
   };
@@ -6283,7 +6322,7 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
         .forEach(c=>{ (codingsByCode[c.code_id]=codingsByCode[c.code_id]||[]).push(c); });
       const codeBlocks = Object.entries(codingsByCode).map(([codeId,cs])=>{
         const memo = codeMemoLine(codeId);
-        const quotes = cs.map(c=>`"${isQuoteMasked(c)?'[trecho censurado]':c.quote}" (${c.author_name||'anônimo'}${c.layer==='final'?', final':''})`);
+        const quotes = collapseSpans(cs).map(g=>`"${isQuoteMasked(g.rep)?'[trecho censurado]':g.rep.quote}" (${spanCoders(g)})`);
         return `${codePath(codeId).join(' ▸ ')}${memo?` — memo: ${memo}`:''}:\n${quotes.join('\n')}`;
       });
       // rotulo filtro-ciente: quando ha filtro, "(nenhum)" significaria so "nenhum DOS SELECIONADOS",
