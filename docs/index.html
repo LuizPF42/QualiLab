@@ -5779,8 +5779,28 @@ function IACodificarPanel({ project, docs, codes, codeById, codePath, store, all
 
   const excerptBlock = useMemo(()=>{
     if(!withSamples) return '';
-    const byCode = {};
-    (allCodings||[]).forEach(c=>{ (byCode[c.code_id] = byCode[c.code_id]||[]).push(c); });
+    const byCode = {}, byDoc = {};
+    (allCodings||[]).forEach(c=>{ (byCode[c.code_id] = byCode[c.code_id]||[]).push(c); (byDoc[c.document_id] = byDoc[c.document_id]||[]).push(c); });
+    // CENSURA POR SOBREPOSICAO: o codigo amostrado nunca e de censura (organizable exclui), mas o
+    // quote dele pode COBRIR um trecho que OUTRO codificador censurou (coding separado, code_id de
+    // censura). Sem mascarar, esse pedaco sensivel vaza. Mascara so a porcao sobreposta (preserva o
+    // resto como contexto de organizacao) — mesmo cuidado do isQuoteMasked do IAAnalisarPanel.
+    const overlap = (aS,aE,bS,bE)=> aS>=0 && aE>aS && bS>=0 && bE>bS && aS<bE && bS<aE;
+    const maskQuote = (co)=>{
+      let q = co.quote||'';
+      if(redactionIds.size){
+        const base = co.span_start;
+        const ranges = (byDoc[co.document_id]||[])
+          .filter(o=> redactionIds.has(o.code_id) && overlap(co.span_start,co.span_end,o.span_start,o.span_end))
+          .map(o=>[Math.max(o.span_start,co.span_start)-base, Math.min(o.span_end,co.span_end)-base])
+          .sort((a,b)=>a[0]-b[0]);
+        if(ranges.length){
+          const merged=[]; for(const r of ranges){ const l=merged[merged.length-1]; if(l && r[0]<=l[1]) l[1]=Math.max(l[1],r[1]); else merged.push(r.slice()); }
+          for(let i=merged.length-1;i>=0;i--) q = q.slice(0,merged[i][0]) + '[censurado]' + q.slice(merged[i][1]);
+        }
+      }
+      return q.slice(0,240);
+    };
     // escolhe ate N trechos ILUSTRATIVOS e DISTINTOS por codigo (O(n), so um Set):
     //  1) dedup por span EXATO (documento+offsets) — varios pesquisadores codificando o MESMO
     //     trecho viram 1 (era o desperdicio: os 3 slots gastos com a mesma frase repetida);
@@ -5788,16 +5808,16 @@ function IACodificarPanel({ project, docs, codes, codeById, codePath, store, all
     //     vez de 3 trechos do mesmo documento. (Mesmo span/texto identico = mesma chave; dois
     //     trechos com texto igual mas spans diferentes sao ocorrencias distintas, ficam ambos.)
     const pick = (list, n)=>{
-      const seen = new Set(); const byDoc = new Map();
+      const seen = new Set(); const docBuckets = new Map();
       for(const co of list){
         const key = co.document_id+'|'+co.span_start+'|'+co.span_end;
         if(seen.has(key)) continue; seen.add(key);
-        if(!byDoc.has(co.document_id)) byDoc.set(co.document_id, []);
-        byDoc.get(co.document_id).push(co);
+        if(!docBuckets.has(co.document_id)) docBuckets.set(co.document_id, []);
+        docBuckets.get(co.document_id).push(co);
       }
       const out = []; let round = 0, added = true;
       while(added && out.length < n){ added = false;
-        for(const arr of byDoc.values()){ if(out.length>=n) break; if(arr[round]){ out.push(arr[round]); added = true; } }
+        for(const arr of docBuckets.values()){ if(out.length>=n) break; if(arr[round]){ out.push(arr[round]); added = true; } }
         round++;
       }
       return out;
@@ -5805,12 +5825,12 @@ function IACodificarPanel({ project, docs, codes, codeById, codePath, store, all
     const blocks = organizable.map(c=>{
       const list = pick(byCode[c.id]||[], 3);
       if(!list.length) return null;
-      const quotes = list.map(co=> `- "${(co.quote||'').slice(0,240)}"`);
+      const quotes = list.map(co=> `- "${maskQuote(co)}"`);
       return `#${shortOf(c.id)} "${c.name}":\n${quotes.join('\n')}`;
     }).filter(Boolean);
     if(!blocks.length) return '';
     return '\n\nAMOSTRA DE TRECHOS POR CÓDIGO (até 3 por código, distintos e ilustrativos — NÃO são todos os trechos):\n' + blocks.join('\n\n');
-  }, [organizable, allCodings, withSamples, idToShort]);
+  }, [organizable, allCodings, withSamples, idToShort, redactionIds]);
 
   const systemPrompt = useMemo(()=>{
     const memo = projectMemo?.content?.trim();
