@@ -2645,7 +2645,7 @@ function App(){
     }
     setAllValues(V); setAllCodings(C);
   }, [store, project, docs]);
-  useEffect(()=>{ if(phase==='work' && (mainView==='visualizar'||mainView==='graficos'||mainView==='ia_analisar'||mainView==='esquema'||mainView==='relatorio'||mainView==='reconciliar'||mainView==='memos')) loadAll(); }, [phase, mainView, loadAll, codings]);
+  useEffect(()=>{ if(phase==='work' && (mainView==='visualizar'||mainView==='graficos'||mainView==='ia_analisar'||mainView==='ia_codificar'||mainView==='esquema'||mainView==='relatorio'||mainView==='reconciliar'||mainView==='memos')) loadAll(); }, [phase, mainView, loadAll, codings]);
   // categoria padrão no modo "(Todos os documentos)" da Reconciliação
   useEffect(()=>{ if(!cats.find(c=>c.id===reconCat)) setReconCat(cats[0]?.id || ''); }, [cats]); // eslint-disable-line
 
@@ -3514,18 +3514,11 @@ function App(){
         view=${viewCoder} onView=${setViewCoder} coders=${coders} userId=${user?.id} mode=${mode}
         allCodings=${allCodings} allValues=${allValues} store=${store} memos=${memos} />`
     : mainView==='ia_codificar' ? html`<div class="split">
-      <!-- CODIFICAR COM IA: tela inteira -->
-      <section class="pane left" style="flex:1 1 100%;border-right:none;max-width:none">
-        <div class="pane-head"><span class="h" style="margin:0">Codificar com IA</span></div>
-        <div class="pane-body scroll">
-          <div style="max-width:760px;margin:0 auto">
-            <${IACodificarPanel} project=${project} docs=${docs} codes=${codes} codeById=${codeById} codePath=${codePath}
-              store=${store} allCodings=${allCodings} count=${schemaCodingCount} isAdmin=${isAdmin}
-              reload=${()=>loadProject(store,project.id)} loadAll=${loadAll} onAdd=${addCode} memos=${memos}
-              memory=${aiMemory} onAddMemory=${addMemory} />
-          </div>
-        </div>
-      </section>
+      <!-- CODIFICAR COM IA: tela inteira (config | chat), operações inline no turno da IA -->
+      <${IACodificarPanel} project=${project} docs=${docs} codes=${codes} codeById=${codeById} codePath=${codePath}
+        store=${store} allCodings=${allCodings} count=${schemaCodingCount} isAdmin=${isAdmin}
+        reload=${()=>loadProject(store,project.id)} loadAll=${loadAll} onAdd=${addCode} memos=${memos}
+        memory=${aiMemory} onAddMemory=${addMemory} onToggleMemory=${toggleMemoryActive} onDeleteMemory=${deleteMemory} />
     </div>`
     : mainView==='ia_analisar' ? html`<div class="split">
       <!-- ANALISAR COM IA: barra de Material no topo + duas telas (config | chat) -->
@@ -5730,21 +5723,24 @@ Regras: use SOMENTE os ids curtos que aparecem na lista de códigos (não invent
 O campo "memory" é OPCIONAL: inclua-o só se desta análise emergir algum fato ou decisão DURÁVEL sobre o projeto que valha registrar na memória do projeto (ex.: "as famílias X e Y foram consolidadas", "o esquema foi reorganizado em N famílias temáticas"). NÃO registre observações triviais ou transitórias. No máximo 8 entradas, cada "content" em UMA frase. Se não houver nada relevante, omita "memory" ou devolva [].
 Devolva apenas o JSON, sem texto antes nem depois, sem comentários.`;
 
-function IACodificarPanel({ project, docs, codes, codeById, codePath, store, allCodings, count, isAdmin, reload, loadAll, onAdd, memos, memory, onAddMemory }){
-  const [history, setHistory] = useState([]);   // [{role:'user'|'assistant', content}] enviado ao modelo
-  const [ops, setOps] = useState([]);            // operacoes validas da ultima resposta, ja traduzidas+validadas
-  const [summary, setSummary] = useState('');    // resumo textual da IA
-  const [dropped, setDropped] = useState(0);     // quantas operacoes vieram invalidas (ids inexistentes etc.)
-  const [salvaged, setSalvaged] = useState(false); // JSON veio truncado/malformado e operacoes foram recuperadas
-  const [rawFail, setRawFail] = useState('');    // resposta crua quando o parse falha de vez (pra diagnostico)
-  const [decided, setDecided] = useState({});    // { opKey: true|false } aprovar/recusar por operacao (default aprovar)
+function IACodificarPanel({ project, docs, codes, codeById, codePath, store, allCodings, count, isAdmin, reload, loadAll, onAdd, memos, memory, onAddMemory, onToggleMemory, onDeleteMemory }){
+  // history: a conversa inteira. Cada turno de IA carrega seus PROPRIOS dados estruturados
+  // (operacoes ja traduzidas+validadas, resumo, memorias propostas, flags) — assim as operacoes
+  // aparecem INLINE no balao da IA. So o ultimo turno de IA fica acionavel; os anteriores/aplicados
+  // viram registro somente-leitura (aplicar uma proposta velha apos o esquema mudar seria inseguro).
+  const [history, setHistory] = useState([]);
+  const [decided, setDecided] = useState({});    // { 'turnIdx:opIdx:op': true|false } aprovar/recusar (default aprovar)
   const [instruction, setInstruction] = useState(''); // 1o turno / follow-up livre do pesquisador
   const [withSamples, setWithSamples] = useState(true); // incluir amostra de trechos por codigo
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [applyMsg, setApplyMsg] = useState('');
-  const [showPrompt, setShowPrompt] = useState(false);
-  const [memProps, setMemProps] = useState([]);  // memorias propostas pela IA na ultima resposta (a revisar)
+
+  // patch imutavel de um turno especifico do history
+  const patchTurn = (idx, patch)=> setHistory(h=> h.map((t,i)=> i===idx ? { ...t, ...patch } : t));
+  // ultimo turno de IA (so ele aceita aprovar/aplicar)
+  const lastAssistantIdx = (()=>{ for(let i=history.length-1;i>=0;i--){ if(history[i].role==='assistant') return i; } return -1; })();
+  const dkey = (turnIdx, i, op)=> turnIdx+':'+i+':'+op;
 
   // memo do projeto (mesma fonte que o IAAnalisarPanel usa pra contextualizar)
   const projectMemo = (memos||[]).find(m=>m.scope==='project' && (m.target_id==null || m.target_id===project.id));
@@ -5766,32 +5762,34 @@ function IACodificarPanel({ project, docs, codes, codeById, codePath, store, all
   const nameOf = (realId)=> codeById[realId]?.name || '(removido)';
   const labelOf = (realId)=> `#${shortOf(realId)} "${nameOf(realId)}"`;
 
-  // censura: mascara amostras de trechos de codigos is_redaction (cobertura por codigo, simples
-  // — basta pra "dica" de organizacao; a versao com sobreposicao fica no IAAnalisarPanel).
-  const maskedCodeIds = useMemo(()=> new Set(codes.filter(c=>c.is_redaction).map(c=>c.id)), [codes]);
+  // censura: codigos is_redaction (e toda a subarvore — a flag cascateia) NAO sao categorias
+  // analiticas, sao marcacao de conteudo sensivel. Ficam FORA do material de reorganizacao (a IA
+  // nao deve mesclar/agrupar/mover censura) — mesmo espirito do selectableCodes no IAAnalisarPanel.
+  const redactionIds = useMemo(()=> new Set(codes.filter(c=>c.is_redaction).map(c=>c.id)), [codes]);
+  const organizable = useMemo(()=> codes.filter(c=>!redactionIds.has(c.id)), [codes, redactionIds]);
 
   // ---- MATERIAL (vai no system, prefixo estavel) ----
   const codeListBlock = useMemo(()=>{
-    const lines = codes.map(c=>{
+    const lines = organizable.map(c=>{
       const parent = c.parent_id ? '#'+shortOf(c.parent_id) : '(raiz)';
       return `#${shortOf(c.id)} | "${c.name}" | pai: ${parent} | profundidade ${c.depth??0} | ${count[c.id]||0} trechos`;
     });
-    return 'LISTA DE CÓDIGOS (id | nome | pai | profundidade | nº de trechos — esta lista é COMPLETA):\n' + (lines.join('\n') || '(nenhum código)');
-  }, [codes, count, idToShort]);
+    return 'LISTA DE CÓDIGOS (id | nome | pai | profundidade | nº de trechos):\n' + (lines.join('\n') || '(nenhum código)');
+  }, [organizable, count, idToShort]);
 
   const excerptBlock = useMemo(()=>{
     if(!withSamples) return '';
     const byCode = {};
     (allCodings||[]).forEach(c=>{ (byCode[c.code_id] = byCode[c.code_id]||[]).push(c); });
-    const blocks = codes.map(c=>{
+    const blocks = organizable.map(c=>{
       const list = (byCode[c.id]||[]).slice(0, 3); // ate 3 trechos ilustrativos por codigo
       if(!list.length) return null;
-      const quotes = list.map(co=> `- "${maskedCodeIds.has(c.id) ? '[trecho censurado]' : (co.quote||'').slice(0,240)}"`);
+      const quotes = list.map(co=> `- "${(co.quote||'').slice(0,240)}"`);
       return `#${shortOf(c.id)} "${c.name}":\n${quotes.join('\n')}`;
     }).filter(Boolean);
     if(!blocks.length) return '';
     return '\n\nAMOSTRA DE TRECHOS POR CÓDIGO (até 3 por código, apenas ilustrativos — NÃO são todos os trechos):\n' + blocks.join('\n\n');
-  }, [codes, allCodings, withSamples, maskedCodeIds, idToShort]);
+  }, [organizable, allCodings, withSamples, idToShort]);
 
   const systemPrompt = useMemo(()=>{
     const memo = projectMemo?.content?.trim();
@@ -5805,13 +5803,17 @@ function IACodificarPanel({ project, docs, codes, codeById, codePath, store, all
       'Você é um assistente de análise qualitativa especializado em organização de esquemas de códigos (codebooks), no espírito da grounded theory. Trabalha em português.',
       memo ? `MEMO DO PROJETO (objetivo da pesquisa): ${memo}` : '(Sem memo de projeto registrado.)',
       memoryBlock(memory),
-      'DESCRIÇÃO DO MATERIAL: abaixo está a lista COMPLETA dos códigos do projeto (com hierarquia e contagem de trechos) e, quando disponível, uma amostra ilustrativa de trechos por código. A amostra NÃO é exaustiva — não tire conclusões sobre a quantidade de trechos a partir dela. Não critique a cobertura nem a quantidade de codificação: o foco é só a ORGANIZAÇÃO dos códigos.',
+      'DESCRIÇÃO DO MATERIAL: abaixo está a lista dos códigos do projeto que você pode reorganizar (com hierarquia e contagem de trechos) e, quando disponível, uma amostra ilustrativa de trechos por código. A amostra NÃO é exaustiva — não tire conclusões sobre a quantidade de trechos a partir dela. Não critique a cobertura nem a quantidade de codificação: o foco é só a ORGANIZAÇÃO dos códigos.'
+        + (redactionIds.size ? ' OBSERVAÇÃO: códigos de CENSURA (marcação de conteúdo sensível) foram deixados de fora desta lista de propósito — eles não são categorias analíticas e NÃO devem ser mesclados, agrupados, movidos nem renomeados. Trabalhe apenas com os códigos listados.' : ''),
       'MATERIAL:\n' + mat,
       IA_COD_SYS_REGRAS,
     ].join('\n\n');
-  }, [codeListBlock, excerptBlock, projectMemo, memory]);
+  }, [codeListBlock, excerptBlock, projectMemo, memory, redactionIds]);
 
   // ---- VALIDACAO: traduz ids curtos -> reais e descarta operacoes invalidas ----
+  // resolveSafe = resolveId mas BLOQUEIA ids de censura (defesa: mesmo que a IA alucine um id
+  // de codigo is_redaction, a operacao que o referencia e descartada — censura nao se reorganiza).
+  const resolveSafe = (ref)=>{ const id = resolveId(ref); return (id && redactionIds.has(id)) ? null : id; };
   const validateOps = (rawOps)=>{
     const out = []; let bad = 0;
     const seen = new Set(); // ids ja "consumidos" por um merge/group anterior nesta proposta
@@ -5819,26 +5821,26 @@ function IACodificarPanel({ project, docs, codes, codeById, codePath, store, all
       const op = String(o?.op||'').toLowerCase();
       const reason = String(o?.reason||'').trim();
       if(op==='merge'){
-        const survivor = resolveId(o.survivor);
-        const merged = (Array.isArray(o.merged)?o.merged:[]).map(resolveId).filter(id=>id && id!==survivor && !seen.has(id));
+        const survivor = resolveSafe(o.survivor);
+        const merged = (Array.isArray(o.merged)?o.merged:[]).map(resolveSafe).filter(id=>id && id!==survivor && !seen.has(id));
         if(survivor && merged.length){ merged.forEach(id=>seen.add(id)); out.push({ op, survivor, merged, reason }); }
         else bad++;
       } else if(op==='group'){
-        const parent = o.parent!=null ? resolveId(o.parent) : null;
+        const parent = o.parent!=null ? resolveSafe(o.parent) : null;
         const newParentName = String(o.newParentName||'').trim();
-        const children = (Array.isArray(o.children)?o.children:[]).map(resolveId).filter(Boolean);
+        const children = (Array.isArray(o.children)?o.children:[]).map(resolveSafe).filter(Boolean);
         if(children.length && (parent || newParentName)) out.push({ op, parent, newParentName, children, reason });
         else bad++;
       } else if(op==='reparent'){
-        const id = resolveId(o.id), newParent = resolveId(o.newParent);
+        const id = resolveSafe(o.id), newParent = resolveSafe(o.newParent);
         if(id && newParent && id!==newParent) out.push({ op, id, newParent, reason });
         else bad++;
       } else if(op==='rename'){
-        const id = resolveId(o.id), newName = String(o.newName||'').trim();
+        const id = resolveSafe(o.id), newName = String(o.newName||'').trim();
         if(id && newName) out.push({ op, id, newName, reason });
         else bad++;
       } else if(op==='promote'){
-        const id = resolveId(o.id);
+        const id = resolveSafe(o.id);
         if(id && codeById[id]?.parent_id) out.push({ op, id, reason });
         else bad++;
       } else bad++;
@@ -5846,47 +5848,47 @@ function IACodificarPanel({ project, docs, codes, codeById, codePath, store, all
     return { out, bad };
   };
 
-  const opKey = (o, i)=> i+':'+o.op; // chave estavel pra map de decisao (a lista e recriada por turno)
-
   // ---- ENVIAR (1o turno ou follow-up) ----
   async function send(){
     if(busy) return;
-    if(!codes.length){ setErr('Não há códigos no projeto para organizar.'); return; }
+    if(!organizable.length){ setErr('Não há códigos para organizar (códigos de censura ficam de fora).'); return; }
     const base = instruction.trim() || (history.length
       ? 'Continue refinando a proposta.'
       : 'Analise a lista de códigos fornecida e proponha uma reorganização (mesclar redundâncias, agrupar em famílias coerentes, mover, renomear ou promover quando fizer sentido).');
     // reforco do formato no turno do usuario — modelos menores as vezes respondem em prosa
     const userTurn = base + ' Responda APENAS com o objeto JSON no formato especificado, sem texto antes ou depois.';
-    setErr(''); setApplyMsg(''); setRawFail(''); setSalvaged(false); setMemProps([]); setBusy(true);
-    const nextHistory = [...history, { role:'user', content: userTurn }];
+    setErr(''); setApplyMsg(''); setBusy(true);
+    const nextHistory = [...history, { role:'user', content: userTurn, display: base }];
     setHistory(nextHistory); setInstruction('');
+    const aIdx = nextHistory.length; // indice que o turno de IA ocupara
     try{
       const text = await askAIChat({ system: systemPrompt, messages: nextHistory, json: true });
-      setHistory(h=>[...h, { role:'assistant', content: text }]);
       const parsed = parseAIJson(text);
+      let entry;
       if(!parsed){
-        // parse falhou de vez: mostra a resposta crua pra diagnosticar (truncada? texto em vez de JSON?)
-        setErr('A IA não devolveu um JSON válido. Veja a resposta abaixo — se estiver cortada no fim, o esquema é grande demais: peça menos operações por vez, ou desligue a amostra de trechos.');
-        setRawFail(text || '(resposta vazia)'); setOps([]); setSummary(''); setDropped(0);
-        return;
+        // parse falhou de vez: guarda a resposta crua pra diagnosticar (truncada? texto em vez de JSON?)
+        entry = { role:'assistant', content:text, ops:[], summary:'', dropped:0, salvaged:false,
+          rawFail: text || '(resposta vazia)', memProps:[], applied:false, parseFailed:true };
+      }else{
+        const { out, bad } = validateOps(parsed.operations);
+        entry = { role:'assistant', content:text, ops:out, summary:String(parsed.summary||''), dropped:bad,
+          salvaged:!!parsed._salvaged, rawFail:'', memProps: validateMemProps(parsed.memory), applied:false };
+        if(out.length){ setDecided(d=>{ const n={...d}; out.forEach((o,i)=>{ n[dkey(aIdx,i,o.op)] = true; }); return n; }); }
       }
-      setSalvaged(!!parsed._salvaged);
-      const { out, bad } = validateOps(parsed.operations);
-      setOps(out); setDropped(bad); setSummary(String(parsed.summary||''));
-      const dec = {}; out.forEach((o,i)=>{ dec[opKey(o,i)] = true; }); // default: aprovar tudo
-      setDecided(dec);
-      setMemProps(validateMemProps(parsed.memory)); // memórias propostas (a revisar antes de gravar)
+      setHistory(h=>[...h, entry]);
     }catch(e){ setErr(String(e?.message||e)); }
     finally{ setBusy(false); }
   }
 
   // ---- APLICAR operacoes aprovadas (reusa a logica de SchemaCodesView, sobre um modelo de
   // trabalho local pra nao depender de re-render entre operacoes; reload/loadAll no fim) ----
-  async function applyApproved(){
+  async function applyApproved(turnIdx){
     if(!isAdmin){ setErr('Apenas administradores podem alterar o esquema de códigos.'); return; }
-    const approved = ops.filter((o,i)=>decided[opKey(o,i)]);
+    const turn = history[turnIdx]; if(!turn) return;
+    const ops = turn.ops || [];
+    const approved = ops.filter((o,i)=>decided[dkey(turnIdx,i,o.op)]);
     if(!approved.length){ setErr('Nenhuma operação aprovada para aplicar.'); return; }
-    setErr(''); setBusy(true);
+    setErr(''); setApplyMsg(''); setBusy(true);
     // modelo de trabalho: copia mutavel dos codigos (intermediarios refletem aqui; o store e a
     // fonte da verdade so depois do reload). _deleted marca codigos ja mesclados/excluidos.
     const work = codes.map(c=>({ ...c }));
@@ -5910,7 +5912,7 @@ function IACodificarPanel({ project, docs, codes, codeById, codePath, store, all
     try{
       for(let i=0;i<ops.length;i++){
         const o = ops[i];
-        if(!decided[opKey(o,i)]) continue;
+        if(!decided[dkey(turnIdx,i,o.op)]) continue;
         try{
           if(o.op==='merge'){
             const survivor = byId(o.survivor);
@@ -5949,14 +5951,14 @@ function IACodificarPanel({ project, docs, codes, codeById, codePath, store, all
       }
     } finally { if(store.endBatch) await store.endBatch(); }
     await reload(); await loadAll();
-    setOps([]); setDecided({}); setSummary('');
+    patchTurn(turnIdx, { applied:true }); // proposta vira registro somente-leitura
     setApplyMsg(`${applied} operação(ões) aplicada(s)${skipped?`, ${skipped} ignorada(s)`:''}. Confira o esquema na aba "Esquema ▸ Códigos".`);
     // registra no historico que foi aplicado, pra IA saber o estado num proximo turno
     setHistory(h=>[...h, { role:'user', content: `(Apliquei ${applied} operação(ões) da sua proposta. O esquema mudou.)` }]);
     setBusy(false);
   }
 
-  function reset(){ setHistory([]); setOps([]); setSummary(''); setDropped(0); setDecided({}); setErr(''); setApplyMsg(''); setInstruction(''); setRawFail(''); setSalvaged(false); }
+  function reset(){ setHistory([]); setDecided({}); setErr(''); setApplyMsg(''); setInstruction(''); }
 
   // ---- descricao legivel de uma operacao (previa antes->depois) ----
   const describe = (o)=>{
@@ -5969,71 +5971,113 @@ function IACodificarPanel({ project, docs, codes, codeById, codePath, store, all
   };
   const OP_TAG = { merge:'Mesclar', group:'Agrupar', reparent:'Mover', rename:'Renomear', promote:'Promover' };
 
-  const approvedCount = ops.filter((o,i)=>decided[opKey(o,i)]).length;
+  const turnApprovedCount = (t, idx)=> (t.ops||[]).filter((o,i)=>decided[dkey(idx,i,o.op)]).length;
 
-  return html`<div class="section">
-    <p class="h">Codificar com IA — organização de códigos</p>
-    <p class="hint" style="margin:0 0 10px">A IA analisa todos os códigos do projeto e <b>propõe</b> uma reorganização (mesclar, agrupar, mover, renomear, promover). Você aprova ou recusa cada operação — <b>nada é aplicado sem a sua confirmação</b>. A aplicação usa a mesma lógica da aba Esquema.</p>
+  // ---- render de um turno da IA: resumo em prosa + operacoes INLINE no proprio balao ----
+  const assistantTurn = (t, idx)=>{
+    const ops = t.ops || [];
+    const interactive = idx===lastAssistantIdx && !t.applied && isAdmin; // so a ultima proposta e acionavel
+    const appr = turnApprovedCount(t, idx);
+    return html`<div key=${'a'+idx} class="card" style="margin-bottom:10px">
+      <div class="field-label" style="margin-bottom:4px">IA</div>
+      ${t.summary && html`<div dangerouslySetInnerHTML=${{__html: mdLite(t.summary)}} />`}
+      ${t.salvaged && html`<div class="banner warn" style="margin-top:8px">A resposta veio truncada ou malformada; recuperei as operações completas abaixo (a última pode ter sido descartada). Para uma proposta completa, peça menos operações por vez.</div>`}
+      ${t.parseFailed && html`<div class="banner err" style="margin-top:8px">A IA não devolveu um JSON válido. Se a resposta abaixo está cortada no fim, o esquema é grande demais: peça menos operações por vez, ou desligue a amostra de trechos.</div>`}
+      ${t.rawFail && html`<details style="margin-top:8px"><summary class="meta" style="cursor:pointer">Ver resposta crua (diagnóstico)</summary>
+        <pre style="white-space:pre-wrap;font-family:var(--mono);font-size:11px;background:var(--teal-soft);padding:10px;border-radius:8px;margin-top:6px;max-height:280px;overflow:auto">${t.rawFail}</pre></details>`}
+      ${ops.length>0 && html`<div style="margin-top:10px">
+        <div class="row" style="align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">
+          <b>${ops.length} operação(ões) ${t.applied?'aplicada(s)':'proposta(s)'}</b>
+          ${!t.applied && html`<span class="meta">${appr} marcada(s) para aplicar</span>`}
+          ${t.dropped>0 && html`<span class="meta">(${t.dropped} descartada(s) por id inválido)</span>`}
+          ${interactive && html`<div style="flex:1"></div>
+            <button class="btn sm ghost" onClick=${()=>setDecided(d=>{ const n={...d}; ops.forEach((o,i)=>{ n[dkey(idx,i,o.op)]=true; }); return n; })}>Aprovar todas</button>
+            <button class="btn sm ghost" onClick=${()=>setDecided(d=>{ const n={...d}; ops.forEach((o,i)=>{ n[dkey(idx,i,o.op)]=false; }); return n; })}>Recusar todas</button>`}
+        </div>
+        ${ops.map((o,i)=>{ const k=dkey(idx,i,o.op); const on=!!decided[k]; const struck = !t.applied && !on;
+          return html`<div key=${k} class="card" style=${`margin-bottom:8px;opacity:${struck?0.55:1}`}>
+          <div class="row" style="gap:10px;align-items:flex-start">
+            <div style="flex:1;min-width:0">
+              <div style=${`font-size:13px;${struck?'text-decoration:line-through;text-decoration-color:var(--ink-faint)':''}`}><span class="pill" style="margin-right:6px">${OP_TAG[o.op]||o.op}</span>${describe(o)}</div>
+              ${o.reason && html`<div class="meta" style="margin-top:4px">${o.reason}</div>`}
+            </div>
+            ${interactive && html`<div class="row" style="gap:6px;flex-shrink:0">
+              <button class=${`btn sm ${on?'primary':'ghost'}`} title="Incluir esta operação ao aplicar" onClick=${()=>setDecided(d=>({...d,[k]:true}))}>${on?'✓ Aprovada':'Aprovar'}</button>
+              <button class=${`btn sm ${on?'ghost':''}`} title="Não aplicar esta operação" onClick=${()=>setDecided(d=>({...d,[k]:false}))} style=${on?'':'background:var(--danger);color:#fff;border-color:var(--danger)'}>${on?'Recusar':'✕ Recusada'}</button>
+            </div>`}
+          </div>
+        </div>`; })}
+        ${interactive && html`<button class="btn primary" disabled=${busy || !appr} onClick=${()=>applyApproved(idx)}>Aplicar ${appr} operação(ões)</button>`}
+        ${t.applied && html`<div class="meta" style="margin-top:4px">✓ Operações aplicadas ao esquema.</div>`}
+        ${!interactive && !t.applied && ops.length>0 && html`<div class="meta" style="margin-top:4px">${isAdmin?'Proposta anterior — envie um refinamento para gerar uma nova.':'Você não é administrador: pode ver, mas não aplicar.'}</div>`}
+      </div>`}
+      ${!ops.length && !t.summary && !t.rawFail && html`<span class="meta">Sem operações nesta resposta.</span>`}
+      ${onAddMemory && html`<${MemoryProposalReview} proposals=${t.memProps||[]} onCommit=${async (entries)=>{
+        for(const e of entries) await onAddMemory({ content:e.content, reason:e.reason, source:'ai', ai_model:currentModelLabel(), mode_label:'Organização de códigos' });
+        patchTurn(idx, { memProps:[] });
+      }} />`}
+    </div>`;
+  };
 
-    ${!isAdmin && html`<div class="banner warn" style="margin-bottom:10px">Você não é administrador deste projeto: pode ver as sugestões, mas não aplicá-las.</div>`}
+  return html`<section class="pane" style="flex:1 1 100%">
+    <div style="flex:1;min-height:0;display:flex">
 
-    <div class="card" style="margin-bottom:10px">
-      <label class="row" style="gap:6px;font-size:12.5px;cursor:pointer;align-items:center;margin-bottom:8px">
-        <input type="checkbox" checked=${withSamples} disabled=${busy} onChange=${e=>setWithSamples(e.target.checked)} />
-        Incluir amostra de trechos por código (a IA decide melhor, mas gasta mais tokens)
-      </label>
-      <textarea class="txtin" rows="2" style="width:100%;resize:vertical;box-sizing:border-box"
-        placeholder=${history.length ? 'Responder à IA / refinar (ex.: \"mantenha X separado\", \"agrupe de outro jeito\")…' : 'Instrução opcional para a 1ª proposta (deixe em branco para a IA decidir sozinha)…'}
-        value=${instruction} disabled=${busy} onInput=${e=>setInstruction(e.target.value)}></textarea>
-      <div class="row" style="gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap">
-        <button class="btn primary" disabled=${busy || !codes.length} onClick=${send}>${history.length ? 'Enviar refinamento' : 'Propor reorganização'}</button>
-        ${history.length>0 && html`<button class="btn ghost" disabled=${busy} onClick=${reset}>Recomeçar</button>`}
-        <button class="btn sm ghost" disabled=${busy} onClick=${()=>setShowPrompt(s=>!s)}>${showPrompt?'Ocultar':'Ver'} material enviado</button>
-        ${busy && html`<span class="meta">pensando…</span>`}
+    <!-- TELA ESQUERDA: configuração / material -->
+    <div class="pane-body scroll" style="flex:0 0 400px;border-right:1px solid var(--line)">
+      <div class="section">
+        <p class="hint" style="margin:0 0 10px">A IA analisa <b>todos os códigos do projeto</b> e <b>propõe</b> uma reorganização (mesclar, agrupar, mover, renomear, promover) no chat à direita. Você aprova ou recusa cada operação — <b>nada é aplicado sem a sua confirmação</b>. A aplicação usa a mesma lógica da aba Esquema.</p>
+        ${!isAdmin && html`<div class="banner warn" style="margin-bottom:10px">Você não é administrador deste projeto: pode ver as sugestões, mas não aplicá-las.</div>`}
+        <div class="card" style="margin-bottom:10px">
+          <label class="row" style="gap:6px;font-size:12.5px;cursor:pointer;align-items:center">
+            <input type="checkbox" checked=${withSamples} disabled=${busy} onChange=${e=>setWithSamples(e.target.checked)} />
+            Incluir amostra de trechos por código (a IA decide melhor, mas gasta mais tokens)
+          </label>
+          <p class="meta" style="margin:8px 0 0">${organizable.length} código(s) para organizar${redactionIds.size?` · ${redactionIds.size} de censura fora`:''}.</p>
+        </div>
+        <details class="collap field">
+          <summary class="field-label">Ver material enviado à IA</summary>
+          <pre style="white-space:pre-wrap;font-family:var(--mono);font-size:11px;background:var(--teal-soft);padding:10px;border-radius:8px;margin-top:8px;max-height:320px;overflow:auto">${systemPrompt}</pre>
+        </details>
       </div>
-      ${showPrompt && html`<pre style="white-space:pre-wrap;font-family:var(--mono);font-size:11px;background:var(--teal-soft);padding:10px;border-radius:8px;margin-top:8px;max-height:280px;overflow:auto">${systemPrompt}</pre>`}
+      ${onToggleMemory && html`<${MemoryPanel} memory=${memory} onToggle=${onToggleMemory} onDelete=${onDeleteMemory} showAdd=${false} />`}
     </div>
 
-    ${err && html`<div class="banner err" style="margin-bottom:10px">${err}</div>`}
-    ${rawFail && html`<details style="margin-bottom:10px"><summary class="meta" style="cursor:pointer">Ver resposta crua da IA (diagnóstico)</summary>
-      <pre style="white-space:pre-wrap;font-family:var(--mono);font-size:11px;background:var(--teal-soft);padding:10px;border-radius:8px;margin-top:6px;max-height:280px;overflow:auto">${rawFail}</pre></details>`}
-    ${applyMsg && html`<div class="banner warn" style="margin-bottom:10px">${applyMsg}</div>`}
-    ${salvaged && html`<div class="banner warn" style="margin-bottom:10px">A resposta da IA veio truncada ou malformada; foram recuperadas as operações completas abaixo (a última pode ter sido descartada). Para uma proposta completa, peça menos operações por vez.</div>`}
-
-    ${summary && html`<div class="card" style="margin-bottom:10px"><b>Resumo da IA:</b> <span dangerouslySetInnerHTML=${{__html: mdLite(summary)}} /></div>`}
-
-    ${ops.length>0 && html`<div style="margin-bottom:10px">
-      <div class="row" style="align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">
-        <b>${ops.length} operação(ões) proposta(s)</b>
-        <span class="meta">${approvedCount} marcada(s) para aplicar</span>
-        ${dropped>0 && html`<span class="meta">(${dropped} descartada(s) por id inválido)</span>`}
-        <div style="flex:1"></div>
-        <button class="btn sm ghost" onClick=${()=>{ const d={}; ops.forEach((o,i)=>d[opKey(o,i)]=true); setDecided(d); }}>Aprovar todas</button>
-        <button class="btn sm ghost" onClick=${()=>{ const d={}; ops.forEach((o,i)=>d[opKey(o,i)]=false); setDecided(d); }}>Recusar todas</button>
+    <!-- TELA DIREITA: chat da reorganização -->
+    <div style="flex:1;min-width:0;display:flex;flex-direction:column;background:var(--paper)">
+      <div class="pane-head"><span class="field-label" style="margin:0">Conversa — organização de códigos</span></div>
+      <div class="pane-body scroll" style="padding:16px">
+        ${history.length===0 && html`<div style="text-align:center;max-width:380px;margin:56px auto 0">
+          <p class="meta" style="font-size:13px;line-height:1.7;margin:0">Descreva o que você quer (ou deixe em branco para a IA decidir sozinha) e clique em <b>Propor reorganização</b> abaixo. A IA devolve operações que você aprova uma a uma.</p>
+        </div>`}
+        ${history.map((t,i)=> t.role==='user'
+          ? html`<div key=${'u'+i} class="card" style="margin-bottom:10px;background:var(--teal-soft);border-color:var(--teal-soft)">
+              <div class="field-label" style="margin-bottom:4px">${i===0?'Sua instrução':'Você'}</div>
+              <div style="white-space:pre-wrap;font-size:13px">${t.display || t.content}</div>
+            </div>`
+          : assistantTurn(t, i))}
+        ${busy && html`<div class="card" style="margin-bottom:10px">
+          <div class="field-label" style="margin-bottom:6px">IA</div>
+          <div class="typing"><span></span><span></span><span></span></div>
+        </div>`}
+        ${err && html`<div class="banner err" style="margin-top:10px">${err}</div>`}
+        ${applyMsg && html`<div class="banner warn" style="margin-top:10px">${applyMsg}</div>`}
       </div>
-      ${ops.map((o,i)=>{ const k=opKey(o,i); const on=!!decided[k]; return html`<div key=${k} class="card" style=${`margin-bottom:8px;opacity:${on?1:0.55}`}>
-        <div class="row" style="gap:10px;align-items:flex-start">
-          <div style="flex:1;min-width:0">
-            <div style=${`font-size:13px;${on?'':'text-decoration:line-through;text-decoration-color:var(--ink-faint)'}`}><span class="pill" style="margin-right:6px">${OP_TAG[o.op]||o.op}</span>${describe(o)}</div>
-            ${o.reason && html`<div class="meta" style="margin-top:4px">${o.reason}</div>`}
-          </div>
-          <div class="row" style="gap:6px;flex-shrink:0">
-            <button class=${`btn sm ${on?'primary':'ghost'}`} title="Incluir esta operação ao aplicar" onClick=${()=>setDecided(d=>({...d,[k]:true}))}>${on?'✓ Aprovada':'Aprovar'}</button>
-            <button class=${`btn sm ${on?'ghost':''}`} title="Não aplicar esta operação" onClick=${()=>setDecided(d=>({...d,[k]:false}))} style=${on?'':'background:var(--danger);color:#fff;border-color:var(--danger)'}>${on?'Recusar':'✕ Recusada'}</button>
-          </div>
+
+      <div style="flex:none;border-top:1px solid var(--line);background:var(--surface);padding:10px 14px">
+        <textarea class="txtin" rows="2" style="resize:vertical"
+          placeholder=${history.length ? 'Refinar a proposta (ex.: "mantenha X separado", "agrupe de outro jeito")… Enter envia, Shift+Enter quebra linha' : 'Instrução opcional para a 1ª proposta (deixe em branco para a IA decidir)… Enter envia, Shift+Enter quebra linha'}
+          value=${instruction} disabled=${busy} onInput=${e=>setInstruction(e.target.value)}
+          onKeyDown=${e=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); send(); } }}></textarea>
+        <div class="row" style="gap:8px;margin-top:6px;align-items:center;flex-wrap:wrap">
+          <button class="btn primary" disabled=${busy || !organizable.length} onClick=${send}>${history.length ? 'Enviar refinamento' : 'Propor reorganização'}</button>
+          ${history.length>0 && html`<button class="btn sm ghost" disabled=${busy} onClick=${reset}>Limpar conversa</button>`}
+          ${busy && html`<span class="meta">pensando…</span>`}
         </div>
-      </div>`; })}
-      <div class="row" style="gap:8px;margin-top:4px">
-        <button class="btn primary" disabled=${busy || !isAdmin || !approvedCount} onClick=${applyApproved}>Aplicar ${approvedCount} operação(ões)</button>
       </div>
-    </div>`}
+    </div>
 
-    ${onAddMemory && html`<${MemoryProposalReview} proposals=${memProps} onCommit=${async (entries)=>{
-      for(const e of entries) await onAddMemory({ content:e.content, reason:e.reason, source:'ai', ai_model:currentModelLabel(), mode_label:'Organização de códigos' });
-    }} />`}
-
-    ${history.length>0 && !ops.length && !summary && !busy && !err && html`<span class="meta">Sem operações na última resposta.</span>`}
-  </div>`;
+    </div>
+  </section>`;
 }
 
 /* ============ ANALISAR COM IA ============
