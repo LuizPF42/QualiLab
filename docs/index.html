@@ -600,7 +600,7 @@ function buildWebAnnotations(docs, codes, allC, memos, project, anonymize){
   const { codeMemo, docMemo, codingMemo, projectMemo } = indexMemos(memos);
   const redactionCodeIds = new Set(codes.filter(c=>c.is_redaction).map(c=>c.id));
   const rangesByDoc = {}; docs.forEach(d=>rangesByDoc[d.id]=redactionRanges(allC, redactionCodeIds, d.id));
-  const CTX = 32; // palavras de contexto (prefix/suffix) p/ reancoragem robusta
+  const CTX = 32; // caracteres de contexto (prefix/suffix) p/ reancoragem robusta
   const useC = pickTransparencyLayer(allC)
     .filter(c=>c.span_start>=0 && c.span_end>c.span_start && !redactionCodeIds.has(c.code_id));
   const items = useC.map(c=>{
@@ -628,8 +628,17 @@ function buildWebAnnotations(docs, codes, allC, memos, project, anonymize){
     };
     return ann;
   });
+  // IRIs do Collection/Page: o modelo W3C exige id (IRI) em AnnotationCollection E em AnnotationPage,
+  // e a Page exige partOf apontando pro Collection (+ startIndex, SHOULD). Como o export é um arquivo
+  // local (sem URL canônica), cunhamos urn: estáveis a partir do project.id (mesma abordagem do urn:uuid
+  // das próprias Annotations e do urn:qualilab:document: dos alvos).
+  const collId = 'urn:qualilab:collection:'+(project?.id || 'local');
+  const pageId = collId+'/page/1';
   const collection = {
-    '@context':'http://www.w3.org/ns/anno.jsonld',
+    // array p/ definir o prefixo qualilab: (extensão não-normativa vira compact IRI válido em JSON-LD),
+    // mantendo anno.jsonld como exige o modelo
+    '@context':['http://www.w3.org/ns/anno.jsonld', { qualilab:'https://luizpf42.github.io/QualiLab/ns#' }],
+    id: collId,
     type:'AnnotationCollection',
     label: project?.name || 'Projeto QualiLab',
     generator:{ type:'Software', name:'QualiLab', homepage:'https://luizpf42.github.io/QualiLab/' },
@@ -637,7 +646,7 @@ function buildWebAnnotations(docs, codes, allC, memos, project, anonymize){
     // metadados não-normativos (extensão QualiLab): visão geral + fontes referenciadas
     'qualilab:overview': projectMemo || undefined,
     'qualilab:sources': docs.map(d=>({ id:'urn:qualilab:document:'+d.id, name:d.name, note: docMemo[d.id]||undefined })),
-    first:{ type:'AnnotationPage', items }
+    first:{ id: pageId, type:'AnnotationPage', partOf: collId, startIndex: 0, items }
   };
   return collection;
 }
