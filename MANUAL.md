@@ -148,7 +148,7 @@ Depois de abrir um projeto, o **cabeçalho** tem duas linhas:
 
 **Segunda linha**
 - A **pílula do projeto** — ex.: `local · Meu Projeto · individual ▾`. O prefixo mostra o modo de armazenamento (`arquivo`/`nuvem`/`local`); clicar abre o **hub de gestão do projeto**.
-- Seu **nome** (clicável no modo nuvem → Minha conta).
+- Seu **nome** — **clicável em todos os modos** (nuvem, local e arquivo) → Minha conta.
 - **trocar projeto** / **sair** (modo nuvem).
 - **exportar ▾** e **importar ▾** (aparecem quando há documentos).
 - Indicadores `offline` / `sincronizando…` (modo nuvem).
@@ -373,11 +373,13 @@ Se o projeto ativo for **local** ou **arquivo**, a pílula mostra **"Enviar para
 
 ## 14. Minha conta
 
-No modo nuvem, clique no **seu nome** no cabeçalho para abrir **Minha conta**:
+Clique no **seu nome** no cabeçalho para abrir **Minha conta** — funciona **em todos os modos** (nuvem, local e arquivo):
 - Trocar o **nome de exibição** (usado nas codificações).
-- Alterar a **senha** (contas com e-mail).
+- Alterar a **senha** (só contas com e-mail; some nos modos local/arquivo).
 - Ver **todos os seus projetos** num lugar só, com ações diretas: abrir, renomear (admin), sair ou excluir (admin).
-- **Sair da conta**.
+- **Sair da conta** (só no modo nuvem).
+
+> Antes, no modo offline, o nome não abria nada; agora **Minha conta** abre em qualquer modo (mostrando o que faz sentido em cada um).
 
 > Não há "esqueci minha senha" — a troca de senha exige estar logado.
 

@@ -97,11 +97,13 @@ A **pílula do projeto** no cabeçalho abre o hub de gestão: código de convite
 ### Conta e login (modo nuvem)
 No modo nuvem, a tela inicial pede login por **e-mail e senha** (com cadastro direto na mesma tela), **"Continuar como visitante"** para testar sem criar conta, ou **"Usar offline"** — pula a nuvem inteiramente e abre um projeto local neste dispositivo. "Usar offline" também entra em ação automaticamente se a conexão cair ou se o cadastro anônimo estiver desabilitado no servidor. Sessões de visitante ficam vinculadas ao dispositivo, sem sincronizar entre aparelhos.
 
-Clicando no seu nome no cabeçalho, a tela **Minha Conta** permite:
+Clicando no seu nome no cabeçalho — **em qualquer modo (nuvem, local ou arquivo)** — a tela **Minha Conta** permite:
 - Trocar o nome de exibição (usado nas codificações).
-- Alterar a senha (contas com e-mail).
+- Alterar a senha (contas com e-mail; some nos modos local/arquivo).
 - Ver todos os seus projetos em um só lugar, com ações diretas: abrir, renomear (admin), sair ou excluir (admin) — sem precisar entrar em cada um.
-- Sair da conta (desconecta do Supabase e volta pra tela de login).
+- Sair da conta (desconecta do Supabase e volta pra tela de login; só no modo nuvem).
+
+> Antes, o nome só era clicável no modo nuvem; em local/arquivo ele não abria nada. Agora **Minha Conta** abre em qualquer modo (oferecendo o que faz sentido em cada um).
 
 ### Importação e exportação
 
