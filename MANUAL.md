@@ -147,7 +147,7 @@ Depois de abrir um projeto, o **cabeçalho** tem duas linhas:
 | **Relatório** | Exportar relatórios e pacotes de transparência |
 
 **Segunda linha**
-- A **pílula do projeto** — ex.: `local · Meu Projeto · individual ▾`. O prefixo mostra o modo de armazenamento (`arquivo`/`nuvem`/`local`); clicar abre o **hub de gestão do projeto**.
+- A **pílula do projeto** — ex.: `local · Meu Projeto · individual ▾`. O prefixo mostra o modo de armazenamento (`arquivo`/`nuvem`/`nuvem pessoal`/`local`) e a **cor** reforça onde os dados estão: neutra = local (neste navegador), verde = arquivo no seu disco, azul = nuvem (servidor padrão), violeta = nuvem no seu próprio Supabase, âmbar = nuvem sem conexão. Passe o mouse para a explicação (em modo local, inclui o % usado do armazenamento do navegador); clicar abre o **hub de gestão do projeto**.
 - Seu **nome** — **clicável em todos os modos** (nuvem, local e arquivo) → Minha conta.
 - **trocar projeto** / **sair** (modo nuvem).
 - **exportar ▾** e **importar ▾** (aparecem quando há documentos).

@@ -73,7 +73,7 @@ Cada categoria pode ter descrição/instrução e habilitar as opções **"Não 
 - **Esquema** — tela em branco (sem documento aberto) pra organizar o livro de códigos e o esquema de categorias de uma vez: reorganização em lote de códigos (agrupar, mesclar, promover a Hierarquia 0) e edição das categorias.
 - **Reconciliação** — agrupa as codificações que se sobrepõem no mesmo código, mostra quantos codificadores concordam e permite **consolidar** na camada final (gabarito).
 - **Visualização** — navegação por código à esquerda; trechos do código selecionado à direita, em tipografia legível, agrupados por documento. Filtro por categoria e cruzamento por co-ocorrência de até 2 códigos.
-- **Gráficos** — frequência de códigos, distribuição por categoria (gabarito), heatmap código × categoria, produção por codificador e concordância entre codificadores.
+- **Gráficos** — frequência de códigos, distribuição por categoria (gabarito), heatmap código × categoria, produção por codificador e concordância entre codificadores. **Clicar numa barra ou célula abre a Visualização já naquele código** (na co-ocorrência, com o par de códigos cruzado; o filtro de categorias do gráfico vai junto, então os trechos exibidos batem com a contagem clicada).
 - **Memos** — nota analítica única por alvo (projeto, documento, código **ou trecho codificado**), compartilhada entre os pesquisadores e editável por qualquer membro. A nota por trecho é escrita pelo menu de contexto do leitor (botão direito num grifo → "Anotar trecho") e também aparece na própria aba Memos.
 - **Relatório** — é o **hub de publicação**, com três tipos de saída escolhidos na coluna esquerda:
   - **Relatório Interativo (ATI)** — uma página HTML auto-contida (sem servidor) com cada documento em trechos grifados clicáveis; clicar abre, num painel lateral, a nota analítica daquele trecho. Títulos de documento e códigos da legenda também abrem seus memos. Equivale ao *overlay* da **Annotation for Transparent Inquiry (ATI)** do QDR, mas hospedável por você (ex.: GitHub Pages). Os documentos vêm colapsados e a legenda é recolhível, para escalar a projetos grandes.
@@ -92,7 +92,9 @@ Ao criar um projeto você escolhe:
 O tipo pode ser alterado depois pelo administrador (convertendo Coletivo → Individual de forma irreversível, colapsando todas as codificações num único autor).
 
 ### Gestão de projeto e membros
-A **pílula do projeto** no cabeçalho abre o hub de gestão: código de convite para colaboradores, tipo do projeto, lista de membros com papéis (admin/membro), renomear, limpar conteúdo, excluir e configuração de conexão. Se o projeto ativo for local ou arquivo (não nuvem), aparece também **"Enviar para a nuvem"** — cria um projeto novo na nuvem e copia tudo pra ele (documentos, categorias, códigos, codificações e memos) numa tacada só, sem precisar exportar e importar `.qualilab` manualmente.
+A **pílula do projeto** no cabeçalho muda de cor conforme **onde os seus dados estão**: neutra = local (neste navegador), **verde** = arquivo no seu disco, **azul** = nuvem (servidor padrão), **violeta** = nuvem no **seu próprio** servidor Supabase, **âmbar** = nuvem sem conexão (nada está sendo salvo). Passe o mouse para a explicação completa; em modo local, o tooltip também mostra **quanto do armazenamento do navegador (~5 MB) o projeto já usa**, e um aviso aparece no cabeçalho a partir de 75%. Nos modos local e arquivo, um **"✓ salvo HH:MM"** discreto confirma a última gravação automática.
+
+Clicar na pílula abre o hub de gestão: código de convite para colaboradores, tipo do projeto, lista de membros com papéis (admin/membro), renomear, limpar conteúdo, excluir e configuração de conexão. No card **Conexão (Supabase)** dá para apontar o app pro **seu próprio projeto Supabase** (as credenciais valem só naquele navegador e passam a ter precedência), voltar ao servidor padrão, ou **desconectar de verdade** para o modo local. Se o projeto ativo for local ou arquivo (não nuvem), aparece também **"Enviar para a nuvem"** — cria um projeto novo na nuvem e copia tudo pra ele (documentos, categorias, códigos, codificações e memos) numa tacada só, sem precisar exportar e importar `.qualilab` manualmente.
 
 ### Conta e login (modo nuvem)
 No modo nuvem, a tela inicial pede login por **e-mail e senha** (com cadastro direto na mesma tela), **"Continuar como visitante"** para testar sem criar conta, ou **"Usar offline"** — pula a nuvem inteiramente e abre um projeto local neste dispositivo. "Usar offline" também entra em ação automaticamente se a conexão cair ou se o cadastro anônimo estiver desabilitado no servidor. Sessões de visitante ficam vinculadas ao dispositivo, sem sincronizar entre aparelhos.
@@ -146,6 +148,7 @@ No modo arquivo, o projeto é salvo como um arquivo `.qualilab` (JSON) **visíve
 No modo local (`localStorage`, limite de 5-10MB), você pode ativar um **backup automático**: o app passa a manter um arquivo `backup-automatico.qualilab` sempre atualizado numa pasta do seu computador — por exemplo, a mesma pasta onde está o `index.html`. É um espelho redundante, não o armazenamento principal: continua salvando no navegador normalmente, e também escreve esse arquivo em segundo plano a cada mudança (com uma pequena pausa antes de gravar, maior em projetos grandes, pra não travar a aba).
 
 - Ative em **pílula do projeto → Backup automático em pasta → Escolher pasta…** (disponível em Chrome e Edge).
+- O app avisa **antes** de o armazenamento estourar: o tooltip da pílula do projeto mostra o % usado do limite (~5 MB) e, a partir de 75%, um aviso âmbar aparece no cabeçalho sugerindo baixar um `.qualilab` e migrar para o modo arquivo ou nuvem.
 - Se o app não conseguir salvar de verdade (`localStorage` cheio, navegador sem suporte), um aviso vermelho aparece na tela com um atalho pra baixar o projeto na hora — isso não depende do backup automático estar ativado.
 
 ### Modo nuvem — status de conexão
@@ -189,7 +192,7 @@ let SUPABASE_URL  = "https://SEU-PROJETO.supabase.co";
 let SUPABASE_ANON_KEY = "SUA_ANON_KEY";
 ```
 
-A `anon key` é pública por design e fica protegida pelas políticas de RLS. Você também pode informá-la em tempo de execução pela pílula do projeto → Conexão.
+A `anon key` é pública por design e fica protegida pelas políticas de RLS. Você também pode informá-las **em tempo de execução**, sem editar o arquivo: pílula do projeto → **Conexão (Supabase)**. Credenciais salvas ali valem só naquele navegador e **têm precedência** sobre as embutidas — a pílula fica **violeta** ("nuvem pessoal") pra sinalizar, com botão pra voltar ao servidor padrão quando quiser.
 
 ### 2. Banco de dados
 
