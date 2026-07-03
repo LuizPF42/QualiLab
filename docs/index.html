@@ -16,12 +16,27 @@
       +'<p style="color:#5C5F66;margin:0 0 12px">Houve um erro ao iniciar. O detalhe abaixo ajuda a depurar. Causas comuns: alguma biblioteca de CDN bloqueada pela rede, ou um erro de digitacao ao colar as credenciais do Supabase.</p>'
       +'<pre style="white-space:pre-wrap;background:#F3ECD9;border:1px solid #d9c89a;border-radius:8px;padding:12px;font-size:12px;overflow:auto">'+esc+'</pre></div>';
   }
-  window.addEventListener('error', function(e){ showFatal((e.error&&e.error.stack)||e.message||(e.filename?(e.filename+':'+e.lineno):'')||'erro'); });
-  window.addEventListener('unhandledrejection', function(e){ var r=e.reason; showFatal((r&&(r.stack||r.message))||String(r)); });
+  // Antes do boot, qualquer erro derruba pra tela fatal (CDN bloqueada, credencial errada).
+  // DEPOIS do boot (__qlBooted, setado apos o primeiro render), substituir a tela de trabalho
+  // seria pior que o erro: uma falha de rede num salvamento virava "QualiLab nao carregou"
+  // com o projeto aberto. Pos-boot: avisa via banner do app (__qlNotify) e loga no console.
+  function handleGlobal(msg){
+    if(window.__qlBooted){
+      try{ console.error('QualiLab (erro nao tratado):', msg); }catch(_){}
+      try{ if(window.__qlNotify) window.__qlNotify(msg); }catch(_){}
+      return;
+    }
+    showFatal(msg);
+  }
+  window.addEventListener('error', function(e){ handleGlobal((e.error&&e.error.stack)||e.message||(e.filename?(e.filename+':'+e.lineno):'')||'erro'); });
+  window.addEventListener('unhandledrejection', function(e){ var r=e.reason; handleGlobal((r&&(r.stack||r.message))||String(r)); });
 </script>
 <style>
   :root{
-    --paper:#F4F3EF; --surface:#FFFFFF; --ink:#1A1B1E; --ink-soft:#5C5F66; --ink-faint:#8B8E94;
+    /* --ink-faint escurecido de #8B8E94 pra #6E7176 (jul/2026): era ~3.3:1 sobre branco,
+       abaixo do minimo WCAG AA de 4.5:1 pra texto pequeno — e .meta/.count (11px) carregam
+       informacao real (autoria, datas, contadores) */
+    --paper:#F4F3EF; --surface:#FFFFFF; --ink:#1A1B1E; --ink-soft:#5C5F66; --ink-faint:#6E7176;
     --line:#E5E3DD; --line-soft:#EEECE6;
     /* paleta FGV: azul-marinho (primario) + azul-celeste (acento). nomes --teal* mantidos por compatibilidade */
     --teal:#00427A; --teal-deep:#002B5C; --teal-soft:#E2ECF5; --sky:#1B9DD9;
@@ -35,7 +50,7 @@
      As 3 regras abaixo cobrem o que nao depende so de variavel (banner de erro e o tema sepia do
      leitor sob fundo escuro). As cores dos codigos (tint) viram escuras via codeColor(...,dark). */
   [data-theme="dark"]{
-    --paper:#1C1C1E; --surface:#2C2C2E; --ink:#F0EFEB; --ink-soft:#A0A09A; --ink-faint:#6B6B6B;
+    --paper:#1C1C1E; --surface:#2C2C2E; --ink:#F0EFEB; --ink-soft:#A0A09A; --ink-faint:#98988F; /* idem: #6B6B6B dava ~2.6:1 no fundo escuro */
     --line:#3A3A3C; --line-soft:#2E2E30;
     --teal:#4A9EDB; --teal-deep:#76BBEC; --teal-soft:#1A2E3F; --sky:#5BB8F5;
     --amber:#C8A84B; --amber-soft:#2E2510; --danger:#E06060;
@@ -208,9 +223,12 @@
 <body>
 <div id="app"></div>
 <script type="module">
-import { h, render } from 'https://esm.sh/preact@10';
-import { useState, useEffect, useRef, useMemo, useCallback } from 'https://esm.sh/preact@10/hooks';
-import htm from 'https://esm.sh/htm@3';
+// versoes PINADAS de proposito (jul/2026): "preact@10" flutuante resolvia pra ultima
+// minor/patch a cada publish do preact — um minor quebrado derrubava o app pra todos os
+// usuarios sem nenhum deploy nosso. Ao atualizar, troque o pin conscientemente e teste.
+import { h, render } from 'https://esm.sh/preact@10.29.3';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'https://esm.sh/preact@10.29.3/hooks';
+import htm from 'https://esm.sh/htm@3.1.1';
 
 const html = htm.bind(h);
 
@@ -219,7 +237,7 @@ let _pdfjs=null, _mammoth=null, _JSZip=null, _createClient=null, _SQL=null, _XLS
 async function getPdfjs(){ if(!_pdfjs){ _pdfjs=await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.7.76/build/pdf.min.mjs'); try{ _pdfjs.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.7.76/build/pdf.worker.min.mjs'; }catch(e){} } return _pdfjs; }
 async function getMammoth(){ if(!_mammoth){ const m=await import('https://esm.sh/mammoth@1.8.0'); _mammoth=m.default||m; } return _mammoth; }
 async function getJSZip(){ if(!_JSZip){ const m=await import('https://esm.sh/jszip@3.10.1'); _JSZip=m.default||m; } return _JSZip; }
-async function getCreateClient(){ if(!_createClient){ const m=await import('https://esm.sh/@supabase/supabase-js@2'); _createClient=m.createClient; } return _createClient; }
+async function getCreateClient(){ if(!_createClient){ const m=await import('https://esm.sh/@supabase/supabase-js@2.110.0'); _createClient=m.createClient; } return _createClient; }
 // SheetJS: le .xlsx/.xls no navegador (para o import de planilha Excel, mesmo fluxo do .csv)
 async function getXLSX(){ if(!_XLSX){ const m=await import('https://esm.sh/xlsx@0.18.5'); _XLSX=m.default||m; } return _XLSX; }
 // sql.js: SQLite compilado para WASM, p/ ler o .sqlite3 nativo do Taguette no navegador
@@ -253,6 +271,21 @@ try {
 // "AI-BLOCK START/END" antes de publicar (strip simples, sem build). Censura (is_redaction) NAO
 // e gateada por aqui: e uma feature geral de codificacao, nao uma tela de IA.
 const AI_ENABLED = false;
+
+// Handle global do cliente Supabase ativo (setado no boot do App, em modo nuvem).
+// Uso: askAI/askAIChat leem a sessao daqui pra mandar o JWT do usuario a Edge Function
+// ai-ask — a chave COMPARTILHADA de IA exige sessao valida + e-mail institucional
+// (ver supabase/functions/ai-ask/index.ts); BYOK continua passando sem sessao.
+let _sbForAI = null;
+async function aiAuthToken(){
+  try{
+    if(_sbForAI){
+      const { data:{ session } } = await _sbForAI.auth.getSession();
+      if(session?.access_token) return session.access_token;
+    }
+  }catch(e){}
+  return SUPABASE_ANON_KEY; // sem sessao (modo local/arquivo): so BYOK passa na funcao
+}
 
 /* ============ CORES (matiz = familia, luminosidade = profundidade) ============
    hueDeg (opcional, 0-359): cor personalizada definida na familia (nivel 0) e
@@ -389,16 +422,31 @@ async function extractText(file){
   return await file.text();
 }
 
-/* ============ RUNS (segmentacao do texto para os grifos) ============ */
+/* ============ RUNS (segmentacao do texto para os grifos) ============
+   Varredura ordenada (sweep) em vez de codings.filter() por run — o filter era
+   O(runs × codings) e travava o leitor em documento denso (milhares de codings ≈
+   milhoes de comparacoes A CADA render). Como todo limite de span vira ponto de
+   corte, a "janela ativa" num segmento e exatamente o conjunto de codings que
+   cobre o segmento inteiro — semantica identica a do filter antigo. A ordem
+   original do array e preservada por indice (o leitor usa o ULTIMO da lista como
+   tint de desempate em sobreposicao). */
 function buildRuns(text, codings, extraPoints){
   const b = new Set([0, text.length]);
-  codings.forEach(c=>{ if(c.span_start>=0 && c.span_end>c.span_start){ b.add(c.span_start); b.add(c.span_end);} });
+  const valid = [];
+  codings.forEach((c,i)=>{ if(c.span_start>=0 && c.span_end>c.span_start){ b.add(c.span_start); b.add(c.span_end); valid.push([i,c]); } });
   (extraPoints||[]).forEach(p=>{ if(p>=0 && p<=text.length) b.add(p); });
   const pts = [...b].filter(p=>p>=0&&p<=text.length).sort((x,y)=>x-y);
+  const starts = valid.slice().sort((x,y)=>x[1].span_start-y[1].span_start);
+  const ends   = valid.slice().sort((x,y)=>x[1].span_end-y[1].span_end);
+  const active = new Map(); // indice original -> coding (entra no span_start, sai no span_end)
+  let si=0, ei=0;
   const runs=[];
   for(let i=0;i<pts.length-1;i++){
     const a=pts[i], z=pts[i+1]; if(z<=a) continue;
-    runs.push({ start:a, end:z, text:text.slice(a,z), codings:codings.filter(c=>c.span_start>=0&&c.span_start<=a&&c.span_end>=z) });
+    while(si<starts.length && starts[si][1].span_start<=a){ active.set(starts[si][0], starts[si][1]); si++; }
+    while(ei<ends.length && ends[ei][1].span_end<=a){ active.delete(ends[ei][0]); ei++; }
+    const cods = active.size ? [...active.entries()].sort((x,y)=>x[0]-y[0]).map(e=>e[1]) : [];
+    runs.push({ start:a, end:z, text:text.slice(a,z), codings:cods });
   }
   return runs;
 }
@@ -493,6 +541,34 @@ function mdLite(text){
 }
 
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
+
+// igualdade de conteúdo entre duas listas vindas do store — usada pra NÃO trocar a referência
+// de estado quando um poll/reload devolve os mesmos dados (evita re-render em cascata do leitor
+// e dos useMemo a jusante a cada tick de 20s do modo nuvem)
+function sameJson(a,b){ return a===b || (Array.isArray(a) && Array.isArray(b) && a.length===b.length && JSON.stringify(a)===JSON.stringify(b)); }
+
+// telas que dependem do agregado do projeto inteiro (allCodings/allValues via loadAll)
+const AGG_VIEWS = ['visualizar','graficos','ia_analisar','ia_codificar','esquema','relatorio','reconciliar','memos'];
+
+/* traduz os erros técnicos mais frequentes (em inglês, vindos do Supabase/rede/navegador)
+   pra uma mensagem acionável em português. Devolve null quando não reconhece — o chamador
+   mostra o texto original. O banner principal do App mostra a tradução + o cru em .meta. */
+function humanizeError(raw){
+  const t = String(raw==null?'':raw).toLowerCase();
+  if(t.includes('invalid login credentials')) return 'E-mail ou senha incorretos.';
+  if(t.includes('email not confirmed')) return 'E-mail ainda não confirmado — verifique sua caixa de entrada (e o spam).';
+  if(t.includes('already registered') || t.includes('already been registered')) return 'Este e-mail já tem cadastro — use "Entrar".';
+  if(t.includes('failed to fetch') || t.includes('networkerror') || t.includes('load failed') || t.includes('fetch failed')) return 'Falha de conexão — verifique sua internet e tente de novo (a alteração NÃO foi salva).';
+  if(t.includes('row-level security')) return 'Sem permissão para esta operação neste projeto (regra de acesso do servidor).';
+  if(t.includes('exceeded the quota') || t.includes('quotaexceeded')) return 'Espaço de armazenamento do navegador esgotado — baixe um .qualilab do projeto antes de continuar.';
+  if(t.includes('jwt expired') || t.includes('token is expired') || t.includes('invalid claim')) return 'Sessão expirada — entre novamente.';
+  return null;
+}
+
+// conversa ativa do "Analisar com IA", por projeto — vive FORA do React de propósito:
+// o painel desmonta ao trocar de mainView e, sem isto, a conversa (que custou tokens)
+// sumia só de espiar outra tela. Morre com a aba (não é persistido).
+const IA_CONV_CACHE = {};
 
 function csvEscape(s){ s = s==null ? "" : String(s); return /[",\n\r]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; }
 function toCSV(rows){ return rows.map(r=>r.map(csvEscape).join(",")).join("\r\n"); }
@@ -1071,7 +1147,11 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
   function walkCode(el, parentId, depth, hue){
     const id = stripGuid(el.getAttribute('guid'));
     const name = el.getAttribute('name') || 'codigo';
-    newCodes.push({ id, parent_id: parentId, name, hue, depth });
+    // preserva a cor do <Code> (o proprio exportQDPX grava color; o import ignorava e
+    // re-atribuia hues sequenciais — o .qdc ja preservava, uniformizado aqui)
+    const colorAttr = el.getAttribute('color') || '';
+    const hueDeg = /^#?[0-9a-f]{6}$/i.test(colorAttr) ? hexToHue(colorAttr) : null;
+    newCodes.push({ id, parent_id: parentId, name, hue, depth, hue_deg: hueDeg });
     // comentario do codigo (ATLAS.ti etc.) -> memo de codigo. :scope evita pegar a Description de um <Code> filho.
     const cdesc = firstChild(el, 'Description');
     const ct = cdesc ? (cdesc.textContent||'').trim() : '';
@@ -1327,7 +1407,7 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
   try{
     for(const d of newDocs){ await store.addDocument(projectId, { id:docMap[d.id], name:d.name, content:d.content }); await tick(); }
     for(let i=0;i<newCats.length;i++){ const c=newCats[i]; await store.addCategory(projectId, { id:catMap[c.id], name:c.name, kind:c.kind, options:c.options, position:i }); await tick(); }
-    for(let i=0;i<newCodes.length;i++){ const c=newCodes[i]; await store.addCode(projectId, { id:codeMap[c.id], parent_id:c.parent_id?codeMap[c.parent_id]:null, name:c.name, hue:c.hue, depth:c.depth, position:i }); await tick(); }
+    for(let i=0;i<newCodes.length;i++){ const c=newCodes[i]; await store.addCode(projectId, { id:codeMap[c.id], parent_id:c.parent_id?codeMap[c.parent_id]:null, name:c.name, hue:c.hue, depth:c.depth, hue_deg:c.hue_deg??null, position:i }); await tick(); }
     // em projeto individual os valores vao direto para o gabarito (final); em coletivo, como resposta individual
     const setVal = projectMode==='individual' ? store.setFinalValue.bind(store) : store.setDocValue.bind(store);
     for(const v of newValues){ if(docMap[v.document_id] && catMap[v.category_id]) await setVal(projectId, docMap[v.document_id], catMap[v.category_id], v.value); await tick(); }
@@ -1343,8 +1423,11 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
       // notas livres -> memo de projeto. Anexa (nao sobrescreve) um memo de projeto ja existente.
       if(projectNote){
         let content = projectNote;
-        try{ const ex = (await store.listMemos(projectId)||[]).find(x=>x.scope==='project' && !x.target_id); if(ex && (ex.content||'').trim()) content = ex.content.trim()+'\n\n———\n\n'+projectNote; }catch(e){}
-        await store.setMemo(projectId, 'project', null, content);
+        // convencao unica do memo de projeto: target_id = projectId (o schema exige NOT NULL —
+        // gravar null quebrava o import em modo nuvem e deixava o memo invisivel no editor).
+        // A leitura tolera target_id null de dados antigos.
+        try{ const ex = (await store.listMemos(projectId)||[]).find(x=>x.scope==='project' && (!x.target_id || x.target_id===projectId)); if(ex && (ex.content||'').trim()) content = ex.content.trim()+'\n\n———\n\n'+projectNote; }catch(e){}
+        await store.setMemo(projectId, 'project', projectId, content);
       }
     }
   } finally {
@@ -1465,13 +1548,24 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress){
         if(row?.id && e.active===false) await store.setMemoryActive?.(row.id, false);
       }
     }
+
+    // conversas salvas de IA: o buildQualilabDb exporta ia_results, então o merge precisa
+    // reimportá-las — sem isto o round-trip .qualilab (e "Enviar para a nuvem") as descartava
+    if(store.addIaResult){
+      for(const r of (db.ia_results||[])){
+        if(!r || !r.result) continue;
+        await store.addIaResult(projectId, { scope:r.scope||'docs', mode_label:r.mode_label||'', result:r.result, author_name:r.author_name });
+        await tick();
+      }
+    }
   } finally {
     if(store.endBatch) await store.endBatch();
   }
 
   return {
     documentos:(db.documents||[]).length, categorias:(db.categories||[]).length, codigos:(db.codes||[]).length,
-    trechos:(db.codings||[]).length, memos:(db.memos||[]).length
+    trechos:(db.codings||[]).length, memos:(db.memos||[]).length,
+    conversas:(db.ia_results||[]).length, memorias:(db.ia_memory||[]).length
   };
 }
 
@@ -1706,7 +1800,8 @@ async function importTaguette(file, store, projectId, projectMode, onProgress){
     if(store.beginBatch) store.beginBatch();
     try{
       for(const d of newDocs){ await store.addDocument(projectId, d); await tick(); }
-      for(const c of newCodes){ await store.addCode(projectId, { id:c.id, parent_id:c.parent_id, name:c.name, hue:c.hue, depth:c.depth, position:0 }); await tick(); }
+      // position = indice (nao 0 fixo): a ordenacao entre irmaos e persistida por position
+      for(const [i,c] of newCodes.entries()){ await store.addCode(projectId, { id:c.id, parent_id:c.parent_id, name:c.name, hue:c.hue, depth:c.depth, position:i }); await tick(); }
       // Taguette nao registra autor por trecho — sem isso, o agrupamento por codificador
       // (Graficos/Visualizacao) trata tudo como um unico codificador, "Taguette"
       for(const c of newCodings){ await store.addCoding(projectId, { created_by:null, layer:codLayer, document_id:c.document_id, code_id:c.code_id, span_start:c.span_start, span_end:c.span_end, quote:c.quote, author_name:'Taguette' }); await tick(); }
@@ -1769,8 +1864,8 @@ async function importQDC(file, store, projectId, onProgress){
   const tick = makeProgressTicker(onProgress, newCodes.length);
   if(store.beginBatch) store.beginBatch();
   try{
-    for(const c of newCodes){
-      await store.addCode(projectId, { id:c.id, parent_id:c.parent_id, name:c.name, hue:c.hue, depth:c.depth, hue_deg:c.hue_deg??null, position:0 });
+    for(const [i,c] of newCodes.entries()){
+      await store.addCode(projectId, { id:c.id, parent_id:c.parent_id, name:c.name, hue:c.hue, depth:c.depth, hue_deg:c.hue_deg??null, position:i });
       await tick();
     }
   } finally {
@@ -1780,7 +1875,9 @@ async function importQDC(file, store, projectId, onProgress){
   return { codigos: newCodes.length };
 }
 
-/* ============ IDB HELPER (IndexedDB p/ fila de escrita + handle de arquivo) ============ */
+/* ============ IDB HELPER (IndexedDB p/ persistir handles de arquivo entre sessões) ============
+   (o object store 'write_queue' era da fila de escrita offline removida — instalações antigas
+   ainda o têm no IndexedDB, vazio e inofensivo; nada mais lê/escreve nele) */
 const IDB = {
   _db: null,
   async open(){
@@ -1789,7 +1886,6 @@ const IDB = {
       const r = indexedDB.open('qualilab_meta',1);
       r.onupgradeneeded = e=>{
         const d=e.target.result;
-        if(!d.objectStoreNames.contains('write_queue')) d.createObjectStore('write_queue',{keyPath:'id',autoIncrement:true});
         if(!d.objectStoreNames.contains('file_handles')) d.createObjectStore('file_handles',{keyPath:'key'});
       };
       r.onsuccess = e=>{ this._db=e.target.result; res(this._db); };
@@ -1797,9 +1893,6 @@ const IDB = {
     });
   },
   async tx(store,mode,fn){ const db=await this.open(); return new Promise((res,rej)=>{ const t=db.transaction(store,mode); t.onerror=()=>rej(t.error); const r=fn(t.objectStore(store)); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); },
-  async enqueue(item){ return this.tx('write_queue','readwrite',s=>s.add(item)); },
-  async dequeue(id){ return this.tx('write_queue','readwrite',s=>s.delete(id)); },
-  async allQueued(){ const db=await this.open(); return new Promise((res,rej)=>{ const t=db.transaction('write_queue','readonly'); const r=t.objectStore('write_queue').getAll(); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); },
   async saveHandle(key,handle){ return this.tx('file_handles','readwrite',s=>s.put({key,handle})); },
   async getHandle(key){ try{ return await this.tx('file_handles','readonly',s=>s.get(key)); }catch(e){ return null; } },
 };
@@ -1812,7 +1905,10 @@ async function createFileStore(fileHandle, isNew){
   let db = { _meta:{name:'Projeto',mode:'individual',displayName:'pesquisador'}, documents:[], categories:[], doc_values:[], codes:[], codings:[], memos:[] };
   if(!isNew){
     const file = await fileHandle.getFile();
-    try{ const parsed=JSON.parse(await file.text()); if(parsed.documents) db=parsed; }catch(e){}
+    // arquivo ilegível NÃO vira projeto vazio em silêncio (o primeiro save sobrescreveria
+    // o conteúdo possivelmente recuperável) — aborta e deixa o usuário decidir
+    try{ const parsed=JSON.parse(await file.text()); if(parsed.documents) db=parsed; }
+    catch(e){ throw new Error(`O arquivo "${fileHandle.name}" não pôde ser lido como projeto .qualilab (conteúdo corrompido ou de outro formato). Nada foi alterado nele.`); }
   }
   if(!db.memos) db.memos = [];
   let name = db._meta?.displayName || 'pesquisador';
@@ -1848,7 +1944,9 @@ async function createFileStore(fileHandle, isNew){
     async listMembers(){ return [{user_id:'file-user',display_name:name,role:'admin',joined_at:null}]; },
     async setMemberRole(){}, async removeMember(){},
     async renameProject(pid,pn){ db._meta.name=pn; await save(); },
-    async deleteProject(){ db={_meta:db._meta,documents:[],categories:[],doc_values:[],codes:[],codings:[]}; await save(); },
+    // sempre com TODAS as chaves: recriar o db sem memos/ia_* deixava db.memos undefined
+    // e a próxima listMemos()/setMemo dava TypeError
+    async deleteProject(){ db={_meta:db._meta,documents:[],categories:[],doc_values:[],codes:[],codings:[],memos:[],ia_results:[],ia_memory:[]}; await save(); },
     async setProjectMode(pid,pmode){ db._meta.mode=pmode; await save(); },
     realtime(){ return ()=>{}; },
     listDocuments(){ return P(db.documents.slice()); },
@@ -1861,7 +1959,9 @@ async function createFileStore(fileHandle, isNew){
     async updateCategory(id,patch){ db.categories=db.categories.map(c=>c.id===id?{...c,...patch}:c); await save(); },
     async deleteCategory(id){ db.categories=db.categories.filter(c=>c.id!==id); db.doc_values=db.doc_values.filter(v=>v.category_id!==id); await save(); },
     async getDocValues(docId){ return db.doc_values.filter(v=>v.document_id===docId); },
-    async setDocValue(pid,docId,catId,value){ db.doc_values=db.doc_values.filter(v=>!(v.document_id===docId&&v.category_id===catId&&v.layer==='final')); if(value!=='') db.doc_values.push({id:uid(),document_id:docId,category_id:catId,value,set_by:'file-user',author_name:name,layer:'final'}); await save(); },
+    // setDocValue grava a CAMADA INDIVIDUAL do usuário do arquivo (igual ao LocalStore) —
+    // era idêntico ao setFinalValue e sobrescrevia o gabarito num .qualilab coletivo
+    async setDocValue(pid,docId,catId,value){ db.doc_values=db.doc_values.filter(v=>!(v.document_id===docId&&v.category_id===catId&&v.set_by==='file-user'&&v.layer==='individual')); if(value!=='') db.doc_values.push({id:uid(),document_id:docId,category_id:catId,value,set_by:'file-user',author_name:name,layer:'individual'}); await save(); },
     async setFinalValue(pid,docId,catId,value){ db.doc_values=db.doc_values.filter(v=>!(v.document_id===docId&&v.category_id===catId&&v.layer==='final')); if(value!=='') db.doc_values.push({id:uid(),document_id:docId,category_id:catId,value,set_by:'file-user',author_name:name,layer:'final'}); await save(); },
     async addDocValue(pid,v){ const row={id:uid(),document_id:v.document_id,category_id:v.category_id,value:v.value,set_by:v.set_by??null,author_name:v.author_name||'anonimo',layer:v.layer||'individual'}; db.doc_values.push(row); await save(); return row; },
     listCodes(){ return P(db.codes.slice().sort((a,b)=>a.depth-b.depth||a.position-b.position)); },
@@ -1912,7 +2012,14 @@ async function reopenLastFile(){
 function LocalStore(){
   let db = { documents:[], categories:[], doc_values:[], codes:[], codings:[], memos:[] };
   let name = 'pesquisador';
-  try { const raw = localStorage.getItem('qualilab:local'); if(raw) db = JSON.parse(raw); } catch(e){}
+  // JSON corrompido (gravação interrompida, quota parcial) NÃO é descartado em silêncio:
+  // o raw vai pra uma chave de resgate antes que o primeiro save() sobrescreva o dado —
+  // dá pra recuperar à mão (DevTools → localStorage → 'qualilab:local:corrompido').
+  try { const raw = localStorage.getItem('qualilab:local'); if(raw) db = JSON.parse(raw); }
+  catch(e){
+    try{ localStorage.setItem('qualilab:local:corrompido', localStorage.getItem('qualilab:local')||''); }catch(_){}
+    try{ console.error('QualiLab: banco local ilegível — cópia bruta preservada em qualilab:local:corrompido', e); }catch(_){}
+  }
   if(!db.memos) db.memos = [];
   // batching: durante uma importacao grande, suprime o save por item (que re-serializa
   // o banco inteiro) e grava so uma vez no fim — evita travar a aba por segundos.
@@ -2016,13 +2123,16 @@ function LocalStore(){
     async setMemberRole(){ return P(); },
     async removeMember(){ return P(); },
     async renameProject(){ return P(); },
-    async deleteProject(){ db={ documents:[], categories:[], doc_values:[], codes:[], codings:[] }; save(); return P(); },
+    // idem FileStore: sem memos/ia_* aqui, db.memos ficava undefined até recarregar a página
+    async deleteProject(){ db={ documents:[], categories:[], doc_values:[], codes:[], codings:[], memos:[], ia_results:[], ia_memory:[] }; save(); return P(); },
     async setProjectMode(){ return P(); },
     listDocuments(){ return P(db.documents.slice()); },
     addDocument(pid,{id,name:dn,content}){ const d={id:id||uid(),name:dn,content,created_at:new Date().toISOString()}; db.documents.push(d); save(); return P(d); },
     renameDocument(id,dn){ const d=db.documents.find(x=>x.id===id); if(d) d.name=dn; save(); return P(); },
     deleteDocument(id){ const cids=new Set(db.codings.filter(c=>c.document_id===id).map(c=>c.id)); db.documents=db.documents.filter(d=>d.id!==id); db.doc_values=db.doc_values.filter(v=>v.document_id!==id); db.codings=db.codings.filter(c=>c.document_id!==id); db.memos=db.memos.filter(m=>!(m.scope==='document'&&m.target_id===id) && !(m.scope==='coding'&&cids.has(m.target_id))); save(); return P(); },
-    clearProject(){ const keepMemos=(db.memos||[]).filter(m=>m.scope==='project'); db={ documents:[], categories:[], doc_values:[], codes:[], codings:[], memos:keepMemos }; save(); return P(); },
+    // "limpar projeto" apaga o material, NÃO o diário de insights nem as conversas salvas
+    // de IA (a versão antiga recriava o db sem essas chaves e as destruía junto)
+    clearProject(){ const keepMemos=(db.memos||[]).filter(m=>m.scope==='project'); db={ documents:[], categories:[], doc_values:[], codes:[], codings:[], memos:keepMemos, ia_results:db.ia_results||[], ia_memory:db.ia_memory||[] }; save(); return P(); },
     listCategories(){ return P(db.categories.slice().sort((a,b)=>a.position-b.position)); },
     addCategory(pid,cat){ const c={id:uid(),position:db.categories.length,...cat}; db.categories.push(c); save(); return P(c); },
     updateCategory(id,patch){ db.categories=db.categories.map(c=>c.id===id?{...c,...patch}:c); save(); return P(); },
@@ -2050,27 +2160,14 @@ function SupabaseStore(sb){
   const must = (r)=>{ if(r.error) throw r.error; return r.data; };
   const nameOf = (u, fallback)=> (u && u.user_metadata && u.user_metadata.name) || fallback || name;
 
-  /* fila de escrita: tentativas que falharam por rede ficam no IDB e são reprocessadas */
-  let _pendingCount = 0;
-  let _onPendingChange = null; // callback → App pode mostrar contador
-  const setPending = (n)=>{ _pendingCount=n; _onPendingChange?.(n); };
-  const withQueue = async (key, fn)=>{
-    try{ const r = await fn(); setPending(Math.max(0,_pendingCount-1)); return r; }
-    catch(e){
-      const isNet = !navigator.onLine || String(e?.message||'').match(/fetch|network|failed/i);
-      if(isNet){ await IDB.enqueue({key,ts:Date.now()}).catch(()=>{}); setPending(_pendingCount+1); return; }
-      throw e;
-    }
-  };
-  const flushQueue = async ()=>{
-    const items = await IDB.allQueued().catch(()=>[]);
-    for(const it of items){ try{ await it.fn?.(); await IDB.dequeue(it.id); setPending(Math.max(0,_pendingCount-1)); }catch(e){} }
-  };
+  /* NAO ha fila de escrita offline: a versao anterior tinha um "withQueue" que nunca era
+     chamado pelos metodos (e cujo replay era impossivel — so gravava {key,ts}, sem a
+     operacao). Removido em jul/2026 pra nao vender resiliencia que nao existe: escrita
+     que falha por rede LANCA o erro, o App mostra banner e o usuario re-tenta. Se um dia
+     for implementar de verdade: enfileirar {op,args} serializaveis no IDB, envolver os
+     metodos de escrita e reaplicar FIFO num flush() no evento 'online'. */
   return {
     mode:'cloud',
-    onPendingChange(cb){ _onPendingChange=cb; },
-    pendingCount(){ return _pendingCount; },
-    async flush(){ await flushQueue(); },
     // retoma sessão de e-mail/senha; sessões anônimas são ignoradas (usuário volta à tela de auth)
     async init(display){
       const { data:{ session } } = await sb.auth.getSession();
@@ -2102,8 +2199,12 @@ function SupabaseStore(sb){
     currentUser(){ return user ? { id:user.id, name, email:user.email||null, anon:!!user.is_anonymous } : null; },
     async changePassword(newPw){ const r = await sb.auth.updateUser({ password:newPw }); if(r.error) throw r.error; },
     async changeDisplayName(newName){ name = newName || name; const r = await sb.auth.updateUser({ data:{ name } }); if(r.error) throw r.error; if(r.data&&r.data.user) user = r.data.user; },
-    async createProject(pn, display, pmode){ name=display||name; const d=must(await sb.rpc('create_project',{p_name:pn,p_display:name})); return { id:d.id, name:d.name, code:d.code, created_by:d.created_by, mode:pmode||'collective' }; },
-    async joinProject(code, display){ name=display||name; const d=must(await sb.rpc('join_project',{p_code:code,p_display:name})); return { id:d.id, name:d.name, code:d.code, created_by:d.created_by, mode:d.mode||'collective' }; },
+    // p_mode PRECISA ir na RPC: sem ele o banco grava 'collective' e o projeto "individual"
+    // virava coletivo ao reabrir (bug real — o retorno local mentia o mode)
+    async createProject(pn, display, pmode){ name=display||name; const d=must(await sb.rpc('create_project',{p_name:pn,p_display:name,p_mode:pmode||'collective'})); return { id:d.id, name:d.name, code:d.code, created_by:d.created_by, mode:d.mode||pmode||'collective' }; },
+    // codigo inexistente vem como NULL (a RPC nao usa raise pra nao desfazer o registro
+    // do throttle de tentativas — ver join_project no schema.sql)
+    async joinProject(code, display){ name=display||name; const d=must(await sb.rpc('join_project',{p_code:code,p_display:name})); if(!d || !d.id) throw new Error('Projeto não encontrado para este código'); return { id:d.id, name:d.name, code:d.code, created_by:d.created_by, mode:d.mode||'collective' }; },
     // lista os projetos do usuario: tenta a RPC dedicada (com contagens), senao a tabela projects;
     // null = sem suporte no servidor (o app cai na lista local por conta)
     async listMyProjects(){
@@ -2129,8 +2230,10 @@ function SupabaseStore(sb){
       await sb.from('documents').delete().eq('project_id',pid);
       await sb.from('codes').delete().eq('project_id',pid);
       await sb.from('categories').delete().eq('project_id',pid);
-      // mantem o memo do projeto; remove memos de documento/codigo (orfaos apos a limpeza)
-      await sb.from('memos').delete().eq('project_id',pid).in('scope',['document','code']);
+      // mantem o memo do projeto; remove memos de documento/codigo/trecho (orfaos apos a
+      // limpeza — 'coding' faltava e as notas analiticas ficavam orfas). O trigger
+      // memos_gc no banco tambem cobre isso; aqui e o cinto pra banco ainda nao migrado.
+      await sb.from('memos').delete().eq('project_id',pid).in('scope',['document','code','coding']);
     },
     async listCategories(pid){ return must(await sb.from('categories').select('*').eq('project_id',pid).order('position')); },
     async addCategory(pid,cat){
@@ -2168,6 +2271,8 @@ function SupabaseStore(sb){
     async listCodes(pid){ return must(await sb.from('codes').select('*').eq('project_id',pid).order('depth').order('position')); },
     async addCode(pid,code){ return must(await sb.from('codes').insert({project_id:pid,...code}).select().single()); },
     async updateCode(id,patch){ must(await sb.from('codes').update(patch).eq('id',id)); },
+    // memos de SUBcodigos e das codings da subarvore (apagados por cascade do Postgres) sao
+    // limpos pelo trigger memos_gc no banco — o cliente nao conhece a subarvore daqui.
     async deleteCode(id){ must(await sb.from('codes').delete().eq('id',id)); await sb.from('memos').delete().eq('scope','code').eq('target_id',id); },
     async listCodings(pid,docId){ return must(await sb.from('codings').select('*').eq('project_id',pid).eq('document_id',docId)); },
     async addCoding(pid,co){
@@ -2203,7 +2308,12 @@ function SupabaseStore(sb){
         { project_id:pid, content, reason:reason||'', source:source||'ai', active:true, ai_model:ai_model||'', mode_label:mode_label||'', author_name:author_name||'anonimo', created_by:user?.id||null }
       ).select().single());
     },
-    async setMemoryActive(id,active){ must(await sb.from('ia_memory').update({ active:!!active }).eq('id',id)); },
+    // via RPC: a policy de update de ia_memory protege o content (autor/admin), mas o
+    // toggle de "usar na analise" e aberto a todo membro. Fallback direto pra banco antigo.
+    async setMemoryActive(id,active){
+      const r = await sb.rpc('set_memory_active',{ p_id:id, p_active:!!active });
+      if(r.error) must(await sb.from('ia_memory').update({ active:!!active }).eq('id',id));
+    },
     async deleteMemory(id){ must(await sb.from('ia_memory').delete().eq('id',id)); },
     // sincronizacao ao vivo: dispara onChange a cada alteracao em codings/doc_values do projeto
     realtime(projectId, onChange){
@@ -2376,8 +2486,16 @@ function App(){
     window.addEventListener('beforeunload', h);
     return ()=> window.removeEventListener('beforeunload', h);
   }, [busy]);
+  // idem pra conversa de IA não salva (IA_CONV_CACHE) — fechar/recarregar a aba a descartaria
+  useEffect(()=>{
+    const h = (e)=>{
+      const conv = IA_CONV_CACHE[project?.id||'local'];
+      if(conv?.history?.length && !conv.saved){ e.preventDefault(); e.returnValue=''; return ''; }
+    };
+    window.addEventListener('beforeunload', h);
+    return ()=> window.removeEventListener('beforeunload', h);
+  }, [project]);
   const [online, setOnline] = useState(navigator.onLine);
-  const [pending, setPending] = useState(0); // escritas em fila (cloud offline)
   const [saveError, setSaveError] = useState(null); // ultima falha de gravacao local/arquivo (null = ok)
   const [backupStatus, setBackupStatus] = useState({ active:false, name:null, lastOk:null, lastError:null, warnLarge:false }); // backup automatico em pasta (so LocalStore)
   const [sendCloudOpen, setSendCloudOpen] = useState(false); // modal "Enviar para a nuvem" (projeto local/arquivo -> projeto novo na nuvem)
@@ -2431,10 +2549,12 @@ function App(){
   const searchMatches = useMemo(()=>{
     const text = activeDoc?.content||'';
     const q = searchQuery.trim().toLowerCase();
-    if(!q || !text) return [];
+    // minimo de 2 chars + teto de matches: buscar "a" num documento grande gerava dezenas
+    // de milhares de matches -> dezenas de milhares de spans no DOM -> congelamento
+    if(!q || q.length<2 || !text) return [];
     const lower = text.toLowerCase();
     const out = []; let from = 0;
-    while(true){ const found = lower.indexOf(q, from); if(found<0) break; out.push([found, found+q.length]); from = found+q.length; }
+    while(out.length<2000){ const found = lower.indexOf(q, from); if(found<0) break; out.push([found, found+q.length]); from = found+q.length; }
     return out;
   }, [searchQuery, activeDoc]);
   useEffect(()=>{ setSearchIdx(0); }, [searchQuery, activeId]);
@@ -2476,6 +2596,21 @@ function App(){
     codingsForView(codings, viewCoder, user?.id, projectMode)
   , [codings, viewCoder, user, projectMode]);
 
+  // runs do leitor MEMOIZADOS (antes o buildRuns rodava inline no JSX a cada render do App —
+  // cada seleção de texto/tick de realtime re-segmentava o documento inteiro). O índice do
+  // match de busca é anotado numa única passada de dois ponteiros (era findIndex linear POR
+  // RUN: O(runs×matches) congelava a busca em documento grande).
+  const readerRuns = useMemo(()=>{
+    if(!activeDoc) return [];
+    const runs = buildRuns(activeDoc.content, visibleCodings, searchMatches.flat());
+    let mi = 0;
+    for(const run of runs){
+      while(mi < searchMatches.length && searchMatches[mi][1] <= run.start) mi++;
+      run.matchI = (mi < searchMatches.length && run.start>=searchMatches[mi][0] && run.end<=searchMatches[mi][1]) ? mi : -1;
+    }
+    return runs;
+  }, [activeDoc, visibleCodings, searchMatches]);
+
   /* lista "Meus Projetos" por conta (cache local, complementa o servidor) */
   const recentKey = (st)=> 'qualilab:projects:'+((st||store)?.currentUser?.()?.id || 'anon');
   const getRecent = (st)=>{ try{ return JSON.parse(localStorage.getItem(recentKey(st))||'[]'); }catch(e){ return []; } };
@@ -2500,17 +2635,23 @@ function App(){
     setViewCoder('all');
   };
 
-  /* online / offline + flush da fila de escrita ao recuperar conexão */
+  /* online / offline (indicador no cabeçalho) */
   useEffect(()=>{
-    const goOnline = ()=>{ setOnline(true); if(store?.flush) store.flush(); };
+    const goOnline = ()=>setOnline(true);
     const goOffline = ()=>setOnline(false);
     window.addEventListener('online', goOnline);
     window.addEventListener('offline', goOffline);
-    if(store?.onPendingChange) store.onPendingChange(setPending);
     if(store?.onSaveError) store.onSaveError(setSaveError);
     if(store?.onBackupStatus) store.onBackupStatus(setBackupStatus);
     return ()=>{ window.removeEventListener('online',goOnline); window.removeEventListener('offline',goOffline); };
   }, [store]);
+
+  /* erros globais nao tratados pos-boot viram banner (o listener do <head> chama isto em
+     vez de derrubar a tela — ver handleGlobal/showFatal) */
+  useEffect(()=>{
+    window.__qlNotify = (m)=>setErr('Algo falhou de forma inesperada: '+String(m).split('\n')[0]);
+    return ()=>{ window.__qlNotify = null; };
+  }, []);
 
   /* apos autenticar (sessao existente ou login): reentra no projeto salvo ou vai pro gate */
   async function afterAuth(st, display){
@@ -2543,6 +2684,7 @@ function App(){
       if(wantCloud){
         const createClient = await getCreateClient();
         const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        _sbForAI = sb; // ai-ask usa a sessao daqui (JWT) pra liberar a chave compartilhada
         const st = SupabaseStore(sb);
         setStore(st);
         const display = (()=>{ try{return localStorage.getItem('qualilab:name')||'';}catch(e){return '';} })();
@@ -2552,9 +2694,16 @@ function App(){
         await afterAuth(st, display);
       } else {
         // tenta reabrir o último arquivo .qualilab antes de cair no localStorage
-        const lastHandle = await reopenLastFile();
+        let lastHandle = await reopenLastFile();
+        let fileSt = null;
         if(lastHandle){
-          const st = await createFileStore(lastHandle, false); setStore(st);
+          // arquivo corrompido agora LANÇA (não vira projeto vazio) — cai pro modo local
+          // com aviso, sem tocar no arquivo
+          try{ fileSt = await createFileStore(lastHandle, false); }
+          catch(e){ setErr(String(e.message||e)); fileSt = null; }
+        }
+        if(fileSt){
+          const st = fileSt; setStore(st);
           const display = (()=>{ try{return localStorage.getItem('qualilab:name')||'pesquisador';}catch(e){return 'pesquisador';} })();
           const u = await st.init(display); setUser({...u,anon:false});
           const p = await st.joinProject(); openProject(p); setPhase('work');
@@ -2588,7 +2737,7 @@ function App(){
       if(userId===user?.id && store.myRole) setRole(await store.myRole(project.id)); }
     catch(e){ setErr(String(e.message||e)); }
   }
-  function leaveToGate(){ try{localStorage.removeItem('qualilab:project');}catch(e){} setProjEdit(false); setProject(null); setDocs([]); setActiveId(null); setPhase('gate'); }
+  function leaveToGate(){ try{localStorage.removeItem('qualilab:project');}catch(e){} undoStackRef.current=[]; setProjEdit(false); setProject(null); setDocs([]); setActiveId(null); setPhase('gate'); }
   async function removeMember(userId){
     const self = userId===user?.id;
     if(self && !confirm('Sair deste projeto? Você perderá o acesso (suas codificações permanecem no projeto).')) return;
@@ -2650,17 +2799,25 @@ function App(){
     catch(e){ setErr(String(e.message||e)); }
   }
 
-  /* carregar doc ativo */
+  /* carregar doc ativo — com token de staleness: trocar rápido de documento (ou um poll
+     concorrente) podia fazer a resposta VELHA chegar depois e ancorar codings do doc A
+     sobre o texto do doc B. Só a resposta mais recente aplica o estado; dados idênticos
+     não trocam a referência (sameJson) pra não invalidar os useMemo do leitor. */
+  const reqSeqRef = useRef({ doc:0, all:0 });
   const loadDoc = useCallback(async ()=>{
     if(!store || !project || !activeId){ setValues([]); setCodings([]); return; }
+    const tok = ++reqSeqRef.current.doc;
     const [v, co] = await Promise.all([store.getDocValues(activeId), store.listCodings(project.id, activeId)]);
-    setValues(v); setCodings(co);
+    if(tok !== reqSeqRef.current.doc) return;
+    setValues(x=> sameJson(x,v) ? x : v);
+    setCodings(x=> sameJson(x,co) ? x : co);
   }, [store, project, activeId]);
   useEffect(()=>{ loadDoc(); setSel(null); setCtxMenu(null); }, [loadDoc]);
 
   /* carregar trechos e valores de TODOS os documentos (aba de visualizacao) */
   const loadAll = useCallback(async ()=>{
     if(!store || !project){ setAllCodings([]); setAllValues([]); return; }
+    const tok = ++reqSeqRef.current.all;
     // busca os valores+codings de TODOS os documentos em paralelo (antes era doc-a-doc em
     // serie: N round-trips sequenciais, lento na nuvem com muitos docs). O navegador limita
     // a concorrencia real por host, entao isso sobrepoe as latencias sem estourar o servidor.
@@ -2668,14 +2825,20 @@ function App(){
       const [v,co]=await Promise.all([store.getDocValues(d.id), store.listCodings(project.id, d.id)]);
       return { d, v, co };
     }));
+    if(tok !== reqSeqRef.current.all) return; // resposta velha (outro loadAll ja começou)
     const V=[], C=[];
     for(const { d, v, co } of per){
       v.forEach(x=>V.push({ document_id:d.id, category_id:x.category_id, value:x.value, author_name:x.author_name, layer:x.layer||'individual' }));
       co.forEach(x=>C.push(x));
     }
-    setAllValues(V); setAllCodings(C);
+    setAllValues(x=> sameJson(x,V) ? x : V);
+    setAllCodings(x=> sameJson(x,C) ? x : C);
   }, [store, project, docs]);
-  useEffect(()=>{ if(phase==='work' && (mainView==='visualizar'||mainView==='graficos'||mainView==='ia_analisar'||mainView==='ia_codificar'||mainView==='esquema'||mainView==='relatorio'||mainView==='reconciliar'||mainView==='memos')) loadAll(); }, [phase, mainView, loadAll, codings]);
+  // "codings" saiu das deps DE PROPÓSITO: cada tick do poll de 20s trocava a referência de
+  // codings e disparava um loadAll completo (2 requests POR DOCUMENTO a cada 20s nas telas
+  // agregadas, sem nada ter mudado). A atualização ao vivo dessas telas é responsabilidade
+  // do reloadRef (evento realtime → loadAll; poll de reserva agregado a cada 60s).
+  useEffect(()=>{ if(phase==='work' && AGG_VIEWS.includes(mainView)) loadAll(); }, [phase, mainView, loadAll]);
   // categoria padrão no modo "(Todos os documentos)" da Reconciliação
   useEffect(()=>{ if(!cats.find(c=>c.id===reconCat)) setReconCat(cats[0]?.id || ''); }, [cats]); // eslint-disable-line
 
@@ -2725,17 +2888,23 @@ function App(){
     await loadMemory();
   }
 
-  /* recarrega a visao atual (doc ativo + visualizacao, se aberta) — usado pelo realtime */
+  /* recarrega a visao atual — usado pelo realtime e pelo poll de reserva.
+     full=true recarrega tambem o agregado (loadAll) quando uma tela agregada esta aberta;
+     full=false so o doc ativo (barato: 2 requests). */
   const reloadRef = useRef(()=>{});
-  reloadRef.current = ()=>{ loadDoc(); if(mainView==='visualizar') loadAll(); };
+  reloadRef.current = (full)=>{ loadDoc(); if(full && AGG_VIEWS.includes(mainView)) loadAll(); };
 
-  /* sincronizacao ao vivo no modo nuvem (codings/doc_values), com poll lento de reserva */
+  /* sincronizacao ao vivo no modo nuvem (codings/doc_values), com poll lento de reserva.
+     Evento realtime = mudanca real -> recarga completa. O poll cego de reserva e dividido:
+     doc ativo a cada 20s (leve) e agregado a cada 60s — o formato antigo (tudo a cada 20s)
+     custava 2 requests POR DOCUMENTO a cada 20s nas telas agregadas. */
   useEffect(()=>{
     if(mode!=='cloud' || phase!=='work' || !project || !store || !store.realtime) return;
-    const onChange = ()=>reloadRef.current();
+    const onChange = ()=>reloadRef.current(true);
     const unsub = store.realtime(project.id, onChange);
-    const t = setInterval(onChange, 20000); // reserva: caso a replicacao realtime nao esteja habilitada
-    return ()=>{ if(unsub) unsub(); clearInterval(t); };
+    const t  = setInterval(()=>reloadRef.current(false), 20000);
+    const t2 = setInterval(()=>reloadRef.current(true), 60000);
+    return ()=>{ if(unsub) unsub(); clearInterval(t); clearInterval(t2); };
   }, [mode, phase, project, store]);
 
   /* ----- acoes ----- */
@@ -2749,20 +2918,36 @@ function App(){
     setBusy(null);
   }
   async function addPasted(name, content){ const doc = await store.addDocument(project.id,{name:name||'Documento',content}); setDocs(d=>[...d,doc]); setActiveId(doc.id); }
-  async function delDoc(id){ await store.deleteDocument(id); setDocs(d=>d.filter(x=>x.id!==id)); if(activeId===id) setActiveId(docs.find(x=>x.id!==id)?.id||null); }
+  async function delDoc(id){
+    const d = docs.find(x=>x.id===id);
+    const n = id===activeId ? codings.length : null; // codings do doc ativo estão no estado; de outro doc, não conta
+    if(!confirm(`Remover o documento "${d?.name||''}"?${n!=null?` As ${n} codificações`:' As codificações'}, respostas de categoria e notas dele serão apagadas. Não pode ser desfeito.`)) return;
+    try{
+      await store.deleteDocument(id);
+      setDocs(x=>x.filter(y=>y.id!==id)); if(activeId===id) setActiveId(docs.find(x=>x.id!==id)?.id||null);
+    }catch(e){ setErr('Não foi possível remover o documento: '+String(e.message||e)); }
+  }
   async function renameDoc(id, name){ const nm=(name||'').trim(); if(!nm) return; await store.renameDocument(id, nm); setDocs(d=>d.map(x=>x.id===id?{...x,name:nm}:x)); }
 
   async function setValue(catId, value){
-    if(projectMode==='individual') await store.setFinalValue(project.id, activeId, catId, value);
-    else await store.setDocValue(project.id, activeId, catId, value);
-    loadDoc();
+    try{
+      if(projectMode==='individual') await store.setFinalValue(project.id, activeId, catId, value);
+      else await store.setDocValue(project.id, activeId, catId, value);
+      loadDoc();
+    }catch(e){ setErr('Não foi possível salvar a resposta: '+String(e.message||e)); }
   }
   async function setFinalValue(catId, value){ if(!store.setFinalValue) return; await store.setFinalValue(project.id, activeId, catId, value); loadDoc(); }
   // gabarito de uma categoria em um documento ARBITRÁRIO (modo "(Todos os documentos)" da Reconciliação)
   async function setFinalValueDoc(docId, catId, value){ if(!store.setFinalValue) return; await store.setFinalValue(project.id, docId, catId, value); if(docId===activeId) loadDoc(); loadAll(); }
   async function addCategory(){ const c = await store.addCategory(project.id,{name:'Nova categoria',kind:'single',options:[NAO_INFO],color:cats.length%HUES.length,position:cats.length}); setCats(x=>[...x,c]); }
   async function updCategory(id,patch){ await store.updateCategory(id,patch); setCats(x=>x.map(c=>c.id===id?{...c,...patch}:c)); }
-  async function delCategory(id){ await store.deleteCategory(id); setCats(x=>x.filter(c=>c.id!==id)); setValues(v=>v.filter(x=>x.category_id!==id)); }
+  async function delCategory(id){
+    const cat = cats.find(c=>c.id===id);
+    if(!confirm(`Excluir a categoria "${cat?.name||''}"? As respostas dela em TODOS os documentos (de todos os pesquisadores, inclusive o gabarito) serão apagadas. Não pode ser desfeito.`)) return;
+    try{
+      await store.deleteCategory(id); setCats(x=>x.filter(c=>c.id!==id)); setValues(v=>v.filter(x=>x.category_id!==id));
+    }catch(e){ setErr('Não foi possível excluir a categoria: '+String(e.message||e)); }
+  }
   // reordena categorias por drag-and-drop: move draggedId pra posicao de targetId,
   // empurrando as demais — so muda position, nunca a hierarquia (categoria e flat).
   async function reorderCategories(draggedId, targetId){
@@ -2771,7 +2956,9 @@ function App(){
     const from = ordered.findIndex(c=>c.id===draggedId), to = ordered.findIndex(c=>c.id===targetId);
     if(from<0 || to<0) return;
     ordered.splice(to, 0, ordered.splice(from,1)[0]);
-    for(let i=0;i<ordered.length;i++){ if(ordered[i].position!==i) await store.updateCategory(ordered[i].id,{position:i}); }
+    if(store.beginBatch) store.beginBatch();
+    try{ await Promise.all(ordered.map((c,i)=> c.position!==i ? store.updateCategory(c.id,{position:i}) : null)); }
+    finally{ if(store.endBatch) await store.endBatch(); }
     setCats(ordered.map((c,i)=>({...c,position:i})));
   }
 
@@ -2797,7 +2984,10 @@ function App(){
     const ids = new Set([rootCode.id]);
     let added = true;
     while(added){ added=false; codes.forEach(c=>{ if(c.parent_id && ids.has(c.parent_id) && !ids.has(c.id)){ ids.add(c.id); added=true; } }); }
-    for(const id of ids) await store.updateCode(id, { hue_deg: hueDeg });
+    // batch + paralelo: a cascata numa família grande fazia um write serial por subcódigo
+    if(store.beginBatch) store.beginBatch();
+    try{ await Promise.all([...ids].map(id=>store.updateCode(id, { hue_deg: hueDeg }))); }
+    finally{ if(store.endBatch) await store.endBatch(); }
     setCodes(x=>x.map(c=>ids.has(c.id) ? {...c, hue_deg:hueDeg} : c));
   }
   // censura propaga pra subarvore inteira (igual cor) — marcar uma familia como censura e
@@ -2810,7 +3000,9 @@ function App(){
     while(added){ added=false; codes.forEach(c=>{ if(c.parent_id && ids.has(c.parent_id) && !ids.has(c.id)){ ids.add(c.id); added=true; } }); }
     // ao marcar censura: força preto (hue_deg:-2); ao desmarcar: devolve cor automática (null)
     const huePatch = value ? { hue_deg: -2 } : { hue_deg: null };
-    for(const id of ids) await store.updateCode(id, { is_redaction: value, ...huePatch });
+    if(store.beginBatch) store.beginBatch();
+    try{ await Promise.all([...ids].map(id=>store.updateCode(id, { is_redaction: value, ...huePatch }))); }
+    finally{ if(store.endBatch) await store.endBatch(); }
     setCodes(x=>x.map(c=>ids.has(c.id) ? {...c, is_redaction:value, ...huePatch} : c));
   }
   async function delCode(id){ await store.deleteCode(id); loadProject(store,project.id); loadDoc(); }
@@ -2826,10 +3018,12 @@ function App(){
   async function applyCode(codeId, selection){
     const s = selection || sel;
     if(!s) return;
-    const c = await store.addCoding(project.id,{ document_id:activeId, code_id:codeId, span_start:s.start, span_end:s.end, quote:s.quote, layer: projectMode==='individual' ? 'final' : 'individual' });
-    undoStackRef.current.push({ type:'addCoding', id:c.id });
-    if(undoStackRef.current.length>50) undoStackRef.current.shift();
-    setCodings(x=>[...x,c]); setSel(null); closeCtxMenu(); window.getSelection()?.removeAllRanges();
+    try{
+      const c = await store.addCoding(project.id,{ document_id:activeId, code_id:codeId, span_start:s.start, span_end:s.end, quote:s.quote, layer: projectMode==='individual' ? 'final' : 'individual' });
+      undoStackRef.current.push({ type:'addCoding', id:c.id });
+      if(undoStackRef.current.length>50) undoStackRef.current.shift();
+      setCodings(x=>[...x,c]); setSel(null); closeCtxMenu(); window.getSelection()?.removeAllRanges();
+    }catch(e){ setErr('Não foi possível salvar a codificação: '+String(e.message||e)); }
   }
   // consolidacao: cria uma codificacao na camada "final" (reconciliacao manual)
   async function addFinalCoding(docId, codeId, start, end, quote){
@@ -2868,6 +3062,17 @@ function App(){
   }
   useEffect(()=>{
     const onKeyDown = (e)=>{
+      // Esc fecha o que estiver aberto por cima (menu de contexto > dropdowns > busca > modais)
+      // — nada respondia a Esc antes; um handler global cobre tudo de uma vez
+      if(e.key==='Escape'){
+        if(ctxMenu){ closeCtxMenu(); e.preventDefault(); return; }
+        if(expOpen || impOpen){ setExpOpen(false); setImpOpen(false); e.preventDefault(); return; }
+        if(searchOpen){ setSearchOpen(false); e.preventDefault(); return; }
+        if(sendCloudOpen){ setSendCloudOpen(false); e.preventDefault(); return; }
+        if(account){ setAccount(false); e.preventDefault(); return; }
+        if(projEdit){ setProjEdit(false); e.preventDefault(); return; }
+        return;
+      }
       const isUndo = (e.ctrlKey||e.metaKey) && !e.shiftKey && (e.key||'').toLowerCase()==='z';
       if(!isUndo || mainView!=='codificar' || undoStackRef.current.length===0) return;
       const tag = (e.target?.tagName||'').toLowerCase();
@@ -2877,7 +3082,7 @@ function App(){
     };
     window.addEventListener('keydown', onKeyDown);
     return ()=>window.removeEventListener('keydown', onKeyDown);
-  }, [mainView, undoLastCoding]);
+  }, [mainView, undoLastCoding, ctxMenu, expOpen, impOpen, searchOpen, sendCloudOpen, account, projEdit]);
 
   // monta o objeto db no mesmo formato de um .qualilab a partir do projeto ATIVO (qualquer
   // modo) — extraido pra ser reaproveitado tanto por saveQualilab (baixa como arquivo) quanto
@@ -2889,7 +3094,10 @@ function App(){
     const doc_values=[], codings=[];
     for(const d of docs){
       const [v,co]=await Promise.all([store.getDocValues(d.id), store.listCodings(project.id, d.id)]);
-      v.forEach(x=>doc_values.push({ id:x.id||uid(), document_id:d.id, category_id:x.category_id, value:x.value, set_by:x.set_by||'file-user', author_name:x.author_name||'anonimo', layer:x.layer||'individual' }));
+      // set_by null é semântica de multi-autor importado (o autor de fato está em author_name)
+      // e PRECISA sobreviver ao export — reescrever como 'file-user' fazia o valOf estrito
+      // mostrar resposta alheia como "minha" ao reabrir o arquivo
+      v.forEach(x=>doc_values.push({ id:x.id||uid(), document_id:d.id, category_id:x.category_id, value:x.value, set_by:x.set_by??null, author_name:x.author_name||'anonimo', layer:x.layer||'individual' }));
       co.forEach(x=>codings.push({ id:x.id||uid(), document_id:x.document_id, code_id:x.code_id, span_start:x.span_start, span_end:x.span_end, quote:x.quote, layer:x.layer||'individual', created_by:x.created_by??null, author_name:x.author_name||'anonimo', created_at:x.created_at||new Date().toISOString() }));
     }
     let memos=[], ia_results=[], ia_memory=[];
@@ -3020,7 +3228,7 @@ function App(){
       await loadMemos();
       setErr(null);
       setBusy(null);
-      setImportMsg(`Importado: ${r.documentos} documento(s), ${r.categorias} categoria(s), ${r.codigos} código(s), ${r.trechos} trecho(s) codificado(s), ${r.memos} memo(s).`);
+      setImportMsg(`Importado: ${r.documentos} documento(s), ${r.categorias} categoria(s), ${r.codigos} código(s), ${r.trechos} trecho(s) codificado(s), ${r.memos} memo(s)${r.conversas?`, ${r.conversas} conversa(s) de IA`:''}${r.memorias?`, ${r.memorias} memória(s) de IA`:''}.`);
     }catch(e){ setBusy(null); setProgress(null); setErr('Falha ao importar .qualilab: '+(e.message||e)); }
   }
 
@@ -3272,8 +3480,7 @@ function App(){
             </div>
           </div>`}
         </div>`}
-        ${mode==='cloud' && !online && html`<span class="pill" style="background:#FEF3C7;border-color:#D97706;color:#92400E;font-size:11px">offline${pending>0?` · ${pending} pendente${pending>1?'s':''}`:''}</span>`}
-        ${mode==='cloud' && online && pending>0 && html`<span class="pill" style="font-size:11px">sincronizando…</span>`}
+        ${mode==='cloud' && !online && html`<span class="pill" style="background:#FEF3C7;border-color:#D97706;color:#92400E;font-size:11px" title="Sem conexão: alterações NÃO estão sendo salvas na nuvem — aguarde reconectar antes de continuar">offline — alterações não salvas</span>`}
       </div>
       <input ref=${qualilabInputRef} type="file" accept=".qualilab" style="display:none" onChange=${e=>{ if(e.target.files[0]) doImportQualilab(e.target.files[0]); e.target.value=''; }} />
       <input ref=${qdpxInputRef} type="file" accept=".qdpx" style="display:none" onChange=${e=>{ if(e.target.files[0]) doImportQDPX(e.target.files[0]); e.target.value=''; }} />
@@ -3287,7 +3494,7 @@ function App(){
       Continuar trabalhando sem resolver isso arrisca perder o que vier depois. Baixe um backup agora:
       <button class="btn sm" onClick=${saveQualilab}>baixar .qualilab</button>
     </div>`}
-    ${err && html`<div class="banner err">${err} <button class="btn sm ghost" onClick=${()=>setErr(null)}>fechar</button></div>`}
+    ${err && (()=>{ const h = humanizeError(err); return html`<div class="banner err">${h||err}${h && html`<div class="meta" style="margin-top:4px">${err}</div>`} <button class="btn sm ghost" onClick=${()=>setErr(null)}>fechar</button></div>`; })()}
     ${importMsg && html`<div class="banner warn">${importMsg} <button class="btn sm ghost" onClick=${()=>setImportMsg(null)}>fechar</button></div>`}
     ${busy && html`<div class="banner warn">
       ${busy}${progress?.total>0 ? `${progress.label?' — '+progress.label:''} ${progress.done}/${progress.total}` : ''}
@@ -3353,8 +3560,8 @@ function App(){
         <div class="pane-body scroll reader-pane theme-${readerPrefs.theme} width-${readerPrefs.width}" ref=${readerRef}>
           ${!activeDoc ? html`<div class="empty"><div class="t">Nenhum documento</div><div>Envie arquivos (.txt, .md, .docx, .pdf) ou cole um texto. O conteúdo é extraído e exibido aqui para codificação.</div></div>`
           : html`<div class="reader" style=${`font-size:${(17*readerPrefs.scale).toFixed(1)}px`} onMouseUp=${onMouseUp} onContextMenu=${onContextMenu}>
-              ${buildRuns(activeDoc.content, visibleCodings, searchMatches.flat()).map((run,i)=>{
-                const matchI = searchMatches.findIndex(([s,e])=>run.start>=s && run.end<=e);
+              ${readerRuns.map((run,i)=>{
+                const matchI = run.matchI;
                 const isCurrent = matchI>=0 && matchI===((searchIdx%searchMatches.length+searchMatches.length)%searchMatches.length);
                 const matchAttrs = matchI>=0 ? { 'data-match': matchI } : {};
                 if(run.codings.length===0) return html`<span key=${i} data-start=${run.start} data-end=${run.end} ...${matchAttrs}
@@ -3758,7 +3965,7 @@ function Auth({ onSignIn, onSignUp, onAnon, onLocal, err }){
       <button class=${tab==='in'?'on':''} onClick=${()=>{setTab('in');setConfirmMsg(false);}}>Entrar</button>
       <button class=${tab==='up'?'on':''} onClick=${()=>{setTab('up');setConfirmMsg(false);}}>Criar conta</button>
     </div>
-    ${err && html`<div class="banner err" style="margin:0 0 12px">${err}</div>`}
+    ${err && html`<div class="banner err" style="margin:0 0 12px">${humanizeError(err)||err}</div>`}
     ${confirmMsg && html`<div class="banner warn" style="margin:0 0 12px">Conta criada. Verifique seu e-mail para confirmar o cadastro e depois entre.</div>`}
     ${tab==='up' && html`<div class="field"><div class="field-label">Seu nome de exibição</div>
       <input class="txtin" value=${name} onInput=${e=>setName(e.target.value)} placeholder="como você aparece nas codificações" /></div>`}
@@ -3804,7 +4011,7 @@ function Gate({ onCreate, onJoin, onOpen, onOpenFile, onNewFile, err, user, proj
           <span> </span><button class="btn sm ghost" onClick=${onLogin} style="color:var(--teal-deep);font-weight:600">Entrar com conta →</button>
         </div>`
       : html`<p class="hint">Abra um projeto que você já criou ou participou, ou comece um novo. Vários pesquisadores no mesmo código codificam juntos.</p>`}
-    ${err && html`<div class="banner err" style="margin:0 0 12px">${err}</div>`}
+    ${err && html`<div class="banner err" style="margin:0 0 12px">${humanizeError(err)||err}</div>`}
 
     ${list.length>0 ? html`<div style="margin-bottom:14px;max-height:240px;overflow:auto">
         ${list.map(p=>html`<div class="docitem" key=${p.code||p.id} style="cursor:pointer" onClick=${()=>onOpen(p)}>
@@ -4108,8 +4315,10 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
     if(from<0 || to<0) return;
     siblings.splice(to, 0, siblings.splice(from,1)[0]);
     setBusy(true);
-    try{ for(let i=0;i<siblings.length;i++){ if(siblings[i].position!==i) await store.updateCode(siblings[i].id,{position:i}); } await reload(); }
-    finally{ setBusy(false); }
+    if(store.beginBatch) store.beginBatch();
+    try{ await Promise.all(siblings.map((s,i)=> s.position!==i ? store.updateCode(s.id,{position:i}) : null)); }
+    finally{ if(store.endBatch) await store.endBatch(); setBusy(false); }
+    await reload();
   }
 
   const q = query.trim().toLowerCase();
@@ -4145,21 +4354,26 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
   async function promoteToRoot(code){
     if(!code.parent_id) return;
     setBusy(true);
-    try{ await reparentSubtree(code.id, null, 0, null); await reload(); }
-    finally{ setBusy(false); }
+    if(store.beginBatch) store.beginBatch();
+    try{ await reparentSubtree(code.id, null, 0, null); }
+    finally{ if(store.endBatch) await store.endBatch(); setBusy(false); }
+    await reload();
   }
 
   async function handleGroup(targetId, newName, ids){
     setBusy(true);
+    // batch: reparentSubtree grava um updateCode POR nó da subárvore — agrupar famílias
+    // grandes sem isso re-serializava o banco local/arquivo inteiro a cada nó
+    if(store.beginBatch) store.beginBatch();
     try{
       const target = targetId ? codeById[targetId] : await onAdd(null, newName||'Novo agrupamento');
       for(const id of ids){
         if(id===target.id || isDescendantOf(target.id, id)) continue;
         await reparentSubtree(id, target.id, target.depth+1, { hue:target.hue, hue_deg:target.hue_deg });
       }
-      await reload();
-      clearSelection();
-    } finally { setBusy(false); }
+    } finally { if(store.endBatch) await store.endBatch(); setBusy(false); }
+    await reload();
+    clearSelection();
   }
 
   async function handleMerge(survivorId, mergedIds){
@@ -4167,24 +4381,31 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
     try{
       const survivor = codeById[survivorId];
       // 1) reatribui as codificacoes dos mesclados pro sobrevivente (recria + apaga a
-      // original, ja que os stores nao tem updateCoding — so addCoding/deleteCoding)
-      for(const mid of mergedIds){
-        for(const cod of allCodings.filter(c=>c.code_id===mid)){
-          await store.addCoding(project.id, { document_id:cod.document_id, code_id:survivorId,
-            span_start:cod.span_start, span_end:cod.span_end, quote:cod.quote, layer:cod.layer,
-            created_by:cod.created_by??null, author_name:cod.author_name });
-          await store.deleteCoding(cod.id);
+      // original, ja que os stores nao tem updateCoding — so addCoding/deleteCoding).
+      // Batch (local/arquivo) + Promise.all (nuvem): mesclar um codigo com centenas de
+      // trechos fazia um write serial POR coding — minutos na nuvem, e cada save
+      // re-serializava o banco local inteiro. O par add->delete continua ordenado DENTRO
+      // de cada coding (se falhar no meio, sobra duplicata — nunca perda).
+      if(store.beginBatch) store.beginBatch();
+      try{
+        for(const mid of mergedIds){
+          await Promise.all(allCodings.filter(c=>c.code_id===mid).map(async cod=>{
+            await store.addCoding(project.id, { document_id:cod.document_id, code_id:survivorId,
+              span_start:cod.span_start, span_end:cod.span_end, quote:cod.quote, layer:cod.layer,
+              created_by:cod.created_by??null, author_name:cod.author_name });
+            await store.deleteCoding(cod.id);
+          }));
         }
-      }
-      // 2) reparenta os filhos diretos dos mesclados pro sobrevivente — senao deleteCode
-      // (que apaga em cascata) destruiria esses filhos junto
-      for(const mid of mergedIds){
-        for(const ch of childrenOf(mid)){
-          await reparentSubtree(ch.id, survivorId, survivor.depth+1, { hue:survivor.hue, hue_deg:survivor.hue_deg });
+        // 2) reparenta os filhos diretos dos mesclados pro sobrevivente — senao deleteCode
+        // (que apaga em cascata) destruiria esses filhos junto
+        for(const mid of mergedIds){
+          for(const ch of childrenOf(mid)){
+            await reparentSubtree(ch.id, survivorId, survivor.depth+1, { hue:survivor.hue, hue_deg:survivor.hue_deg });
+          }
         }
-      }
-      // 3) exclui os mesclados (ja sem filhos nem codificacoes)
-      for(const mid of mergedIds){ await store.deleteCode(mid); }
+        // 3) exclui os mesclados (ja sem filhos nem codificacoes)
+        for(const mid of mergedIds){ await store.deleteCode(mid); }
+      } finally { if(store.endBatch) await store.endBatch(); }
       await reload();
       await loadAll();
       clearSelection();
@@ -4223,7 +4444,7 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
       <div class="pane-body scroll" style="padding:14px">
         ${selectedIds.size>=2
           ? html`<${SchemaBulkPanel} selectedIds=${selectedIds} codes=${codes} codeById=${codeById} count=${count}
-                   onMerge=${handleMerge} onGroup=${handleGroup} onClear=${clearSelection} />`
+                   onMerge=${handleMerge} onGroup=${handleGroup} onClear=${clearSelection} isAdmin=${isAdmin} />`
           : selCode && codeById[selCode]
             ? html`<div class="section">
                 <p class="h">Código selecionado</p>
@@ -4270,7 +4491,7 @@ function SchemaTreeNode({ code, childrenOf, count, selCode, setSelCode, selected
   </div>`;
 }
 
-function SchemaBulkPanel({ selectedIds, codes, codeById, count, onMerge, onGroup, onClear }){
+function SchemaBulkPanel({ selectedIds, codes, codeById, count, onMerge, onGroup, onClear, isAdmin }){
   const [mode, setMode] = useState('group'); // group | merge
   const items = [...selectedIds].map(id=>codeById[id]).filter(Boolean);
   const sorted = useMemo(()=>items.slice().sort((a,b)=>(count[b.id]||0)-(count[a.id]||0)), [selectedIds, count]);
@@ -4306,11 +4527,12 @@ function SchemaBulkPanel({ selectedIds, codes, codeById, count, onMerge, onGroup
         onClick=${()=>onGroup(groupTarget||null, groupNewName, [...selectedIds])}>Agrupar</button>
     </div>` : html`<div>
       <p class="hint">Escolha qual código sobrevive. Os demais têm suas codificações reatribuídas a ele e são excluídos — não pode ser desfeito.</p>
+      ${!isAdmin && html`<div class="banner warn" style="margin-bottom:8px">Mesclar reatribui codificações de todos os pesquisadores — só administradores podem aplicar (mesma regra do Organizar com IA).</div>`}
       ${sorted.map(c=>html`<label class="row" style="gap:6px;padding:4px 0;cursor:pointer" key=${c.id}>
         <input type="radio" name="survivor" checked=${survivor===c.id} onChange=${()=>setSurvivor(c.id)} />
         <span style="flex:1;font-size:13px">${c.name}</span><span class="meta">${count[c.id]||0}</span>
       </label>`)}
-      <button class="btn sm primary" style="margin-top:10px;width:100%" disabled=${!survivor}
+      <button class="btn sm primary" style="margin-top:10px;width:100%" disabled=${!survivor || !isAdmin}
         onClick=${()=>{ if(confirm(`Mesclar ${items.length} códigos em "${codeById[survivor]?.name}"? As codificações dos outros serão reatribuídas a ele, e eles serão excluídos. Isso não pode ser desfeito.`))
           onMerge(survivor, [...selectedIds].filter(id=>id!==survivor)); }}>Mesclar</button>
     </div>`}
@@ -5096,7 +5318,10 @@ function MemoCodeNode({ code, childrenOf, sel, onSel, hasMemo, depthPad }){
    Editor de texto livre com autosave (debounce), mostrando autor/data da última edição. */
 function MemoEditor({ sel, project, codeById, codePath, codings, docs, memos, onSave, onRenameDoc }){
   const targetId = sel.scope==='project' ? project?.id : sel.targetId;
-  const current = memos.find(m=>m.scope===sel.scope && m.target_id===targetId);
+  // memo de projeto: tolera target_id null gravado por versões antigas do import (a convenção
+  // atual é target_id = project.id) — sem isso o memo importado ficava invisível e editar criava
+  // uma segunda linha
+  const current = memos.find(m=>m.scope===sel.scope && (m.target_id===targetId || (sel.scope==='project' && !m.target_id)));
   const [text, setText] = useState(current?.content||'');
   const [saving, setSaving] = useState(false);
   const [editingName, setEditingName] = useState(false); // renomear documento inline no topo do memo
@@ -5159,7 +5384,10 @@ function CodingMemoModal({ target, memos, onClose, onSave }){
   const [saving, setSaving] = useState(false);
   useEffect(()=>{ setText(current?.content||''); }, [target.id]); // eslint-disable-line
   const save = async ()=>{ setSaving(true); await onSave(text); setSaving(false); onClose(); };
-  return html`<div class="modal-bg" onClick=${onClose}>
+  // clique fora só fecha direto se o texto não mudou — um clique acidental no backdrop
+  // no meio da digitação descartava a nota inteira sem aviso
+  const requestClose = ()=>{ if(text===(current?.content||'') || confirm('Descartar a nota não salva?')) onClose(); };
+  return html`<div class="modal-bg" onClick=${requestClose}>
     <div class="modal" style="max-width:620px" onClick=${e=>e.stopPropagation()}>
       <h3 style="margin:0 0 2px">Nota analítica do trecho</h3>
       <p class="hint" style="margin:0 0 8px">${target.codePath||''}</p>
@@ -5171,7 +5399,7 @@ function CodingMemoModal({ target, memos, onClose, onSave }){
       <textarea class="txtin" rows="7" autofocus style="font-family:var(--serif);font-size:15px;line-height:1.6;resize:vertical"
         placeholder="Ex.: este trecho evidencia a contradição porque…" value=${text} onInput=${e=>setText(e.target.value)}></textarea>
       <div class="row" style="gap:8px;justify-content:flex-end;margin-top:10px">
-        <button class="btn ghost" onClick=${onClose}>cancelar</button>
+        <button class="btn ghost" onClick=${requestClose}>cancelar</button>
         <button class="btn primary" disabled=${saving} onClick=${save}>${saving?'salvando…':'salvar nota'}</button>
       </div>
     </div>
@@ -5287,7 +5515,7 @@ async function askAI(prompt){
   if(isLocalProvider(cfg.provider)) return askLocalChat({ messages:[{ role:'user', content: prompt }] });
   const res = await fetch(`${SUPABASE_URL}/functions/v1/ai-ask`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
+    headers: { Authorization: `Bearer ${await aiAuthToken()}`, apikey: SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
     body: JSON.stringify({ prompt, provider: cfg.provider, ...(cfg.apiKey ? { apiKey: cfg.apiKey } : {}), ...(cfg.model ? { model: cfg.model } : {}), ...(cfg.baseUrl ? { baseUrl: cfg.baseUrl } : {}) }),
   });
   const data = await res.json().catch(()=>({}));
@@ -5312,7 +5540,7 @@ async function askAIChat({ system, messages, signal, json }){
   const msgs = [ ...(system ? [{ role:'system', content: system }] : []), ...(messages || []) ];
   const res = await fetch(`${SUPABASE_URL}/functions/v1/ai-ask`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
+    headers: { Authorization: `Bearer ${await aiAuthToken()}`, apikey: SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       ...(system ? { system } : {}),
       messages: msgs,
@@ -5570,10 +5798,13 @@ function ReportView({ project, projectMode, docs, cats, codes, codeById, codePat
   // --- modos de transparência: prévia ao vivo + exportação (só constrói no modo ativo) ---
   const readerHTML = useMemo(()=> rmode==='ati' ? buildTransparencyReaderHTML(docs, codes, allCodings, memos||[], project, anonAuthors) : ''
   , [rmode, docs, codes, allCodings, memos, project, anonAuthors]);
-  const w3cText = useMemo(()=> rmode==='w3c' ? JSON.stringify(buildWebAnnotations(docs, codes, allCodings, memos||[], project, anonAuthors), null, 2) : ''
-  , [rmode, docs, codes, allCodings, memos, project, anonAuthors]);
-  const w3cTotal = useMemo(()=> rmode==='w3c' ? (buildWebAnnotations(docs, codes, allCodings, memos||[], project, anonAuthors).total||0) : 0
-  , [rmode, docs, codes, allCodings, memos, project, anonAuthors]);
+  // um único build por render (texto + total saem da mesma coleção — antes construía 2×)
+  const w3c = useMemo(()=>{
+    if(rmode!=='w3c') return { text:'', total:0 };
+    const coll = buildWebAnnotations(docs, codes, allCodings, memos||[], project, anonAuthors);
+    return { text: JSON.stringify(coll, null, 2), total: coll.total||0 };
+  }, [rmode, docs, codes, allCodings, memos, project, anonAuthors]);
+  const w3cText = w3c.text, w3cTotal = w3c.total;
   const RMODES = [
     { id:'ati',    label:'Relatório Interativo (ATI)', desc:'Documentos com grifos clicáveis e nota analítica. HTML publicável.' },
     { id:'padrao', label:'Relatório Padrão',         desc:'Resumo: contagens, frequências, trechos. Imprimir/PDF ou copiar.' },
@@ -6797,13 +7028,19 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
   // conversa iterativa (Fase 1): o material vira o `system` TRAVADO da conversa; a tarefa do
   // modo e o 1o turno; os follow-ups do pesquisador sao os turnos seguintes (material entra
   // so uma vez no system, so os turnos crescem — cuida do IA_TOTAL_CHAR_LIMIT).
-  const [history, setHistory] = useState([]);       // [{role:'user'|'assistant', content}]
-  const [convSystem, setConvSystem] = useState(''); // system travado enquanto a conversa esta ativa
-  const [convLabel, setConvLabel] = useState('');   // rotulo do modo com que a conversa comecou (pra salvar)
-  const [followup, setFollowup] = useState('');     // texto do proximo turno do pesquisador
+  // A conversa e inicializada do IA_CONV_CACHE (modulo) e gravada de volta a cada mudanca:
+  // trocar de mainView desmonta este painel, e sem o cache uma conversa inteira (que custou
+  // tokens) sumia so de o pesquisador espiar Memos no meio da analise.
+  const convCacheKey = project?.id || 'local';
+  const cachedConv = IA_CONV_CACHE[convCacheKey] || {};
+  const [history, setHistory] = useState(cachedConv.history||[]); // [{role:'user'|'assistant', content}]
+  const [convSystem, setConvSystem] = useState(cachedConv.convSystem||''); // system travado enquanto a conversa esta ativa
+  const [convLabel, setConvLabel] = useState(cachedConv.convLabel||'');   // rotulo do modo com que a conversa comecou (pra salvar)
+  const [followup, setFollowup] = useState(cachedConv.followup||'');      // texto do proximo turno do pesquisador
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] = useState(!!cachedConv.saved);
+  useEffect(()=>{ IA_CONV_CACHE[convCacheKey] = { history, convSystem, convLabel, followup, saved }; }, [convCacheKey, history, convSystem, convLabel, followup, saved]);
   const [memProps, setMemProps] = useState([]);     // memorias sugeridas pela IA (a revisar)
   const [memBusy, setMemBusy] = useState(false);    // turno extra "Sugerir memorias" em andamento
 
@@ -6877,15 +7114,19 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
   // censurado no material — antes a deteccao por escopo era inconsistente e a opcao sumia
   // em Trechos+Codigo / Documentos+Trechos+Codigo. A MASCARA em si continua precisa:
   // maskRedactedContent (texto integral) e maskQuoteText (citacoes, mascara parcial por span).
-  const docIdsInMaterial = scope==='codes'
-    ? new Set((allCodings||[]).filter(c=>selCodes.includes(c.code_id)).map(c=>c.document_id))
-    : new Set(selDocs);
-  // codigos de censura (is_redaction) presentes nesses documentos — um checkbox por codigo,
-  // default excluido (mascarado); marcar libera incluir aquele tipo nesta analise.
-  const redactionCodesPresent = [...new Set(
-      (allCodings||[]).filter(c=>docIdsInMaterial.has(c.document_id)).map(c=>c.code_id)
-    )].map(id=>codeById[id]).filter(c=>c && c.is_redaction);
-  const maskedCodeIds = new Set(redactionCodesPresent.filter(c=>!allowRedact[c.id]).map(c=>c.id));
+  // memoizado: isto rodava no corpo do componente a CADA render (inclusive a cada tecla no
+  // input de follow-up), varrendo allCodings inteiro — agora só quando a seleção/máscara muda
+  const { redactionCodesPresent, maskedCodeIds } = useMemo(()=>{
+    const docIdsInMaterial = scope==='codes'
+      ? new Set((allCodings||[]).filter(c=>selCodes.includes(c.code_id)).map(c=>c.document_id))
+      : new Set(selDocs);
+    // codigos de censura (is_redaction) presentes nesses documentos — um checkbox por codigo,
+    // default excluido (mascarado); marcar libera incluir aquele tipo nesta analise.
+    const present = [...new Set(
+        (allCodings||[]).filter(c=>docIdsInMaterial.has(c.document_id)).map(c=>c.code_id)
+      )].map(id=>codeById[id]).filter(c=>c && c.is_redaction);
+    return { redactionCodesPresent: present, maskedCodeIds: new Set(present.filter(c=>!allowRedact[c.id]).map(c=>c.id)) };
+  }, [scope, selCodes, selDocs, allCodings, codeById, allowRedact]);
 
   const docsBlock = ()=>{
     const chosen = docs.filter(d=>selDocs.includes(d.id));
@@ -6950,9 +7191,14 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
     }).join('\n\n');
   };
 
-  const rawMaterial = scope==='docs' ? docsBlock()
+  // memoizado: montar o material concatena (e mascara) o texto integral dos documentos
+  // selecionados — recalcular isso a cada tecla digitada no chat era o custo dominante da
+  // tela. Deps = tudo que os blocos leem (seleção, docs, codings, máscara, memos, categorias).
+  const rawMaterial = useMemo(()=>(
+    scope==='docs' ? docsBlock()
     : scope==='codes' ? codesBlock()
-    : docsWithCodingsBlock();
+    : docsWithCodingsBlock()
+  ), [scope, selDocs, selCodes, docs, allCodings, maskedCodeIds, codeById, memos, cats, allValues]); // eslint-disable-line
   const materialTruncated = rawMaterial.length > IA_TOTAL_CHAR_LIMIT;
   const buildMaterial = ()=> materialTruncated
     ? rawMaterial.slice(0, IA_TOTAL_CHAR_LIMIT) + '\n\n[...material truncado — limite de tamanho da requisição...]'
@@ -7024,17 +7270,29 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
 
   const canRun = hasSelection && !(isCustom && !customInstr.trim());
 
+  // aborto: uma chamada pendurada (modelo lento) podia ficar viva depois de trocar de tela,
+  // e não havia como o pesquisador cancelar. O controller vale pra análise/follow-up/memórias;
+  // desmontar o painel aborta o fetch em voo. AbortError não vira banner (foi intencional).
+  const abortRef = useRef(null);
+  const newAbort = ()=>{ abortRef.current?.abort(); const ac = new AbortController(); abortRef.current = ac; return ac; };
+  useEffect(()=>()=>abortRef.current?.abort(), []);
+  const isAbort = (e)=> e?.name==='AbortError' || /abort/i.test(String(e?.message||''));
+
+  const unsavedConv = history.length>0 && !saved;
+
   // 1o turno: trava o material no system e manda a tarefa do modo como 1a mensagem de usuario.
   const analyze = async ()=>{
     if(!canRun || busy) return;
+    if(unsavedConv && !confirm('Começar uma nova análise descarta a conversa atual, que não foi salva. Continuar?')) return;
     const system = buildSystem();
     const h = [{ role:'user', content: buildTask() }];
     setConvSystem(system); setConvLabel(isCustom ? 'Personalizado' : modes.find(m=>m.id===mode).label);
     setHistory(h); setFollowup(''); setSaved(false); setErr(''); setBusy(true);
+    const ac = newAbort();
     try{
-      const text = await askAIChat({ system, messages: h });
+      const text = await askAIChat({ system, messages: h, signal: ac.signal });
       setHistory(x=>[...x, { role:'assistant', content: text }]);
-    }catch(e){ setErr(String(e?.message || e)); }
+    }catch(e){ if(!isAbort(e)) setErr(String(e?.message || e)); }
     finally{ setBusy(false); }
   };
 
@@ -7045,14 +7303,19 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
     if(!text || busy || !convSystem) return;
     const h = [...history, { role:'user', content: text }];
     setHistory(h); setFollowup(''); setSaved(false); setErr(''); setBusy(true);
+    const ac = newAbort();
     try{
-      const reply = await askAIChat({ system: convSystem, messages: h });
+      const reply = await askAIChat({ system: convSystem, messages: h, signal: ac.signal });
       setHistory(x=>[...x, { role:'assistant', content: reply }]);
-    }catch(e){ setErr(String(e?.message || e)); }
+    }catch(e){ if(!isAbort(e)) setErr(String(e?.message || e)); }
     finally{ setBusy(false); }
   };
 
-  const resetConv = ()=>{ setHistory([]); setConvSystem(''); setConvLabel(''); setFollowup(''); setErr(''); setSaved(false); setMemProps([]); };
+  const resetConv = ()=>{
+    if(unsavedConv && !confirm('Limpar a conversa descarta as perguntas e respostas atuais, que não foram salvas. Continuar?')) return;
+    abortRef.current?.abort();
+    setHistory([]); setConvSystem(''); setConvLabel(''); setFollowup(''); setErr(''); setSaved(false); setMemProps([]);
+  };
 
   // "Sugerir memórias desta conversa": turno EXTRA, à parte da conversa em prosa, pedindo só um
   // JSON de memórias (não força a análise principal a virar JSON — preserva a UX conversacional).
@@ -7061,13 +7324,14 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
     if(!convSystem || memBusy || busy) return;
     setMemBusy(true); setErr('');
     const ask = { role:'user', content: 'Com base nesta conversa e no material, sugira memórias DURÁVEIS sobre o projeto que valham registrar (fatos/decisões, não observações triviais ou transitórias). Responda APENAS com um objeto JSON no formato { "memory": [ { "content": "fato/decisão em 1 frase", "reason": "por que vale lembrar, 1 linha" } ] }, no máximo 8 entradas. Se não houver nada relevante, devolva { "memory": [] }. Sem texto fora do JSON.' };
+    const ac = newAbort();
     try{
-      const text = await askAIChat({ system: convSystem, messages: [...history, ask], json: true });
+      const text = await askAIChat({ system: convSystem, messages: [...history, ask], json: true, signal: ac.signal });
       const parsed = parseAIJson(text);
       const props = validateMemProps(parsed?.memory);
       setMemProps(props);
       if(!props.length) setErr('A IA não sugeriu nenhuma memória desta conversa.');
-    }catch(e){ setErr(String(e?.message || e)); }
+    }catch(e){ if(!isAbort(e)) setErr(String(e?.message || e)); }
     finally{ setMemBusy(false); }
   };
 
@@ -7202,7 +7466,10 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
         </div>`)}
         ${busy && html`<div class="card" style="margin-bottom:10px">
           <div class="field-label" style="margin-bottom:6px">IA</div>
-          <div class="typing"><span></span><span></span><span></span></div>
+          <div class="row" style="gap:10px;align-items:center">
+            <div class="typing"><span></span><span></span><span></span></div>
+            <button class="btn sm ghost" onClick=${()=>abortRef.current?.abort()}>cancelar</button>
+          </div>
         </div>`}
         ${err && html`<div class="banner err" style="margin-top:10px">${err}</div>`}
         ${onAddMemory && html`<${MemoryProposalReview} proposals=${memProps} onCommit=${async (entries)=>{
@@ -7232,6 +7499,10 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
    Espelha o MemoEditor: cabeçalho com título + procedência, conteúdo da conversa (markdown)
    e botão de apagar. Mostrado quando se clica numa conversa na navegação. */
 function IAResultView({ result, onDelete }){
+  // apagar em dois passos (o botão vira "confirmar?"), mesmo padrão do AccountModal —
+  // era destrutivo em 1 clique, sem volta
+  const [confirming, setConfirming] = useState(false);
+  useEffect(()=>{ setConfirming(false); }, [result?.id]);
   if(!result) return html`<div class="empty">
     <div class="t">Selecione uma conversa</div>
     <div>Escolha uma conversa salva à esquerda para ver o conteúdo.</div>
@@ -7242,7 +7513,12 @@ function IAResultView({ result, onDelete }){
     <p class="h" style="margin-bottom:2px">${r.mode_label}</p>
     <p class="hint" style="margin:0 0 12px">${scopeLabel} · ${r.author_name||'anônimo'}${r.created_at?` · ${new Date(r.created_at).toLocaleString('pt-BR')}`:''}</p>
     <div class="card"><div dangerouslySetInnerHTML=${{__html: mdLite(r.result)}} /></div>
-    <div class="row" style="margin-top:10px"><button class="btn sm ghost" onClick=${()=>onDelete(r.id)}>apagar conversa</button></div>
+    <div class="row" style="margin-top:10px;gap:8px">
+      ${confirming
+        ? html`<button class="btn sm" style="color:var(--danger)" onClick=${()=>onDelete(r.id)}>confirmar exclusão?</button>
+               <button class="btn sm ghost" onClick=${()=>setConfirming(false)}>cancelar</button>`
+        : html`<button class="btn sm ghost" onClick=${()=>setConfirming(true)}>apagar conversa</button>`}
+    </div>
   </div>`;
 }
 
@@ -7304,6 +7580,7 @@ function MemoryProposalReview({ proposals, onCommit }){
 function MemoryPanel({ memory, onToggle, onDelete, onAdd, showAdd=true }){
   const [draft, setDraft] = useState('');
   const [adding, setAdding] = useState(false);
+  const [confirmDel, setConfirmDel] = useState(null); // id aguardando o 2º clique de "apagar"
   const list = memory||[];
   const activeN = list.filter(m=>m.active).length;
   async function addManual(){
@@ -7330,7 +7607,11 @@ function MemoryPanel({ memory, onToggle, onDelete, onAdd, showAdd=true }){
         <span class="meta">${m.reason && html`${m.reason} · `}${m.author_name||'anônimo'}
           · ${m.source==='manual' ? 'manual' : (m.ai_model || 'IA')}
           ${m.created_at ? ' · '+new Date(m.created_at).toLocaleDateString('pt-BR') : ''}</span>
-        <button class="btn sm ghost" style="flex:none" onClick=${()=>onDelete(m.id)}>apagar</button>
+        ${confirmDel===m.id
+          ? html`<span style="flex:none;display:inline-flex;gap:6px">
+              <button class="btn sm" style="color:var(--danger)" onClick=${()=>{ setConfirmDel(null); onDelete(m.id); }}>confirmar?</button>
+              <button class="btn sm ghost" onClick=${()=>setConfirmDel(null)}>cancelar</button></span>`
+          : html`<button class="btn sm ghost" style="flex:none" onClick=${()=>setConfirmDel(m.id)}>apagar</button>`}
       </div>
     </div>`)}
     ${showAdd && html`<div style="margin-top:8px">
@@ -7810,8 +8091,8 @@ function AddPaste({ onAdd }){
     <div class="field"><input class="txtin" placeholder="nome" value=${n} onInput=${e=>setN(e.target.value)} /></div>
     <div class="field"><textarea class="txtin" rows="8" placeholder="cole o texto aqui" value=${t} onInput=${e=>setT(e.target.value)} style="font-family:var(--serif);line-height:1.6"></textarea></div>
     <div class="row" style="justify-content:flex-end;gap:8px">
-      <button class="btn ghost" onClick=${()=>{setOpen(false);setN('');setT('');}}>cancelar</button>
-      <button class="btn primary" onClick=${()=>{ if(t.trim()){ onAdd(n,t); setOpen(false); setN(''); setT(''); } }}>Adicionar</button>
+      <button class="btn ghost" onClick=${()=>{ if(!t.trim() || confirm('Descartar o texto colado?')){ setOpen(false); setN(''); setT(''); } }}>cancelar</button>
+      <button class="btn primary" disabled=${!t.trim()} onClick=${()=>{ onAdd(n,t); setOpen(false); setN(''); setT(''); }}>Adicionar</button>
     </div>
   </div></div>`;
 }
@@ -7829,7 +8110,10 @@ function ProjectModal({ mode, user, project, projectMode, isAdmin, members, hasD
   const admins = list.filter(m=>m.role==='admin').length;
   const toIndividual = projectMode==='collective' && sel==='individual';
   const cloud = mode==='cloud';
-  const copyCode = async ()=>{ try{ await navigator.clipboard.writeText(project.code); setCopied(true); setTimeout(()=>setCopied(false),1500); }catch(e){} };
+  // falha de clipboard NÃO é mais silenciosa: o usuário achava que tinha copiado o código
+  // de convite e compartilhava nada — o botão agora avisa pra copiar manualmente (o código
+  // está visível na pill ao lado)
+  const copyCode = async ()=>{ try{ await navigator.clipboard.writeText(project.code); setCopied('ok'); }catch(e){ setCopied('fail'); } setTimeout(()=>setCopied(false),2500); };
 
   return html`<div class="modal-bg"><div class="modal" style="max-width:560px">
     <h2>${project?.name||'Projeto'}</h2>
@@ -7841,7 +8125,7 @@ function ProjectModal({ mode, user, project, projectMode, isAdmin, members, hasD
       <p class="hint" style="margin:0 0 8px">Esta é o código para acesso. Compartilhe com quem deve entrar no projeto (em <b>Meus projetos → Entrar com código</b>).</p>
       <div class="row" style="gap:8px;align-items:center">
         <span class="pill" style="font-family:var(--mono);font-size:16px;letter-spacing:.12em;padding:8px 14px">${project?.code}</span>
-        <button class="btn sm" onClick=${copyCode}>${copied?'copiado ✓':'copiar código'}</button>
+        <button class="btn sm" onClick=${copyCode}>${copied==='ok'?'copiado ✓':copied==='fail'?'não deu — selecione e copie ao lado':'copiar código'}</button>
       </div>
     </div>`}
 
@@ -8124,7 +8408,7 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
     <!-- IA: chave e modelo pessoais (opcional, BYOK) — gateado por AI_ENABLED -->
     ${AI_ENABLED && html`<div class="card" style="margin-bottom:12px">
       <div class="field-label">IA — chave e modelo pessoais (opcional)</div>
-      <p class="hint" style="margin:0 0 8px">Por padrão, as telas de IA usam a chave e o modelo compartilhados deste projeto. Preenchendo aqui, suas análises passam a usar a <b>sua</b> chave — ela viaja só na requisição até a função do servidor que chama o provedor escolhido; não fica guardada lá, só neste navegador.</p>
+      <p class="hint" style="margin:0 0 8px">Por padrão, as telas de IA usam a chave e o modelo compartilhados deste projeto — <b>reservados a contas institucionais</b> (e-mail @fgv.br / @fgv.edu.br, logado na nuvem); visitantes e contas de e-mail próprio usam a própria chave. Preenchendo aqui, suas análises passam a usar a <b>sua</b> chave (funciona em qualquer modo, inclusive local/arquivo) — ela viaja só na requisição até a função do servidor que chama o provedor escolhido; não fica guardada lá, só neste navegador.</p>
       <div class="field"><div class="field-label">Provedor</div>
         <div class="row" style="gap:6px;flex-wrap:wrap">
           ${AI_PROVIDERS.map(p=>html`<button key=${p.id} class="opt ${aiProvider===p.id?'on':''}"
@@ -8208,7 +8492,12 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
   </div></div>`;
 }
 
-try { render(html`<${App} />`, document.getElementById('app')); } catch(e){ showFatal((e&&e.stack)||(e&&e.message)||e); }
+try {
+  render(html`<${App} />`, document.getElementById('app'));
+  // boot concluido: a partir daqui, erro/rejection global NAO pode mais derrubar a tela
+  // (o listener do <head> troca showFatal por banner via __qlNotify — ver B1 no plano)
+  window.__qlBooted = true;
+} catch(e){ showFatal((e&&e.stack)||(e&&e.message)||e); }
 </script>
 </body>
 </html>
