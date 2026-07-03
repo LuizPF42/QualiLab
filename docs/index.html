@@ -41,6 +41,9 @@
     /* paleta FGV: azul-marinho (primario) + azul-celeste (acento). nomes --teal* mantidos por compatibilidade */
     --teal:#00427A; --teal-deep:#002B5C; --teal-soft:#E2ECF5; --sky:#1B9DD9;
     --amber:#8A6D1F; --amber-soft:#F3ECD9; --danger:#B23A3A;
+    /* estados de conexao da pilula do projeto: verde = arquivo (dados no disco do pesquisador),
+       violeta = nuvem pessoal (Supabase do proprio pesquisador) */
+    --ok:#256B43; --ok-soft:#E4F2E9; --violet:#5B3C96; --violet-soft:#EEE9F8;
     --serif:"Newsreader","Iowan Old Style",Palatino,Georgia,serif;
     --sans:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     --mono:"JetBrains Mono","SF Mono",ui-monospace,"Roboto Mono",Menlo,monospace;
@@ -54,6 +57,7 @@
     --line:#3A3A3C; --line-soft:#2E2E30;
     --teal:#4A9EDB; --teal-deep:#76BBEC; --teal-soft:#1A2E3F; --sky:#5BB8F5;
     --amber:#C8A84B; --amber-soft:#2E2510; --danger:#E06060;
+    --ok:#7CC79A; --ok-soft:#17281D; --violet:#B49DE0; --violet-soft:#251C38;
   }
   [data-theme="dark"] .banner.err{background:#3D1A1A;border-color:#7A3A3A;color:#F08080;}
   [data-theme="dark"] .reader-pane.theme-sepia{background:#2A2218;}
@@ -77,7 +81,13 @@
   .tag{font-size:11px;color:var(--ink-faint);letter-spacing:.04em;}
   .grow{flex:1;}
   .pill{font-size:12px;padding:4px 10px;border-radius:99px;border:1px solid var(--line);background:var(--surface);color:var(--ink);display:inline-flex;align-items:center;gap:6px;}
+  /* pilula do projeto: uma cor por estado de conexao (o texto ja diz o modo — cor e reforco).
+     local = neutra (sem classe); arquivo = verde; nuvem oficial = azul FGV; nuvem pessoal =
+     violeta; offline = ambar (nao esta salvando). bg/cor via var(--*) viram dark de graca. */
   .pill.mode-cloud{background:var(--teal-soft);border-color:rgba(0,66,122,.35);color:var(--teal-deep);}
+  .pill.mode-custom{background:var(--violet-soft);border-color:rgba(91,60,150,.4);color:var(--violet);}
+  .pill.mode-file{background:var(--ok-soft);border-color:rgba(37,107,67,.4);color:var(--ok);}
+  .pill.mode-offline{background:var(--amber-soft);border-color:var(--amber);color:var(--amber);}
   .btn{font-size:13px;font-weight:500;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:7px 12px;display:inline-flex;align-items:center;gap:7px;}
   .btn:hover{background:var(--paper);}
   .btn.primary{background:var(--teal);color:#fff;border:none;font-weight:600;}
@@ -258,9 +268,23 @@ async function getSqlJs(){
    policies de RLS. Se deixar vazio, o app abre em modo local. */
 let SUPABASE_URL = "https://lpfwnzotmltztfxacahb.supabase.co";
 let SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwZnduem90bWx0enRmeGFjYWhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4NzI2OTYsImV4cCI6MjA5NzQ0ODY5Nn0.qiygh5Nyhf7I7LS5R-z5cEW_hjMGgMbPpiUviMM2ev4";
+// Conexao PERSONALIZADA (card "Conexao (Supabase)" no hub do projeto): URL/key salvas no
+// localStorage VENCEM as credenciais embutidas — e o que permite apontar o app publicado pro
+// SEU proprio Supabase sem editar o arquivo. CUSTOM_SUPABASE marca esse estado (pilula
+// "nuvem pessoal" + botao "voltar ao servidor padrao"). Antes a precedencia era invertida
+// (embutidas venciam) e o card era inocuo no app publicado: o pesquisador digitava o Supabase
+// dele e o app recarregava conectado no oficial, sem avisar.
+// FORCE_LOCAL ('qualilab:forcelocal'): "Desconectar" de verdade — com credenciais embutidas,
+// so remover url/key do localStorage nao desconecta nada; a flag forca o boot em modo local.
+let CUSTOM_SUPABASE = false, FORCE_LOCAL = false;
 try {
-  SUPABASE_URL = SUPABASE_URL || localStorage.getItem('qualilab:url') || "";
-  SUPABASE_ANON_KEY = SUPABASE_ANON_KEY || localStorage.getItem('qualilab:key') || "";
+  const cu = localStorage.getItem('qualilab:url') || "", ck = localStorage.getItem('qualilab:key') || "";
+  if(cu && ck){
+    // apontar na mao pro proprio servidor padrao nao e "pessoal"
+    CUSTOM_SUPABASE = !(cu===SUPABASE_URL && ck===SUPABASE_ANON_KEY);
+    SUPABASE_URL = cu; SUPABASE_ANON_KEY = ck;
+  }
+  FORCE_LOCAL = localStorage.getItem('qualilab:forcelocal')==='1';
 } catch(e){}
 
 // AI_ENABLED — chave da unificacao dos forks. Este arquivo (ai-lab) e a FONTE UNICA: com
@@ -2009,13 +2033,20 @@ async function reopenLastFile(){
 }
 
 /* ============ STORE LOCAL (navegador) ============ */
+// quota tipica do localStorage em CARACTERES UTF-16 (~5M chars ≈ 5-10MB conforme o navegador).
+// Base do indicador PROATIVO de uso (a pilula avisa antes de estourar; o onSaveError so pega
+// o estouro depois que um save ja falhou).
+const LOCAL_QUOTA_CHARS = 5e6;
 function LocalStore(){
   let db = { documents:[], categories:[], doc_values:[], codes:[], codings:[], memos:[] };
   let name = 'pesquisador';
+  // uso do armazenamento: tamanho (em chars) do ultimo JSON salvo/carregado; _onUsage avisa o
+  // App a cada save pro indicador proativo de quota (mesmo padrao do _onSaveError)
+  let _onUsage = null, lastJsonLen = 0;
   // JSON corrompido (gravação interrompida, quota parcial) NÃO é descartado em silêncio:
   // o raw vai pra uma chave de resgate antes que o primeiro save() sobrescreva o dado —
   // dá pra recuperar à mão (DevTools → localStorage → 'qualilab:local:corrompido').
-  try { const raw = localStorage.getItem('qualilab:local'); if(raw) db = JSON.parse(raw); }
+  try { const raw = localStorage.getItem('qualilab:local'); if(raw){ db = JSON.parse(raw); lastJsonLen = raw.length; } }
   catch(e){
     try{ localStorage.setItem('qualilab:local:corrompido', localStorage.getItem('qualilab:local')||''); }catch(_){}
     try{ console.error('QualiLab: banco local ilegível — cópia bruta preservada em qualilab:local:corrompido', e); }catch(_){}
@@ -2067,12 +2098,14 @@ function LocalStore(){
     let json;
     try { json = JSON.stringify(db); localStorage.setItem('qualilab:local', json); _onSaveError?.(null); }
     catch(e){ _onSaveError?.(e); return; }
+    lastJsonLen = json.length; _onUsage?.(lastJsonLen);
     scheduleBackup(json);
   };
   const P = (v)=>Promise.resolve(v);
   return {
     mode:'local',
     onSaveError(cb){ _onSaveError=cb; },
+    onUsage(cb){ _onUsage=cb; cb(lastJsonLen); },
     onBackupStatus(cb){ _onBackupStatus=cb; cb({...backupStatus}); },
     async enableFolderBackup(){
       const handle = await window.showDirectoryPicker({mode:'readwrite'});
@@ -2090,7 +2123,7 @@ function LocalStore(){
       notifyBackup();
     },
     beginBatch(){ batching = true; },
-    endBatch(){ batching = false; if(dirty){ dirty = false; let json; try { json=JSON.stringify(db); localStorage.setItem('qualilab:local', json); _onSaveError?.(null); } catch(e){ _onSaveError?.(e); return; } scheduleBackup(json); } },
+    endBatch(){ batching = false; if(dirty){ dirty = false; let json; try { json=JSON.stringify(db); localStorage.setItem('qualilab:local', json); _onSaveError?.(null); } catch(e){ _onSaveError?.(e); return; } lastJsonLen=json.length; _onUsage?.(lastJsonLen); scheduleBackup(json); } },
     async init(display){ name = display || name; return { id:'local-user', name }; },
     currentUser(){ return { id:'local-user', name }; },
     async listMemos(){ return db.memos.slice(); },
@@ -2416,7 +2449,7 @@ function NavGroup({ title, children, defaultOpen=true }){
 
 /* ============================== APP ============================== */
 function App(){
-  const wantCloud = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
+  const wantCloud = !!(SUPABASE_URL && SUPABASE_ANON_KEY) && !FORCE_LOCAL;
   const [store, setStore] = useState(null);
   const [mode, setMode] = useState(wantCloud ? 'cloud' : 'local');
   // modo derivado inclui 'file' quando o store ativo é FileStore
@@ -2497,6 +2530,8 @@ function App(){
   }, [project]);
   const [online, setOnline] = useState(navigator.onLine);
   const [saveError, setSaveError] = useState(null); // ultima falha de gravacao local/arquivo (null = ok)
+  const [lastSaved, setLastSaved] = useState(null); // hora do ultimo save ok (local/arquivo) — "✓ salvo HH:MM"
+  const [localUsage, setLocalUsage] = useState(0);  // chars do JSON no localStorage (indicador de quota, so modo local)
   const [backupStatus, setBackupStatus] = useState({ active:false, name:null, lastOk:null, lastError:null, warnLarge:false }); // backup automatico em pasta (so LocalStore)
   const [sendCloudOpen, setSendCloudOpen] = useState(false); // modal "Enviar para a nuvem" (projeto local/arquivo -> projeto novo na nuvem)
   const [importMsg, setImportMsg] = useState(null);
@@ -2641,7 +2676,8 @@ function App(){
     const goOffline = ()=>setOnline(false);
     window.addEventListener('online', goOnline);
     window.addEventListener('offline', goOffline);
-    if(store?.onSaveError) store.onSaveError(setSaveError);
+    if(store?.onSaveError) store.onSaveError(e=>{ setSaveError(e); if(!e) setLastSaved(new Date()); });
+    if(store?.onUsage) store.onUsage(setLocalUsage);
     if(store?.onBackupStatus) store.onBackupStatus(setBackupStatus);
     return ()=>{ window.removeEventListener('online',goOnline); window.removeEventListener('offline',goOffline); };
   }, [store]);
@@ -3445,10 +3481,23 @@ function App(){
         </div>`}
       </div>
       <div class="top-row">
-        ${project && html`<button class="pill ${mode==='cloud'?'mode-cloud':''}" style="cursor:pointer"
-          title="Gerenciar projeto" onClick=${()=>setProjEdit(true)}>
-          ${store?.mode==='file'?'arquivo':mode==='cloud'?'nuvem':'local'} · ${project.name}${mode==='cloud'?` · ${project.code}`:''} · ${projectMode==='individual'?'individual':'coletivo'} ▾
-        </button>`}
+        ${project && (()=>{ /* pilula do projeto: cor + rotulo + tooltip por estado de conexao */
+          const cs = store?.mode==='file' ? 'file' : mode!=='cloud' ? 'local' : !online ? 'offline' : CUSTOM_SUPABASE ? 'custom' : 'cloud';
+          const csLabel = { file:'arquivo', local:'local', cloud:'nuvem', custom:'nuvem pessoal', offline:'nuvem' }[cs];
+          const csTitle = {
+            file:'Projeto em ARQUIVO (.qualilab) no seu disco — os dados ficam só no seu dispositivo. Clique para gerenciar.',
+            local:'Projeto LOCAL (armazenamento deste navegador) — os dados ficam só neste dispositivo.'
+              + (localUsage>0?` Usando ~${Math.max(1,Math.round(localUsage/LOCAL_QUOTA_CHARS*100))}% do limite (~5 MB).`:'')
+              + ' Clique para gerenciar.',
+            cloud:'Projeto na NUVEM — servidor padrão do QualiLab (Supabase). Clique para gerenciar.',
+            custom:`Projeto na nuvem — no SEU servidor Supabase (${SUPABASE_URL}). Clique para gerenciar.`,
+            offline:'Sem conexão com a nuvem — as alterações NÃO estão sendo salvas. Clique para gerenciar.',
+          }[cs];
+          return html`<button class="pill ${cs==='local'?'':'mode-'+cs}" style="cursor:pointer"
+            title=${csTitle} onClick=${()=>setProjEdit(true)}>
+            ${csLabel} · ${project.name}${mode==='cloud'?` · ${project.code}`:''} · ${projectMode==='individual'?'individual':'coletivo'} ▾
+          </button>`;
+        })()}
         ${user && html`<button class="btn sm ghost" title=${'Minha conta'+(user.email?' · '+user.email:'')} onClick=${()=>setAccount(true)}>${user.name}${user.anon?' (visitante)':''}</button>`}
         ${mode==='cloud' && html`<button class="btn sm ghost" onClick=${()=>{ try{localStorage.removeItem('qualilab:project');}catch(e){} setProject(null); setPhase('gate'); }}>trocar projeto</button>`}
         ${mode==='cloud' && user && html`<button class="btn sm ghost" onClick=${async()=>{ try{localStorage.removeItem('qualilab:project');}catch(e){} try{ await store.signOut(); }catch(e){} setProject(null); setUser(null); setDocs([]); setActiveId(null); setPhase('auth'); }}>sair</button>`}
@@ -3480,7 +3529,12 @@ function App(){
             </div>
           </div>`}
         </div>`}
-        ${mode==='cloud' && !online && html`<span class="pill" style="background:#FEF3C7;border-color:#D97706;color:#92400E;font-size:11px" title="Sem conexão: alterações NÃO estão sendo salvas na nuvem — aguarde reconectar antes de continuar">offline — alterações não salvas</span>`}
+        ${mode==='cloud' && !online && html`<span class="pill mode-offline" style="font-size:11px" title="Sem conexão: alterações NÃO estão sendo salvas na nuvem — aguarde reconectar antes de continuar">offline — alterações não salvas</span>`}
+        ${store?.mode==='local' && localUsage>=0.75*LOCAL_QUOTA_CHARS && html`<span class="pill mode-offline" style="font-size:11px"
+          title="O armazenamento deste navegador (~5 MB) está quase cheio: quando estourar, NADA mais é salvo. Baixe um .qualilab agora e considere migrar para o modo arquivo ou nuvem (pílula do projeto → Conexão).">
+          armazenamento ${Math.round(localUsage/LOCAL_QUOTA_CHARS*100)}% cheio</span>`}
+        ${(store?.mode==='local'||store?.mode==='file') && lastSaved && !saveError && html`<span class="meta"
+          title=${'Última gravação '+(store?.mode==='file'?'no arquivo':'neste navegador')+' às '+lastSaved.toTimeString().slice(0,8)}>✓ salvo ${lastSaved.toTimeString().slice(0,5)}</span>`}
       </div>
       <input ref=${qualilabInputRef} type="file" accept=".qualilab" style="display:none" onChange=${e=>{ if(e.target.files[0]) doImportQualilab(e.target.files[0]); e.target.value=''; }} />
       <input ref=${qdpxInputRef} type="file" accept=".qdpx" style="display:none" onChange=${e=>{ if(e.target.files[0]) doImportQDPX(e.target.files[0]); e.target.value=''; }} />
@@ -3689,6 +3743,13 @@ function App(){
         view=${viewCoder} onView=${setViewCoder} coders=${coders} userId=${user?.id} mode=${mode}
         allCodings=${allCodings} allValues=${allValues} projectMode=${projectMode}
         isAdmin=${isAdmin} darkMode=${darkMode}
+        onOpenCode=${(codeId, opts={})=>{ /* grafico → trechos: abre a Visualização já no código
+          clicado, LEVANDO o filtro de categorias do gráfico junto (senão a contagem da barra
+          não bate com os trechos exibidos); cross = par de co-ocorrência (célula da matriz) */
+          setVizSelCode(codeId);
+          setVizCross(opts.cross?[opts.cross,'']:['','']);
+          setVizCatFilter(opts.filter||{});
+          setMainView('visualizar'); }}
         onDelCoding=${async id=>{ await delCoding(id); loadAll(); }}
         onAccept=${async c=>{ await addFinalCoding(c.document_id, c.code_id, c.span_start, c.span_end, c.quote); loadAll(); }}
         onJump=${(docId)=>{ setActiveId(docId); setMainView('codificar'); }} />
@@ -3858,8 +3919,10 @@ function App(){
     onClose=${()=>setProjEdit(false)} onSetMode=${changeProjectMode}
     onSetRole=${changeMemberRole} onRemoveMember=${removeMember}
     onRename=${renameProject} onClear=${()=>{ setProjEdit(false); doClearProject(); }} onDelete=${deleteProject}
-    onSaveCloud=${(url,key)=>{ try{localStorage.setItem('qualilab:url',url);localStorage.setItem('qualilab:key',key);}catch(e){} location.reload(); }}
-    onClearCloud=${()=>{ try{localStorage.removeItem('qualilab:url');localStorage.removeItem('qualilab:key');localStorage.removeItem('qualilab:project');}catch(e){} location.reload(); }}
+    onSaveCloud=${(url,key)=>{ try{localStorage.setItem('qualilab:url',url);localStorage.setItem('qualilab:key',key);localStorage.removeItem('qualilab:forcelocal');}catch(e){} location.reload(); }}
+    onClearCloud=${()=>{ /* desconectar = modo local de verdade (FORCE_LOCAL); mantem url/key salvas pra reconectar facil */ try{localStorage.setItem('qualilab:forcelocal','1');localStorage.removeItem('qualilab:project');}catch(e){} location.reload(); }}
+    onResetCloud=${()=>{ /* volta ao servidor padrao: descarta as credenciais pessoais */ try{localStorage.removeItem('qualilab:url');localStorage.removeItem('qualilab:key');localStorage.removeItem('qualilab:project');localStorage.removeItem('qualilab:forcelocal');}catch(e){} location.reload(); }}
+    onReconnectCloud=${()=>{ try{localStorage.removeItem('qualilab:forcelocal');}catch(e){} location.reload(); }}
     canFolderBackup=${!!store?.enableFolderBackup} backupStatus=${backupStatus}
     onEnableFolderBackup=${enableFolderBackup} onDisableFolderBackup=${disableFolderBackup}
     canSendToCloud=${wantCloud && store?.mode!=='cloud'} onOpenSendToCloud=${()=>{ setProjEdit(false); setSendCloudOpen(true); }} />`}
@@ -7627,7 +7690,7 @@ function MemoryPanel({ memory, onToggle, onDelete, onAdd, showAdd=true }){
    daquele recorte no VizExcerpts (mesma leitura da aba Visualizar). Abas:
    freq · co-ocorrência · cobertura · código×atributo · tempo. */
 function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allValues, projectMode,
-                       view, onView, coders, userId, mode, isAdmin, onDelCoding, onAccept, onJump, darkMode }){
+                       view, onView, coders, userId, mode, isAdmin, onDelCoding, onAccept, onJump, darkMode, onOpenCode }){
   const isIndividual = projectMode==='individual';
   const closedCats = (cats||[]).filter(c=>CAT_HAS_OPTIONS(c.kind));
   const dateCats   = (cats||[]).filter(c=>c.kind==='date');
@@ -7820,8 +7883,9 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
   // ---- gráfico ativo (um SVG por aba)
   let chart=null, hint=null;
   if(tab==='freq'){
-    hint = 'Nº de trechos codificados com cada código.';
-    chart = freqItems.length===0 ? null : svgHBars(freqItems.slice(0,topN), { w:cw });
+    hint = 'Nº de trechos codificados com cada código.' + (onOpenCode?' Clique numa barra para ver os trechos.':'');
+    chart = freqItems.length===0 ? null : svgHBars(freqItems.slice(0,topN), { w:cw,
+      onClick: onOpenCode ? (it)=>onOpenCode(it.key, {filter:catFilter}) : null });
   } else if(tab==='nuvem'){
     hint = cloudCodes.size===1
       ? `Palavras do código «${codeLabelOf([...cloudCodes][0])}» e subcódigos (tamanho ∝ frequência). Stopwords removidas; sem lematização.`
@@ -7830,20 +7894,24 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
       : 'Palavras dos trechos codificados, coloridas pelo código predominante (tamanho ∝ frequência). Stopwords removidas; sem lematização.';
     chart = wordCloud.length===0 ? null : svgWordCloud(wordCloud.slice(0,topN), { w:cw, h:ch });
   } else if(tab==='cobertura'){
-    hint = '% do corpus coberto por cada código (sobreposições mescladas) — peso real, não só contagem.';
+    hint = '% do corpus coberto por cada código (sobreposições mescladas) — peso real, não só contagem.' + (onOpenCode?' Clique numa barra para ver os trechos.':'');
     chart = coverItems.length===0 ? null
-      : svgHBars(coverItems.slice(0,topN), { w:cw, color:'var(--sky)', fmt:(v)=>v.toFixed(2)+'%' });
+      : svgHBars(coverItems.slice(0,topN), { w:cw, color:'var(--sky)', fmt:(v)=>v.toFixed(2)+'%',
+          onClick: onOpenCode ? (it)=>onOpenCode(it.key, {filter:catFilter}) : null });
   } else if(tab==='cooc'){
     hint = (coocX.size||coocY.size)
       ? 'Trechos sobrepostos no mesmo documento entre os códigos de cada eixo (linha = Y, coluna = X). Diagonal do mesmo código fica vazia.'
       : 'Trechos sobrepostos no mesmo documento (12 códigos mais frequentes em cada eixo — escolha os eixos no painel à esquerda).';
+    if(onOpenCode) hint += ' Clique numa célula para ver os trechos sobrepostos.';
     chart = (cooc.rows.length===0 || cooc.cols.length===0) ? null
       : svgHeat(cooc.rows, cooc.cols, (r,c)=> r.id===c?null:(cooc.m[r.id]?.[c]||0), cooc.max, {
-          W:cw, colLabel:(id)=>codeLabelOf(id), rowColor:(r)=>codeColorOf(r.id), colColor:(id)=>codeColorOf(id) });
+          W:cw, colLabel:(id)=>codeLabelOf(id), rowColor:(r)=>codeColorOf(r.id), colColor:(id)=>codeColorOf(id),
+          onClick: onOpenCode ? (r,c,n)=>{ if(n && r.id!==c) onOpenCode(r.id, {cross:c, filter:catFilter}); } : null });
   } else if(tab==='cruz'){
-    hint = 'Nº de trechos de cada código nos documentos com cada valor da categoria.';
+    hint = 'Nº de trechos de cada código nos documentos com cada valor da categoria.' + (onOpenCode?' Clique numa célula para ver os trechos.':'');
     chart = (!cat || crossTab.rows.length===0) ? null
-      : svgHeat(crossTab.rows, crossTab.cols, (r,c)=>r.cells[c]||0, crossTab.max, { W:cw, colLabel:(v)=>v, rowColor:(r)=>codeColorOf(r.id) });
+      : svgHeat(crossTab.rows, crossTab.cols, (r,c)=>r.cells[c]||0, crossTab.max, { W:cw, colLabel:(v)=>v, rowColor:(r)=>codeColorOf(r.id),
+          onClick: onOpenCode ? (r,c,n)=>{ if(n) onOpenCode(r.id, {filter:{...catFilter, [catId]:c}}); } : null });
   } else if(tab==='tempo'){
     hint = 'Trechos codificados por ano (data consolidada do documento).';
     chart = timeData.length===0 ? null : svgHBars(timeData, { w:cw, color:'var(--teal-deep)' });
@@ -7852,8 +7920,9 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
       hint = 'Nº de trechos codificados por cada pesquisador (camada individual).';
       chart = prodItems.length===0 ? null : svgHBars(prodItems, { w:cw, color:'var(--amber)' });
     } else {
-      hint = 'Quantos pesquisadores diferentes aplicaram cada código (concordância).';
-      chart = agreeItems.length===0 ? null : svgHBars(agreeItems, { w:cw });
+      hint = 'Quantos pesquisadores diferentes aplicaram cada código (concordância).' + (onOpenCode?' Clique numa barra para ver os trechos.':'');
+      chart = agreeItems.length===0 ? null : svgHBars(agreeItems, { w:cw,
+        onClick: onOpenCode ? (it)=>onOpenCode(it.key, {filter:catFilter}) : null });
     }
   }
 
@@ -8100,7 +8169,7 @@ function AddPaste({ onAdd }){
 /* ============ HUB DO PROJETO (tipo, convite, membros, conexão, zona de perigo) ============ */
 function ProjectModal({ mode, user, project, projectMode, isAdmin, members, hasDocs,
                         onClose, onSetMode, onSetRole, onRemoveMember, onRename, onClear, onDelete,
-                        onSaveCloud, onClearCloud, canFolderBackup, backupStatus, onEnableFolderBackup, onDisableFolderBackup,
+                        onSaveCloud, onClearCloud, onResetCloud, onReconnectCloud, canFolderBackup, backupStatus, onEnableFolderBackup, onDisableFolderBackup,
                         canSendToCloud, onOpenSendToCloud }){
   const [sel,setSel]=useState(projectMode);
   const [pname,setPname]=useState(project?.name||'');
@@ -8221,12 +8290,20 @@ function ProjectModal({ mode, user, project, projectMode, isAdmin, members, hasD
       <summary style="cursor:pointer;font-size:12.5px;color:var(--ink-soft)">Conexão (Supabase)</summary>
       <div style="margin-top:10px">
       ${cloud
-        ? html`<div><p class="hint">Conectado ao Supabase. Desconectar volta ao modo local (sem servidor).</p>
-            <button class="btn sm ghost" onClick=${onClearCloud}>Desconectar do Supabase</button></div>`
-        : html`<div><p class="hint">Para ativar o modo coletivo, informe a URL e a anon key do seu projeto Supabase (salvas só neste navegador).</p>
+        ? html`<div><p class="hint">${CUSTOM_SUPABASE
+              ? html`Conectado ao <b>seu</b> servidor Supabase: <b>${SUPABASE_URL}</b>. Voltar ao servidor padrão descarta essas credenciais; desconectar volta ao modo local (sem servidor).`
+              : 'Conectado ao servidor padrão do QualiLab (Supabase). Desconectar volta ao modo local (sem servidor).'}</p>
+            <div class="row" style="gap:8px;flex-wrap:wrap">
+              ${CUSTOM_SUPABASE && html`<button class="btn sm" onClick=${onResetCloud}>Voltar ao servidor padrão</button>`}
+              <button class="btn sm ghost" onClick=${onClearCloud}>Desconectar (modo local)</button>
+            </div></div>`
+        : html`<div><p class="hint">Para usar a nuvem, informe a URL e a anon key do seu projeto Supabase (salvas só neste navegador)${(SUPABASE_URL&&SUPABASE_ANON_KEY)?' — ou reconecte ao servidor salvo':''}.</p>
             <div class="field"><div class="field-label">Supabase URL</div><input class="txtin" value=${url} onInput=${e=>setUrl(e.target.value)} placeholder="https://xxxx.supabase.co" /></div>
             <div class="field"><div class="field-label">Anon key</div><input class="txtin" value=${key} onInput=${e=>setKey(e.target.value)} placeholder="eyJhbGciOi..." /></div>
-            <button class="btn sm primary" disabled=${!url||!key} onClick=${()=>onSaveCloud(url.trim(),key.trim())}>Conectar e recarregar</button></div>`}
+            <div class="row" style="gap:8px;flex-wrap:wrap">
+              <button class="btn sm primary" disabled=${!url||!key} onClick=${()=>onSaveCloud(url.trim(),key.trim())}>Conectar e recarregar</button>
+              ${(SUPABASE_URL&&SUPABASE_ANON_KEY) && html`<button class="btn sm ghost" title=${'Reconecta a '+SUPABASE_URL} onClick=${onReconnectCloud}>Reconectar à nuvem</button>`}
+            </div></div>`}
       </div>
     </details>
 
