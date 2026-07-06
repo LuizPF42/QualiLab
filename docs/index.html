@@ -207,7 +207,15 @@
   .exmenu{position:absolute;right:0;top:112%;z-index:41;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.14);overflow:hidden;min-width:212px;}
   .exmenu button{display:block;width:100%;text-align:left;border:none;background:var(--surface);padding:9px 12px;font-size:13px;color:var(--ink);cursor:pointer;font-family:var(--sans);}
   .exmenu button:hover{background:var(--paper);}
+  .exmenu button:disabled:hover{background:var(--surface);}
   .drag-handle{cursor:grab;color:var(--ink-faint);padding:0 4px;user-select:none;flex-shrink:0}
+
+  /* Quadro branco espacial dos codigos (Esquema -> Mapa) */
+  .mapwrap{position:absolute;inset:0;overflow:hidden;background:var(--paper);}
+  .mapwrap svg{position:absolute;inset:0;width:100%;height:100%;display:block;}
+  .map-zoom{position:absolute;right:10px;bottom:10px;z-index:5;background:var(--surface);border:1px solid var(--line-soft);border-radius:6px;padding:2px 7px;font-size:11px;font-family:var(--mono);color:var(--ink-soft);pointer-events:none;}
+  .map-hint{position:absolute;left:50%;transform:translateX(-50%);top:12px;z-index:5;background:var(--surface);border:1px solid var(--line-soft);border-radius:20px;padding:4px 13px;font-size:11.5px;color:var(--ink-soft);pointer-events:none;white-space:nowrap;max-width:calc(100% - 24px);overflow:hidden;text-overflow:ellipsis;}
+  .map-node-label{font-family:var(--sans);font-size:11px;fill:var(--ink);pointer-events:none;user-select:none;}
 
   /* Relatório: ao imprimir, esconde tudo menos o relatório e remove cromo da página */
   @media print{
@@ -1504,7 +1512,7 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress){
       await store.addCategory(projectId, { id:catMap[c.id], name:c.name, kind:c.kind, options:c.options||[], description:c.description||'', color:c.color||0, position:i }); await tick(); }
     const codesSorted = (db.codes||[]).slice().sort((a,b)=>(a.position??0)-(b.position??0));
     for(let i=0;i<codesSorted.length;i++){ const c=codesSorted[i];
-      await store.addCode(projectId, { id:codeMap[c.id], parent_id:c.parent_id?codeMap[c.parent_id]:null, name:c.name, hue:c.hue||0, depth:c.depth||0, hue_deg:c.hue_deg??null, is_redaction:!!c.is_redaction, position:i }); await tick(); }
+      await store.addCode(projectId, { id:codeMap[c.id], parent_id:c.parent_id?codeMap[c.parent_id]:null, name:c.name, hue:c.hue||0, depth:c.depth||0, hue_deg:c.hue_deg??null, is_redaction:!!c.is_redaction, pos_x:c.pos_x??null, pos_y:c.pos_y??null, position:i }); await tick(); }
 
     // doc_values: em destino COLETIVO, cada resposta individual do arquivo de origem (com seu
     // proprio author_name) vira uma linha independente via addDocValue — igual addCoding ja
@@ -3126,7 +3134,7 @@ function App(){
   async function buildQualilabDb(){
     const documents = docs.map(d=>({ id:d.id, name:d.name, content:d.content, created_at:d.created_at||new Date().toISOString() }));
     const categories = cats.map((c,i)=>({ id:c.id, position:c.position??i, name:c.name, kind:c.kind, options:c.options||[], description:c.description||'', color:c.color||0 }));
-    const codesOut = codes.map((c,i)=>({ id:c.id, position:c.position??i, parent_id:c.parent_id||null, name:c.name, hue:c.hue||0, depth:c.depth||0, hue_deg:c.hue_deg??null, is_redaction:!!c.is_redaction }));
+    const codesOut = codes.map((c,i)=>({ id:c.id, position:c.position??i, parent_id:c.parent_id||null, name:c.name, hue:c.hue||0, depth:c.depth||0, hue_deg:c.hue_deg??null, is_redaction:!!c.is_redaction, pos_x:c.pos_x??null, pos_y:c.pos_y??null }));
     const doc_values=[], codings=[];
     for(const d of docs){
       const [v,co]=await Promise.all([store.getDocValues(d.id), store.listCodings(project.id, d.id)]);
@@ -4361,6 +4369,12 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
   const [busy, setBusy] = useState(false);
   const [dragId, setDragId] = useState(null); // drag-and-drop pra reordenar codigos entre irmaos (mesmo parent_id)
   const [overId, setOverId] = useState(null); // alvo sob o cursor durante o arrasto (indicador de destino)
+  const [schemaMode, setSchemaMode] = useState('arvore'); // arvore (lista hierarquica) | mapa (quadro branco espacial)
+  // controles do mapa vivem no pane-head (nao flutuando sobre o canvas): estado aqui, o canvas
+  // consome tool/showLinks e expoe fit/reshuffle via mapApiRef (gatilhos, sem re-render do pai)
+  const [mapTool, setMapTool] = useState('select');   // select (laço) | pan (mover a tela)
+  const [mapShowLinks, setMapShowLinks] = useState(true);
+  const mapApiRef = useRef({});
 
   const tops = codes.filter(c=>!c.parent_id);
   const childrenOf = (id)=>codes.filter(c=>c.parent_id===id);
@@ -4475,10 +4489,33 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
     } finally { setBusy(false); }
   }
 
-  return html`<div class="split">
-    <section class="pane" style="flex:1;min-width:0;border-right:1px solid var(--line)">
-      <div class="pane-body scroll" style="padding:14px">
-        <p class="h" style="margin:0 0 10px">🖍️ Esquema de códigos</p>
+  // promove um ou varios codigos para Hierarquia 0 (reusa reparentSubtree; batch p/ familia grande)
+  async function promoteManyToRoot(ids){
+    const list = ids.map(id=>codeById[id]).filter(c=>c && c.parent_id);
+    if(!list.length) return;
+    setBusy(true);
+    if(store.beginBatch) store.beginBatch();
+    try{ for(const c of list){ await reparentSubtree(c.id, null, 0, null); } }
+    finally{ if(store.endBatch) await store.endBatch(); setBusy(false); }
+    await reload(); clearSelection();
+  }
+  // agrupa a selecao sob um NOVO pai (Hierarquia 0), pedindo o nome — reusa handleGroup(null,...)
+  async function handleGroupNew(ids){
+    const name = prompt('Nome do novo agrupamento (nova família no topo):', 'Novo agrupamento');
+    if(name===null) return;
+    await handleGroup(null, name||'Novo agrupamento', ids);
+  }
+  // grava as posicoes x,y do mapa em lote (drag de varios / reembaralhar) — 1 batch + 1 reload,
+  // em vez de um save por no (onUpd faria isso). entries: [{id,x,y}]
+  async function persistPositions(entries){
+    if(!entries.length) return;
+    if(store.beginBatch) store.beginBatch();
+    try{ await Promise.all(entries.map(e=> store.updateCode(e.id, { pos_x:e.x, pos_y:e.y }))); }
+    finally{ if(store.endBatch) await store.endBatch(); }
+    await reload();
+  }
+
+  const treeBody = html`<div class="pane-body scroll" style="padding:14px">
         <div class="row" style="gap:6px;margin-bottom:10px;flex-wrap:wrap">
           <button class="btn sm" onClick=${()=>onAdd(selCode?codeById[selCode]:null)} disabled=${!selCode}
             title=${selCode?`filho de ${codeById[selCode]?.name}`:'selecione um código'}>＋ subcódigo</button>
@@ -4501,7 +4538,36 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
               ${count[c.id]?html`<span class="count">${count[c.id]}</span>`:''}
             </div>`)}
         </div>
+      </div>`;
+
+  return html`<div class="split">
+    <section class="pane" style="flex:1;min-width:0;border-right:1px solid var(--line)">
+      <div class="pane-head" style="flex:none">
+        <p class="h" style="margin:0">🖍️ Esquema de códigos</p>
+        <div class="seg" style="margin-left:8px">
+          <button class=${schemaMode==='arvore'?'on':''} onClick=${()=>setSchemaMode('arvore')}>🌳 Árvore</button>
+          <button class=${schemaMode==='mapa'?'on':''} onClick=${()=>setSchemaMode('mapa')} title="quadro branco espacial">🗺️ Mapa</button>
+        </div>
+        ${schemaMode==='mapa' && html`<div class="row" style="gap:6px;align-items:center;margin-left:4px">
+          <div class="seg">
+            <button class=${mapTool==='select'?'on':''} onClick=${()=>setMapTool('select')} title="selecionar / laço">▚</button>
+            <button class=${mapTool==='pan'?'on':''} onClick=${()=>setMapTool('pan')} title="mover a tela">🖐</button>
+          </div>
+          <button class="btn sm ghost" onClick=${()=>mapApiRef.current.fit?.()} title="ajustar à tela">⤢ ajustar</button>
+          <button class="btn sm ghost" onClick=${()=>mapApiRef.current.reshuffle?.()} title="reembaralhar posições (sobrescreve o layout)">🎲 reembaralhar</button>
+          <button class="btn sm ghost" onClick=${()=>setMapShowLinks(v=>!v)} title="mostrar/ocultar as linhas de hierarquia">${mapShowLinks?'☑':'☐'} linhas</button>
+        </div>`}
+        <span class="meta" style="margin-left:auto">${codes.length} código(s)</span>
       </div>
+      ${schemaMode==='arvore' ? treeBody
+        : html`<div class="pane-body" style="position:relative;padding:0;overflow:hidden;min-height:0">
+            <${SchemaMapView} codes=${codes} codeById=${codeById} codePath=${codePath} count=${count}
+              selCode=${selCode} setSelCode=${setSelCode} selectedIds=${selectedIds} setSelectedIds=${setSelectedIds}
+              onUpd=${onUpd} onPersistPositions=${persistPositions}
+              onMoveInto=${(t,ids)=>handleGroup(t,'',ids)} onMerge=${handleMerge} onGroupNew=${handleGroupNew}
+              onPromote=${promoteManyToRoot} onAdd=${onAdd} onDel=${onDel} isAdmin=${isAdmin} busy=${busy}
+              tool=${mapTool} showLinks=${mapShowLinks} apiRef=${mapApiRef} />
+          </div>`}
     </section>
     <aside class="pane" style="flex:0 0 300px;min-width:0;background:var(--paper)">
       <div class="pane-body scroll" style="padding:14px">
@@ -4601,6 +4667,250 @@ function SchemaBulkPanel({ selectedIds, codes, codeById, count, onMerge, onGroup
     </div>`}
 
     <button class="btn sm ghost" style="margin-top:10px;width:100%" onClick=${onClear}>limpar seleção</button>
+  </div>`;
+}
+
+/* hash deterministico (FNV-1a) de um id -> usado pro placement inicial estavel/reproduzivel do
+   mapa, sem Math.random (mesmo id sempre cai no mesmo lugar entre renders) */
+function mapStrHash(s){ let h=2166136261; s=s||''; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); } return (h>>>0); }
+/* raio do no proporcional ao nº de usos (area ~ count): cavalo-de-batalha grande, fragmentacao pequena */
+function mapNodeRadius(n){ return Math.max(13, Math.min(46, 13 + Math.sqrt(n||0)*3.2)); }
+
+/* SchemaMapView — quadro branco espacial dos codigos (aba Esquema -> Mapa). Motor visual: SVG na
+   mao (como ChartsPanel), pan/zoom por transform, posicao x,y persistida por no. Gesto: esquerdo
+   seleciona (Ctrl/laço = varios), DIREITO abre menu contextual cujo alvo e o DESTINO (mover/mesclar
+   a selecao pra ca) — todas as acoes reusam os handlers de SchemaCodesView (nada de gravacao
+   paralela). Manchas/hulls e força continua ficam pra rodada seguinte. */
+function SchemaMapView({ codes, codeById, count, selCode, setSelCode, selectedIds, setSelectedIds,
+                         onUpd, onPersistPositions, onMoveInto, onMerge, onGroupNew, onPromote, onAdd, onDel, isAdmin, busy,
+                         tool, showLinks, apiRef }){
+  const wrapRef = useRef(null), svgRef = useRef(null);
+  const [positions, setPositions] = useState({}); // id -> {x,y} em coordenadas de mundo
+  const posRef = useRef(positions);
+  const [tf, setTf] = useState({ tx:0, ty:0, k:1 }); // screen = world*k + t
+  const tfRef = useRef(tf);
+  // tool/showLinks vem do pai (controles vivem no pane-head, nao flutuando sobre o canvas)
+  const [lasso, setLasso] = useState(null);    // {x0,y0,x1,y1} em px de tela (rel. ao svg)
+  const [menu, setMenu] = useState(null);      // {x,y,targetId}
+  const [movePick, setMovePick] = useState(null); // ids aguardando clique no codigo-destino ("mover para dentro de...")
+  const act = useRef({ type:'idle' });
+  const didFit = useRef(false);
+
+  useEffect(()=>{ posRef.current = positions; }, [positions]);
+  useEffect(()=>{ tfRef.current = tf; }, [tf]);
+
+  const familyOf = (id)=>{ let c=codeById[id], guard=0; while(c && c.parent_id && guard++<50) c=codeById[c.parent_id]; return c?c.id:id; };
+  const radiusOf = (id)=> mapNodeRadius(count[id]||0);
+
+  // ---- LAYOUT: mantem posicoes salvas/existentes fixas, calcula so os nao posicionados, colide ----
+  function computeLayout(list, prev){
+    const roots = list.filter(c=>!c.parent_id);
+    const N = roots.length||1, cols = Math.ceil(Math.sqrt(N)), gap = 260;
+    const anchor = {};
+    roots.forEach((r,i)=>{ anchor[r.id] = { x:(i%cols)*gap, y:Math.floor(i/cols)*gap }; });
+    const pos = {}, fixed = new Set();
+    for(const c of list){
+      if(prev && prev[c.id]){ pos[c.id]={...prev[c.id]}; fixed.add(c.id); }
+      else if(c.pos_x!=null && c.pos_y!=null){ pos[c.id]={x:c.pos_x, y:c.pos_y}; fixed.add(c.id); }
+    }
+    for(const c of list){
+      if(pos[c.id]) continue;
+      const a = anchor[familyOf(c.id)] || {x:0,y:0}, h = mapStrHash(c.id);
+      if(!c.parent_id) pos[c.id] = { x:a.x + ((h%13)-6), y:a.y + (((h>>4)%13)-6) };
+      else { const ang=(h%360)*Math.PI/180, rad=45 + c.depth*22 + ((h>>3)%50); pos[c.id]={ x:a.x+Math.cos(ang)*rad, y:a.y+Math.sin(ang)*rad }; }
+    }
+    collide(pos, fixed, list);
+    return pos;
+  }
+  // relaxamento de colisao simples: empurra vizinhos sobrepostos; nos fixos (salvos) nao se movem.
+  // (força continua / forceCollide d3 fica pra rodada seguinte — aqui so pra o placement nascer sem overlap)
+  function collide(pos, fixed, list){
+    const ids = list.map(c=>c.id).filter(id=>pos[id]);
+    for(let it=0; it<90; it++){
+      let moved=false;
+      for(let i=0;i<ids.length;i++) for(let j=i+1;j<ids.length;j++){
+        const A=pos[ids[i]], B=pos[ids[j]];
+        let dx=B.x-A.x, dy=B.y-A.y, d=Math.hypot(dx,dy); if(d<0.01){ d=0.01; dx=0.01; dy=0; }
+        const min=radiusOf(ids[i])+radiusOf(ids[j])+10;
+        if(d<min){
+          const push=(min-d), ux=dx/d, uy=dy/d, af=fixed.has(ids[i]), bf=fixed.has(ids[j]);
+          if(af&&bf) continue;
+          if(af){ B.x+=ux*push; B.y+=uy*push; }
+          else if(bf){ A.x-=ux*push; A.y-=uy*push; }
+          else { A.x-=ux*push/2; A.y-=uy*push/2; B.x+=ux*push/2; B.y+=uy*push/2; }
+          moved=true;
+        }
+      }
+      if(!moved) break;
+    }
+  }
+
+  // reconcilia posicoes quando o conjunto de codigos muda (add/merge/reparent recarrega `codes`)
+  useEffect(()=>{ setPositions(prev=>{ const p=computeLayout(codes, prev); posRef.current=p; return p; }); }, [codes]);
+  // fit inicial (uma vez), tolerante a container ainda sem medida
+  useEffect(()=>{
+    if(didFit.current || !Object.keys(positions).length) return;
+    const doFit=()=>{ const r=wrapRef.current?.getBoundingClientRect(); if(r && r.width>10){ fitToView(); didFit.current=true; } else if(wrapRef.current) requestAnimationFrame(doFit); };
+    requestAnimationFrame(doFit);
+  }, [positions]);
+
+  function fitToView(){
+    const ids=Object.keys(posRef.current), r=wrapRef.current?.getBoundingClientRect();
+    if(!ids.length || !r || r.width<10) return;
+    let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+    for(const id of ids){ const p=posRef.current[id], rr=radiusOf(id)+18; minX=Math.min(minX,p.x-rr); minY=Math.min(minY,p.y-rr); maxX=Math.max(maxX,p.x+rr); maxY=Math.max(maxY,p.y+rr); }
+    const w=maxX-minX||1, h=maxY-minY||1, k=Math.min(2.2, Math.max(0.2, Math.min(r.width/w, r.height/h)));
+    setTf({ k, tx:(r.width-w*k)/2 - minX*k, ty:(r.height-h*k)/2 - minY*k });
+  }
+
+  function localPt(cx,cy){ const r=svgRef.current.getBoundingClientRect(); return { x:cx-r.left, y:cy-r.top }; }
+  function toWorld(cx,cy){ const t=tfRef.current, p=localPt(cx,cy); return { x:(p.x-t.tx)/t.k, y:(p.y-t.ty)/t.k }; }
+  function worldToScreen(wx,wy){ const t=tfRef.current; return { x:wx*t.k+t.tx, y:wy*t.k+t.ty }; }
+  function hitTest(cx,cy){ const w=toWorld(cx,cy); let best=null,bd=Infinity; for(const c of codes){ const p=posRef.current[c.id]; if(!p) continue; const d=Math.hypot(p.x-w.x,p.y-w.y); if(d<=radiusOf(c.id) && d<bd){ bd=d; best=c.id; } } return best; }
+
+  function toggleSel(id){ setSelectedIds(s=>{ const n=new Set(s); if(!n.size && selCode && selCode!==id) n.add(selCode); n.has(id)?n.delete(id):n.add(id); return n; }); setSelCode(null); }
+
+  function onDown(e){
+    if(e.button===2) return; // direito = onCtx
+    setMenu(null);
+    const id = hitTest(e.clientX,e.clientY);
+    // modo "escolher destino" (aberto pelo menu do codigo): proximo clique num codigo aplica o move;
+    // clique no vazio cancela. Nao seleciona nem arrasta enquanto nesse modo.
+    if(movePick){ act.current={type:'idle'}; if(id){ const ids=movePick.filter(x=>x!==id); if(ids.length) onMoveInto(id, ids); } setMovePick(null); return; }
+    try{ svgRef.current.setPointerCapture(e.pointerId); }catch(_){}
+    const ctrl = e.ctrlKey||e.metaKey;
+    if(id){
+      if(ctrl){ toggleSel(id); act.current={type:'idle'}; return; }
+      let dragIds;
+      if(selectedIds.has(id) && selectedIds.size>1) dragIds=[...selectedIds];
+      else { setSelCode(id); setSelectedIds(new Set()); dragIds=[id]; }
+      act.current={ type:'drag', dragIds, last:{x:e.clientX,y:e.clientY}, moved:false };
+    } else if(tool==='pan' || e.button===1){
+      act.current={ type:'pan', last:{x:e.clientX,y:e.clientY} };
+    } else {
+      const p=localPt(e.clientX,e.clientY);
+      act.current={ type:'lasso', start:{x:e.clientX,y:e.clientY}, moved:false };
+      setLasso({ x0:p.x, y0:p.y, x1:p.x, y1:p.y });
+    }
+  }
+  function onMove(e){
+    const a=act.current; if(!a || a.type==='idle') return;
+    if(a.type==='pan'){ const dx=e.clientX-a.last.x, dy=e.clientY-a.last.y; a.last={x:e.clientX,y:e.clientY}; setTf(t=>({...t, tx:t.tx+dx, ty:t.ty+dy})); }
+    else if(a.type==='drag'){ const k=tfRef.current.k, dx=(e.clientX-a.last.x)/k, dy=(e.clientY-a.last.y)/k; if(dx||dy){ a.moved=true; a.last={x:e.clientX,y:e.clientY}; setPositions(p=>{ const n={...p}; for(const id of a.dragIds){ const q=n[id]; if(q) n[id]={x:q.x+dx,y:q.y+dy}; } posRef.current=n; return n; }); } }
+    else if(a.type==='lasso'){ a.moved=true; const p=localPt(e.clientX,e.clientY); setLasso(l=> l?{...l, x1:p.x, y1:p.y}:l); }
+  }
+  function onUp(e){
+    const a=act.current; act.current={type:'idle'};
+    try{ svgRef.current.releasePointerCapture(e.pointerId); }catch(_){}
+    if(!a) return;
+    if(a.type==='drag' && a.moved){
+      const entries=a.dragIds.map(id=>({ id, x:posRef.current[id]?.x, y:posRef.current[id]?.y })).filter(en=>en.x!=null);
+      if(entries.length===1) onUpd(entries[0].id, { pos_x:entries[0].x, pos_y:entries[0].y });
+      else if(entries.length>1) onPersistPositions(entries);
+    } else if(a.type==='lasso'){
+      if(a.moved){
+        const s=localPt(a.start.x,a.start.y), en=localPt(e.clientX,e.clientY);
+        const box={ x0:Math.min(s.x,en.x), y0:Math.min(s.y,en.y), x1:Math.max(s.x,en.x), y1:Math.max(s.y,en.y) };
+        const sel=new Set(selectedIds);
+        for(const c of codes){ const p=posRef.current[c.id]; if(!p) continue; const sc=worldToScreen(p.x,p.y); if(sc.x>=box.x0&&sc.x<=box.x1&&sc.y>=box.y0&&sc.y<=box.y1) sel.add(c.id); }
+        setSelectedIds(sel); if(sel.size) setSelCode(null);
+      } else { setSelectedIds(new Set()); setSelCode(null); } // clique simples no vazio limpa a selecao
+      setLasso(null);
+    }
+  }
+  function onWheel(e){ e.preventDefault(); const p=localPt(e.clientX,e.clientY); setTf(t=>{ const k2=Math.min(3, Math.max(0.2, t.k*Math.exp(-e.deltaY*0.0015))); const wx=(p.x-t.tx)/t.k, wy=(p.y-t.ty)/t.k; return { k:k2, tx:p.x-wx*k2, ty:p.y-wy*k2 }; }); }
+  function onCtx(e){ e.preventDefault(); if(movePick){ setMovePick(null); return; } const id=hitTest(e.clientX,e.clientY); setMenu({ x:e.clientX, y:e.clientY, targetId:id||null }); }
+
+  async function reshuffle(){
+    if(!confirm('Reembaralhar as posições de todos os códigos? Isso sobrescreve o layout atual do mapa.')) return;
+    const pos=computeLayout(codes, null); posRef.current=pos; setPositions(pos); didFit.current=false;
+    const entries=codes.map(c=>({ id:c.id, x:pos[c.id]?.x, y:pos[c.id]?.y })).filter(e=>e.x!=null);
+    await onPersistPositions(entries); requestAnimationFrame(fitToView);
+  }
+  function run(fn){ setMenu(null); Promise.resolve().then(fn); }
+
+  const selArr = selectedIds.size ? [...selectedIds] : (selCode?[selCode]:[]);
+  // expoe as acoes ao pai (que renderiza os botoes no pane-head) — sao so gatilhos, sem estado de
+  // display, entao um ref basta (nao precisa re-render do pai)
+  if(apiRef) apiRef.current = { fit:fitToView, reshuffle };
+
+  return html`<div class="mapwrap" ref=${wrapRef}>
+    ${codes.length===0
+      ? html`<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--ink-faint);font-size:13px">Nenhum código ainda. Crie um na aba Árvore.</div>`
+      : html`<svg ref=${svgRef} onPointerDown=${onDown} onPointerMove=${onMove} onPointerUp=${onUp} onWheel=${onWheel} onContextMenu=${onCtx}
+          style=${`cursor:${movePick?'crosshair':(tool==='pan'?'grab':'default')};touch-action:none`}>
+        <g transform=${`translate(${tf.tx.toFixed(2)} ${tf.ty.toFixed(2)}) scale(${tf.k.toFixed(4)})`}>
+          ${showLinks && (()=>{ const selSet=new Set(selArr), anySel=selSet.size>0;
+            // linhas pai->filho POR BAIXO das bolhas: cor da familia, opacidade baixa, AFINANDO com a
+            // profundidade (tronco->galho->folha) — sem arrowhead (o afinamento + o pai maior ja dao
+            // a direcao). Com selecao, acende so a linhagem do selecionado (pai+filhos) e apaga o resto.
+            return codes.map(c=>{ if(!c.parent_id) return null; const p=positions[c.id], pp=positions[c.parent_id]; if(!p||!pp) return null;
+              const lit=selSet.has(c.id)||selSet.has(c.parent_id);
+              const op=anySel?(lit?0.9:0.06):0.3, w=(Math.max(1.1, 2.6 - c.depth*0.55))*(lit?1.7:1);
+              const col=codeColor(c.hue,c.depth,c.hue_deg).solid;
+              const mx=(pp.x+p.x)/2, my=(pp.y+p.y)/2, dx=p.x-pp.x, dy=p.y-pp.y, len=Math.hypot(dx,dy)||1;
+              const bow=Math.min(38,len*0.12), cxp=mx-dy/len*bow, cyp=my+dx/len*bow;
+              return html`<path key=${'e'+c.id} d=${`M${pp.x.toFixed(1)},${pp.y.toFixed(1)} Q${cxp.toFixed(1)},${cyp.toFixed(1)} ${p.x.toFixed(1)},${p.y.toFixed(1)}`} fill="none" stroke=${col} stroke-width=${w.toFixed(2)} stroke-opacity=${op} stroke-linecap="round"></path>`;
+            }); })()}
+          ${codes.map(c=>{ const p=positions[c.id]; if(!p) return null; const r=radiusOf(c.id), col=codeColor(c.hue,c.depth,c.hue_deg), isSel=(selCode===c.id||selectedIds.has(c.id));
+            return html`<g key=${c.id} transform=${`translate(${p.x.toFixed(1)} ${p.y.toFixed(1)})`}>
+              <circle r=${r} fill=${col.solid} stroke=${isSel?'var(--sky)':'rgba(0,0,0,.20)'} stroke-width=${isSel?3.5:1} opacity=${busy?0.55:1}></circle>
+              ${c.is_redaction
+                ? html`<text y="5" text-anchor="middle" font-size="14" style="pointer-events:none">🚫</text>`
+                : (count[c.id]? html`<text y="4" text-anchor="middle" font-size=${Math.min(15, r*0.72).toFixed(0)} font-family="var(--mono)" fill=${col.isBlack?'rgba(255,255,255,.9)':'rgba(255,255,255,.94)'} style="pointer-events:none">${count[c.id]}</text>`:null)}
+              <text class="map-node-label" y=${(r+13).toFixed(0)} text-anchor="middle">${chTrunc(c.name,16)}</text>
+            </g>`;
+          })}
+        </g>
+        ${lasso? html`<rect x=${Math.min(lasso.x0,lasso.x1)} y=${Math.min(lasso.y0,lasso.y1)} width=${Math.abs(lasso.x1-lasso.x0)} height=${Math.abs(lasso.y1-lasso.y0)} fill="rgba(27,157,217,.12)" stroke="var(--sky)" stroke-width="1" stroke-dasharray="4 3"></rect>`:null}
+      </svg>`}
+
+    <div class="map-zoom">${Math.round(tf.k*100)}%</div>
+    <div class="map-hint" style=${movePick?'background:var(--sky);color:#fff;border-color:var(--sky)':''}>
+      ${movePick? `clique no código-destino para mover ${movePick.length} para dentro · clique no vazio (ou direito) cancela`
+                : 'clique = selecionar · Ctrl+clique / laço = vários · botão direito = agir'}</div>
+
+    ${menu && (()=>{
+      const menuW=252, maxH=Math.round(window.innerHeight*0.6);
+      const left=Math.max(8, Math.min(menu.x, window.innerWidth-menuW-8));
+      const top=Math.max(8, Math.min(menu.y, window.innerHeight-maxH-8));
+      const C = menu.targetId? codeById[menu.targetId] : null;
+      const sel = selArr, cInSel = C? sel.includes(C.id) : false, selNoC = C? sel.filter(id=>id!==C.id) : sel;
+      const items=[];
+      if(C){
+        if(sel.length===0 || (sel.length===1 && cInSel)){
+          items.push({ label:`＋ subcódigo de “${chTrunc(C.name,20)}”`, on:()=>onAdd(C) });
+          items.push({ label:'✎ editar (renomear / cor)', on:()=>{ setSelCode(C.id); setSelectedIds(new Set()); } });
+          if(codes.length>1) items.push({ label:'↳ mover para dentro de outro…', on:()=>setMovePick([C.id]) });
+          if(C.parent_id) items.push({ label:'↑ promover ao topo', on:()=>onPromote([C.id]) });
+          items.push({ sep:true });
+          items.push({ label:'✕ excluir', danger:true, on:()=>{ if(confirm('Excluir o código e seus subcódigos e codificações?')) onDel(C.id); } });
+        } else if(!cInSel){
+          items.push({ head:`destino: ${chTrunc(C.name,26)}` });
+          items.push({ label:`↳ mover ${selNoC.length} para dentro`, on:()=>onMoveInto(C.id, selNoC) });
+          items.push({ label:`⛯ mesclar ${selNoC.length} aqui (este sobrevive)`, danger:true, disabled:!isAdmin,
+            on:()=>{ if(!isAdmin) return; if(confirm(`Mesclar ${selNoC.length} código(s) em “${C.name}”? As codificações serão reatribuídas a ele e os outros serão excluídos. Não pode ser desfeito.`)) onMerge(C.id, selNoC); } });
+          if(!isAdmin) items.push({ note:'Mesclar só por administradores.' });
+        } else {
+          items.push({ label:`↳ mover ${sel.length} para dentro de outro…`, on:()=>setMovePick([...sel]) });
+          items.push({ label:`↑ promover ${sel.length} ao topo`, on:()=>onPromote(sel) });
+          items.push({ label:`⌗ agrupar ${sel.length} sob novo pai`, on:()=>onGroupNew(sel) });
+        }
+      } else if(sel.length){
+        items.push({ label:`↑ promover ${sel.length} ao topo`, on:()=>onPromote(sel) });
+        items.push({ label:`⌗ agrupar ${sel.length} sob novo pai`, on:()=>onGroupNew(sel) });
+      } else {
+        items.push({ label:'＋ nova família (topo)', on:()=>onAdd(null) });
+      }
+      return html`
+        <div style="position:fixed;inset:0;z-index:60" onPointerDown=${()=>setMenu(null)} onContextMenu=${e=>{e.preventDefault();setMenu(null);}}></div>
+        <div class="exmenu" style=${`position:fixed;left:${left}px;top:${top}px;z-index:61;width:${menuW}px;max-height:${maxH}px;overflow:auto`}>
+          ${items.map((it,i)=> it.sep? html`<div key=${i} style="border-top:1px solid var(--line-soft)"></div>`
+            : it.head? html`<div key=${i} style="padding:7px 12px;font-size:11px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${it.head}</div>`
+            : it.note? html`<div key=${i} style="padding:6px 12px;font-size:11.5px;color:var(--ink-faint)">${it.note}</div>`
+            : html`<button key=${i} disabled=${it.disabled} onClick=${()=>run(it.on)} style=${`white-space:nowrap;overflow:hidden;text-overflow:ellipsis${it.danger?';color:var(--danger)':''}${it.disabled?';opacity:.5;cursor:default':''}`}>${it.label}</button>`)}
+        </div>`;
+    })()}
   </div>`;
 }
 
