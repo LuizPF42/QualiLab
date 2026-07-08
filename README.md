@@ -24,7 +24,7 @@ O QualiLab é um **projeto pessoal, experimental e em desenvolvimento ativo**, d
 
 **Para onde vão os seus dados** depende do modo de uso:
 
-- **Arquivo / Local** — ficam **no seu dispositivo** e não saem dele.
+- **Arquivo / Rascunho** — ficam **no seu dispositivo** e não saem dele.
 - **Nuvem** — são enviados a um **servidor de terceiros** (Supabase), ficam sujeitos aos termos desse provedor e saem do seu controle direto.
 - **Publicação** (Relatório Interativo / Web Annotation) — o que você divulgar fica **público**.
 
@@ -92,12 +92,12 @@ Ao criar um projeto você escolhe:
 O tipo pode ser alterado depois pelo administrador (convertendo Coletivo → Individual de forma irreversível, colapsando todas as codificações num único autor).
 
 ### Gestão de projeto e membros
-A **pílula do projeto** no cabeçalho muda de cor conforme **onde os seus dados estão**: neutra = local (neste navegador), **verde** = arquivo no seu disco, **azul** = nuvem (servidor padrão), **violeta** = nuvem no **seu próprio** servidor Supabase, **âmbar** = nuvem sem conexão (nada está sendo salvo). Passe o mouse para a explicação completa; em modo local, o tooltip também mostra **quanto do armazenamento do navegador (~5 MB) o projeto já usa**, e um aviso aparece no cabeçalho a partir de 75%. Nos modos local e arquivo, um **"✓ salvo HH:MM"** discreto confirma a última gravação automática.
+A **pílula do projeto** no cabeçalho muda de cor conforme **onde os seus dados estão**: neutra = rascunho (neste navegador, efêmero), **verde** = arquivo no seu disco, **azul** = nuvem (servidor padrão), **violeta** = nuvem no **seu próprio** servidor Supabase, **âmbar** = nuvem sem conexão (nada está sendo salvo). Passe o mouse para a explicação completa; em modo rascunho, o tooltip também mostra **quanto do armazenamento do navegador (~5 MB) o projeto já usa**, e um aviso aparece no cabeçalho a partir de 75%. Nos modos rascunho e arquivo, um **"✓ salvo HH:MM"** discreto confirma a última gravação automática.
 
-Clicar na pílula abre o hub de gestão: código de convite para colaboradores, tipo do projeto, lista de membros com papéis (admin/membro), renomear, limpar conteúdo, excluir e configuração de conexão. No card **Conexão (Supabase)** dá para apontar o app pro **seu próprio projeto Supabase** (as credenciais valem só naquele navegador e passam a ter precedência), voltar ao servidor padrão, ou **desconectar de verdade** para o modo local. Se o projeto ativo for local ou arquivo (não nuvem), aparece também **"Enviar para a nuvem"** — cria um projeto novo na nuvem e copia tudo pra ele (documentos, categorias, códigos, codificações e memos) numa tacada só, sem precisar exportar e importar `.qualilab` manualmente.
+Clicar na pílula abre o hub de gestão: código de convite para colaboradores, tipo do projeto, lista de membros com papéis (admin/membro), renomear, limpar conteúdo, excluir e configuração de conexão. No card **Conexão (Supabase)** dá para apontar o app pro **seu próprio projeto Supabase** (as credenciais valem só naquele navegador e passam a ter precedência), voltar ao servidor padrão, ou **desconectar de verdade** para o modo rascunho. Conforme o modo, o hub também mostra atalhos para trocar de armazenamento sem exportar/importar `.qualilab` na mão: **"Salvar como arquivo"** (só no rascunho, Chromium) migra o projeto atual pra um arquivo `.qualilab` no disco num clique (pílula fica verde); **"Enviar para a nuvem"** (rascunho ou arquivo) cria um projeto novo na nuvem e copia tudo pra ele (documentos, categorias, códigos, codificações e memos); **"Sair deste arquivo"** (só no modo arquivo) desanexa do arquivo atual e volta à tela de entrada, deixando o `.qualilab` intacto no disco.
 
-### Conta e login (modo nuvem)
-No modo nuvem, a tela inicial pede login por **e-mail e senha** (com cadastro direto na mesma tela), **"Continuar como visitante"** para testar sem criar conta, ou **"Usar offline"** — pula a nuvem inteiramente e abre um projeto local neste dispositivo. "Usar offline" também entra em ação automaticamente se a conexão cair ou se o cadastro anônimo estiver desabilitado no servidor. Sessões de visitante ficam vinculadas ao dispositivo, sem sincronizar entre aparelhos.
+### Tela de entrada, conta e login
+Na primeira execução (sem sessão nem arquivo salvo), a **tela de entrada** oferece três caminhos, com o logo do projeto no topo: **Novo em arquivo** e **Entrar na nuvem** lado a lado, e **Só testar (rascunho)** abaixo. "Entrar na nuvem" leva ao login por **e-mail e senha** (com cadastro na mesma tela); **"← Voltar"** retorna à tela de escolha. Um botão violeta **"Conectar ao meu Supabase"** (na tela de entrada e no login) aponta o app pro **seu próprio servidor Supabase** antes de logar — é onde ficam seus projetos coletivos; depois de conectar, você loga ali e entra no projeto pelo código. Sessões de rascunho ficam vinculadas ao dispositivo, sem sincronizar entre aparelhos.
 
 Clicando no seu nome no cabeçalho — **em qualquer modo (nuvem, local ou arquivo)** — a tela **Minha Conta** permite:
 - Trocar o nome de exibição (usado nas codificações).
@@ -126,13 +126,15 @@ Clicando no seu nome no cabeçalho — **em qualquer modo (nuvem, local ou arqui
 
 ## Como funciona
 
-O QualiLab opera em três modos, escolhidos automaticamente ou pelo usuário:
+O QualiLab opera em três modos, escolhidos na **tela de entrada** (ou reabertos automaticamente):
 
 | Modo | Armazenamento | Indicador | Quando usar |
 |---|---|---|---|
-| **Arquivo local** | Arquivo `.qualilab` no disco | `arquivo ·` | Dados sensíveis, uso offline, ambientes sem rede |
-| **Local** | `localStorage` do navegador | `local ·` | Uso rápido sem configuração |
+| **Arquivo** | Arquivo `.qualilab` no disco | `arquivo ·` | Trabalho solo sério, dados sensíveis, uso offline |
 | **Nuvem** | Supabase (Postgres + Auth) | `nuvem ·` | Equipes colaborativas, múltiplos dispositivos |
+| **Rascunho** | `localStorage` do navegador | `rascunho ·` | Só testar rápido, sem compromisso (efêmero) |
+
+Arquivo e nuvem são as opções de trabalho de verdade; o **rascunho** é a entrada sem fricção (um clique, zero configuração), mas **efêmero** — os dados ficam só naquele navegador e somem se você limpar os dados do site. Por isso um aviso discreto abaixo do cabeçalho sugere, a qualquer momento, **salvar como arquivo** ou **conectar à nuvem** (a migração é de um clique no hub do projeto, sem exportar/importar). Um arquivo já aberto **reabre sozinho** na próxima sessão (com a permissão do navegador); "Sair deste arquivo" no hub volta à tela de entrada.
 
 ### Modo arquivo — para dados sensíveis
 
@@ -143,9 +145,9 @@ No modo arquivo, o projeto é salvo como um arquivo `.qualilab` (JSON) **visíve
 - O app reabre automaticamente o último arquivo na próxima sessão (com permissão do navegador).
 - Ideal para entrevistas clínicas, dados judiciais, pesquisas com aprovação de CEP que exijam ambiente air-gapped.
 
-### Modo local — backup automático em pasta
+### Modo rascunho — backup automático em pasta
 
-No modo local (`localStorage`, limite de 5-10MB), você pode ativar um **backup automático**: o app passa a manter um arquivo `backup-automatico.qualilab` sempre atualizado numa pasta do seu computador — por exemplo, a mesma pasta onde está o `index.html`. É um espelho redundante, não o armazenamento principal: continua salvando no navegador normalmente, e também escreve esse arquivo em segundo plano a cada mudança (com uma pequena pausa antes de gravar, maior em projetos grandes, pra não travar a aba).
+No modo rascunho (`localStorage`, limite de 5-10MB), você pode ativar um **backup automático**: o app passa a manter um arquivo `backup-automatico.qualilab` sempre atualizado numa pasta do seu computador — por exemplo, a mesma pasta onde está o `index.html`. É um espelho redundante, **não** o mesmo que o modo arquivo (que grava direto no disco como armazenamento principal): continua salvando no navegador normalmente, e também escreve esse arquivo em segundo plano a cada mudança (com uma pequena pausa antes de gravar, maior em projetos grandes, pra não travar a aba). Para virar modo arquivo de verdade (pílula verde), use **"Salvar como arquivo"** no hub do projeto.
 
 - Ative em **pílula do projeto → Backup automático em pasta → Escolher pasta…** (disponível em Chrome e Edge).
 - O app avisa **antes** de o armazenamento estourar: o tooltip da pílula do projeto mostra o % usado do limite (~5 MB) e, a partir de 75%, um aviso âmbar aparece no cabeçalho sugerindo baixar um `.qualilab` e migrar para o modo arquivo ou nuvem.
