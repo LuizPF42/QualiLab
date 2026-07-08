@@ -88,7 +88,7 @@
   .pill.mode-custom{background:var(--violet-soft);border-color:rgba(91,60,150,.4);color:var(--violet);}
   .pill.mode-file{background:var(--ok-soft);border-color:rgba(37,107,67,.4);color:var(--ok);}
   .pill.mode-offline{background:var(--amber-soft);border-color:var(--amber);color:var(--amber);}
-  .btn{font-size:13px;font-weight:500;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:7px 12px;display:inline-flex;align-items:center;gap:7px;}
+  .btn{font-size:13px;font-weight:500;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:7px 12px;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;}
   .btn:hover{background:var(--paper);}
   .btn.primary{background:var(--teal);color:#fff;border:none;font-weight:600;}
   .btn.primary:hover{background:var(--teal-deep);}
@@ -3475,7 +3475,7 @@ function App(){
         <a class="brand" href="https://github.com/LuizPF42/QualiLab" target="_blank" rel="noopener"
           title="o seu laboratório de pesquisa qualitativa / your own lab for qualitative research — ver no GitHub"
           style="text-decoration:none">QualiLab</a>
-        <button class="icon-btn" title=${darkMode?'Modo claro':'Modo escuro'} onClick=${()=>setDarkMode(d=>!d)}>${darkMode?'☀':'🌙'}</button>
+        <button class="icon-btn" title=${darkMode?'Modo claro':'Modo escuro'} onClick=${()=>setDarkMode(d=>!d)}>${darkMode?'☀︎':'⏾'}</button>
         ${project && html`<div class="seg" style="margin-left:10px">
           <button class=${mainView==='codificar'?'on':''} onClick=${()=>setMainView('codificar')}>Codificação</button>
           ${projectMode==='collective' && html`<button class=${mainView==='reconciliar'?'on':''} onClick=${()=>setMainView('reconciliar')}>Reconciliação</button>`}
@@ -3576,14 +3576,15 @@ function App(){
                 ${docs.length===0 && html`<option value="">sem documentos</option>`}
                 ${docs.map(d=>html`<option value=${d.id}>${d.name}</option>`)}
               </select>`}
-          ${activeDoc && renamingDoc===null && html`<button class="icon-btn" title="Renomear documento" onClick=${()=>setRenamingDoc(activeDoc.name)}>✏️</button>`}
+          ${activeDoc && renamingDoc===null && html`<button class="icon-btn" title="Renomear documento" onClick=${()=>setRenamingDoc(activeDoc.name)}>✏</button>`}
+          ${activeDoc && html`<button class="icon-btn" title="Remover documento" onClick=${()=>delDoc(activeDoc.id)}>🗑</button>`}
           <label class="btn sm">＋ enviar
             <input type="file" multiple accept=".txt,.md,.markdown,.pdf,.docx" style="display:none" onChange=${e=>{onUpload(e.target.files); e.target.value='';}} />
           </label>
           <${AddPaste} onAdd=${addPasted} />
           <div class="grow"></div>
           <${ViewSelect} value=${viewCoder} onChange=${setViewCoder} coders=${coders} userId=${user?.id} projectMode=${projectMode} mode=${mode} />
-          ${activeDoc && html`<button class="icon-btn" title="Buscar no documento" onClick=${()=>setSearchOpen(o=>!o)}>🔎</button>`}
+          ${activeDoc && html`<button class="icon-btn" title="Buscar no documento" onClick=${()=>setSearchOpen(o=>!o)}>🔍︎</button>`}
           ${activeDoc && html`<div class="reader-toolbar">
             <button class="icon-btn" title="Diminuir fonte" onClick=${()=>setReaderPrefs(p=>({...p, scale:Math.max(0.8, +(p.scale-0.1).toFixed(2))}))}>A-</button>
             <button class="icon-btn" title="Aumentar fonte" onClick=${()=>setReaderPrefs(p=>({...p, scale:Math.min(1.6, +(p.scale+0.1).toFixed(2))}))}>A+</button>
@@ -3591,10 +3592,9 @@ function App(){
               onClick=${()=>setReaderPrefs(p=>({...p, width:p.width==='narrow'?'normal':'narrow'}))}>${readerPrefs.width==='narrow'?'⬌':'⬍'}</button>
             <button class="icon-btn" title="Tema de leitura"
               onClick=${()=>setReaderPrefs(p=>({...p, theme: p.theme==='light'?'sepia':p.theme==='sepia'?'dark':'light'}))}>
-              ${readerPrefs.theme==='light'?'☀':readerPrefs.theme==='sepia'?'📜':'🌙'}
+              ${readerPrefs.theme==='light'?'◔':readerPrefs.theme==='sepia'?'◗':'◕'}
             </button>
           </div>`}
-          ${activeDoc && html`<button class="icon-btn" title="Remover documento" onClick=${()=>delDoc(activeDoc.id)}>🗑</button>`}
         </div>
 
         ${searchOpen && activeDoc && html`<div class="search-bar">
@@ -3661,8 +3661,8 @@ function App(){
       <aside class="pane right" style=${`width:${readerPrefs.rightW}px`}>
         <div class="pane-head">
           <div class="seg">
-            <button class=${rtab==='categorias'?'on':''} onClick=${()=>setRtab('categorias')}>🏷️ Categorias</button>
-            <button class=${rtab==='codigos'?'on':''} onClick=${()=>setRtab('codigos')}>🖍️ Codificar</button>
+            <button class=${rtab==='categorias'?'on':''} onClick=${()=>setRtab('categorias')}>⍞ Categorias</button>
+            <button class=${rtab==='codigos'?'on':''} onClick=${()=>setRtab('codigos')}>✎ Codificar</button>
           </div>
         </div>
         <div class="pane-body scroll">
@@ -3695,7 +3695,7 @@ function App(){
         <div class="pane-head"><span class="h" style="margin:0">Reconciliar</span></div>
         <div class="pane-body scroll" style="padding:0">
           <div style="background:var(--surface);min-height:100%;padding-bottom:8px">
-            ${navRow(reconcileTab==='categorias', '🏷️ Categorias', ()=>setReconcileTab('categorias'))}
+            ${navRow(reconcileTab==='categorias', '⍞ Categorias', ()=>setReconcileTab('categorias'))}
             ${reconcileTab==='categorias' && html`<div>
               <${NavGroup} title="Documentos">
                 ${navRow(reconDoc==='all', '(Todos os documentos)', ()=>setReconDoc('all'), 1)}
@@ -3706,7 +3706,7 @@ function App(){
                   : cats.map(c=>navRow(reconCat===c.id, c.name, ()=>setReconCat(c.id), 1))}
               </${NavGroup}>`}
             </div>`}
-            ${navRow(reconcileTab==='codigos', '🖍️ Códigos', ()=>setReconcileTab('codigos'))}
+            ${navRow(reconcileTab==='codigos', '✎ Códigos', ()=>setReconcileTab('codigos'))}
             ${reconcileTab==='codigos' && html`<div>
               <${NavGroup} title="Documentos">
                 ${navRow(reconDoc==='all', '(Todos os documentos)', ()=>setReconDoc('all'), 1)}
@@ -3724,7 +3724,7 @@ function App(){
       </section>
       <section class="pane left" style="flex:1;border-right:none;max-width:none">
         <div class="pane-head">
-          <span class="h" style="margin:0">Reconciliação · ${reconcileTab==='categorias'?'🏷️ Categorias':'🖍️ Códigos'}${ctx}</span>
+          <span class="h" style="margin:0">Reconciliação · ${reconcileTab==='categorias'?'⍞ Categorias':'✎ Códigos'}${ctx}</span>
         </div>
         <div class="pane-body scroll">
           <div style="max-width:900px;margin:0 auto">
@@ -3787,8 +3787,8 @@ function App(){
       <!-- ESQUEMA: tela inteira, sem documento aberto -->
       <div class="pane-head" style="flex:none">
         <div class="seg">
-          <button class=${esquemaTab==='codigos'?'on':''} onClick=${()=>setEsquemaTab('codigos')}>🖍️ Códigos</button>
-          <button class=${esquemaTab==='categorias'?'on':''} onClick=${()=>setEsquemaTab('categorias')}>🏷️ Categorias</button>
+          <button class=${esquemaTab==='codigos'?'on':''} onClick=${()=>setEsquemaTab('codigos')}>✎ Códigos</button>
+          <button class=${esquemaTab==='categorias'?'on':''} onClick=${()=>setEsquemaTab('categorias')}>⍞ Categorias</button>
         </div>
       </div>
       ${esquemaTab==='codigos' && html`<${SchemaCodesView} codes=${codes} codeById=${codeById} codePath=${codePath} count=${schemaCodingCount}
@@ -3798,7 +3798,7 @@ function App(){
       ${esquemaTab==='categorias' && html`<section class="pane left" style="flex:1 1 100%;border-right:none;max-width:none">
         <div class="pane-body scroll">
           <div style="max-width:760px;margin:0 auto" class="section">
-            <p class="h">🏷️ Esquema de categorias</p>
+            <p class="h">⍞ Esquema de categorias</p>
             <p class="hint">Cada categoria recebe um valor por documento (preenchido na aba Codificação). Aqui você só define os campos: nome, tipo e opções.</p>
             ${cats.length===0 && html`<div class="card"><span class="meta">${isAdmin?'Nenhuma categoria ainda. Crie abaixo.':'Nenhuma categoria definida pelo dono do projeto.'}</span></div>`}
             ${isAdmin
@@ -3880,7 +3880,7 @@ function App(){
       </${CtxSection}>`; })()}
       ${removable.length>0 && html`<${CtxSection} title=${isAdmin && projectMode==='collective' ? 'Rejeitar / remover código' : 'Remover código'} count=${removable.length}>
         ${removable.map(c=>{ const code=codeById[c.code_id]; const path=codePath(c.code_id).join(' ▸ '); const col=code ? codeColor(code.hue,code.depth,code.hue_deg) : codeColor(0,0); const alien=isAdmin&&c.created_by!==user?.id; return html`<button key=${c.id} onClick=${()=>removeCodingFromMenu(c.id)} style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;width:100%;box-sizing:border-box" title=${`${alien?'Rejeitar (admin): ':''}${path} · ${c.author_name||''}`}>
-          <span class="swatch" style=${`background:${col.solid};display:inline-block;margin-right:7px;vertical-align:middle;flex-shrink:0`}></span>${code?.is_redaction?'🚫 ':''}${path||'(código removido)'}${c.layer==='final'?' · gabarito':alien&&c.author_name?` · ${c.author_name}`:''}
+          <span class="swatch" style=${`background:${col.solid};display:inline-block;margin-right:7px;vertical-align:middle;flex-shrink:0`}></span>${code?.is_redaction?'⦸ ':''}${path||'(código removido)'}${c.layer==='final'?' · gabarito':alien&&c.author_name?` · ${c.author_name}`:''}
         </button>`; })}
       </${CtxSection}>`}
       ${removable.length>0 && html`<${CtxSection} title="Anotar trecho (nota analítica)" count=${removable.length}>
@@ -3891,7 +3891,7 @@ function App(){
       ${ctxMenu.sel && (orderedCodes.length===0 && !ctxCreating
         ? html`<div style="padding:9px 12px;color:var(--ink-faint);font-size:12.5px">Nenhum código criado ainda.</div>`
         : orderedCodes.map(c=>{ const col=codeColor(c.hue,c.depth,c.hue_deg); return html`<button key=${c.id} onClick=${()=>applyCode(c.id, ctxMenu.sel)} style=${`padding-left:${12+c.depth*14}px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;width:100%;box-sizing:border-box`} title=${c.name}>
-            <span class="swatch" style=${`background:${col.solid};display:inline-block;margin-right:7px;vertical-align:middle;flex-shrink:0`}></span>${c.is_redaction?'🚫 ':''}${c.name}
+            <span class="swatch" style=${`background:${col.solid};display:inline-block;margin-right:7px;vertical-align:middle;flex-shrink:0`}></span>${c.is_redaction?'⦸ ':''}${c.name}
           </button>`; }))}
       ${ctxMenu.sel && html`<div style="border-top:1px solid var(--line-soft)">
         ${!ctxCreating
@@ -4074,7 +4074,7 @@ function Gate({ onCreate, onJoin, onOpen, onOpenFile, onNewFile, err, user, proj
     <div class="row" style="align-items:baseline;gap:10px;margin-bottom:2px">
       <h2 style="margin:0">Meus projetos</h2>
       <div class="grow"></div>
-      ${mode==='cloud' && !isAnon && onAccount && html`<button class="btn sm ghost" onClick=${onAccount}>⚙ Minha conta</button>`}
+      ${mode==='cloud' && !isAnon && onAccount && html`<button class="btn sm ghost" onClick=${onAccount}>⏣ Minha conta</button>`}
     </div>
     ${isAnon
       ? html`<div class="banner warn" style="margin:0 0 10px">
@@ -4327,7 +4327,7 @@ function CodesPanel({ codes, codeById, count, sel, selCode, setSelCode, codePath
   const childrenOf = (id)=>codes.filter(c=>c.parent_id===id);
   const selected = selCode ? codeById[selCode] : null;
   return html`<div class="section">
-    <p class="h">🖍️ Códigos hierárquicos</p>
+    <p class="h">✎ Códigos hierárquicos</p>
     <p class="hint">Estrutura importa: família no topo (cor mais escura), descendo até o subcódigo (mais claro). O código novo entra como filho do código selecionado, então a organização é o caminho mais fácil.</p>
 
     <div class="row" style="gap:6px;margin-bottom:10px">
@@ -4543,18 +4543,18 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
   return html`<div class="split">
     <section class="pane" style="flex:1;min-width:0;border-right:1px solid var(--line)">
       <div class="pane-head" style="flex:none">
-        <p class="h" style="margin:0">🖍️ Esquema de códigos</p>
+        <p class="h" style="margin:0">✎ Esquema de códigos</p>
         <div class="seg" style="margin-left:8px">
-          <button class=${schemaMode==='arvore'?'on':''} onClick=${()=>setSchemaMode('arvore')}>🌳 Árvore</button>
-          <button class=${schemaMode==='mapa'?'on':''} onClick=${()=>setSchemaMode('mapa')} title="quadro branco espacial">🗺️ Mapa</button>
+          <button class=${schemaMode==='arvore'?'on':''} onClick=${()=>setSchemaMode('arvore')}>⛼ Árvore</button>
+          <button class=${schemaMode==='mapa'?'on':''} onClick=${()=>setSchemaMode('mapa')} title="quadro branco espacial">⊞ Mapa</button>
         </div>
         ${schemaMode==='mapa' && html`<div class="row" style="gap:6px;align-items:center;margin-left:4px">
           <div class="seg">
             <button class=${mapTool==='select'?'on':''} onClick=${()=>setMapTool('select')} title="selecionar / laço">▚</button>
-            <button class=${mapTool==='pan'?'on':''} onClick=${()=>setMapTool('pan')} title="mover a tela">🖐</button>
+            <button class=${mapTool==='pan'?'on':''} onClick=${()=>setMapTool('pan')} title="mover a tela">✜</button>
           </div>
           <button class="btn sm ghost" onClick=${()=>mapApiRef.current.fit?.()} title="ajustar à tela">⤢ ajustar</button>
-          <button class="btn sm ghost" onClick=${()=>mapApiRef.current.reshuffle?.()} title="reembaralhar posições (sobrescreve o layout)">🎲 reembaralhar</button>
+          <button class="btn sm ghost" onClick=${()=>mapApiRef.current.reshuffle?.()} title="reembaralhar posições (sobrescreve o layout)">↻ reembaralhar</button>
           <button class="btn sm ghost" onClick=${()=>setMapShowLinks(v=>!v)} title="mostrar/ocultar as linhas de hierarquia">${mapShowLinks?'☑':'☐'} linhas</button>
         </div>`}
         <span class="meta" style="margin-left:auto">${codes.length} código(s)</span>
@@ -4610,7 +4610,7 @@ function SchemaTreeNode({ code, childrenOf, count, selCode, setSelCode, selected
       ${kids.length>0 ? html`<span class="caret" onClick=${e=>{e.stopPropagation();setOpen(!open);}}>${open?'▾':'▸'}</span>` : html`<span class="caret"></span>`}
       <input type="checkbox" checked=${selectedIds.has(code.id)} onClick=${e=>e.stopPropagation()} onChange=${()=>onToggleSelect(code.id)} style="margin-right:2px" />
       <span class="swatch" style=${`background:${col.solid}`}></span>
-      <span class="node-name" title=${code.name}>${code.is_redaction?'🚫 ':''}${code.name}</span>
+      <span class="node-name" title=${code.name}>${code.is_redaction?'⦸ ':''}${code.name}</span>
       ${count[code.id]?html`<span class="count">${count[code.id]}</span>`:''}
       <button class="icon-btn" onClick=${e=>{e.stopPropagation(); if(confirm('Excluir o código e seus subcódigos e codificações?')) onDel(code.id);}} title="excluir">✕</button>
     </div>
@@ -4856,7 +4856,7 @@ function SchemaMapView({ codes, codeById, count, selCode, setSelCode, selectedId
             return html`<g key=${c.id} transform=${`translate(${p.x.toFixed(1)} ${p.y.toFixed(1)})`}>
               <circle r=${r} fill=${col.solid} stroke=${isSel?'var(--sky)':'rgba(0,0,0,.20)'} stroke-width=${isSel?3.5:1} opacity=${busy?0.55:1}></circle>
               ${c.is_redaction
-                ? html`<text y="5" text-anchor="middle" font-size="14" style="pointer-events:none">🚫</text>`
+                ? html`<text y="5" text-anchor="middle" font-size="14" style="pointer-events:none">⦸</text>`
                 : (count[c.id]? html`<text y="4" text-anchor="middle" font-size=${Math.min(15, r*0.72).toFixed(0)} font-family="var(--mono)" fill=${col.isBlack?'rgba(255,255,255,.9)':'rgba(255,255,255,.94)'} style="pointer-events:none">${count[c.id]}</text>`:null)}
               <text class="map-node-label" y=${(r+13).toFixed(0)} text-anchor="middle">${chTrunc(c.name,16)}</text>
             </g>`;
@@ -4888,7 +4888,7 @@ function SchemaMapView({ codes, codeById, count, selCode, setSelCode, selectedId
         } else if(!cInSel){
           items.push({ head:`destino: ${chTrunc(C.name,26)}` });
           items.push({ label:`↳ mover ${selNoC.length} para dentro`, on:()=>onMoveInto(C.id, selNoC) });
-          items.push({ label:`⛯ mesclar ${selNoC.length} aqui (este sobrevive)`, danger:true, disabled:!isAdmin,
+          items.push({ label:`⧉ mesclar ${selNoC.length} aqui (este sobrevive)`, danger:true, disabled:!isAdmin,
             on:()=>{ if(!isAdmin) return; if(confirm(`Mesclar ${selNoC.length} código(s) em “${C.name}”? As codificações serão reatribuídas a ele e os outros serão excluídos. Não pode ser desfeito.`)) onMerge(C.id, selNoC); } });
           if(!isAdmin) items.push({ note:'Mesclar só por administradores.' });
         } else {
@@ -5198,7 +5198,7 @@ function VizNav({ cats, codes, allCodings, allValues, docs, view, catFilter, sel
       <div class="node-row" style="padding:6px 14px;cursor:pointer;border-radius:0"
         onClick=${()=>setCatsOpen(o=>!o)}>
         <span class="caret">${catsOpen?'▾':'▸'}</span>
-        <span class="node-name" style="font-weight:600">🏷️ Categorias</span>
+        <span class="node-name" style="font-weight:600">⍞ Categorias</span>
         ${hasFilter && html`<span class="pill" style="font-size:10px;padding:1px 8px">filtro ativo</span>`}
       </div>
       ${catsOpen && html`<div style="padding:4px 14px 12px">
@@ -5216,7 +5216,7 @@ function VizNav({ cats, codes, allCodings, allValues, docs, view, catFilter, sel
     </div>`}
 
     <!-- árvore de códigos (mesmas classes que o TreeNode do painel Codificar) -->
-    <div class="field-label" style="padding:8px 14px 0;margin:0">🖍️ Códigos</div>
+    <div class="field-label" style="padding:8px 14px 0;margin:0">✎ Códigos</div>
     <div class="tree scroll" style="flex:1;overflow-y:auto;padding:4px 6px">
       ${tops.length===0 && html`<span class="meta" style="padding:14px 8px;display:block">Nenhum código criado.</span>`}
       ${tops.map(t=>html`<${VizCodeNode} key=${t.id} code=${t} childrenOf=${childrenOf}
@@ -5257,7 +5257,7 @@ function CloudCodeNode({ code, childrenOf, counts, selectedIds, onToggle, depthP
       ${kids.length>0 ? html`<span class="caret" onClick=${e=>{e.stopPropagation();setOpen(!open);}}>${open?'▾':'▸'}</span>` : html`<span class="caret"></span>`}
       <input type="checkbox" checked=${checked} onClick=${e=>e.stopPropagation()} onChange=${()=>onToggle(code.id)} style="margin-right:2px" />
       <span class="swatch" style=${`background:${col.solid}`}></span>
-      <span class="node-name" title=${code.name}>${code.is_redaction?'🚫 ':''}${code.name}</span>
+      <span class="node-name" title=${code.name}>${code.is_redaction?'⦸ ':''}${code.name}</span>
       ${counts[code.id] ? html`<span class="count">${counts[code.id]}</span>` : ''}
     </div>
     ${open && kids.map(k=>html`<${CloudCodeNode} key=${k.id} code=${k} childrenOf=${childrenOf}
@@ -5583,7 +5583,7 @@ function MemoNav({ project, docs, codes, codings, memos, sel, onSel, onRenameDoc
     <!-- memo do projeto -->
     <div class="node-row ${isSelProject?'sel':''}" style="padding:8px 14px;cursor:pointer;border-bottom:1px solid var(--line-soft)"
       onClick=${()=>onSel({scope:'project', targetId:project.id})}>
-      <span style="margin-right:4px">📋</span>
+      <span style="margin-right:4px">▤</span>
       <span class="node-name" style="font-weight:600">Memo do projeto</span>
       ${hasMemo('project', project.id) && html`<span class="count">●</span>`}
     </div>
@@ -5606,7 +5606,7 @@ function MemoNav({ project, docs, codes, codings, memos, sel, onSel, onRenameDoc
           style="padding:5px 14px 5px 28px;cursor:pointer" onClick=${()=>onSel({scope:'document', targetId:d.id})}>
         <span class="node-name" style="font-size:12.5px" title=${d.name}>${d.name}</span>
         ${hasMemo('document', d.id) && html`<span class="count">●</span>`}
-        ${onRenameDoc && html`<button class="icon-btn" title="Renomear documento" style="margin-left:auto;font-size:12px" onClick=${e=>{ e.stopPropagation(); startRename(d); }}>✏️</button>`}
+        ${onRenameDoc && html`<button class="icon-btn" title="Renomear documento" style="margin-left:auto;font-size:12px" onClick=${e=>{ e.stopPropagation(); startRename(d); }}>✏</button>`}
       </div>`)}
       ${docsOpen && docs.length===0 && html`<div class="meta" style="padding:6px 28px">Nenhum documento.</div>`}
     </div>
@@ -5732,7 +5732,7 @@ function MemoEditor({ sel, project, codeById, codePath, codings, docs, memos, on
             onKeyDown=${e=>{ if(e.key==='Enter'){ if(nameVal.trim()) onRenameDoc?.(doc.id, nameVal); setEditingName(false); } else if(e.key==='Escape') setEditingName(false); }}
             onBlur=${()=>{ if(nameVal.trim()) onRenameDoc?.(doc.id, nameVal); setEditingName(false); }} />`
         : html`<span style="font-weight:600;font-size:15px">${doc.name}</span>
-          ${onRenameDoc && html`<button class="icon-btn" title="Renomear documento" style="font-size:13px" onClick=${()=>{ setNameVal(doc.name); setEditingName(true); }}>✏️</button>`}`}
+          ${onRenameDoc && html`<button class="icon-btn" title="Renomear documento" style="font-size:13px" onClick=${()=>{ setNameVal(doc.name); setEditingName(true); }}>✏</button>`}`}
     </div>`}
     ${subtitle && html`<p class="hint" style="margin:0 0 4px">${subtitle}</p>`}
     ${coding && coding.quote && html`<blockquote style="margin:0 0 8px;padding:8px 12px;background:var(--surface);border-left:3px solid var(--teal);font-family:var(--serif);font-size:14px;max-height:140px;overflow:auto">${coding.quote}</blockquote>`}
@@ -7789,7 +7789,7 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
     </div>`}
 
     ${redactionCodesPresent.length>0 && html`<div class="card" style="margin-bottom:10px">
-      <div class="field-label">🚫 Censura na seleção</div>
+      <div class="field-label">⦸ Censura na seleção</div>
       <p class="hint" style="margin:0 0 6px">Por padrão, ficam fora do material enviado à IA. Marque os que valem como contexto.</p>
       ${redactionCodesPresent.map(c=>html`<label key=${c.id} class="row" style="gap:6px;font-size:12.5px;cursor:pointer;align-items:center">
         <input type="checkbox" checked=${!!allowRedact[c.id]} onChange=${e=>setAllowRedact(x=>({...x,[c.id]:e.target.checked}))} />
@@ -8245,7 +8245,7 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
   <section class="pane" style="flex:0 0 270px;min-width:0;border-right:1px solid var(--line)">
     <div class="pane-body scroll" style="padding:0;background:var(--surface)">
       <div class="field-label" style="padding:12px 14px 6px;margin:0;display:flex;align-items:center;gap:8px">
-        🏷️ Filtrar por categorias
+        ⍞ Filtrar por categorias
         ${hasFilter && html`<span class="pill" style="font-size:10px;padding:1px 8px">ativo</span>`}
       </div>
       <label class="row" style="gap:7px;padding:2px 14px 10px;font-size:12px;cursor:pointer;align-items:center" title="Exclui dos gráficos os códigos marcados como censura (is_redaction)">
@@ -8272,7 +8272,7 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
       </div>
       ${tab==='nuvem' && html`<div style="border-top:1px solid var(--line-soft)">
         <div class="field-label" style="padding:10px 14px 2px;margin:0;display:flex;align-items:center;gap:8px">
-          🖍️ Códigos (filtram a nuvem)
+          ✎ Códigos (filtram a nuvem)
           ${cloudCodes.size>0 && html`<span class="pill" style="font-size:10px;padding:1px 8px">${cloudCodes.size}</span>`}
         </div>
         <p class="meta" style="margin:0;padding:0 14px 6px;font-size:11px">Marque um ou mais códigos para ver só o vocabulário deles (e dos subcódigos). Nenhum = todos.</p>
@@ -8286,7 +8286,7 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
       ${tab==='cooc' && html`<div>
         <div style="border-top:1px solid var(--line-soft)">
           <div class="field-label" style="padding:10px 14px 2px;margin:0;display:flex;align-items:center;gap:8px">
-            ↔️ Eixo X (horizontal)
+            ⟷ Eixo X (horizontal)
             ${coocX.size>0 && html`<span class="pill" style="font-size:10px;padding:1px 8px">${coocX.size}</span>`}
           </div>
           <p class="meta" style="margin:0;padding:0 14px 6px;font-size:11px">Códigos nas colunas. Nenhum = 12 mais frequentes.</p>
@@ -8298,7 +8298,7 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
         </div>
         <div style="border-top:1px solid var(--line-soft)">
           <div class="field-label" style="padding:10px 14px 2px;margin:0;display:flex;align-items:center;gap:8px">
-            ↕️ Eixo Y (vertical)
+            ↕ Eixo Y (vertical)
             ${coocY.size>0 && html`<span class="pill" style="font-size:10px;padding:1px 8px">${coocY.size}</span>`}
           </div>
           <p class="meta" style="margin:0;padding:0 14px 6px;font-size:11px">Códigos nas linhas. Nenhum = 12 mais frequentes.</p>
@@ -8371,7 +8371,7 @@ function TreeNode({ code, childrenOf, count, sel, selCode, setSelCode, onApply, 
       onClick=${()=> appliable ? onApply(code.id) : setSelCode(code.id) }>
       ${kids.length>0 ? html`<span class="caret" onClick=${e=>{e.stopPropagation();setOpen(!open);}}>${open?'▾':'▸'}</span>` : html`<span class="caret"></span>`}
       <span class="swatch" style=${`background:${col.solid}`}></span>
-      <span class="node-name" title=${code.name}>${code.is_redaction?'🚫 ':''}${code.name}</span>
+      <span class="node-name" title=${code.name}>${code.is_redaction?'⦸ ':''}${code.name}</span>
       ${count[code.id]?html`<span class="count">${count[code.id]}</span>`:''}
       <button class="icon-btn" onClick=${e=>{e.stopPropagation(); if(confirm('Excluir o código e seus subcódigos e codificações?')) onDel(code.id);}} title="excluir">✕</button>
     </div>
@@ -8412,7 +8412,7 @@ function RenameCode({ code, onUpd, onSetColor, onSetRedaction, isAdmin }){
     ${code.depth===0 && !isAdmin && code.hue_deg!=null && html`<p class="meta" style="margin-top:6px">Cor definida pelo administrador.</p>`}
     ${isAdmin && html`<label class="row" style="gap:6px;margin-top:8px;font-size:12.5px;cursor:pointer;align-items:center">
       <input type="checkbox" checked=${!!code.is_redaction} onChange=${e=>onSetRedaction(code, e.target.checked)} />
-      🚫 Código de censura
+      ⦸ Código de censura
     </label>
     <p class="hint" style="margin:2px 0 0">Trechos com este código (e seus subcódigos) ficam de fora por padrão do que é enviado pra IA — pode escolher incluir na hora da análise.</p>`}
   </div>`;
@@ -8576,7 +8576,7 @@ function ProjectModal({ mode, user, project, projectMode, isAdmin, members, hasD
         ? html`<button class="btn sm" onClick=${onEnableFolderBackup}>Escolher pasta…</button>`
         : html`<div>
             <div class="row" style="gap:8px;align-items:center;margin-bottom:6px">
-              <span class="pill" style="font-size:11px">📁 ${backupStatus.name}</span>
+              <span class="pill" style="font-size:11px">🗁 ${backupStatus.name}</span>
               <button class="btn sm ghost" onClick=${onDisableFolderBackup}>desativar</button>
             </div>
             ${backupStatus.lastError
