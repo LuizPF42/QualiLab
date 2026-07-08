@@ -88,10 +88,25 @@
   .pill.mode-custom{background:var(--violet-soft);border-color:rgba(91,60,150,.4);color:var(--violet);}
   .pill.mode-file{background:var(--ok-soft);border-color:rgba(37,107,67,.4);color:var(--ok);}
   .pill.mode-offline{background:var(--amber-soft);border-color:var(--amber);color:var(--amber);}
+  /* nudge do rascunho: faixa fina e sobria abaixo do header (modo localStorage), com atalhos
+     pra salvar como arquivo ou conectar a nuvem. Colapsavel por sessao (state nudgeHidden). */
+  .nudge{display:flex;align-items:center;gap:10px;padding:6px 14px;font-size:12.5px;background:var(--amber-soft);border-bottom:1px solid var(--line);}
+  .nudge .msg{flex:1;color:var(--ink-soft);}
+  .nudge b{color:var(--amber);}
+  /* tela de entrada (Welcome): cartoes de escolha arquivo/nuvem/rascunho */
+  .wcard{display:flex;flex-direction:column;align-items:flex-start;gap:5px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:15px 16px;cursor:pointer;width:100%;color:var(--ink);}
+  .wcard:hover{border-color:var(--teal);background:var(--paper);}
+  .wcard.wrow{flex-direction:row;align-items:center;gap:12px;}
+  .wdot{width:11px;height:11px;border-radius:99px;flex:none;}
+  .wicon{flex:none;}
+  .wtitle{font-size:15px;font-weight:600;}
+  .wdesc{font-size:12.5px;color:var(--ink-soft);line-height:1.45;}
   .btn{font-size:13px;font-weight:500;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:7px 12px;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;}
   .btn:hover{background:var(--paper);}
   .btn.primary{background:var(--teal);color:#fff;border:none;font-weight:600;}
   .btn.primary:hover{background:var(--teal-deep);}
+  .btn.violet{color:var(--violet);border-color:var(--violet);}
+  .btn.violet:hover{background:var(--violet-soft);}
   .btn.ghost{background:transparent;}
   .btn.sm{font-size:12px;padding:5px 9px;border-radius:7px;}
   .icon-btn{background:transparent;border:none;color:var(--ink-soft);padding:4px;border-radius:6px;display:inline-flex;}
@@ -1927,6 +1942,7 @@ const IDB = {
   async tx(store,mode,fn){ const db=await this.open(); return new Promise((res,rej)=>{ const t=db.transaction(store,mode); t.onerror=()=>rej(t.error); const r=fn(t.objectStore(store)); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); },
   async saveHandle(key,handle){ return this.tx('file_handles','readwrite',s=>s.put({key,handle})); },
   async getHandle(key){ try{ return await this.tx('file_handles','readonly',s=>s.get(key)); }catch(e){ return null; } },
+  async deleteHandle(key){ try{ return await this.tx('file_handles','readwrite',s=>s.delete(key)); }catch(e){ return null; } },
 };
 
 /* ============ FILE STORE (File System Access API — arquivo .qualilab no disco) ============
@@ -2542,6 +2558,7 @@ function App(){
   const [localUsage, setLocalUsage] = useState(0);  // chars do JSON no localStorage (indicador de quota, so modo local)
   const [backupStatus, setBackupStatus] = useState({ active:false, name:null, lastOk:null, lastError:null, warnLarge:false }); // backup automatico em pasta (so LocalStore)
   const [sendCloudOpen, setSendCloudOpen] = useState(false); // modal "Enviar para a nuvem" (projeto local/arquivo -> projeto novo na nuvem)
+  const [nudgeHidden, setNudgeHidden] = useState(false); // oculta o nudge do rascunho ATE recarregar (colapsavel por sessao)
   const [importMsg, setImportMsg] = useState(null);
   const [role, setRole] = useState('member');  // papel do usuário no projeto: admin | member
   const [members, setMembers] = useState([]);   // membros do projeto (gestão de admins)
@@ -2725,6 +2742,22 @@ function App(){
   /* boot */
   useEffect(()=>{ (async()=>{
     try{
+      // ARQUIVO SALVO TEM PRIORIDADE: um handle no IDB = escolha deliberada de modo arquivo,
+      // reabre direto (verde) em qualquer configuracao (com ou sem nuvem embutida). O usuario
+      // sai dele por "Sair deste arquivo" (limpa o handle) no hub do projeto.
+      const lastHandle = await reopenLastFile();
+      if(lastHandle){
+        let fileSt = null;
+        // arquivo corrompido LANÇA (não vira projeto vazio) — cai pro fluxo normal com aviso
+        try{ fileSt = await createFileStore(lastHandle, false); }
+        catch(e){ setErr(String(e.message||e)); fileSt = null; }
+        if(fileSt){
+          const st = fileSt; setStore(st); setMode('file');
+          const display = (()=>{ try{return localStorage.getItem('qualilab:name')||'pesquisador';}catch(e){return 'pesquisador';} })();
+          const u = await st.init(display); setUser({...u,anon:false});
+          const p = await st.joinProject(); openProject(p); setPhase('work'); return;
+        }
+      }
       if(wantCloud){
         const createClient = await getCreateClient();
         const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -2733,33 +2766,18 @@ function App(){
         setStore(st);
         const display = (()=>{ try{return localStorage.getItem('qualilab:name')||'';}catch(e){return '';} })();
         const sess = await st.init(display);   // null se nao houver sessao salva
-        if(!sess){ setPhase('auth'); return; } // pede login/cadastro
+        if(!sess){ setPhase('welcome'); return; } // fresh: tela de escolha (arquivo/nuvem/rascunho)
         setUser(st.currentUser());
         await afterAuth(st, display);
       } else {
-        // tenta reabrir o último arquivo .qualilab antes de cair no localStorage
-        let lastHandle = await reopenLastFile();
-        let fileSt = null;
-        if(lastHandle){
-          // arquivo corrompido agora LANÇA (não vira projeto vazio) — cai pro modo local
-          // com aviso, sem tocar no arquivo
-          try{ fileSt = await createFileStore(lastHandle, false); }
-          catch(e){ setErr(String(e.message||e)); fileSt = null; }
-        }
-        if(fileSt){
-          const st = fileSt; setStore(st);
-          const display = (()=>{ try{return localStorage.getItem('qualilab:name')||'pesquisador';}catch(e){return 'pesquisador';} })();
-          const u = await st.init(display); setUser({...u,anon:false});
-          const p = await st.joinProject(); openProject(p); setPhase('work');
-        } else {
-          const st = LocalStore(); setStore(st);
-          const display = (()=>{ try{return localStorage.getItem('qualilab:name')||'pesquisador';}catch(e){return 'pesquisador';} })();
-          await st.init(display);
-          setUser(st.currentUser());
-          const p = await st.createProject(); openProject(p); setPhase('work');
-        }
+        // sem nuvem (FORCE_LOCAL ou sem credenciais) e sem arquivo salvo: rascunho automatico
+        const st = LocalStore(); setStore(st);
+        const display = (()=>{ try{return localStorage.getItem('qualilab:name')||'pesquisador';}catch(e){return 'pesquisador';} })();
+        await st.init(display);
+        setUser(st.currentUser());
+        const p = await st.createProject(); openProject(p); setPhase('work');
       }
-    }catch(e){ setErr(String(e.message||e)); setPhase(wantCloud?'auth':'work'); }
+    }catch(e){ setErr(String(e.message||e)); setPhase(wantCloud?'welcome':'work'); }
   })(); }, []); // eslint-disable-line
 
   /* carregar projeto */
@@ -3429,14 +3447,21 @@ function App(){
   }, [allCodings, codes]);
 
   /* =================== RENDER =================== */
+  // conectar/desconectar do Supabase PESSOAL direto das telas de entrada (Welcome/Auth), sem
+  // precisar abrir um projeto antes. Mesma logica do card "Conexao" do ProjectModal: credenciais
+  // no localStorage (so neste navegador) + reload; CUSTOM_SUPABASE re-deriva no boot seguinte.
+  // DEFINIDO ANTES dos returns de fase (o Auth referencia connectCustomCloud) pra evitar TDZ.
+  const connectCustomCloud = (url,key)=>{ try{ localStorage.setItem('qualilab:url',url); localStorage.setItem('qualilab:key',key); localStorage.removeItem('qualilab:forcelocal'); }catch(e){} location.reload(); };
+  const resetCustomCloud = ()=>{ try{ localStorage.removeItem('qualilab:url'); localStorage.removeItem('qualilab:key'); localStorage.removeItem('qualilab:forcelocal'); }catch(e){} location.reload(); };
+
   if(phase==='boot') return html`<div class="empty"><div class="t">Carregando…</div></div>`;
 
   if(phase==='auth') return html`<${Auth}
     err=${err}
     onSignIn=${async (email,pw)=>{ try{ const u=await store.signIn(email,pw); try{localStorage.setItem('qualilab:name',u.name);}catch(e){} setErr(null); await afterAuth(store, u.name); }catch(e){ setErr(String(e.message||e)); } }}
     onSignUp=${async (email,pw,disp)=>{ try{ const r=await store.signUp(email,pw,disp); try{localStorage.setItem('qualilab:name',disp);}catch(e){} setErr(null); if(r.confirmed){ await afterAuth(store, disp); } return r; }catch(e){ setErr(String(e.message||e)); return { error:String(e.message||e) }; } }}
-    onAnon=${async (disp)=>{ try{ if(!online){ await enterLocalOffline(disp); return; } const u=await store.signInAnon(disp); try{localStorage.setItem('qualilab:name',disp);}catch(e){} setErr(null); await afterAuth(store, disp); }catch(e){ const msg=String(e.message||e); if(/anonymous sign-ins.*disabled/i.test(msg)){ await enterLocalOffline(disp); return; } setErr(msg); } }}
-    onLocal=${enterLocalOffline}
+    onBack=${()=>{ setErr(null); setPhase('welcome'); }}
+    onServer=${connectCustomCloud} onResetServer=${resetCustomCloud}
   />`;
 
   const openFileProject = async (isNew)=>{
@@ -3445,13 +3470,55 @@ function App(){
       const fh = isNew
         ? await window.showSaveFilePicker({ suggestedName:'projeto.qualilab', types:[{description:'QualiLab',accept:{'application/json':['.qualilab']}}] })
         : await window.showOpenFilePicker({ types:[{description:'QualiLab',accept:{'application/json':['.qualilab']}}], multiple:false }).then(r=>r[0]);
-      const st = await createFileStore(fh, isNew); setStore(st);
+      const st = await createFileStore(fh, isNew); setStore(st); setMode('file');
       const display = (()=>{ try{return localStorage.getItem('qualilab:name')||'pesquisador';}catch(e){return 'pesquisador';} })();
       const u = await st.init(display); setUser({...u,anon:false});
       const p = isNew ? await st.createProject(fh.name.replace(/\.qualilab$/i,''), display) : await st.joinProject();
       openProject(p); setPhase('work');
     }catch(e){ if(e?.name!=='AbortError') setErr(String(e.message||e)); }
   };
+
+  // migra o RASCUNHO (localStorage) para um arquivo .qualilab no disco, que passa a ser o
+  // armazenamento PRIMARIO (pilula verde). Copia tudo do projeto atual pro arquivo novo sem
+  // passar pelo Gate. So Chromium (File System Access API); acionado pelo card do ProjectModal.
+  const saveAsFile = async ()=>{
+    if(!supportsFileAPI) return;
+    try{
+      const db = await buildQualilabDb();
+      const suggested = (project?.name||'projeto').replace(/[^\w\-]+/g,'_')+'.qualilab';
+      const fh = await window.showSaveFilePicker({ suggestedName:suggested, types:[{description:'QualiLab',accept:{'application/json':['.qualilab']}}] });
+      setBusy('Salvando como arquivo...');
+      try{ if(store?.disableFolderBackup) await store.disableFolderBackup(); }catch(e){}
+      const st = await createFileStore(fh, true);
+      const display = user?.name || 'pesquisador';
+      await st.init(display);
+      const p = await st.createProject(project?.name||fh.name.replace(/\.qualilab$/i,''), display);
+      if(st.beginBatch) st.beginBatch();
+      try{ await mergeQualilabDb(db, st, p.id, 'individual', (done,total)=>setProgress({done,total,label:'copiando'})); }
+      finally{ if(st.endBatch) await st.endBatch(); }
+      setStore(st); setMode('file'); openProject(p);
+      setProgress(null); setBusy(null);
+    }catch(e){ setProgress(null); setBusy(null); if(e?.name!=='AbortError') setErr(String(e.message||e)); }
+  };
+
+  // "Sair deste arquivo": desanexa do arquivo atual (limpa o handle do IDB, que faz o boot
+  // reabrir sozinho) e recarrega, caindo na tela de escolha (welcome) ou rascunho. O .qualilab
+  // no disco fica intacto — e o escape pra nao ficar "preso" no arquivo pelo reabrir-automatico.
+  const leaveFile = async ()=>{
+    if(!confirm('Sair deste arquivo e voltar à tela inicial? O arquivo .qualilab continua salvo no disco, intacto.')) return;
+    try{ await IDB.deleteHandle('qualilab:file'); }catch(e){}
+    try{ localStorage.removeItem('qualilab:project'); }catch(e){}
+    location.reload();
+  };
+
+  if(phase==='welcome') return html`<${Welcome}
+    err=${err}
+    onNewFile=${()=>openFileProject(true)}
+    onOpenFile=${()=>openFileProject(false)}
+    onCloud=${()=>{ setErr(null); setPhase('auth'); }}
+    onRascunho=${()=>enterLocalOffline()}
+    onServer=${connectCustomCloud} onResetServer=${resetCustomCloud}
+  />`;
 
   if(phase==='gate') return html`<div>
     <${Gate}
@@ -3465,7 +3532,7 @@ function App(){
     ${account && html`<${AccountModal} user=${user} projects=${myProjects}
       onClose=${()=>setAccount(false)} onChangePassword=${changePassword} onChangeName=${changeDisplayName}
       onOpen=${acctOpenProject} onRename=${acctRenameProject} onDelete=${acctDeleteProject} onLeave=${acctLeaveProject}
-      onLogout=${async()=>{ setAccount(false); try{localStorage.removeItem('qualilab:project');}catch(e){} try{ await store.signOut(); }catch(e){} setProject(null); setUser(null); setDocs([]); setActiveId(null); setPhase('auth'); }} />`}
+      onLogout=${async()=>{ setAccount(false); try{localStorage.removeItem('qualilab:project');}catch(e){} try{ await store.signOut(); }catch(e){} setProject(null); setUser(null); setDocs([]); setActiveId(null); setPhase('welcome'); }} />`}
   </div>`;
 
   return html`
@@ -3491,10 +3558,10 @@ function App(){
       <div class="top-row">
         ${project && (()=>{ /* pilula do projeto: cor + rotulo + tooltip por estado de conexao */
           const cs = store?.mode==='file' ? 'file' : mode!=='cloud' ? 'local' : !online ? 'offline' : CUSTOM_SUPABASE ? 'custom' : 'cloud';
-          const csLabel = { file:'arquivo', local:'local', cloud:'nuvem', custom:'nuvem pessoal', offline:'nuvem' }[cs];
+          const csLabel = { file:'arquivo', local:'rascunho', cloud:'nuvem', custom:'nuvem pessoal', offline:'nuvem' }[cs];
           const csTitle = {
             file:'Projeto em ARQUIVO (.qualilab) no seu disco — os dados ficam só no seu dispositivo. Clique para gerenciar.',
-            local:'Projeto LOCAL (armazenamento deste navegador) — os dados ficam só neste dispositivo.'
+            local:'Rascunho (armazenamento deste navegador). Os dados ficam só neste dispositivo e podem sumir se você limpar os dados do navegador. Salve como arquivo ou conecte à nuvem para não perder.'
               + (localUsage>0?` Usando ~${Math.max(1,Math.round(localUsage/LOCAL_QUOTA_CHARS*100))}% do limite (~5 MB).`:'')
               + ' Clique para gerenciar.',
             cloud:'Projeto na NUVEM — servidor padrão do QualiLab (Supabase). Clique para gerenciar.',
@@ -3508,7 +3575,7 @@ function App(){
         })()}
         ${user && html`<button class="btn sm ghost" title=${'Minha conta'+(user.email?' · '+user.email:'')} onClick=${()=>setAccount(true)}>${user.name}${user.anon?' (visitante)':''}</button>`}
         ${mode==='cloud' && html`<button class="btn sm ghost" onClick=${()=>{ try{localStorage.removeItem('qualilab:project');}catch(e){} setProject(null); setPhase('gate'); }}>trocar projeto</button>`}
-        ${mode==='cloud' && user && html`<button class="btn sm ghost" onClick=${async()=>{ try{localStorage.removeItem('qualilab:project');}catch(e){} try{ await store.signOut(); }catch(e){} setProject(null); setUser(null); setDocs([]); setActiveId(null); setPhase('auth'); }}>sair</button>`}
+        ${mode==='cloud' && user && html`<button class="btn sm ghost" onClick=${async()=>{ try{localStorage.removeItem('qualilab:project');}catch(e){} try{ await store.signOut(); }catch(e){} setProject(null); setUser(null); setDocs([]); setActiveId(null); setPhase('welcome'); }}>sair</button>`}
         ${project && docs.length>0 && html`<div style="position:relative">
           <button class="btn sm" onClick=${()=>setExpOpen(o=>!o)}>exportar ▾</button>
           ${expOpen && html`<div>
@@ -3550,6 +3617,13 @@ function App(){
       <input ref=${qdcInputRef} type="file" accept=".qdc" style="display:none" onChange=${e=>{ if(e.target.files[0]) doImportQDC(e.target.files[0]); e.target.value=''; }} />
       <input ref=${csvInputRef} type="file" accept=".csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" style="display:none" onChange=${e=>{ if(e.target.files[0]) openCsvMapping(e.target.files[0]); e.target.value=''; }} />
     </header>
+
+    ${store?.mode==='local' && !nudgeHidden && html`<div class="nudge">
+      <span class="msg">Você está num <b>rascunho</b>. Os dados ficam só neste navegador e podem sumir se você limpar os dados do site. Salve como arquivo ou conecte à nuvem para não perder.</span>
+      ${supportsFileAPI && html`<button class="btn sm" onClick=${saveAsFile}>Salvar como arquivo</button>`}
+      <button class="btn sm ghost" onClick=${()=>setProjEdit(true)}>Conectar à nuvem</button>
+      <button class="icon-btn" title="ocultar até recarregar" onClick=${()=>setNudgeHidden(true)}>✕</button>
+    </div>`}
 
     ${saveError && html`<div class="banner err">
       <b>Atenção: as últimas alterações NÃO foram salvas</b> ${mode==='local' ? '(armazenamento do navegador cheio ou indisponível).' : '(falha ao gravar o arquivo — verifique se o disco/pasta ainda está acessível).'}
@@ -3920,9 +3994,10 @@ function App(){
 
   ${account && html`<${AccountModal} user=${user} projects=${myProjects}
     onClose=${()=>setAccount(false)} onChangePassword=${changePassword} onChangeName=${changeDisplayName}
-    onOpen=${acctOpenProject} onRename=${acctRenameProject} onDelete=${acctDeleteProject} onLeave=${acctLeaveProject} />`}
+    onOpen=${acctOpenProject} onRename=${acctRenameProject} onDelete=${acctDeleteProject} onLeave=${acctLeaveProject}
+    onLogout=${mode==='cloud' ? (async()=>{ setAccount(false); try{localStorage.removeItem('qualilab:project');}catch(e){} try{ await store.signOut(); }catch(e){} setProject(null); setUser(null); setDocs([]); setActiveId(null); setPhase('welcome'); }) : undefined} />`}
 
-  ${projEdit && html`<${ProjectModal} mode=${mode} user=${user} project=${project} projectMode=${projectMode}
+  ${projEdit && html`<${ProjectModal} mode=${mode} storeMode=${store?.mode} user=${user} project=${project} projectMode=${projectMode}
     isAdmin=${isAdmin} members=${members} hasDocs=${docs.length>0}
     onClose=${()=>setProjEdit(false)} onSetMode=${changeProjectMode}
     onSetRole=${changeMemberRole} onRemoveMember=${removeMember}
@@ -3933,6 +4008,8 @@ function App(){
     onReconnectCloud=${()=>{ try{localStorage.removeItem('qualilab:forcelocal');}catch(e){} location.reload(); }}
     canFolderBackup=${!!store?.enableFolderBackup} backupStatus=${backupStatus}
     onEnableFolderBackup=${enableFolderBackup} onDisableFolderBackup=${disableFolderBackup}
+    canSaveAsFile=${supportsFileAPI && store?.mode==='local'} onSaveAsFile=${()=>{ setProjEdit(false); saveAsFile(); }}
+    canLeaveFile=${store?.mode==='file'} onLeaveFile=${()=>{ setProjEdit(false); leaveFile(); }}
     canSendToCloud=${wantCloud && store?.mode!=='cloud'} onOpenSendToCloud=${()=>{ setProjEdit(false); setSendCloudOpen(true); }} />`}
 
   ${sendCloudOpen && html`<${SendToCloudModal} defaultName=${project?.name||'Projeto'}
@@ -4016,7 +4093,33 @@ function CsvImportModal({ parsed, fileName, onCancel, onConfirm }){
 }
 
 /* ============ AUTH (login / cadastro por e-mail e senha) ============ */
-function Auth({ onSignIn, onSignUp, onAnon, onLocal, err }){
+/* ============ SERVER CONNECT (Supabase pessoal a partir das telas de entrada) ============
+   Botao violeta ("nuvem pessoal") reusado no Welcome e no Auth: conecta ao Supabase do proprio
+   pesquisador (onde vivem os projetos coletivos dele) ANTES de logar. Se ja esta num servidor
+   pessoal (CUSTOM_SUPABASE), mostra o estado + "voltar ao padrao" (escape pra nao ficar preso). */
+function ServerConnect({ onConnect, onReset }){
+  const [open,setOpen]=useState(false);
+  const [url,setUrl]=useState(''); const [key,setKey]=useState('');
+  if(CUSTOM_SUPABASE) return html`<div style="margin-top:12px;text-align:center">
+    <span class="pill mode-custom" style="font-size:11px">nuvem pessoal conectada</span>
+    <button class="btn sm ghost" style="font-size:11.5px;margin-left:6px" onClick=${onReset}>voltar ao servidor padrão</button>
+  </div>`;
+  if(!open) return html`<div style="margin-top:12px;text-align:center">
+    <button class="btn sm violet" onClick=${()=>setOpen(true)}>Conectar ao meu Supabase</button>
+  </div>`;
+  return html`<div style="text-align:left;margin-top:12px;border:1px solid var(--violet);border-radius:12px;padding:12px;background:var(--violet-soft)">
+    <div class="field-label" style="color:var(--violet)">Meu servidor Supabase</div>
+    <p class="hint" style="margin:0 0 8px">Conecte ao seu próprio projeto Supabase (é onde ficam seus projetos de equipe). Depois de conectar, faça login ali e entre no projeto coletivo pelo código. As credenciais ficam só neste navegador.</p>
+    <div class="field"><input class="txtin" value=${url} onInput=${e=>setUrl(e.target.value)} placeholder="https://xxxx.supabase.co" /></div>
+    <div class="field"><input class="txtin" value=${key} onInput=${e=>setKey(e.target.value)} placeholder="anon key (eyJhbGci...)" /></div>
+    <div class="row" style="gap:8px">
+      <button class="btn sm primary" disabled=${!url||!key} onClick=${()=>onConnect(url.trim(),key.trim())}>Conectar e recarregar</button>
+      <button class="btn sm ghost" onClick=${()=>setOpen(false)}>cancelar</button>
+    </div>
+  </div>`;
+}
+
+function Auth({ onSignIn, onSignUp, onBack, onServer, onResetServer, err }){
   const [tab,setTab]=useState('in');   // in = entrar | up = criar conta
   const [name,setName]=useState('');
   const [email,setEmail]=useState('');
@@ -4046,14 +4149,56 @@ function Auth({ onSignIn, onSignUp, onAnon, onLocal, err }){
     <div class="field"><div class="field-label">Senha</div>
       <input class="txtin" type="password" value=${pw} onInput=${e=>setPw(e.target.value)} placeholder="mínimo 6 caracteres"
         onKeyDown=${e=>{ if(e.key==='Enter') submit(); }} /></div>
-    <button class="btn primary" style="width:100%" disabled=${busy||!email||pw.length<6} onClick=${submit}>
+    <button class="btn primary" style="width:100%;justify-content:center" disabled=${busy||!email||pw.length<6} onClick=${submit}>
       ${busy?'...':(tab==='in'?'Entrar':'Criar conta')}</button>
-    <hr style="border:none;border-top:1px solid var(--line-soft);margin:16px 0 10px" />
-    <div style="text-align:center">
-      <span class="meta">Sem conta? </span>
-      <button class="btn sm ghost" style="font-size:12px" onClick=${()=>onAnon(name||'visitante')}>Continuar como visitante</button>
-      ${onLocal && html`<button class="btn sm ghost" style="font-size:12px;margin-left:6px" onClick=${()=>onLocal(name||'visitante')}>Usar offline</button>`}
-      <p class="meta" style="margin:6px 0 0;font-size:11px">Visitante usa a nuvem deste navegador. Offline salva apenas neste dispositivo, sem sincronização entre aparelhos.</p>
+    ${onBack && html`<div style="text-align:center;margin-top:14px">
+      <button class="btn sm ghost" style="font-size:12px" onClick=${onBack}>← Voltar</button>
+    </div>`}
+    ${onServer && html`<${ServerConnect} onConnect=${onServer} onReset=${onResetServer} />`}
+  </div></div>`;
+}
+
+/* ============ WELCOME (tela de entrada: arquivo / nuvem / rascunho) ============
+   Primeira tela do usuario novo (fresh, sem sessao). Arquivo e nuvem sao PARES (sem
+   hierarquia entre eles), rascunho fica como opcao secundaria "so testar" abaixo. */
+function Welcome({ onNewFile, onOpenFile, onCloud, onRascunho, onServer, onResetServer, err }){
+  return html`<div class="modal-bg"><div class="modal" style="max-width:540px">
+    <div style="text-align:center;margin-bottom:14px">
+      <h2 aria-label="QualiLab" style="display:inline-flex;align-items:center;gap:3px;margin:0">
+        <svg width="58" height="58" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#00427A"/><text x="16.02" y="23.13" font-family="Georgia,serif" font-size="26" font-weight="700" fill="#fff" text-anchor="middle">Q</text></svg>
+        <span class="brand" style="font-size:44px;line-height:1;color:var(--teal)" aria-hidden="true">ualiLab</span>
+      </h2>
+      <p class="tag" style="margin:3px 0 0">laboratório de pesquisa qualitativa</p>
+      <p class="hint" style="margin:7px 0 0">Como você quer começar?</p>
+    </div>
+    ${err && html`<div class="banner err" style="margin:0 0 12px">${humanizeError(err)||err}</div>`}
+    <div style="display:grid;grid-template-columns:${supportsFileAPI?'1fr 1fr':'1fr'};gap:12px">
+      ${supportsFileAPI && html`<button class="wcard" onClick=${onNewFile}>
+        <svg class="wicon" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--ok)"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/></svg>
+        <span class="wtitle">Novo em arquivo</span>
+        <span class="wdesc">Um arquivo .qualilab no seu computador. Portátil e sem nuvem.</span>
+      </button>`}
+      <button class="wcard" onClick=${onCloud}>
+        <svg class="wicon" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--teal)"><path d="M6.5 19a4.5 4.5 0 0 1 0-9 5 5 0 0 1 9.6-1.3A3.5 3.5 0 0 1 18 19z"/></svg>
+        <span class="wtitle">Entrar na nuvem</span>
+        <span class="wdesc">Acessar de outro dispositivo ou colaborar. Login ou código.</span>
+      </button>
+    </div>
+    <button class="wcard wrow" style="margin-top:12px" onClick=${onRascunho}>
+      <svg class="wicon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--ink-faint)"><path d="M9 3h6"/><path d="M14 3v5l4.8 9.6A1.5 1.5 0 0 1 17.5 20H6.5a1.5 1.5 0 0 1-1.3-2.4L10 8V3"/></svg>
+      <span style="flex:1">
+        <span class="wtitle">Só testar</span> <span class="meta">rascunho</span>
+        <span class="wdesc" style="display:block;margin-top:2px">Sandbox neste navegador. Rápido, mas pode sumir ao limpar os dados.</span>
+      </span>
+    </button>
+    ${supportsFileAPI
+      ? html`<p class="meta" style="text-align:center;margin:14px 0 0;font-size:11.5px">Já tem um arquivo? <button class="btn sm ghost" style="font-size:11.5px" onClick=${onOpenFile}>Abrir arquivo existente</button></p>`
+      : html`<p class="meta" style="text-align:center;margin:14px 0 0;font-size:11px">No Firefox/Safari o modo arquivo não está disponível. Use nuvem ou rascunho.</p>`}
+    ${onServer && html`<${ServerConnect} onConnect=${onServer} onReset=${onResetServer} />`}
+    <div style="text-align:center;margin-top:18px;padding-top:12px;border-top:1px solid var(--line-soft)">
+      <p class="meta" style="margin:0;font-size:11.5px;line-height:1.6">
+        <a href="https://github.com/LuizPF42/QualiLab" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">GitHub</a> · licença MIT · por Luiz Pimenta Filho · LabDados / FGV Direito SP
+      </p>
     </div>
   </div></div>`;
 }
@@ -8480,7 +8625,7 @@ function AddPaste({ onAdd }){
 function ProjectModal({ mode, user, project, projectMode, isAdmin, members, hasDocs,
                         onClose, onSetMode, onSetRole, onRemoveMember, onRename, onClear, onDelete,
                         onSaveCloud, onClearCloud, onResetCloud, onReconnectCloud, canFolderBackup, backupStatus, onEnableFolderBackup, onDisableFolderBackup,
-                        canSendToCloud, onOpenSendToCloud }){
+                        canSaveAsFile, onSaveAsFile, canLeaveFile, onLeaveFile, canSendToCloud, onOpenSendToCloud, storeMode }){
   const [sel,setSel]=useState(projectMode);
   const [pname,setPname]=useState(project?.name||'');
   const [copied,setCopied]=useState(false);
@@ -8496,7 +8641,7 @@ function ProjectModal({ mode, user, project, projectMode, isAdmin, members, hasD
 
   return html`<div class="modal-bg"><div class="modal" style="max-width:560px">
     <h2>${project?.name||'Projeto'}</h2>
-    <p class="hint">${cloud?'nuvem':'local'}${cloud?` · código ${project?.code}`:''} · ${projectMode==='individual'?'individual':'coletivo'}</p>
+    <p class="hint">${cloud?'nuvem':storeMode==='file'?'arquivo':'rascunho'}${cloud?` · código ${project?.code}`:''} · ${projectMode==='individual'?'individual':'coletivo'}</p>
 
     <!-- CONVIDAR COLABORADORES -->
     ${cloud && html`<div class="card" style="margin-bottom:12px">
@@ -8588,11 +8733,25 @@ function ProjectModal({ mode, user, project, projectMode, isAdmin, members, hasD
           </div>`}
     </div>`}
 
+    <!-- SALVAR COMO ARQUIVO (so no modo rascunho/localStorage, Chromium) -->
+    ${canSaveAsFile && html`<div class="card" style="margin-bottom:12px">
+      <div class="field-label">Salvar como arquivo (.qualilab)</div>
+      <p class="hint" style="margin:0 0 8px">Passa este rascunho para um arquivo <b>.qualilab</b> no seu computador, que vira o armazenamento principal. Mais seguro e portátil que o navegador (o rascunho pode sumir ao limpar os dados). Copia tudo do projeto atual de uma vez, sem exportar e importar na mão.</p>
+      <button class="btn sm" onClick=${onSaveAsFile}>Salvar como arquivo…</button>
+    </div>`}
+
     <!-- ENVIAR PARA A NUVEM (so quando o projeto ativo NAO e na nuvem) -->
     ${canSendToCloud && html`<div class="card" style="margin-bottom:12px">
       <div class="field-label">Enviar para a nuvem</div>
       <p class="hint" style="margin:0 0 8px">Cria um projeto novo na nuvem e copia tudo deste projeto pra ele (documentos, categorias, códigos, codificações e memos) — numa tacada só, sem precisar exportar e importar manualmente.</p>
       <button class="btn sm" onClick=${onOpenSendToCloud}>Enviar para a nuvem…</button>
+    </div>`}
+
+    <!-- SAIR DESTE ARQUIVO (so no modo arquivo): escape do reabrir-automatico -->
+    ${canLeaveFile && html`<div class="card" style="margin-bottom:12px">
+      <div class="field-label">Sair deste arquivo</div>
+      <p class="hint" style="margin:0 0 8px">Fecha o arquivo atual e volta à tela inicial, onde dá pra abrir outro projeto ou trocar de modo. O arquivo .qualilab continua no disco, intacto.</p>
+      <button class="btn sm ghost" onClick=${onLeaveFile}>Sair deste arquivo…</button>
     </div>`}
 
     <!-- CONEXÃO -->
