@@ -474,6 +474,161 @@ function docxHtmlToText(html){
   return out.join('\n\n');
 }
 
+/* ============ REFLOW DE PDF ============ Reconstroi texto legivel a partir dos itens
+   posicionados do pdf.js. Ganhos sobre o reflow linear antigo (assumia 1 coluna e mantinha
+   todo cabecalho/rodape, o que virava salada em paper de 2 colunas e jurisprudencia suja):
+   (1) COLUNAS por LINHA: detecta a(s) calha(s) vertical(is) e, por linha (row), decide se ela
+       e full-width (cruza a calha: titulo/cabecalho/rodape) ou colunar (divide na calha). Le
+       coluna a coluna, esvaziando os buffers em cada linha full-width. Row-based e nao
+       item-based de proposito: um cabecalho com itens por-palavra nao 'bloqueia' a calha
+       item-a-item e racharia entre colunas.
+   (2) REMOVE cabecalho/rodape/numero de pagina que se repetem (forma normalizada) na 1a ou
+       ultima linha de >=60% das paginas.
+   (3) DEHIFENIZACAO conservadora (minuscula = quebra de palavra, une sem hifen; senao mantem)
+       + juncao de paragrafo na virada de pagina.
+   A deteccao de calha ignora as faixas de margem (8% topo/rodape) pra numero de pagina
+   centralizado nao preencher a calha. Coluna unica cai no mesmo resultado de antes (sem
+   regressao). Geometria (colunas / ordem de leitura) validada em casos sinteticos de 1/2/3 colunas. */
+function _reflowMergedGaps(intervals){          // [[lo,hi]] -> [[gLo,gHi,width]] entre intervalos mesclados
+  if(!intervals.length) return [];
+  const iv = intervals.slice().sort((a,b)=>a[0]-b[0]);
+  const gaps = []; let hi = iv[0][1];
+  for(let i=1;i<iv.length;i++){
+    if(iv[i][0] > hi){ gaps.push([hi, iv[i][0], iv[i][0]-hi]); hi = iv[i][1]; }
+    else if(iv[i][1] > hi) hi = iv[i][1];
+  }
+  return gaps;
+}
+function _reflowMedCharW(items){                 // largura mediana de caractere (pra dimensionar a calha)
+  const ws = items.filter(it=>it.str).map(it=> it.w/it.str.length).sort((a,b)=>a-b);
+  return ws.length ? ws[ws.length>>1] : 6;
+}
+function _reflowColumnGutters(items){            // -> [x,...] midpoints das calhas verticais; [] = coluna unica
+  if(items.length < 8) return [];
+  let ylo=Infinity, yhi=-Infinity;
+  for(const it of items){ if(it.y<ylo) ylo=it.y; if(it.y+it.h>yhi) yhi=it.y+it.h; }
+  const band=(yhi-ylo)*0.08;                      // ignora margens topo/rodape (num de pagina / cabecalho)
+  let core = items.filter(it=> it.y>=ylo+band && it.y+it.h<=yhi-band);
+  if(core.length < 8) core = items;
+  let minx=Infinity, maxx=-Infinity;
+  for(const it of core){ if(it.x<minx) minx=it.x; if(it.x+it.w>maxx) maxx=it.x+it.w; }
+  const W=maxx-minx, cw=_reflowMedCharW(core), out=[];
+  for(const g of _reflowMergedGaps(core.map(it=>[it.x, it.x+it.w]))){
+    const wd=g[2];
+    if(wd >= Math.max(cw*2.5, 12) && wd >= W*0.03){
+      const mid=(g[0]+g[1])/2;
+      let l=0; for(const it of core) if(it.x+it.w/2 < mid) l++;
+      if(Math.min(l, core.length-l) >= Math.max(3, 0.15*core.length)) out.push(mid);  // os dois lados com massa real
+    }
+  }
+  return out.sort((a,b)=>a-b);
+}
+function _reflowColOf(x, bounds){ let i=0; while(i<bounds.length && x >= bounds[i]) i++; return i; }
+function _reflowRowFullWidth(row, bounds){       // linha atravessa alguma calha => full-width (cabecalho/titulo/rodape)
+  for(const it of row) for(const b of bounds) if(it.x < b && b < it.x+it.w) return true;
+  return false;
+}
+function _reflowGroupRows(items, avgH){          // agrupa itens em linhas por Y (topo -> baixo)
+  const s = items.slice().sort((a,b)=> b.y-a.y || a.x-b.x);
+  const rows=[]; let cur=[s[0]];
+  for(let i=1;i<s.length;i++){ if(Math.abs(s[i].y-cur[0].y) < avgH*0.4) cur.push(s[i]); else { rows.push(cur); cur=[s[i]]; } }
+  rows.push(cur);
+  return rows;
+}
+function _reflowJoinHyphen(prev, next){          // une duas linhas tratando hifenizacao de fim de linha
+  if(prev.endsWith('-') && prev.length>=2 && /\p{L}/u.test(prev.slice(-2,-1)))
+    return (/\p{Ll}/u.test(next[0]||'')) ? prev.slice(0,-1)+next : prev+next;  // minuscula = quebra de palavra; senao mantem hifen (composto)
+  return prev + ' ' + next;
+}
+function _reflowBlockToParas(items){             // bloco de coluna unica -> paragrafos (linhas por Y, uniao por gap)
+  if(!items.length) return [];
+  const avgH = items.reduce((s,it)=>s+it.h,0)/items.length, sp = avgH*0.25;
+  const rows = _reflowGroupRows(items, avgH);
+  rows.forEach(r=> r.sort((a,b)=>a.x-b.x));
+  const lineText = (line)=>{ let t=line[0].str; for(let i=1;i<line.length;i++){ const gap=line[i].x-(line[i-1].x+line[i-1].w); if(gap>sp && !t.endsWith(' ') && !line[i].str.startsWith(' ')) t+=' '; t+=line[i].str; } return t.trim(); };
+  // deteccao de paragrafo INDEPENDENTE DA ALTURA do item. O antigo gapY>localH*1.6 dependia da
+  // altura do glifo, que o pdf.js reporta menor que a entrelinha -> em PDF de entrelinha generosa
+  // (JSTOR etc.) TODA linha virava um paragrafo (leitor com espacamento duplo). Agora quebra se:
+  //  (a) o gap vertical e bem maior que a MEDIANA dos gaps do bloco (espaco extra); OU
+  //  (b) a linha e uma PRIMEIRA-LINHA-INDENTADA (recuo vs a margem modal do bloco, com a linha
+  //      anterior NA margem - gating que evita rachar um bloco de citacao uniformemente recuado).
+  // Quase todo corpo academico separa paragrafo por recuo de 1a linha, sem gap extra.
+  const gaps=[]; for(let k=1;k<rows.length;k++){ const g=rows[k-1][0].y-rows[k][0].y; if(g>0) gaps.push(g); }
+  const medGap = gaps.length ? gaps.slice().sort((a,b)=>a-b)[gaps.length>>1] : avgH*1.4;
+  const lefts = rows.map(r=> Math.round(Math.min(...r.map(it=>it.x))));
+  let leftMode=lefts[0]; { const m=new Map(); let bc=0; for(const x of lefts){ const c=(m.get(x)||0)+1; m.set(x,c); if(c>bc){ bc=c; leftMode=x; } } }
+  const charW=_reflowMedCharW(items), maxRight=Math.max(...rows.map(r=>Math.max(...r.map(it=>it.x+it.w))));
+  const indentTh=Math.max(charW*1.3,(maxRight-leftMode)*0.012);
+  const paras=[]; let para=lineText(rows[0]);
+  for(let k=1;k<rows.length;k++){
+    const gapY=rows[k-1][0].y-rows[k][0].y, t=lineText(rows[k]);
+    const gapBrk=gapY>medGap*1.35, indentBrk=(lefts[k]>leftMode+indentTh)&&(lefts[k-1]<=leftMode+indentTh);
+    if(gapBrk||indentBrk){ paras.push(para.trim()); para=t; }
+    else para = _reflowJoinHyphen(para, t);
+  }
+  paras.push(para.trim());
+  return paras.filter(p=>p);
+}
+function _reflowDedup(items){                     // remove OVER-PRINT (pagina desenhada 2x: falso-negrito ou
+  // camada de texto dupla) que faz o pdf.js emitir cada glifo 2x na MESMA posicao -> "factfact" (o
+  // fitz/MuPDF colapsa isso sozinho, o pdf.js nao). Descarta item cujo (texto + posicao arredondada) ja
+  // apareceu; repeticao legitima (palavra igual em posicao DIFERENTE) tem chave diferente e e preservada.
+  const seen=new Set(), out=[];
+  for(const it of items){ const k=Math.round(it.x)+'|'+Math.round(it.y)+'|'+it.str; if(seen.has(k)) continue; seen.add(k); out.push(it); }
+  return out;
+}
+function _reflowPageParas(items){                // itens de UMA pagina -> paragrafos em ordem de leitura
+  const its = _reflowDedup(items.filter(it=> 'str' in it && it.str.trim().length>0));
+  if(!its.length) return [];
+  const avgH = its.reduce((s,it)=>s+it.h,0)/its.length;
+  const bounds = _reflowColumnGutters(its);
+  // 0 calhas = coluna unica; >2 calhas (4+ colunas) e provavelmente tabela/deteccao espuria ->
+  // le em ordem de linha (menos pior pra tabela) em vez de coluna a coluna.
+  if(!bounds.length || bounds.length > 2) return _reflowBlockToParas(its);
+  const rows = _reflowGroupRows(its, avgH);       // topo -> baixo
+  const cols = Array.from({length: bounds.length+1}, ()=>[]);
+  const segments=[];
+  const flush = ()=>{ for(const c of cols){ if(c.length){ segments.push(c.slice()); c.length=0; } } };
+  for(const row of rows){
+    if(_reflowRowFullWidth(row, bounds)){ flush(); segments.push(row); }   // linha full-width esvazia as colunas antes
+    else for(const it of row) cols[_reflowColOf(it.x+it.w/2, bounds)].push(it);
+  }
+  flush();
+  const out=[];
+  for(const seg of segments) for(const p of _reflowBlockToParas(seg)) out.push(p);
+  return out;
+}
+function _reflowNormRun(s){ return s.toLowerCase().replace(/\d+/g,'#').replace(/\s+/g,' ').trim(); }
+function reflowPdfPages(pages){                  // pages: [{items:[{str,x,y,w,h}]}] -> {content, removedRunning}
+  const perPage = pages.map(pg=> _reflowPageParas(pg.items||[]));
+  const n = perPage.length, topC=new Map(), botC=new Map();
+  for(const paras of perPage){ if(!paras.length) continue;
+    const a=_reflowNormRun(paras[0]); topC.set(a,(topC.get(a)||0)+1);
+    const b=_reflowNormRun(paras[paras.length-1]); botC.set(b,(botC.get(b)||0)+1);
+  }
+  const thr = Math.max(3, Math.round(0.6*n)), killTop=new Set(), killBot=new Set();
+  for(const [k,c] of topC) if(c>=thr && k.length<=80) killTop.add(k);
+  for(const [k,c] of botC) if(c>=thr && k.length<=80) killBot.add(k);
+  let removed=0;
+  const cleaned = perPage.map(paras=>{
+    let p=paras;
+    if(p.length && killTop.has(_reflowNormRun(p[0]))){ p=p.slice(1); removed++; }
+    if(p.length && killBot.has(_reflowNormRun(p[p.length-1]))){ p=p.slice(0,-1); removed++; }
+    return p;
+  });
+  const flat=[];                                  // junta paginas: continuacao (sem pontuacao final / hifen) une na virada
+  for(const paras of cleaned) for(let i=0;i<paras.length;i++){
+    const cur=paras[i];
+    if(i===0 && flat.length){
+      const prev=flat[flat.length-1];
+      if(prev.endsWith('-') && /\p{L}/u.test(prev.slice(-2,-1))){ flat[flat.length-1]=_reflowJoinHyphen(prev,cur); continue; }
+      if(!/[.!?:;"')\]]$/.test(prev) && /\p{Ll}/u.test(cur[0]||'')){ flat[flat.length-1]=prev+' '+cur; continue; }
+    }
+    flat.push(cur);
+  }
+  return { content: flat.join('\n\n'), removedRunning: removed };
+}
+
 async function extractText(file){
   const n = (file.name||'').toLowerCase();
   if(n.endsWith('.txt')||n.endsWith('.md')||n.endsWith('.markdown')|| (file.type||'').startsWith('text/'))
@@ -493,70 +648,11 @@ async function extractText(file){
     for(let p=1;p<=pdf.numPages;p++){
       const page = await pdf.getPage(p);
       const tc = await page.getTextContent({ includeMarkedContent: false });
-
-      // Coleta itens com posição; descarta itens só-espaço (artefatos de justificação)
-      const items = tc.items
-        .filter(it => 'str' in it && it.str.trim().length > 0)
-        .map(it => ({
-          str: it.str,
-          x: it.transform[4],
-          y: it.transform[5],
-          w: it.width,
-          h: Math.abs(it.height) || 10,
-        }));
-
-      if(!items.length){ pages.push(''); continue; }
-
-      const avgH = items.reduce((s,it) => s + it.h, 0) / items.length;
-      const spaceThreshold = avgH * 0.25;
-
-      // Agrupa em linhas por Y (tolerância = 40% da altura média)
-      items.sort((a,b) => b.y - a.y || a.x - b.x);
-      const lines = [];
-      let cur = [items[0]];
-      for(let i = 1; i < items.length; i++){
-        if(Math.abs(items[i].y - cur[0].y) < avgH * 0.4){
-          cur.push(items[i]);
-        } else {
-          lines.push(cur);
-          cur = [items[i]];
-        }
-      }
-      lines.push(cur);
-      lines.forEach(l => l.sort((a,b) => a.x - b.x));
-
-      const lH = i => Math.max(...lines[i].map(it => it.h));
-
-      function lineToText(line){
-        let t = line[0].str;
-        for(let i = 1; i < line.length; i++){
-          const gap = line[i].x - (line[i-1].x + line[i-1].w);
-          if(gap > spaceThreshold && !t.endsWith(' ') && !line[i].str.startsWith(' ')) t += ' ';
-          t += line[i].str;
-        }
-        return t.trim();
-      }
-
-      // Une linhas em parágrafos: gap > 1.6× altura local = parágrafo novo; senão junta com espaço
-      const paras = [];
-      let para = lineToText(lines[0]);
-      for(let k=1;k<lines.length;k++){
-        const gapY = lines[k-1][0].y - lines[k][0].y;
-        const localH = Math.max(lH(k-1), lH(k));
-        const t = lineToText(lines[k]);
-        if(gapY > localH * 1.6){
-          paras.push(para.trim());
-          para = t;
-        } else {
-          // Trata hifenização: linha termina em hífen → remove e une direto
-          para = para.endsWith('-') ? para.slice(0,-1)+t : para+' '+t;
-        }
-      }
-      paras.push(para.trim());
-
-      pages.push(paras.join('\n\n'));
+      pages.push({ items: tc.items.filter(it => 'str' in it && it.str.trim().length > 0).map(it => ({
+        str: it.str, x: it.transform[4], y: it.transform[5], w: it.width, h: Math.abs(it.height) || 10,
+      })) });
     }
-    return pages.join('\n\n');
+    return reflowPdfPages(pages).content;
   }
   return await file.text();
 }
@@ -569,6 +665,36 @@ async function extractText(file){
    cobre o segmento inteiro — semantica identica a do filter antigo. A ordem
    original do array e preservada por indice (o leitor usa o ULTIMO da lista como
    tint de desempate em sobreposicao). */
+
+/* ===== Reancoragem de offsets ao EDITAR o texto de um documento =====
+   As codificacoes sao offsets (span_start/span_end, UTF-16) no content; editar o content
+   desloca esses offsets. remapSpans reancora cada coding comparando texto velho x novo por
+   PREFIXO+SUFIXO comuns (edicao localizada): o que esta ANTES do ponto editado fica, o que esta
+   DEPOIS desloca pelo delta; grifo que cai DENTRO do trecho editado e clampeado nas bordas (start
+   pro inicio da regiao, end pro fim - nunca invertido) e contado em 'affected' pra a UI avisar.
+   Varias edicoes num unico save viram UMA regiao grande (1o ao ultimo ponto mudado): conservador
+   (avisa mais), nunca reancora errado em silencio - critico num app de pesquisa. */
+function diffPrefixSuffix(oldC, newC){
+  const oL=oldC.length, nL=newC.length, m=Math.min(oL,nL);
+  let p=0; while(p<m && oldC.charCodeAt(p)===newC.charCodeAt(p)) p++;
+  let s=0; while(s<m-p && oldC.charCodeAt(oL-1-s)===newC.charCodeAt(nL-1-s)) s++;
+  return { p, oldEnd:oL-s, newEnd:nL-s, delta:nL-oL };
+}
+function remapSpans(oldC, newC, codings){       // -> { updates:[{id,span_start,span_end,quote}], affected }
+  const d = diffPrefixSuffix(oldC, newC);
+  const mapStart = o => o>=d.oldEnd ? o+d.delta : Math.min(o, d.p);        // gravidade a direita: nao engole texto inserido no inicio
+  const mapEnd   = o => o<=d.p ? o : (o>=d.oldEnd ? o+d.delta : d.newEnd); // gravidade a esquerda: nao engole no fim
+  const updates=[]; let affected=0;
+  for(const c of codings){
+    if(!(c.span_start>=0 && c.span_end>c.span_start)) continue;
+    if(c.span_start < d.oldEnd && c.span_end > d.p) affected++;   // o grifo toca o trecho editado
+    let ns=mapStart(c.span_start), ne=mapEnd(c.span_end); if(ne<ns) ne=ns;
+    const nq = newC.slice(ns, ne);
+    if(ns!==c.span_start || ne!==c.span_end || nq!==c.quote) updates.push({ id:c.id, span_start:ns, span_end:ne, quote:nq });
+  }
+  return { updates, affected };
+}
+
 function buildRuns(text, codings, extraPoints){
   const b = new Set([0, text.length]);
   const valid = [];
@@ -1201,7 +1327,7 @@ function findQuoteSpan(index, name){
 async function extractPdfTextAndGeometry(bytes){
   const pdfjs = await getPdfjs();
   const doc = await pdfjs.getDocument({ data: new Uint8Array(bytes) }).promise;
-  const pageTexts = []; const pages = {}; // pages[pageNum 1-indexado] = { items, height }
+  const pages = {}; const pageList = []; // pages[pageNum 1-indexado] = { items, height } (geometria)
   try{
     for(let p=1; p<=doc.numPages; p++){
       const page = await doc.getPage(p);
@@ -1212,25 +1338,11 @@ async function extractPdfTextAndGeometry(bytes){
         w: it.width||0, h: Math.abs(it.height) || Math.abs(it.transform[3]) || 10
       }));
       pages[p] = { items: raw, height: vp.height };
-      if(!raw.length){ pageTexts.push(''); continue; }
-      // reflow de paragrafos identico ao extractText (mesma logica testada): agrupa itens em
-      // linhas por Y, une linhas em paragrafos (gap > 1.6x altura local), trata hifenizacao.
-      const avgH = raw.reduce((s,it)=>s+it.h,0)/raw.length;
-      const spaceThreshold = avgH*0.25;
-      const sorted = raw.slice().sort((a,b)=> b.y-a.y || a.x-b.x);
-      const lines = []; let cur = [sorted[0]];
-      for(let i=1;i<sorted.length;i++){ if(Math.abs(sorted[i].y-cur[0].y)<avgH*0.4) cur.push(sorted[i]); else { lines.push(cur); cur=[sorted[i]]; } }
-      lines.push(cur);
-      lines.forEach(l=>l.sort((a,b)=>a.x-b.x));
-      const lH = i => Math.max(...lines[i].map(it=>it.h));
-      const lineToText = (line)=>{ let t=line[0].str; for(let i=1;i<line.length;i++){ const gap=line[i].x-(line[i-1].x+line[i-1].w); if(gap>spaceThreshold && !t.endsWith(' ') && !line[i].str.startsWith(' ')) t+=' '; t+=line[i].str; } return t.trim(); };
-      const paras = []; let para = lineToText(lines[0]);
-      for(let k=1;k<lines.length;k++){ const gapY=lines[k-1][0].y-lines[k][0].y; const localH=Math.max(lH(k-1),lH(k)); const t=lineToText(lines[k]); if(gapY>localH*1.6){ paras.push(para.trim()); para=t; } else { para = para.endsWith('-') ? para.slice(0,-1)+t : para+' '+t; } }
-      paras.push(para.trim());
-      pageTexts.push(paras.join('\n\n'));
+      pageList.push({ items: raw });
     }
   } finally { try{ doc.destroy(); }catch(e){} }
-  return { content: pageTexts.join('\n\n'), pages };
+  // texto reflowado pela MESMA logica do extractText (colunas + cabecalho/rodape)
+  return { content: reflowPdfPages(pageList).content, pages };
 }
 // reconstroi o texto contido num retangulo a partir dos itens posicionados de uma pagina
 function textInRect(items, xL, xR, yB, yT){
@@ -2113,6 +2225,8 @@ async function createFileStore(fileHandle, isNew){
     listDocuments(){ return P(db.documents.slice()); },
     async addDocument(pid,{id,name:dn,content}){ const d={id:id||uid(),name:dn,content,created_at:new Date().toISOString()}; db.documents.push(d); await save(); return d; },
     async renameDocument(id,dn){ const d=db.documents.find(x=>x.id===id); if(d) d.name=dn; await save(); },
+    async setDocumentContent(id,content){ const d=db.documents.find(x=>x.id===id); if(d) d.content=content; await save(); },
+    async updateCoding(id,patch){ const c=db.codings.find(x=>x.id===id); if(c) Object.assign(c,patch); await save(); },
     async deleteDocument(id){ const cids=new Set(db.codings.filter(c=>c.document_id===id).map(c=>c.id)); db.documents=db.documents.filter(d=>d.id!==id); db.doc_values=db.doc_values.filter(v=>v.document_id!==id); db.codings=db.codings.filter(c=>c.document_id!==id); db.memos=db.memos.filter(m=>!(m.scope==='document'&&m.target_id===id) && !(m.scope==='coding'&&cids.has(m.target_id))); await save(); },
     async clearProject(){ db.documents=[]; db.categories=[]; db.doc_values=[]; db.codes=[]; db.codings=[]; db.memos=db.memos.filter(m=>m.scope==='project'); await save(); },
     listCategories(){ return P(db.categories.slice().sort((a,b)=>a.position-b.position)); },
@@ -2301,6 +2415,8 @@ function LocalStore(){
     listDocuments(){ return P(db.documents.slice()); },
     addDocument(pid,{id,name:dn,content}){ const d={id:id||uid(),name:dn,content,created_at:new Date().toISOString()}; db.documents.push(d); save(); return P(d); },
     renameDocument(id,dn){ const d=db.documents.find(x=>x.id===id); if(d) d.name=dn; save(); return P(); },
+    setDocumentContent(id,content){ const d=db.documents.find(x=>x.id===id); if(d) d.content=content; save(); return P(); },
+    updateCoding(id,patch){ const c=db.codings.find(x=>x.id===id); if(c) Object.assign(c,patch); save(); return P(); },
     deleteDocument(id){ const cids=new Set(db.codings.filter(c=>c.document_id===id).map(c=>c.id)); db.documents=db.documents.filter(d=>d.id!==id); db.doc_values=db.doc_values.filter(v=>v.document_id!==id); db.codings=db.codings.filter(c=>c.document_id!==id); db.memos=db.memos.filter(m=>!(m.scope==='document'&&m.target_id===id) && !(m.scope==='coding'&&cids.has(m.target_id))); save(); return P(); },
     // "limpar projeto" apaga o material, NÃO o diário de insights nem as conversas salvas
     // de IA (a versão antiga recriava o db sem essas chaves e as destruía junto)
@@ -2395,6 +2511,8 @@ function SupabaseStore(sb){
     async listDocuments(pid){ return must(await sb.from('documents').select('*').eq('project_id',pid).order('created_at')); },
     async addDocument(pid,{id,name:dn,content}){ const row={project_id:pid,name:dn,content,created_by:user.id}; if(id) row.id=id; return must(await sb.from('documents').insert(row).select().single()); },
     async renameDocument(id,dn){ must(await sb.from('documents').update({name:dn}).eq('id',id)); },
+    async setDocumentContent(id,content){ must(await sb.from('documents').update({content}).eq('id',id)); },
+    async updateCoding(id,patch){ must(await sb.from('codings').update(patch).eq('id',id)); },
     async deleteDocument(id){ let cids=[]; try{ cids=(await sb.from('codings').select('id').eq('document_id',id)).data?.map(r=>r.id)||[]; }catch(e){} must(await sb.from('documents').delete().eq('id',id)); await sb.from('memos').delete().eq('scope','document').eq('target_id',id); if(cids.length) await sb.from('memos').delete().eq('scope','coding').in('target_id',cids); },
     async clearProject(pid){
       await sb.from('codings').delete().eq('project_id',pid);
@@ -2603,7 +2721,7 @@ function App(){
 
   const [docs, setDocs] = useState([]);
   const [activeId, setActiveId] = useState(null);
-  const [renamingDoc, setRenamingDoc] = useState(null); // nome em edição do documento ativo (null = não editando)
+  const [editTitleDraft, setEditTitleDraft] = useState(''); // título em edição no modo "editar documento" (título + texto)
   const [cats, setCats] = useState([]);
   const [dragCatId, setDragCatId] = useState(null); // drag-and-drop pra reordenar categorias (mesmo estado serve pros dois lugares que listam CategoryEditor)
   const [values, setValues] = useState([]);
@@ -2612,6 +2730,9 @@ function App(){
 
   // dados de todo o projeto (para a aba de visualizacao, que cruza documentos)
   const [allCodings, setAllCodings] = useState([]);
+  const [editingText, setEditingText] = useState(false);   // modo "editar texto" do documento (limpeza pos-extracao)
+  const [editDraft, setEditDraft] = useState('');
+  useEffect(()=>{ setEditingText(false); }, [activeId]);    // sai da edicao ao trocar de documento
   const [allValues, setAllValues] = useState([]);
   const [memos, setMemos] = useState([]);
   const [iaResults, setIaResults] = useState([]); // resultados salvos da aba "Analisar com IA"
@@ -2681,6 +2802,9 @@ function App(){
 
   const activeDoc = docs.find(d=>d.id===activeId) || null;
   const isAdmin = role==='admin';
+  // editar o texto do documento: livre em rascunho/arquivo/individual; admin-only em coletivo na nuvem
+  // (editar desloca os offsets dos grifos de TODOS os codificadores, entao so admin, que pode remapear todos).
+  const canEditText = !!activeDoc && (store?.mode!=='cloud' || projectMode==='individual' || isAdmin);
 
   // modo escuro do app inteiro (persistido por navegador, sem relacao com o projeto). Liga/desliga
   // via html[data-theme=dark], que sobrepoe as variaveis de cor do :root. O tema do LEITOR
@@ -3213,6 +3337,35 @@ function App(){
     setCodings(x=>[...x,c]);
   }
   async function delCoding(id){ await store.deleteCoding(id); setCodings(x=>x.filter(c=>c.id!==id)); }
+  // Salva a edicao do texto do documento e REANCORA os grifos (remapSpans reancora por prefixo/sufixo;
+  // grifo que caiu dentro do trecho editado e clampeado e contado em 'affected' pra avisar).
+  async function saveEditedText(){
+    if(!activeDoc) return;
+    const oldC = activeDoc.content, newC = editDraft;
+    const newTitle = (editTitleDraft||'').trim();
+    const titleChanged = !!newTitle && newTitle !== activeDoc.name;   // titulo e so uma string, nao mexe em offset
+    const contentChanged = newC !== oldC;
+    if(!titleChanged && !contentChanged){ setEditingText(false); return; }
+    let updates=[], affected=0;
+    if(contentChanged){
+      const docCodings = codings.filter(c=>c.document_id===activeDoc.id);
+      const r = remapSpans(oldC, newC, docCodings); updates=r.updates; affected=r.affected;
+      if(affected>0 && !window.confirm(`Sua edição toca ${affected} codificação(ões): os grifos afetados serão reajustados às bordas do trecho editado e podem precisar de conferência. Continuar?`)) return;
+    }
+    try{
+      if(titleChanged) await renameDoc(activeDoc.id, newTitle);
+      if(contentChanged){
+        await store.setDocumentContent(activeDoc.id, newC);
+        for(const u of updates) await store.updateCoding(u.id, { span_start:u.span_start, span_end:u.span_end, quote:u.quote });
+      }
+    }catch(e){ setErr('Falha ao salvar a edição: '+(e?.message||e)); return; }
+    if(contentChanged){
+      const patch = list => list.map(c=>{ const u=updates.find(x=>x.id===c.id); return u ? {...c, span_start:u.span_start, span_end:u.span_end, quote:u.quote} : c; });
+      setDocs(ds=>ds.map(x=>x.id===activeDoc.id ? {...x, content:newC} : x));   // renameDoc ja atualizou o name
+      setCodings(patch); setAllCodings(patch);
+    }
+    setEditingText(false);
+  }
   const undoLastCoding = useCallback(async ()=>{
     const last = undoStackRef.current.pop();
     if(!last || last.type!=='addCoding') return;
@@ -3761,24 +3914,19 @@ function App(){
       <!-- ESQUERDA: documento -->
       <section class="pane left">
         <div class="pane-head" style="flex-wrap:nowrap">
-          ${renamingDoc!==null && activeDoc
-            ? html`<input class="txtin" autoFocus style="max-width:840px;min-width:0" value=${renamingDoc}
-                onInput=${e=>setRenamingDoc(e.target.value)}
-                onKeyDown=${e=>{ if(e.key==='Enter'){ renameDoc(activeDoc.id, renamingDoc); setRenamingDoc(null); } else if(e.key==='Escape') setRenamingDoc(null); }}
-                onBlur=${()=>{ if((renamingDoc||'').trim()) renameDoc(activeDoc.id, renamingDoc); setRenamingDoc(null); }} />`
-            : html`<select class="opt" style="max-width:840px;min-width:0" value=${activeId||''} onChange=${e=>setActiveId(e.target.value)}>
-                ${docs.length===0 && html`<option value="">sem documentos</option>`}
-                ${docs.map(d=>html`<option value=${d.id}>${d.name}</option>`)}
-              </select>`}
-          ${activeDoc && renamingDoc===null && html`<button class="icon-btn" title="Renomear documento" onClick=${()=>setRenamingDoc(activeDoc.name)}>✏</button>`}
-          ${activeDoc && html`<button class="icon-btn" title="Remover documento" onClick=${()=>delDoc(activeDoc.id)}>🗑</button>`}
+          <select class="opt" style="max-width:840px;min-width:0" value=${activeId||''} onChange=${e=>setActiveId(e.target.value)} disabled=${editingText}>
+            ${docs.length===0 && html`<option value="">sem documentos</option>`}
+            ${docs.map(d=>html`<option value=${d.id}>${d.name}</option>`)}
+          </select>
+          ${activeDoc && !editingText && html`<button class="btn sm ghost" title="Buscar no documento" onClick=${()=>setSearchOpen(o=>!o)}>🔍︎ pesquisar</button>`}
+          ${canEditText && !editingText && html`<button class="btn sm ghost" title="Editar documento (título e texto)" onClick=${()=>{ setEditDraft(activeDoc.content); setEditTitleDraft(activeDoc.name); setSearchOpen(false); setSel(null); setEditingText(true); }}>✏ editar</button>`}
+          ${activeDoc && !editingText && html`<button class="btn sm ghost" title="Remover documento" onClick=${()=>delDoc(activeDoc.id)}>🗑 deletar</button>`}
           <label class="btn sm">＋ enviar
             <input type="file" multiple accept=".txt,.md,.markdown,.pdf,.docx" style="display:none" onChange=${e=>{onUpload(e.target.files); e.target.value='';}} />
           </label>
           <${AddPaste} onAdd=${addPasted} />
           <div class="grow"></div>
           <${ViewSelect} value=${viewCoder} onChange=${setViewCoder} coders=${coders} userId=${user?.id} projectMode=${projectMode} mode=${mode} />
-          ${activeDoc && html`<button class="icon-btn" title="Buscar no documento" onClick=${()=>setSearchOpen(o=>!o)}>🔍︎</button>`}
           ${activeDoc && html`<div class="reader-toolbar">
             <button class="icon-btn" title="Diminuir fonte" onClick=${()=>setReaderPrefs(p=>({...p, scale:Math.max(0.8, +(p.scale-0.1).toFixed(2))}))}>A-</button>
             <button class="icon-btn" title="Aumentar fonte" onClick=${()=>setReaderPrefs(p=>({...p, scale:Math.min(1.6, +(p.scale+0.1).toFixed(2))}))}>A+</button>
@@ -3791,7 +3939,7 @@ function App(){
           </div>`}
         </div>
 
-        ${searchOpen && activeDoc && html`<div class="search-bar">
+        ${searchOpen && activeDoc && !editingText && html`<div class="search-bar">
           <input class="txtin" autoFocus value=${searchQuery} placeholder="buscar no documento…"
             onInput=${e=>setSearchQuery(e.target.value)}
             onKeyDown=${e=>{
@@ -3813,8 +3961,18 @@ function App(){
           <button class="btn sm ghost" onClick=${()=>{setSel(null);window.getSelection()?.removeAllRanges();}}>cancelar</button>
         </div>`}
 
+        ${editingText && activeDoc && html`<div class="search-bar">
+          <span style="font-weight:600;color:var(--teal-deep);font-size:12.5px">✏ Editar</span>
+          <input class="txtin" value=${editTitleDraft} onInput=${e=>setEditTitleDraft(e.target.value)} placeholder="título do documento" title="título do documento" style="flex:0 1 340px;min-width:0" />
+          <span class="meta">título acima · texto abaixo · grifos reancorados ao salvar</span>
+          <div class="grow"></div>
+          <button class="btn sm primary" onClick=${saveEditedText}>Salvar</button>
+          <button class="btn sm ghost" onClick=${()=>setEditingText(false)}>Cancelar</button>
+        </div>`}
         <div class="pane-body scroll reader-pane theme-${readerPrefs.theme} width-${readerPrefs.width}" ref=${readerRef}>
           ${!activeDoc ? html`<div class="empty"><div class="t">Nenhum documento</div><div>Envie arquivos (.txt, .md, .docx, .pdf) ou cole um texto. O conteúdo é extraído e exibido aqui para codificação.</div></div>`
+          : editingText ? html`<textarea autoFocus spellcheck="false" onInput=${e=>setEditDraft(e.target.value)} value=${editDraft}
+              style=${`display:block;width:100%;height:100%;min-height:60vh;box-sizing:border-box;font-family:var(--serif);font-size:${(17*readerPrefs.scale).toFixed(1)}px;line-height:1.62;padding:14px 22px;border:0;background:transparent;color:inherit;resize:none;outline:none`}></textarea>`
           : html`<div class="reader" style=${`font-size:${(17*readerPrefs.scale).toFixed(1)}px`} onMouseUp=${onMouseUp} onContextMenu=${onContextMenu}>
               ${readerRuns.map((run,i)=>{
                 const matchI = run.matchI;
