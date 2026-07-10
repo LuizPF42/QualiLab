@@ -26,6 +26,7 @@ O QualiLab é um **projeto pessoal, experimental e em desenvolvimento ativo**, d
 
 - **Arquivo / Rascunho** — ficam **no seu dispositivo** e não saem dele.
 - **Nuvem** — são enviados a um **servidor de terceiros** (Supabase), ficam sujeitos aos termos desse provedor e saem do seu controle direto.
+- **IA de nuvem** — ao usar a IA (Codificar/Analisar com IA) com um provedor de nuvem (Gemini, OpenAI, Anthropic, Azure…), o texto selecionado é **enviado a esse provedor**, sob a política dele. O **Ollama local** é a exceção (roda na sua máquina, nada sai dela).
 - **Publicação** (Relatório Interativo / Web Annotation) — o que você divulgar fica **público**.
 
 **O QualiLab NÃO anonimiza nem identifica dados pessoais** (nomes, CPF, dados de saúde) no conteúdo dos documentos. A **censura** mascara apenas os trechos que **você** marcou à mão, **não** detecta sozinha o que é sensível e **não** cobre as exportações (QDPX/CSV/JSON saem com o texto cru). **Não há rede de segurança automática.**
@@ -75,11 +76,20 @@ Cada categoria pode ter descrição/instrução e habilitar as opções **"Não 
 - **Visualização** — navegação por código à esquerda; trechos do código selecionado à direita, em tipografia legível, agrupados por documento. Filtro por categoria e cruzamento por co-ocorrência de até 2 códigos.
 - **Gráficos** — frequência de códigos, distribuição por categoria (gabarito), heatmap código × categoria, produção por codificador e concordância entre codificadores. **Clicar numa barra ou célula abre a Visualização já naquele código** (na co-ocorrência, com o par de códigos cruzado; o filtro de categorias do gráfico vai junto, então os trechos exibidos batem com a contagem clicada).
 - **Memos** — nota analítica única por alvo (projeto, documento, código **ou trecho codificado**), compartilhada entre os pesquisadores e editável por qualquer membro. A nota por trecho é escrita pelo menu de contexto do leitor (botão direito num grifo → "Anotar trecho") e também aparece na própria aba Memos.
+- **Codificar com IA** *(opcional, BYOK)* — a IA **propõe** e você **aprova** item a item: sugerir codificação (trechos que escaparam), sugerir valores de categoria, e reorganizar o esquema de códigos (mesclar/agrupar/mover/renomear). Nada é aplicado sem a sua confirmação.
+- **Analisar com IA** *(opcional, BYOK)* — uma conversa analítica sobre o material selecionado (documentos e/ou trechos por código), com postura metodológica, memória do projeto e prompts salvos; opt-in, com o prompt sempre visível.
 - **Relatório** — é o **hub de publicação**, com três tipos de saída escolhidos na coluna esquerda:
   - **Relatório Interativo (ATI)** — uma página HTML auto-contida (sem servidor) com cada documento em trechos grifados clicáveis; clicar abre, num painel lateral, a nota analítica daquele trecho. Títulos de documento e códigos da legenda também abrem seus memos. Equivale ao *overlay* da **Annotation for Transparent Inquiry (ATI)** do QDR, mas hospedável por você (ex.: GitHub Pages). Os documentos vêm colapsados e a legenda é recolhível, para escalar a projetos grandes.
   - **Relatório Padrão** — montador de relatório: liga/desliga seções por caixas de seleção (resumo, lista de documentos, contagens e listas do esquema, frequência de códigos, distribuição por categoria, trechos por código, códigos não utilizados) e o texto se monta ao vivo. **Copiar texto** (pronto pra colar em `.docx`/Docs) e **Imprimir / PDF**. Crédito opcional ao QualiLab no resumo.
   - **Web Annotation (W3C)** — exporta as anotações no padrão aberto **[W3C Web Annotation Data Model](https://www.w3.org/TR/annotation-model/)** (JSON-LD), a mesma "língua de dados" sob o ATI, o [hypothes.is](https://web.hypothes.is/), o Anno-REP e o Dataverse — interoperável sem casar com nenhuma ferramenta específica.
   - Em projeto coletivo, os três respeitam a camada escolhida (gabarito final ou individuais). Em todas as saídas de transparência, trechos marcados como **censura** são mascarados por padrão.
+
+### Análise assistida por IA (opcional)
+Duas telas **opt-in e transparentes** — **Codificar com IA** (a IA propõe codificação, categorização e organização de códigos; você aprova item a item) e **Analisar com IA** (conversa sobre o material selecionado). Nada é enviado sem você clicar, e o **prompt exato** fica sempre visível antes de rodar.
+
+O modelo é **BYOK** (*bring your own key*): em **Minha Conta**, cada pesquisador escolhe o provedor e cola a **sua** chave — **Gemini, OpenAI, Anthropic, Azure**, um provedor **compatível com a OpenAI** (DeepSeek, Mistral…), ou o **Ollama local**. A chave fica só no navegador, nunca no servidor.
+
+> ⚠️ **Privacidade.** Exceto pelo **Ollama local** (roda na sua máquina — o material não sai dela), o texto selecionado é **enviado ao provedor de IA escolhido**, sob a política dele. Não use IA de nuvem com dado sensível sem base legal — prefira o Ollama local, ou não use IA nesse material. A censura mascara os trechos marcados antes do envio.
 
 ### Codificação colaborativa em camadas
 Cada codificação registra o autor. O trabalho de cada pesquisador é independente (`layer = individual`); a equipe consolida uma **camada final** na tela de Reconciliação. O mesmo modelo vale para as respostas de categoria: cada pesquisador preenche a sua; o administrador define o gabarito.
@@ -157,7 +167,7 @@ No modo rascunho (`localStorage`, limite de 5-10MB), você pode ativar um **back
 
 - O cabeçalho mostra um indicador `offline` em âmbar quando a conexão cai.
 - Operações de escrita (codificar, preencher categoria) exigem rede ativa. Sem conexão, elas falham — dados já salvos não são corrompidos, mas a ação em andamento não se completa.
-- Uma fila de reenvio automático para escritas feitas offline está planejada, mas ainda não está ativa nesta versão.
+- **Não há fila de reenvio automático**: escritas feitas offline falham em vez de serem reenviadas depois — baixe um backup `.qualilab` se estiver com a conexão instável.
 
 ---
 
@@ -207,6 +217,10 @@ Em **Authentication → Providers**:
 - Habilite **Allow anonymous sign-ins** para o modo visitante.
 - Opcional: desative **Confirm email** para que o cadastro entre direto (o app trata os dois casos).
 
+### 4. IA (opcional)
+
+Para as telas de **Codificar/Analisar com IA**, faça o deploy da Edge Function: em **Edge Functions**, crie a função `ai-ask` e cole o conteúdo de [`supabase/functions/ai-ask/index.ts`](supabase/functions/ai-ask/index.ts). Ela faz proxy para o provedor de IA escolhido, mantendo as chaves fora do HTML público. O padrão é **BYOK** — cada pesquisador traz a própria chave em "Minha Conta", então **não é preciso configurar nenhuma chave no servidor**. (O **Ollama local** dispensa a função: o navegador chama o modelo direto.) As tabelas de IA já vêm do `schema.sql` (passo 2).
+
 ---
 
 ## Stack
@@ -221,17 +235,20 @@ Sem build, sem bundler, sem framework pesado.
 - **Import Excel (`.xlsx`)**: [SheetJS](https://sheetjs.com/) (carregado sob demanda, só ao importar uma planilha)
 - **Armazenamento local**: File System Access API + IndexedDB (nativos do navegador)
 - **Nuvem** (opcional): [Supabase](https://supabase.com/)
+- **IA** (opcional, BYOK): Edge Function `ai-ask` (proxy) + provedores Gemini/OpenAI/Anthropic/Azure/compatível-OpenAI, ou **Ollama local** (chamado direto pelo navegador)
 
 ```
 QualiLab/
-├── index.html        # o app inteiro (front-end)
-├── README.md         # este arquivo
-├── CLAUDE.md         # guia técnico para contribuir / continuar o projeto
-├── LICENSE           # MIT
+├── index.html            # o app inteiro (front-end)
+├── README.md             # este arquivo
+├── MANUAL.md             # manual de uso, passo a passo
+├── CLAUDE.md             # guia técnico para contribuir / continuar o projeto
+├── LICENSE               # MIT
 ├── supabase/
-│   └── schema.sql    # schema completo do backend (tabelas, RPCs, RLS, realtime)
+│   ├── schema.sql        # schema do backend (tabelas, RPCs, RLS, realtime)
+│   └── functions/ai-ask/ # Edge Function que faz proxy para os provedores de IA
 └── examples/
-    └── *.qualilab    # projeto de exemplo (formato nativo) para testes/demonstração
+    └── *.qualilab        # projeto de exemplo (formato nativo) para testes/demonstração
 ```
 
 ---
@@ -269,9 +286,9 @@ O QualiLab é um projeto em desenvolvimento ativo. Vale conhecer as limitações
 - **Capacidade do Supabase (modo nuvem)** — o plano gratuito do Supabase tem limites de armazenamento e processamento (na ordem de **500MB de banco de dados** e **alguns GB de tráfego mensal**, sujeitos a mudança pelo provedor — confira os valores atuais em [supabase.com/pricing](https://supabase.com/pricing)). Projetos muito grandes (muitos documentos longos, milhares de codificações) podem exigir um plano pago do Supabase ou o modo **Arquivo local**, que não tem esse limite.
 - **Sem anonimização automática** — documentos e trechos sensíveis (nomes, CPFs, dados de saúde) não são identificados ou mascarados automaticamente. A responsabilidade de anonimizar antes de subir o documento, ou de tratar a confidencialidade dos dados, é inteiramente do pesquisador.
 - **Sem recuperação de senha** — contas de e-mail não têm fluxo de "esqueci minha senha"; a troca de senha exige estar logado.
-- **Fila de escritas offline inativa** — como já indicado acima, escritas feitas sem conexão falham em vez de serem enviadas automaticamente depois.
+- **Sem fila de escritas offline** — escritas feitas sem conexão falham (não são reenviadas automaticamente depois); os dados já salvos não são afetados.
 - **QDPX não carrega categorias por pesquisador** — é uma limitação do próprio formato REFI-QDA, não do QualiLab: o padrão não tem campo de autoria para atributos de documento (só para trechos codificados). Ao importar um `.qdpx`, todos os atributos chegam atribuídos a quem importou.
-- **Tipo dos atributos em `.qdpx` de outras ferramentas é inferido, não declarado** — o REFI-QDA não distingui campo fechado de aberto. Ao importar um `.qdpx` de outro software (QualCoder, ATLAS.ti etc.), o QualiLab tenta adivinhar pelas respostas: poucos valores distintos repetidos entre documentos viram Texto Fechado; valores todos diferentes viram Texto Aberto. O resumo do import avisa quantas categorias foram decididas assim — vale revisar em "Gerenciar esquema de categorias".
+- **Tipo dos atributos em `.qdpx` de outras ferramentas é inferido, não declarado** — o REFI-QDA não distingue campo fechado de aberto. Ao importar um `.qdpx` de outro software (QualCoder, ATLAS.ti etc.), o QualiLab tenta adivinhar pelas respostas: poucos valores distintos repetidos entre documentos viram Texto Fechado; valores todos diferentes viram Texto Aberto. O resumo do import avisa quantas categorias foram decididas assim — vale revisar em "Gerenciar esquema de categorias".
 - **Sincronização em tempo real parcial** — apenas codificações e valores de categoria sincronizam ao vivo entre colaboradores. Mudanças no esquema de categorias ou na árvore de códigos exigem recarregar a página para aparecer para outros membros.
 - **Governança do livro de códigos é binária** — qualquer membro pode criar, renomear e excluir códigos livremente (necessário para codificação colaborativa em tempo real); apenas a cor personalizada de uma família é restrita a administradores. Não há, ainda, um modo intermediário de aprovação antes de um código novo ficar visível a todos.
 - **Desfazer é limitado** — Ctrl+Z desfaz só a última codificação aplicada na sessão atual (sem histórico entre sessões). Não há desfazer para categorias, código em si, documentos, ou qualquer outra ação; exclusões desses são definitivas. Também não há log de auditoria de alterações.
@@ -292,7 +309,7 @@ Copyright (c) 2026 Luiz Pimenta Filho
 ## To-dos
 
 - [ ] Migrar para um supabase (ou outro backend) mais robusto
-- [x] Incluir ferramenta para anonimização automática / autotimizada
+- [ ] Ferramenta de anonimização automática / semi-automática — **ainda não existe** (hoje a responsabilidade de anonimizar é do pesquisador; ver o aviso de privacidade)
 - [ ] Melhorar gráficos
   - [ ] Cards "síntese" (número de documentos, tipo, códigos, etc.)
   - [ ] Distribuição por famílias analíticas

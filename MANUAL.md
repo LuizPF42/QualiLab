@@ -20,8 +20,9 @@ O QualiLab é um **projeto pessoal, experimental e em desenvolvimento ativo**, d
 
 **Para onde vão os seus dados** depende do modo de uso:
 
-- **Arquivo / Local** — ficam **no seu dispositivo** e não saem dele.
+- **Arquivo / Rascunho** — ficam **no seu dispositivo** e não saem dele.
 - **Nuvem** — são enviados a um **servidor de terceiros** (Supabase), ficam sujeitos aos termos desse provedor e saem do seu controle direto.
+- **IA de nuvem** — ao usar **Codificar/Analisar com IA** com um provedor de nuvem (Gemini, OpenAI, Anthropic, Azure…), o texto selecionado é **enviado a esse provedor**, sob a política dele. O **Ollama local** é a exceção — roda na sua máquina e o material não sai dela.
 - **Publicação** (Relatório Interativo / Web Annotation) — o que você divulgar fica **público**.
 
 **O QualiLab NÃO anonimiza nem identifica dados pessoais** (nomes, CPF, dados de saúde) no conteúdo dos documentos. A **censura** mascara apenas os trechos que **você** marcou à mão, **não** detecta sozinha o que é sensível e **não** cobre as exportações (QDPX/CSV/JSON saem com o texto cru). **Não há rede de segurança automática.**
@@ -36,7 +37,7 @@ O QualiLab é um **projeto pessoal, experimental e em desenvolvimento ativo**, d
 
 1. [Conceitos fundamentais](#1-conceitos-fundamentais) — o modelo mental antes de tudo
 2. [Começando](#2-começando) — acessar, escolher onde salvar, criar projeto
-3. [A interface](#3-a-interface) — cabeçalho e as sete telas
+3. [A interface](#3-a-interface) — cabeçalho e as telas principais
 4. [Documentos](#4-documentos) — enviar, colar, renomear
 5. [Codificação de trechos](#5-codificação-de-trechos) — o coração da ferramenta
 6. [Categorias (atributos do documento)](#6-categorias-atributos-do-documento)
@@ -46,13 +47,14 @@ O QualiLab é um **projeto pessoal, experimental e em desenvolvimento ativo**, d
 10. [Gráficos](#10-gráficos)
 11. [Memos](#11-memos) — notas analíticas
 12. [Relatório](#12-relatório) — o hub de publicação e transparência
-13. [Colaboração](#13-colaboração) — equipe, papéis, convites
-14. [Minha conta](#14-minha-conta)
-15. [Importar e exportar](#15-importar-e-exportar)
-16. [Salvamento, backup e modos de armazenamento](#16-salvamento-backup-e-modos-de-armazenamento)
-17. [Solução de problemas](#17-solução-de-problemas)
-18. [Atalhos de teclado](#18-atalhos-de-teclado)
-19. [Glossário](#19-glossário)
+13. [Codificar e Analisar com IA](#13-codificar-e-analisar-com-ia) — IA opcional (BYOK), opt-in e transparente
+14. [Colaboração](#14-colaboração) — equipe, papéis, convites
+15. [Minha conta](#15-minha-conta)
+16. [Importar e exportar](#16-importar-e-exportar)
+17. [Salvamento, backup e modos de armazenamento](#17-salvamento-backup-e-modos-de-armazenamento)
+18. [Solução de problemas](#18-solução-de-problemas)
+19. [Atalhos de teclado](#19-atalhos-de-teclado)
+20. [Glossário](#20-glossário)
 
 ---
 
@@ -83,7 +85,7 @@ Em **projeto individual**, tudo já vai direto para o gabarito. Em **projeto col
 - **Admin** — define o esquema de categorias, edita o gabarito, gerencia membros, cores de família e censura.
 - **Membro** — codifica, preenche as próprias respostas de categoria, cria códigos e escreve memos.
 
-> Onde os dados ficam (nuvem, navegador ou arquivo no disco) é uma escolha **separada** do tipo de projeto — veja a [seção 16](#16-salvamento-backup-e-modos-de-armazenamento).
+> Onde os dados ficam (nuvem, navegador ou arquivo no disco) é uma escolha **separada** do tipo de projeto — veja a [seção 17](#17-salvamento-backup-e-modos-de-armazenamento).
 
 ---
 
@@ -98,22 +100,23 @@ Em **projeto individual**, tudo já vai direto para o gabarito. Em **projeto col
 
 Ao baixar, o arquivo abre direto no navegador (`file://`) sem precisar de servidor — ele só busca as bibliotecas externas pela internet **na primeira vez**. (Se a sua política de navegador bloquear, sirva com `python -m http.server 8000` na pasta do arquivo.)
 
-> **Chrome ou Edge** são recomendados: só neles funciona o **modo Arquivo local** (salvar um `.qualilab` visível no disco) e o **backup automático em pasta**. Firefox e Safari funcionam, mas caem para o modo navegador (`localStorage`).
+> **Chrome ou Edge** são recomendados: só neles funciona o **modo Arquivo local** (salvar um `.qualilab` visível no disco) e o **backup automático em pasta**. Firefox e Safari funcionam, mas caem para o modo rascunho (`localStorage`).
 
-### 2.2. A tela de login (modo nuvem)
+### 2.2. A tela de entrada
 
-Se o app está configurado com nuvem, a primeira tela é **"Acessar o QualiLab"**, com quatro caminhos:
+A primeira tela oferece três caminhos (com o logo no topo):
 
-1. **Entrar** — e-mail e senha de uma conta existente.
-2. **Criar conta** — informe um **nome de exibição** (é como você aparece nas codificações), e-mail e senha (mín. 6 caracteres). Dependendo da configuração, pode ser preciso confirmar o e-mail antes de entrar.
-3. **Continuar como visitante** — usa a nuvem deste navegador sem criar conta. Bom para testar. *Os projetos ficam vinculados a este dispositivo* e não sincronizam entre aparelhos. (Dá para migrar depois clicando em **"Entrar com conta →"**.)
-4. **Usar offline** — pula a nuvem inteiramente e abre um projeto **local** neste dispositivo. Entra em ação automaticamente também se a conexão cair.
+1. **Novo em arquivo** — cria um projeto salvo como arquivo `.qualilab` no seu disco (Chrome/Edge): portátil, offline, sem nuvem. Ideal para dados sensíveis.
+2. **Entrar na nuvem** — leva ao **login** (e-mail e senha; ou **Criar conta** na mesma tela — informe um **nome de exibição**, e-mail e senha de no mínimo 6 caracteres), para trabalho colaborativo e sincronizado entre dispositivos. **← Voltar** retorna à tela de entrada.
+3. **Só testar (rascunho)** — abre na hora um projeto de **rascunho** neste navegador, sem configurar nada. É efêmero (some se você limpar os dados do site) — bom para experimentar; migre para arquivo ou nuvem quando quiser (um clique no hub do projeto).
 
-> Se o app não tiver credenciais de nuvem configuradas, você já começa direto em modo local/arquivo, sem essa tela.
+Um botão violeta **"Conectar ao meu Supabase"** (na tela de entrada e no login) aponta o app para o **seu próprio servidor Supabase** antes de logar — é onde ficam os seus projetos coletivos.
+
+> Um arquivo ou sessão já aberto **reabre sozinho** na próxima vez. Se o app não tiver nuvem configurada, "Entrar na nuvem" não aparece e você começa direto em arquivo/rascunho.
 
 ### 2.3. Escolher / criar um projeto
 
-Depois do login (ou direto, em modo local) aparece **"Meus projetos"**:
+Depois do login (ou direto, sem nuvem) aparece **"Meus projetos"**:
 
 - **Abrir um projeto existente** — clique nele na lista, ou em **abrir**.
 - **Criar projeto**:
@@ -144,16 +147,18 @@ Depois de abrir um projeto, o **cabeçalho** tem duas linhas:
 | **Gráficos** | Frequências, nuvem, co-ocorrência etc. |
 | **Memos** | Notas analíticas |
 | **Esquema** | Organizar códigos e categorias em lote |
+| **Codificar com IA** | *(opcional, BYOK)* IA propõe codificação/categorização/organização — você aprova |
+| **Analisar com IA** | *(opcional, BYOK)* conversa analítica sobre o material selecionado |
 | **Relatório** | Exportar relatórios e pacotes de transparência |
 
 **Segunda linha**
-- A **pílula do projeto** — ex.: `local · Meu Projeto · individual ▾`. O prefixo mostra o modo de armazenamento (`arquivo`/`nuvem`/`nuvem pessoal`/`local`) e a **cor** reforça onde os dados estão: neutra = local (neste navegador), verde = arquivo no seu disco, azul = nuvem (servidor padrão), violeta = nuvem no seu próprio Supabase, âmbar = nuvem sem conexão. Passe o mouse para a explicação (em modo local, inclui o % usado do armazenamento do navegador); clicar abre o **hub de gestão do projeto**.
-- Seu **nome** — **clicável em todos os modos** (nuvem, local e arquivo) → Minha conta.
+- A **pílula do projeto** — ex.: `rascunho · Meu Projeto · individual ▾`. O prefixo mostra o modo de armazenamento (`arquivo`/`nuvem`/`nuvem pessoal`/`rascunho`) e a **cor** reforça onde os dados estão: neutra = rascunho (neste navegador), verde = arquivo no seu disco, azul = nuvem (servidor padrão), violeta = nuvem no seu próprio Supabase, âmbar = nuvem sem conexão. Passe o mouse para a explicação (em modo rascunho, inclui o % usado do armazenamento do navegador); clicar abre o **hub de gestão do projeto**.
+- Seu **nome** — **clicável em todos os modos** (nuvem, rascunho e arquivo) → Minha conta.
 - **trocar projeto** / **sair** (modo nuvem).
 - **exportar ▾** e **importar ▾** (aparecem quando há documentos).
 - Indicadores `offline` / `sincronizando…` (modo nuvem).
 
-Logo abaixo do cabeçalho podem aparecer **faixas de aviso**: erro (vermelho), importação em andamento (com barra de progresso) e o aviso de falha de salvamento (veja a [seção 16](#16-salvamento-backup-e-modos-de-armazenamento)).
+Logo abaixo do cabeçalho podem aparecer **faixas de aviso**: erro (vermelho), importação em andamento (com barra de progresso) e o aviso de falha de salvamento (veja a [seção 17](#17-salvamento-backup-e-modos-de-armazenamento)).
 
 ---
 
@@ -173,7 +178,7 @@ Use o botão de **colar** (ao lado de ＋ enviar) para criar um documento a part
 - O lápis **✏️** ao lado renomeia o documento aberto (Enter confirma, Esc cancela).
 
 ### Importar muitos documentos de uma vez
-Uma planilha (`.csv`/`.xlsx`) vira **um documento por linha** — veja [Importar e exportar](#15-importar-e-exportar).
+Uma planilha (`.csv`/`.xlsx`) vira **um documento por linha** — veja [Importar e exportar](#16-importar-e-exportar).
 
 ---
 
@@ -353,7 +358,29 @@ Exporta as anotações no padrão aberto **[W3C Web Annotation Data Model](https
 
 ---
 
-## 13. Colaboração
+## 13. Codificar e Analisar com IA
+
+*Opcional. As telas **Codificar com IA** e **Analisar com IA** ficam no cabeçalho. Para usá-las, configure a **sua** chave de IA em [Minha conta](#15-minha-conta) (BYOK) — veja abaixo.*
+
+Duas telas de IA, **opt-in e transparentes**: nada é enviado sem você clicar, e você **vê o prompt exato** (botão **⚙ configurar prompt**) antes de rodar. A IA **propõe** — você **aprova, edita ou recusa** cada sugestão; nada é gravado sem a sua confirmação.
+
+### Codificar com IA
+Três abas, cada sugestão revisada item a item antes de aplicar:
+- **Sugerir Codificação** — aponta trechos que se encaixam em **códigos que já existem** mas escaparam (uma segunda codificadora / *recall*).
+- **Sugerir Categorização** — preenche o **valor** de categorias já existentes por documento (não cria categorias novas).
+- **Organizar Códigos** — propõe mesclar, agrupar, mover, renomear e promover códigos, reusando a lógica da aba [Esquema](#7-esquema).
+
+### Analisar com IA
+Uma **conversa** sobre o material que você selecionar — documentos, trechos por código, ou os dois. Dá para escolher a **postura** (indutiva, dedutiva…), partir de uma biblioteca de prompts e manter uma **memória do projeto** que a IA leva em conta. Conversas úteis podem ser **salvas nos [Memos](#11-memos)**.
+
+### A sua chave (BYOK) e os provedores
+Em **[Minha conta](#15-minha-conta) → IA — sua chave e modelo**, escolha o provedor e cole a **sua** chave: **Gemini, OpenAI, Anthropic, Azure OpenAI**, um provedor **compatível com a OpenAI** (DeepSeek, Mistral, Qwen…), ou o **Ollama local**. A chave fica **só no seu navegador** — nunca é gravada no servidor. Cada pesquisador usa a sua; não há chave compartilhada por padrão.
+
+> ⚠️ **Privacidade — leia antes de usar IA com dado real.** Exceto pelo **Ollama local** (que roda na sua máquina — o material não sai dela), o texto selecionado é **enviado ao provedor de IA que você escolher**, sob a política dele (retenção e uso para treino variam por provedor e por plano). **Não use IA de nuvem com dado sigiloso/sensível** sem a base legal adequada — prefira o **Ollama local**, ou não use IA nesse material. A [censura](#55-censura-mascarar-trechos-sensíveis) mascara, por padrão, os trechos que você marcou antes de enviá-los à IA; o restante do material vai como está.
+
+---
+
+## 14. Colaboração
 
 *(Projeto coletivo, modo nuvem.)*
 
@@ -364,18 +391,19 @@ Abra a **pílula do projeto** (cabeçalho) → ali está o **código de acesso**
 Ainda na pílula do projeto, o admin pode: ver a **lista de membros** e mudar papéis (**admin/membro**), **renomear**, **limpar conteúdo**, **excluir** o projeto, mudar o **tipo** e ajustar a **conexão** (credenciais Supabase).
 
 ### Enviar para a nuvem
-Se o projeto ativo for **local** ou **arquivo**, a pílula mostra **"Enviar para a nuvem"**: cria um projeto novo na nuvem e copia tudo (documentos, categorias, códigos, codificações, memos) de uma vez — sem exportar/importar `.qualilab` na mão.
+Se o projeto ativo for **rascunho** ou **arquivo**, a pílula mostra **"Enviar para a nuvem"**: cria um projeto novo na nuvem e copia tudo (documentos, categorias, códigos, codificações, memos) de uma vez — sem exportar/importar `.qualilab` na mão.
 
 ### Tempo real (e seus limites)
 **Codificações** e **respostas de categoria** sincronizam ao vivo entre colaboradores. Já mudanças no **esquema de categorias** ou na **árvore de códigos** só aparecem para os outros ao **recarregar a página**.
 
 ---
 
-## 14. Minha conta
+## 15. Minha conta
 
-Clique no **seu nome** no cabeçalho para abrir **Minha conta** — funciona **em todos os modos** (nuvem, local e arquivo):
+Clique no **seu nome** no cabeçalho para abrir **Minha conta** — funciona **em todos os modos** (nuvem, rascunho e arquivo):
 - Trocar o **nome de exibição** (usado nas codificações).
-- Alterar a **senha** (só contas com e-mail; some nos modos local/arquivo).
+- Alterar a **senha** (só contas com e-mail; some nos modos rascunho/arquivo).
+- **IA — sua chave e modelo** (BYOK): escolha o provedor e cole a **sua** chave de IA; fica só neste navegador. Veja a [seção 13](#13-codificar-e-analisar-com-ia).
 - Ver **todos os seus projetos** num lugar só, com ações diretas: abrir, renomear (admin), sair ou excluir (admin).
 - **Sair da conta** (só no modo nuvem).
 
@@ -385,7 +413,7 @@ Clique no **seu nome** no cabeçalho para abrir **Minha conta** — funciona **e
 
 ---
 
-## 15. Importar e exportar
+## 16. Importar e exportar
 
 Os menus **exportar ▾** e **importar ▾** ficam no cabeçalho (aparecem quando há documentos).
 
@@ -421,20 +449,20 @@ Os menus **exportar ▾** e **importar ▾** ficam no cabeçalho (aparecem quand
 
 ---
 
-## 16. Salvamento, backup e modos de armazenamento
+## 17. Salvamento, backup e modos de armazenamento
 
 O QualiLab **salva sozinho** a cada ação. *Onde* ele salva depende do modo:
 
 | Modo | Onde fica | Indicador | Quando usar |
 |---|---|---|---|
 | **Arquivo local** | Um `.qualilab` no disco | `arquivo ·` | Dados sensíveis, offline, sem rede |
-| **Local** | `localStorage` do navegador | `local ·` | Uso rápido sem configuração |
+| **Rascunho** | `localStorage` do navegador | `rascunho ·` | Só testar rápido, sem compromisso (efêmero) |
 | **Nuvem** | Supabase | `nuvem ·` | Equipes, vários dispositivos |
 
 ### Modo arquivo (Chrome/Edge)
 O projeto é um arquivo `.qualilab` **visível no sistema de arquivos** — qualquer pasta, HD externo, volume criptografado. Zero rede, zero `localStorage`, 100% offline. Comece em **"Meus projetos" → Novo arquivo… / Abrir arquivo…**. O app reabre o último arquivo na sessão seguinte (com permissão do navegador).
 
-### Backup automático em pasta (modo local, Chrome/Edge)
+### Backup automático em pasta (modo rascunho, Chrome/Edge)
 Mantém um `backup-automatico.qualilab` sempre atualizado numa pasta sua, como espelho do `localStorage`. Ative em **pílula do projeto → Backup automático em pasta → Escolher pasta…**.
 
 ### Salvar/baixar manualmente
@@ -444,20 +472,20 @@ Mantém um `backup-automatico.qualilab` sempre atualizado numa pasta sua, como e
 Se o navegador não conseguir gravar (`localStorage` cheio, permissão de pasta revogada, disco removido), aparece uma **faixa vermelha persistente** avisando que as últimas alterações **não** foram salvas, com um atalho para **baixar .qualilab** na hora. Ela só some quando um salvamento volta a funcionar. **Não ignore esse aviso** — baixe o backup antes de continuar.
 
 ### Modo nuvem offline
-O cabeçalho mostra `offline` (âmbar) quando a conexão cai. Escritas (codificar, preencher categoria) exigem rede; sem ela, a ação em andamento falha (dados já salvos não são corrompidos). A fila de reenvio automático de escritas offline ainda **não** está ativa nesta versão.
+O cabeçalho mostra `offline` (âmbar) quando a conexão cai. Escritas (codificar, preencher categoria) exigem rede; sem ela, a ação em andamento **falha** (os dados já salvos não são corrompidos). **Não há fila de reenvio automático** de escritas offline — se estiver instável, baixe um backup `.qualilab` e refaça a ação quando a conexão voltar.
 
 ---
 
-## 17. Solução de problemas
+## 18. Solução de problemas
 
 **O app não carrega / tela em branco ao abrir o arquivo baixado.**
 Ele precisa de internet na **primeira vez** (para baixar as bibliotecas). Se a política do navegador bloquear o `file://`, sirva por um servidor local: `python -m http.server 8000` na pasta do `index.html`.
 
 **Não vejo "Novo arquivo…" nem o backup em pasta.**
-Esses recursos usam a File System Access API, que só existe em **Chrome/Edge**. No Firefox/Safari, use o modo nuvem ou local.
+Esses recursos usam a File System Access API, que só existe em **Chrome/Edge**. No Firefox/Safari, use o modo nuvem ou rascunho.
 
 **Faixa vermelha "as últimas alterações NÃO foram salvas".**
-O armazenamento encheu ou ficou indisponível. Clique em **baixar .qualilab** imediatamente; depois libere espaço (modo local tem limite de ~5–10 MB) ou migre para o modo **arquivo**/**nuvem**.
+O armazenamento encheu ou ficou indisponível. Clique em **baixar .qualilab** imediatamente; depois libere espaço (modo rascunho tem limite de ~5–10 MB) ou migre para o modo **arquivo**/**nuvem**.
 
 **Um colega não vê meus códigos / categorias novas.**
 Esquema de categorias e árvore de códigos não sincronizam ao vivo — peça para **recarregar a página**. (Codificações e respostas de categoria, sim, sincronizam.)
@@ -479,7 +507,7 @@ PDFs muito visuais (colunas, tabelas, digitalizações) podem extrair mal. Tabel
 
 ---
 
-## 18. Atalhos de teclado
+## 19. Atalhos de teclado
 
 | Atalho | Onde | Ação |
 |---|---|---|
@@ -491,7 +519,7 @@ PDFs muito visuais (colunas, tabelas, digitalizações) podem extrair mal. Tabel
 
 ---
 
-## 19. Glossário
+## 20. Glossário
 
 - **Código** — rótulo aplicado a um trecho; hierárquico (família → subcódigos).
 - **Categoria / atributo** — propriedade do documento inteiro (cinco tipos de campo).
@@ -502,12 +530,14 @@ PDFs muito visuais (colunas, tabelas, digitalizações) podem extrair mal. Tabel
 - **Memo** — nota analítica por projeto/documento/código/trecho.
 - **Censura** — código que mascara trechos sensíveis nas exportações.
 - **Co-ocorrência** — dois códigos aplicados ao mesmo trecho (ou sobrepostos).
-- **Modo (armazenamento)** — onde os dados ficam: arquivo, local ou nuvem.
+- **Modo (armazenamento)** — onde os dados ficam: arquivo, rascunho ou nuvem.
 - **Tipo de projeto** — individual (sem reconciliação) ou coletivo.
 - **Papel** — admin (define esquema/gabarito/membros) ou membro.
 - **REFI-QDA / QDPX / QDC** — padrão aberto de intercâmbio entre ferramentas de QDA.
 - **ATI** — *Annotation for Transparent Inquiry*, método de transparência do QDR.
 - **W3C Web Annotation** — padrão aberto de dados de anotação (base do ATI, hypothes.is etc.).
+- **BYOK** (*bring your own key*) — usar a **sua** própria chave de API de um provedor de IA, guardada só no seu navegador.
+- **Ollama local** — modelo de IA rodando **na sua máquina**, chamado direto pelo navegador; o material não sai do computador.
 
 ---
 
