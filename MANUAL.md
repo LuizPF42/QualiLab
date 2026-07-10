@@ -411,16 +411,21 @@ A aba **Gráficos** é um explorador: filtros à esquerda, um gráfico por vez �
 
 ## 11. Memos
 
-A aba **Memos** guarda **notas analíticas**, uma por alvo, compartilhadas entre os membros e com salvamento automático. Os escopos:
+A aba **Memos** guarda **notas analíticas** — texto livre que você anexa a um alvo do projeto, compartilhado entre os membros e com salvamento automático. A coluna da esquerda navega por alvo:
 
-- **Projeto** — uma nota geral.
-- **Documento** — uma nota por documento.
-- **Código** — uma nota por código (sua definição, regra de aplicação etc.).
-- **Trecho** — uma nota ancorada num grifo específico.
+- **Memo do projeto** — uma nota geral do projeto (rascunho livre; veja o aviso sobre a IA abaixo).
+- **Documentos** — uma nota por documento.
+- **Códigos** — uma nota por código (sua definição, regra de aplicação etc.).
+- **Trechos anotados** — a nota ancorada num **grifo** específico (a seção aparece quando há alguma). Também se escreve direto na codificação: **botão direito sobre o grifo → "Anotar trecho (nota analítica)"**.
 
-A nota de **trecho** também se escreve direto na codificação: **botão direito sobre o grifo → "Anotar trecho (nota analítica)"**. Essas notas alimentam as saídas de transparência do [Relatório](#12-relatório).
+As notas de **código** e de **trecho** alimentam as saídas de transparência do [Relatório](#12-relatório).
 
-> A navegação da aba Memos também traz, abaixo de Documentos e Códigos, duas seções: **Conversas salvas** (cada conversa do [Analisar com IA](#173-analisar-com-ia--leitura-assistida-do-material) abre por inteiro ao ser clicada) e **Memória do projeto** (o diário de insights da IA — onde você adiciona memórias à mão e liga/desliga quais entram no prompt).
+**Seções de IA** (aparecem com a IA ligada, abaixo das anteriores):
+
+- **Memo para a IA** — o contexto do projeto escrito **para a IA**, injetado nos prompts por padrão. É **diferente** do *Memo do projeto* comum, que **deixou de ser enviado automaticamente** à IA (virou rascunho livre): se você quer que a IA leve o objetivo da pesquisa em conta, escreva-o aqui.
+- **Prompts salvos** — a sua **biblioteca de prompts** (os que você salva na tela [Analisar com IA](#173-analisar-com-ia--leitura-assistida-do-material)): abra, renomeie ou apague cada um.
+- **Conversas salvas** — cada conversa do [Analisar com IA](#173-analisar-com-ia--leitura-assistida-do-material) que você guardou, aberta por inteiro ao clicar.
+- **Memória do projeto** — o **diário de insights da IA**: memórias curtas (fatos/decisões) que entram no contexto entre sessões; você adiciona à mão ou aprova as que a IA sugere, e liga/desliga quais usar.
 
 ---
 
