@@ -81,8 +81,16 @@ create table if not exists public.codes (
   name        text not null,
   hue         int  not null default 0,
   depth       int  not null default 0,
-  position    int  not null default 0
+  position    int  not null default 0,
+  is_redaction boolean not null default false,
+  pos_x       double precision,
+  pos_y       double precision
 );
+alter table public.codes add column if not exists is_redaction boolean not null default false;
+-- posicao no "quadro branco espacial" do Esquema (aba Codigos -> Mapa). null = nao posicionado
+-- (nao destrutivo: projeto antigo abre normal e recebe placement automatico por familia).
+alter table public.codes add column if not exists pos_x double precision;
+alter table public.codes add column if not exists pos_y double precision;
 
 create table if not exists public.codings (
   id           uuid primary key default gen_random_uuid(),
@@ -111,26 +119,50 @@ returns boolean language sql security definer stable set search_path = public as
 $$;
 
 -- ---------- RPCs ----------
+-- codigo de convite com 10 chars hex (16^10 ~ 1,1 trilhao de combinacoes; os 6 antigos
+-- eram enumeraveis, 16,7M). p_mode validado — antes qualquer string era aceita.
 create or replace function public.create_project(p_name text, p_display text, p_mode text default 'collective')
 returns public.projects language plpgsql security definer set search_path = public as $$
 declare v_code text; v_proj public.projects;
 begin
-  v_code := upper(substr(replace(gen_random_uuid()::text,'-',''),1,6));
+  v_code := upper(substr(replace(gen_random_uuid()::text,'-',''),1,10));
   insert into public.projects (name, code, mode, created_by)
-    values (coalesce(nullif(p_name,''),'Projeto'), v_code, coalesce(nullif(p_mode,''),'collective'), auth.uid())
+    values (coalesce(nullif(p_name,''),'Projeto'),
+            v_code,
+            case when p_mode in ('individual','collective') then p_mode else 'collective' end,
+            auth.uid())
     returning * into v_proj;
   insert into public.members (project_id, user_id, display_name, role)
     values (v_proj.id, auth.uid(), coalesce(nullif(p_display,''),'anonimo'), 'admin');
   return v_proj;
 end; $$;
 
+-- registro de tentativas de join com codigo invalido (throttle de enumeracao).
+-- RLS ligada SEM policies: so as funcoes security definer escrevem/leem aqui.
+create table if not exists public.join_attempts (
+  user_id      uuid not null,
+  attempted_at timestamptz not null default now()
+);
+create index if not exists join_attempts_user_idx on public.join_attempts (user_id, attempted_at);
+alter table public.join_attempts enable row level security;
+
+-- IMPORTANTE (contrato com o front): codigo inexistente agora retorna NULL em vez de
+-- raise — um raise desfaria a transacao inteira e apagaria o registro da tentativa,
+-- inutilizando o throttle. O SupabaseStore.joinProject checa o null e monta a mensagem.
 create or replace function public.join_project(p_code text, p_display text)
 returns public.projects language plpgsql security definer set search_path = public as $$
-declare v_proj public.projects;
+declare v_proj public.projects; v_recent int;
 begin
+  delete from public.join_attempts where attempted_at < now() - interval '1 day';
+  select count(*) into v_recent from public.join_attempts
+    where user_id = auth.uid() and attempted_at > now() - interval '1 hour';
+  if v_recent >= 20 then
+    raise exception 'Muitas tentativas com código inválido — aguarde e tente novamente mais tarde';
+  end if;
   select * into v_proj from public.projects where code = upper(trim(p_code));
   if v_proj.id is null then
-    raise exception 'Projeto não encontrado para o código %', p_code;
+    insert into public.join_attempts (user_id) values (auth.uid());
+    return null;
   end if;
   insert into public.members (project_id, user_id, display_name)
     values (v_proj.id, auth.uid(), coalesce(nullif(p_display,''),'anonimo'))
@@ -244,16 +276,43 @@ create policy projects_select on public.projects for select using (public.is_mem
 drop policy if exists members_select on public.members;
 create policy members_select on public.members for select using (public.is_member(project_id));
 
+-- documents e codes: qualquer membro escreve (decisao consciente: a codificacao aberta
+-- cria/edita codigos o tempo todo; documentos sao material comum do projeto).
 do $$
 declare t text;
 begin
-  foreach t in array array['documents','codes','codings'] loop
+  foreach t in array array['documents','codes'] loop
     execute format('drop policy if exists %1$s_all on public.%1$s;', t);
     execute format(
       'create policy %1$s_all on public.%1$s for all
          using (public.is_member(project_id)) with check (public.is_member(project_id));', t);
   end loop;
 end $$;
+
+-- codings: o servidor passa a ser a autoridade (antes uma unica policy for all deixava
+-- qualquer membro forjar created_by, apagar codificacao alheia e escrever no gabarito).
+--   - insert: cada um grava como si mesmo; created_by NULL e o caminho de import
+--     (autor de fato em author_name); admin pode inserir com qualquer created_by
+--     (necessario pro merge de codigos, que recria codificacoes preservando o autor).
+--   - camada 'final' (gabarito da Reconciliacao): so admin — exceto linhas de import
+--     (created_by null), que entram em final por design do importQDPX.
+--   - update/delete: dono da linha ou admin.
+drop policy if exists codings_all    on public.codings;
+drop policy if exists codings_select on public.codings;
+drop policy if exists codings_insert on public.codings;
+drop policy if exists codings_update on public.codings;
+drop policy if exists codings_delete on public.codings;
+create policy codings_select on public.codings for select using (public.is_member(project_id));
+create policy codings_insert on public.codings for insert with check (
+  public.is_member(project_id)
+  and (created_by = auth.uid() or created_by is null or public.is_admin(project_id))
+  and (layer <> 'final' or created_by is null or public.is_admin(project_id))
+);
+create policy codings_update on public.codings for update
+  using (public.is_member(project_id) and (created_by = auth.uid() or public.is_admin(project_id)))
+  with check (public.is_member(project_id) and (created_by = auth.uid() or public.is_admin(project_id)));
+create policy codings_delete on public.codings for delete
+  using (public.is_member(project_id) and (created_by = auth.uid() or public.is_admin(project_id)));
 
 -- categorias: membros leem; apenas admins escrevem
 drop policy if exists categories_all    on public.categories;
@@ -278,9 +337,16 @@ create policy doc_values_own on public.doc_values for all
 create policy doc_values_final on public.doc_values for all
   using (public.is_admin(project_id) and layer = 'final')
   with check (public.is_admin(project_id) and layer = 'final');
-create policy doc_values_imported on public.doc_values for all
-  using (public.is_member(project_id) and set_by is null and layer = 'individual')
+-- linhas importadas: qualquer membro INSERE (e o que o import precisa), mas so admin
+-- altera/apaga — antes um for all deixava qualquer membro reescrever respostas
+-- importadas em nome de qualquer autor, a qualquer momento.
+drop policy if exists doc_values_imported_insert on public.doc_values;
+drop policy if exists doc_values_imported_admin  on public.doc_values;
+create policy doc_values_imported_insert on public.doc_values for insert
   with check (public.is_member(project_id) and set_by is null and layer = 'individual');
+create policy doc_values_imported_admin on public.doc_values for all
+  using (public.is_admin(project_id) and set_by is null and layer = 'individual')
+  with check (public.is_admin(project_id) and set_by is null and layer = 'individual');
 
 -- ---------- realtime ----------
 do $$
@@ -296,18 +362,30 @@ begin
   end loop;
 end $$;
 
--- ---------- memos (nota unica compartilhada: projeto, documento ou codigo) ----------
+-- ---------- memos (nota unica compartilhada: projeto, documento, codigo ou trecho/coding) ----------
 create table if not exists public.memos (
   id          uuid primary key default gen_random_uuid(),
   project_id  uuid not null references public.projects(id) on delete cascade,
-  scope       text not null check (scope in ('project','document','code')),
-  target_id   uuid not null,  -- = project_id quando scope='project'; document_id ou code_id nos demais
+  scope       text not null check (scope in ('project','document','code','coding','ai_context','ai_instructions','ai_stance','ai_stance_text','ai_prompt')),
+  target_id   uuid not null,  -- = project_id quando scope='project'; document_id/code_id/coding_id nos demais
   content     text not null default '',
+  label       text not null default '',  -- nome do prompt salvo (scope='ai_prompt', biblioteca de prompts); '' nos demais
   author_name text not null default 'anonimo',
   updated_by  uuid,
   updated_at  timestamptz not null default now(),
   unique (project_id, scope, target_id)
 );
+-- migracao p/ bancos existentes: libera o escopo 'coding' (nota analitica por trecho — base da
+-- "anotacao por trecho" / transparencia ativa). Idempotente: dropa o check antigo e recria.
+-- escopos ai_* (jul/2026): config de IA por projeto (target_id = project_id):
+--   ai_context = "Memo para a IA" (contexto do projeto injetado no prompt, opt-in por memo)
+--   ai_instructions = instrucoes proprias a IA (entram no Papel e Principios)
+--   ai_stance = postura de analise (guarda so o id: padrao|indutivo|dedutivo|abdutivo|personalizado)
+--   ai_stance_text = texto da postura PERSONALIZADA (usado quando ai_stance='personalizado')
+--   ai_prompt = prompt salvo na "biblioteca de prompts" (varios por projeto: target_id proprio; name em label)
+alter table public.memos add column if not exists label text not null default '';
+alter table public.memos drop constraint if exists memos_scope_check;
+alter table public.memos add constraint memos_scope_check check (scope in ('project','document','code','coding','ai_context','ai_instructions','ai_stance','ai_stance_text','ai_prompt'));
 alter table public.memos enable row level security;
 drop policy if exists memos_all on public.memos;
 create policy memos_all on public.memos for all
@@ -315,9 +393,6 @@ create policy memos_all on public.memos for all
 
 -- ---------- cor personalizada de codigo (somente nivel 0 / familia) ----------
 alter table public.codes add column if not exists hue_deg int;
-
--- ---------- marcacao de censura (so visual por ora, sem efeito funcional) ----------
-alter table public.codes add column if not exists is_redaction boolean not null default false;
 
 create or replace function public.codes_color_guard()
 returns trigger language plpgsql security definer set search_path = public as $$
@@ -335,3 +410,91 @@ end; $$;
 drop trigger if exists trg_codes_color_guard on public.codes;
 create trigger trg_codes_color_guard before insert or update on public.codes
   for each row execute function public.codes_color_guard();
+-- ---------- resultados salvos da aba "Analisar com IA" ----------
+create table if not exists public.ia_results (
+  id           uuid primary key default gen_random_uuid(),
+  project_id   uuid not null references public.projects(id) on delete cascade,
+  scope        text not null,        -- docs | codes | docs_codes
+  mode_label   text not null,        -- rotulo da modalidade no momento da analise (ex.: "Insights")
+  result       text not null,
+  created_by   uuid,
+  author_name  text not null default 'anonimo',
+  created_at   timestamptz not null default now()
+);
+alter table public.ia_results enable row level security;
+drop policy if exists ia_results_all on public.ia_results;
+create policy ia_results_all on public.ia_results for all
+  using (public.is_member(project_id)) with check (public.is_member(project_id));
+
+-- ---------- diario de insights da IA: memoria persistente e curada do projeto ----------
+-- Lista de memorias curtas (fatos/decisoes/insights) que a IA propoe e o pesquisador
+-- aprova; as ativas sao injetadas no system prompt das chamadas de IA. 1-para-muitos por
+-- projeto (igual ia_results), nao upsert. active = entra no prompt (escolha do pesquisador,
+-- por economia/transparencia). ai_model = proveniencia (qual modelo gerou); '' = manual.
+create table if not exists public.ia_memory (
+  id           uuid primary key default gen_random_uuid(),
+  project_id   uuid not null references public.projects(id) on delete cascade,
+  content      text not null,
+  reason       text not null default '',
+  source       text not null default 'ai',   -- 'ai' (proposta aprovada) | 'manual'
+  active       boolean not null default true, -- entra no prompt? (pesquisador escolhe)
+  ai_model     text not null default '',      -- modelo que autorou (proveniencia); '' = manual
+  mode_label   text not null default '',      -- contexto que originou (opcional)
+  created_by   uuid,                          -- membro que gerou/aprovou (auditoria em coletivo)
+  author_name  text not null default 'anonimo',
+  created_at   timestamptz not null default now()
+);
+alter table public.ia_memory enable row level security;
+-- proveniencia (created_by/ai_model) e AUDITORIA em coletivo — por isso o update direto
+-- e restrito ao autor/admin (antes qualquer membro podia reescrever o content de uma
+-- memoria alheia mantendo a proveniencia antiga, falsificando a auditoria). O toggle
+-- de "usar na analise" (active) continua aberto a todo membro, via RPC dedicada abaixo.
+-- delete segue aberto a membros: curadoria coletiva; apagar e visivel, nao falsifica.
+drop policy if exists ia_memory_all    on public.ia_memory;
+drop policy if exists ia_memory_select on public.ia_memory;
+drop policy if exists ia_memory_insert on public.ia_memory;
+drop policy if exists ia_memory_update on public.ia_memory;
+drop policy if exists ia_memory_delete on public.ia_memory;
+create policy ia_memory_select on public.ia_memory for select using (public.is_member(project_id));
+create policy ia_memory_insert on public.ia_memory for insert
+  with check (public.is_member(project_id) and (created_by = auth.uid() or created_by is null));
+create policy ia_memory_update on public.ia_memory for update
+  using (public.is_member(project_id) and (created_by = auth.uid() or public.is_admin(project_id)))
+  with check (public.is_member(project_id) and (created_by = auth.uid() or public.is_admin(project_id)));
+create policy ia_memory_delete on public.ia_memory for delete
+  using (public.is_member(project_id));
+
+-- toggle de active aberto a qualquer membro (a policy de update acima nao cobre
+-- memoria alheia de proposito); o SupabaseStore.setMemoryActive chama esta RPC.
+create or replace function public.set_memory_active(p_id uuid, p_active boolean)
+returns void language plpgsql security definer set search_path = public as $$
+declare v_pid uuid;
+begin
+  select project_id into v_pid from public.ia_memory where id = p_id;
+  if v_pid is null then raise exception 'Memória não encontrada'; end if;
+  if not public.is_member(v_pid) then raise exception 'Apenas membros do projeto podem alterar a memória'; end if;
+  update public.ia_memory set active = p_active where id = p_id;
+end; $$;
+grant execute on function public.set_memory_active(uuid, boolean) to anon, authenticated;
+
+-- ---------- limpeza de memos orfaos no proprio banco ----------
+-- memos.target_id nao tem FK (aponta pra tabelas diferentes conforme o scope), entao o
+-- Postgres nao limpa sozinho. Os stores do cliente ja limpam nos fluxos do app, mas as
+-- CASCATAS do proprio banco (ex.: deletar documento apaga codings em cascata) deixavam
+-- orfaos os memos de coding/subcodigo. Triggers AFTER DELETE cobrem tudo, inclusive as
+-- linhas apagadas por cascade.
+create or replace function public.memos_gc()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  delete from public.memos where scope = TG_ARGV[0] and target_id = old.id;
+  return old;
+end; $$;
+drop trigger if exists trg_memos_gc_documents on public.documents;
+create trigger trg_memos_gc_documents after delete on public.documents
+  for each row execute function public.memos_gc('document');
+drop trigger if exists trg_memos_gc_codes on public.codes;
+create trigger trg_memos_gc_codes after delete on public.codes
+  for each row execute function public.memos_gc('code');
+drop trigger if exists trg_memos_gc_codings on public.codings;
+create trigger trg_memos_gc_codings after delete on public.codings
+  for each row execute function public.memos_gc('coding');

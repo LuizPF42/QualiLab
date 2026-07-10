@@ -321,19 +321,25 @@ try {
   FORCE_LOCAL = localStorage.getItem('qualilab:forcelocal')==='1';
 } catch(e){}
 
-// AI_ENABLED — chave da unificacao dos forks. Este arquivo (ai-lab) e a FONTE UNICA: com
-// AI_ENABLED=true serve a versao com IA; gerar a versao "estavel" (sem IA) = este mesmo arquivo
-// com AI_ENABLED=false (esconde as telas "Codificar/Analisar com IA", o card de IA em "Minha
-// Conta" e os caminhos de IA). O codigo de IA segue presente porem dormente — se a versao
-// estavel precisar de ZERO codigo de IA (auditoria), remova o bloco entre os marcadores
-// "AI-BLOCK START/END" antes de publicar (strip simples, sem build). Censura (is_redaction) NAO
-// e gateada por aqui: e uma feature geral de codificacao, nao uma tela de IA.
-const AI_ENABLED = false;
+// AI_ENABLED — liga/desliga as telas de IA ("Codificar/Analisar com IA", o card de IA em
+// "Minha Conta" e os caminhos de IA). true nos DOIS forks (jul/2026): o ai-lab e a fonte
+// unica e o estavel/publico passou a rodar com IA tambem — modo BYOK (cada pesquisador traz
+// a propria chave). false esconde tudo de IA (o codigo segue presente, dormente; pra uma
+// versao com ZERO codigo de IA, remova o bloco entre os marcadores "AI-BLOCK START/END").
+// Censura (is_redaction) NAO e gateada aqui: e feature geral de codificacao, nao tela de IA.
+const AI_ENABLED = true;
+
+// AI_SHARED_KEY — o app OFERECE uma chave de IA do servidor? false = NAO: modo BYOK puro, a
+// UI nao promete chave nenhuma do servidor e pede que cada pesquisador configure a sua em
+// "Minha Conta". Enquanto nao houver chave de servidor de fato (secret GEMINI_API_KEY etc. +
+// SHARED_KEY_DOMAINS na Edge Function ai-ask), fica false. Havendo, vire true pra reexpor os
+// textos/atalhos de "chave do servidor" na UI.
+const AI_SHARED_KEY = false;
 
 // Handle global do cliente Supabase ativo (setado no boot do App, em modo nuvem).
 // Uso: askAI/askAIChat leem a sessao daqui pra mandar o JWT do usuario a Edge Function
-// ai-ask — a chave COMPARTILHADA de IA exige sessao valida + e-mail institucional
-// (ver supabase/functions/ai-ask/index.ts); BYOK continua passando sem sessao.
+// ai-ask — uma chave de IA do servidor (se configurada) exige sessao valida + dominio
+// autorizado (ver supabase/functions/ai-ask/index.ts); BYOK continua passando sem sessao.
 let _sbForAI = null;
 async function aiAuthToken(){
   try{
@@ -3001,7 +3007,7 @@ function App(){
       if(wantCloud){
         const createClient = await getCreateClient();
         const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        _sbForAI = sb; // ai-ask usa a sessao daqui (JWT) pra liberar a chave compartilhada
+        _sbForAI = sb; // ai-ask usa a sessao daqui (JWT) pra liberar a chave do servidor (se houver)
         const st = SupabaseStore(sb);
         setStore(st);
         const display = (()=>{ try{return localStorage.getItem('qualilab:name')||'';}catch(e){return '';} })();
@@ -6291,7 +6297,7 @@ const OLLAMA_MODEL_SUGGESTIONS = [
   'gemma2', 'mistral', 'mistral-nemo', 'phi4', 'deepseek-r1',
 ];
 // configuracao pessoal de IA (BYOK) — guardada so no localStorage de quem configurou em
-// "Minha Conta". Ausente = usa a chave/modelo compartilhados do projeto (comportamento
+// "Minha Conta". Ausente = usa a chave/modelo do servidor, se houver (comportamento
 // de sempre); a Edge Function decide isso, aqui so manda o que tiver preenchido.
 function getAIConfig(){
   try{
@@ -6851,7 +6857,7 @@ Regras: use SOMENTE os ids curtos que aparecem na lista de códigos (não invent
 O campo "memory" é OPCIONAL: inclua-o só se desta análise emergir algum fato ou decisão DURÁVEL sobre o projeto que valha registrar na memória do projeto (ex.: "as famílias X e Y foram consolidadas", "o esquema foi reorganizado em N famílias temáticas"). NÃO registre observações triviais ou transitórias. No máximo 8 entradas, cada "content" em UMA frase. Se não houver nada relevante, omita "memory" ou devolva [].
 Devolva apenas o JSON, sem texto antes nem depois, sem comentários.`;
 
-function IAOrganizarPanel({ project, docs, codes, codeById, codePath, store, allCodings, count, isAdmin, reload, loadAll, onAdd, memos, onSetMemo, memory, onAddMemory, onToggleMemory, onDeleteMemory }){
+function IAOrganizarPanel({ project, docs, codes, codeById, codePath, store, allCodings, count, isAdmin, reload, loadAll, onAdd, memos, onSetMemo, memory, onAddMemory, onToggleMemory, onDeleteMemory, tab, setTab, TABS }){
   // history: a conversa inteira. Cada turno de IA carrega seus PROPRIOS dados estruturados
   // (operacoes ja traduzidas+validadas, resumo, memorias propostas, flags) — assim as operacoes
   // aparecem INLINE no balao da IA. So o ultimo turno de IA fica acionavel; os anteriores/aplicados
@@ -7221,7 +7227,17 @@ function IAOrganizarPanel({ project, docs, codes, codeById, codePath, store, all
     </div>`;
   };
 
-  return html`<div style="flex:1;min-height:0;display:flex">
+  return html`<section class="pane" style="flex:1 1 100%">
+    <div class="pane-head" style="gap:12px">
+      <button class="btn accent" onClick=${()=>setShowPrompt(true)}
+        title="Configurar e revisar exatamente o que será enviado à IA">
+        <${PromptGearIcon} /> configurar prompt <span style="font-family:var(--mono);font-size:11px;font-weight:400;opacity:.85">· ≈ ${buildProv().tokens.toLocaleString('pt-BR')} tokens</span>
+      </button>
+      <div class="seg" style="flex-wrap:wrap">
+        ${TABS.map(t=>html`<button key=${t.id} class=${tab===t.id?'on':''} onClick=${()=>setTab(t.id)}>${t.label}</button>`)}
+      </div>
+    </div>
+    <div style="flex:1;min-height:0;display:flex">
 
     <!-- TELA ESQUERDA: configuração / material -->
     <div class="pane-body scroll" style="flex:0 0 400px;border-right:1px solid var(--line)">
@@ -7234,12 +7250,7 @@ function IAOrganizarPanel({ project, docs, codes, codeById, codePath, store, all
             Incluir amostra de trechos por código (a IA decide melhor, mas gasta mais tokens)
           </label>
           <p class="meta" style="margin:8px 0 0">${organizable.length} código(s) para organizar${redactionIds.size?` · ${redactionIds.size} de censura fora`:''}.</p>
-        </div>
-        <button class="btn accent" style="width:100%;justify-content:center" onClick=${()=>setShowPrompt(true)}
-          title="Configurar e revisar exatamente o que será enviado à IA">
-          <${PromptGearIcon} /> configurar prompt
-        </button>
-      </div>
+        </div>      </div>
       ${onToggleMemory && html`<${MemoryPanel} memory=${memory} onToggle=${onToggleMemory} onDelete=${onDeleteMemory} showAdd=${false} />`}
     </div>
 
@@ -7300,7 +7311,8 @@ function IAOrganizarPanel({ project, docs, codes, codeById, codePath, store, all
       </div>`;
       return html`<${PromptInspector} title="Configurar prompt" hint="Ajuste os controles; a prévia mostra exatamente o que a IA recebe." controls=${controls}
         sections=${promptSections()} prov=${buildProv()} onClose=${()=>setShowPrompt(false)} />`; })()}
-    </div>`;
+    </div>
+  </section>`;
 }
 
 /* ============ CODIFICAR COM IA — wrapper de abas =========================================
@@ -7318,14 +7330,12 @@ function IACodificarPanel(props){
     { id:'categorizar', label:'Sugerir Categorização' },
     { id:'organizar',   label:'Organizar Códigos' },
   ];
-  return html`<section class="pane" style="flex:1 1 100%">
-    <div class="pane-head"><div class="seg">
-      ${TABS.map(t=>html`<button key=${t.id} class=${tab===t.id?'on':''} onClick=${()=>setTab(t.id)}>${t.label}</button>`)}
-    </div></div>
-    ${tab==='organizar' && html`<${IAOrganizarPanel} ...${props} />`}
-    ${tab==='categorizar' && html`<${IACategorizarPanel} ...${props} />`}
-    ${tab==='codificar' && html`<${IACodificacaoPanel} ...${props} />`}
-  </section>`;
+  // Cada sub-painel renderiza a propria barra do topo [⚙ configurar prompt][seg de abas],
+  // espelhando o IAAnalisarPanel — por isso o wrapper so segura o estado das abas e repassa
+  // tab/setTab/TABS; o botao ⚙ vive dentro de cada sub-painel (junto do showPrompt local).
+  if(tab==='organizar')   return html`<${IAOrganizarPanel} ...${props} tab=${tab} setTab=${setTab} TABS=${TABS} />`;
+  if(tab==='categorizar') return html`<${IACategorizarPanel} ...${props} tab=${tab} setTab=${setTab} TABS=${TABS} />`;
+  return html`<${IACodificacaoPanel} ...${props} tab=${tab} setTab=${setTab} TABS=${TABS} />`;
 }
 
 const IA_CAT_SYS_REGRAS = `Sua tarefa é sugerir o VALOR de cada categoria para cada documento, com base no conteúdo dele, e devolver SOMENTE um objeto JSON (sem texto fora dele), no formato:
@@ -7344,7 +7354,7 @@ O campo "memory" é OPCIONAL (só fatos/decisões DURÁVEIS; no máximo 8). Devo
    NAO cria categorias (decisao do autor): le o texto dos documentos + o esquema de categorias e
    propoe doc_values, revisados item a item e aplicados via setDocValue/setFinalValue (mesmo caminho
    manual, espelhando projectMode). Censura mascarada no material. Espelha o IAOrganizarPanel. */
-function IACategorizarPanel({ project, docs, cats, codePath, allValues, store, isAdmin, projectMode, user, reload, loadAll, allCodings, codes, memos, onSetMemo, memory, onAddMemory, onToggleMemory, onDeleteMemory }){
+function IACategorizarPanel({ project, docs, cats, codePath, allValues, store, isAdmin, projectMode, user, reload, loadAll, allCodings, codes, memos, onSetMemo, memory, onAddMemory, onToggleMemory, onDeleteMemory, tab, setTab, TABS }){
   const [history, setHistory] = useState([]);
   const [decided, setDecided] = useState({});
   const [instruction, setInstruction] = useState('');
@@ -7585,7 +7595,17 @@ function IACategorizarPanel({ project, docs, cats, codePath, allValues, store, i
 
   const canRun = selDocObjs.length>0 && selCatObjs.length>0;
 
-  return html`<div style="flex:1;min-height:0;display:flex">
+  return html`<section class="pane" style="flex:1 1 100%">
+    <div class="pane-head" style="gap:12px">
+      <button class="btn accent" onClick=${()=>setShowPrompt(true)}
+        title="Configurar e revisar exatamente o que será enviado à IA">
+        <${PromptGearIcon} /> configurar prompt <span style="font-family:var(--mono);font-size:11px;font-weight:400;opacity:.85">· ≈ ${buildProv().tokens.toLocaleString('pt-BR')} tokens</span>
+      </button>
+      <div class="seg" style="flex-wrap:wrap">
+        ${TABS.map(t=>html`<button key=${t.id} class=${tab===t.id?'on':''} onClick=${()=>setTab(t.id)}>${t.label}</button>`)}
+      </div>
+    </div>
+    <div style="flex:1;min-height:0;display:flex">
     <!-- ESQUERDA: configuração -->
     <div class="pane-body scroll" style="flex:0 0 400px;border-right:1px solid var(--line)">
       <div class="section">
@@ -7615,12 +7635,7 @@ function IACategorizarPanel({ project, docs, cats, codePath, allValues, store, i
             ${cats.map(c=>html`<button key=${c.id} class="opt ${selCats.includes(c.id)?'on':''}" style="display:flex;gap:6px;align-items:center;width:100%;margin-bottom:4px;font-size:11px"
               onClick=${()=>toggle(selCats,setSelCats,c.id)}>${selCats.includes(c.id)?'☑':'☐'}<span style="flex:1;text-align:left">${c.name} <span class="meta">· ${kindLabel(c.kind)}</span></span></button>`)}
           </div>
-        </details>
-        <button class="btn accent" style="width:100%;justify-content:center" onClick=${()=>setShowPrompt(true)}
-          title="Configurar e revisar exatamente o que será enviado à IA">
-          <${PromptGearIcon} /> configurar prompt
-        </button>
-      </div>
+        </details>      </div>
       ${onToggleMemory && html`<${MemoryPanel} memory=${memory} onToggle=${onToggleMemory} onDelete=${onDeleteMemory} showAdd=${false} />`}
     </div>
 
@@ -7678,7 +7693,8 @@ function IACategorizarPanel({ project, docs, cats, codePath, allValues, store, i
       </div>`;
       return html`<${PromptInspector} title="Configurar prompt" hint="Ajuste os controles; a prévia mostra exatamente o que a IA recebe." controls=${controls}
         sections=${promptSections()} prov=${buildProv()} onClose=${()=>setShowPrompt(false)} />`; })()}
-  </div>`;
+  </div>
+  </section>`;
 }
 
 const IA_CODIF_SYS_REGRAS = `Sua tarefa é, atuando como SEGUNDA CODIFICADORA (recall), apontar trechos do texto que se encaixam nos CÓDIGOS EXISTENTES mas que ainda NÃO foram codificados, e devolver SOMENTE um objeto JSON (sem texto fora dele), no formato:
@@ -7697,7 +7713,7 @@ O campo "memory" é OPCIONAL (só fatos/decisões DURÁVEIS; no máximo 8). Devo
    quote->span com buildMatchIndex/findQuoteSpan (mesmo motor do import) e aplica via addCoding.
    Espelha o IACategorizarPanel: ve o que JA esta codificado (nao repropoe), revisao item a item,
    censura mascarada no material, salvamento generico do parseAIJson cobre truncamento. */
-function IACodificacaoPanel({ project, docs, codes, codeById, codePath, store, allCodings, isAdmin, projectMode, user, reload, loadAll, memos, onSetMemo, memory, onAddMemory, onToggleMemory, onDeleteMemory }){
+function IACodificacaoPanel({ project, docs, codes, codeById, codePath, store, allCodings, isAdmin, projectMode, user, reload, loadAll, memos, onSetMemo, memory, onAddMemory, onToggleMemory, onDeleteMemory, tab, setTab, TABS }){
   const [history, setHistory] = useState([]);
   const [decided, setDecided] = useState({});
   const [instruction, setInstruction] = useState('');
@@ -7927,7 +7943,17 @@ function IACodificacaoPanel({ project, docs, codes, codeById, codePath, store, a
 
   const canRun = selDocObjs.length>0 && selCodeObjs.length>0;
 
-  return html`<div style="flex:1;min-height:0;display:flex">
+  return html`<section class="pane" style="flex:1 1 100%">
+    <div class="pane-head" style="gap:12px">
+      <button class="btn accent" onClick=${()=>setShowPrompt(true)}
+        title="Configurar e revisar exatamente o que será enviado à IA">
+        <${PromptGearIcon} /> configurar prompt <span style="font-family:var(--mono);font-size:11px;font-weight:400;opacity:.85">· ≈ ${buildProv().tokens.toLocaleString('pt-BR')} tokens</span>
+      </button>
+      <div class="seg" style="flex-wrap:wrap">
+        ${TABS.map(t=>html`<button key=${t.id} class=${tab===t.id?'on':''} onClick=${()=>setTab(t.id)}>${t.label}</button>`)}
+      </div>
+    </div>
+    <div style="flex:1;min-height:0;display:flex">
     <div class="pane-body scroll" style="flex:0 0 400px;border-right:1px solid var(--line)">
       <div class="section">
         <p class="hint" style="margin:0 0 10px">A IA atua como <b>segunda codificadora</b>: lê os documentos e aponta trechos que se encaixam em <b>códigos existentes</b> mas escaparam (recall). Ela vê o que <b>já está codificado</b> e não repete. Você aprova ou recusa cada trecho — <b>nada é gravado sem confirmação</b>.</p>
@@ -7955,12 +7981,7 @@ function IACodificacaoPanel({ project, docs, codes, codeById, codePath, store, a
             ${selectableCodes.map(c=>html`<button key=${c.id} class="opt ${selCodes.includes(c.id)?'on':''}" style="display:flex;gap:6px;align-items:center;width:100%;margin-bottom:4px;font-size:11px"
               onClick=${()=>toggle(selCodes,setSelCodes,c.id)}>${selCodes.includes(c.id)?'☑':'☐'}<span style="flex:1;text-align:left">${codePath(c.id).join(' ▸ ')}</span></button>`)}
           </div>
-        </details>
-        <button class="btn accent" style="width:100%;justify-content:center" onClick=${()=>setShowPrompt(true)}
-          title="Configurar e revisar exatamente o que será enviado à IA">
-          <${PromptGearIcon} /> configurar prompt
-        </button>
-      </div>
+        </details>      </div>
       ${onToggleMemory && html`<${MemoryPanel} memory=${memory} onToggle=${onToggleMemory} onDelete=${onDeleteMemory} showAdd=${false} />`}
     </div>
 
@@ -8017,7 +8038,8 @@ function IACodificacaoPanel({ project, docs, codes, codeById, codePath, store, a
       </div>`;
       return html`<${PromptInspector} title="Configurar prompt" hint="Ajuste os controles; a prévia mostra exatamente o que a IA recebe." controls=${controls}
         sections=${promptSections()} prov=${buildProv()} onClose=${()=>setShowPrompt(false)} />`; })()}
-  </div>`;
+  </div>
+  </section>`;
 }
 
 /* ============ ANALISAR COM IA ============
@@ -9666,7 +9688,7 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
   const list = projects||[];
 
   // BYOK (bring your own key): config de IA pessoal, guardada so no localStorage deste
-  // navegador — ausente significa "usa a chave/modelo compartilhados do projeto" (default).
+  // navegador — ausente significa "usa a chave/modelo do servidor, se houver" (default).
   const [aiProvider,setAiProvider]=useState(()=>{ try{return localStorage.getItem('qualilab:ai_provider')||'gemini';}catch(e){return 'gemini';} });
   const [aiKey,setAiKey]=useState(()=>{ try{return localStorage.getItem('qualilab:ai_key')||'';}catch(e){return '';} });
   const [aiModel,setAiModel]=useState(()=>{ try{return localStorage.getItem('qualilab:ai_model')||'';}catch(e){return '';} });
@@ -9702,7 +9724,7 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
   const clearAI = ()=>run(async()=>{
     try{ localStorage.removeItem('qualilab:ai_provider'); localStorage.removeItem('qualilab:ai_key'); localStorage.removeItem('qualilab:ai_model'); localStorage.removeItem('qualilab:ai_baseurl'); }catch(e){}
     setAiProvider('gemini'); setAiKey(''); setAiModel(''); setAiBaseUrl('');
-    setMsg('Removida — as telas de IA voltam a usar a chave compartilhada do projeto.');
+    setMsg(AI_SHARED_KEY ? 'Removida — as telas de IA voltam a usar a chave do servidor.' : 'Removida — configure uma chave de IA para usar as telas de IA.');
   });
 
   return html`<div class="modal-bg"><div class="modal" style="max-width:560px">
@@ -9730,8 +9752,10 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
 
     <!-- IA: chave e modelo pessoais (opcional, BYOK) — gateado por AI_ENABLED -->
     ${AI_ENABLED && html`<div class="card" style="margin-bottom:12px">
-      <div class="field-label">IA — chave e modelo pessoais (opcional)</div>
-      <p class="hint" style="margin:0 0 8px">Por padrão, as telas de IA usam a chave e o modelo compartilhados deste projeto — <b>reservados a contas institucionais</b> (e-mail @fgv.br / @fgv.edu.br, logado na nuvem); visitantes e contas de e-mail próprio usam a própria chave. Preenchendo aqui, suas análises passam a usar a <b>sua</b> chave (funciona em qualquer modo, inclusive local/arquivo) — ela viaja só na requisição até a função do servidor que chama o provedor escolhido; não fica guardada lá, só neste navegador.</p>
+      <div class="field-label">IA — ${AI_SHARED_KEY?'chave e modelo pessoais (opcional)':'sua chave e modelo'}</div>
+      <p class="hint" style="margin:0 0 8px">${AI_SHARED_KEY
+        ? html`Por padrão, as telas de IA usam a chave e o modelo <b>do servidor</b> deste projeto (para contas autorizadas). Preenchendo aqui, suas análises passam a usar a <b>sua</b> chave (funciona em qualquer modo, inclusive local/arquivo) — ela viaja só na requisição até a função do servidor que chama o provedor escolhido; não fica guardada lá, só neste navegador.`
+        : html`As telas de IA usam a <b>sua</b> chave de IA — configure abaixo o provedor, a chave e o modelo. A chave viaja só na requisição até a função do servidor que chama o provedor escolhido; <b>não</b> fica guardada lá, só neste navegador. Funciona em qualquer modo (nuvem, local ou arquivo); para um servidor local (Ollama), o navegador fala direto com ele, sem nuvem.`}</p>
       <div class="field"><div class="field-label">Provedor</div>
         <div class="row" style="gap:6px;flex-wrap:wrap">
           ${AI_PROVIDERS.map(p=>html`<button key=${p.id} class="opt ${aiProvider===p.id?'on':''}"
@@ -9747,7 +9771,7 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
           : html`Qualquer API compatível com o formato clássico da OpenAI (<code>/chat/completions</code>) — cobre DeepSeek, Mistral, Qwen hospedado, ou um servidor próprio (Ollama/vLLM) exposto numa URL pública.`}</p>
       </div>`}
       <div class="field"><div class="field-label">Sua chave de API</div>
-        <input class="txtin" type="password" value=${aiKey} onInput=${e=>setAiKey(e.target.value)} placeholder=${isAzure?'obrigatória — chave de API do recurso Azure':isLocal?'deixe em branco (Ollama local não exige chave)':needsBaseUrl?'deixe em branco se o servidor não exigir chave':'deixe em branco pra usar a chave compartilhada'} /></div>
+        <input class="txtin" type="password" value=${aiKey} onInput=${e=>setAiKey(e.target.value)} placeholder=${isAzure?'obrigatória — chave de API do recurso Azure':isLocal?'deixe em branco (Ollama local não exige chave)':needsBaseUrl?'deixe em branco se o servidor não exigir chave':(AI_SHARED_KEY?'deixe em branco pra usar a chave do servidor':'obrigatória — cole a sua chave de API')} /></div>
       <div class="field" style="margin-bottom:4px"><div class="field-label">${isAzure?'Deployment':'Modelo'}</div>
         ${needsBaseUrl
           ? html`<input class="txtin" value=${aiModel} onInput=${e=>setAiModel(e.target.value)} list=${isLocal?'ollama-model-suggestions':undefined} placeholder=${isAzure?'ex.: gpt-4.1-mini (nome do deployment)':isLocal?'ex.: llama3.1 (ou qwen2.5, mistral…)':'ex.: deepseek-chat'} />
@@ -9763,7 +9787,7 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
       <p class="hint" style="margin:0 0 8px">Temperatura padrão: <code>0,3</code> (respostas mais focadas e consistentes, menos "criativas"). Top-p: não definido pela aplicação — usa o padrão do provedor/modelo escolhido (em geral entre 0,9 e 1). Nenhum dos dois é configurável por aqui ainda.</p>
       <div class="row" style="gap:6px">
         <button class="btn sm primary" onClick=${saveAI}>salvar</button>
-        <button class="btn sm ghost" onClick=${clearAI}>usar chave compartilhada</button>
+        <button class="btn sm ghost" onClick=${clearAI}>${AI_SHARED_KEY?'usar chave do servidor':'limpar'}</button>
       </div>
     </div>`}
 

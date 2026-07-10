@@ -298,4 +298,4 @@ Copyright (c) 2026 Luiz Pimenta Filho
   - [ ] Distribuição por famílias analíticas
   - [ ] Análises textuais automatizadas (similaridade, coocorrência, redes textuais)
 - [x] Pipeline de publicação de relatórios próprios por pesquisador / pesquisa (aba **Relatório**: montador de seções, copiar texto, imprimir/PDF)
-- [x] Integração de IA (?) — em avaliação; ferramentas de QDA costumam dividir opiniões sobre IA, o uso teria que ser opt-in e transparente. Iniciado (working no experimental, não portado por APIs)
+- [x] Integração de IA — **disponível** (opt-in e transparente): telas **Codificar com IA** e **Analisar com IA**, em modo **BYOK** (cada pesquisador traz a própria chave — Gemini/OpenAI/Anthropic/Azure/compatível-OpenAI, ou **Ollama local**, em que o material não sai da máquina). Nada é enviado sem você clicar, e você vê o prompt exato antes.
