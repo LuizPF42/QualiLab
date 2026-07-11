@@ -292,14 +292,13 @@ async function getSqlJs(){
 }
 
 /* ============ CONFIG ============
-   FONTE UNICA: este index.html (QualiLab-ai-lab) gera as duas versoes. A versao
-   "estavel/publica" (repo QualiLab) e este mesmo arquivo com AI_ENABLED=false e
-   estas duas credenciais trocadas pelas do projeto Supabase publico — regerada
-   pelo script scripts/gen-estavel.sh (modelo FLAG). Cada versao aponta para o
-   SEU proprio projeto Supabase; as credenciais abaixo sao as do projeto deste
-   fork. Para o modo coletivo (nuvem), preencha com os dados do seu projeto
-   Supabase (Project Settings > API). A anon key e publica e fica protegida pelas
-   policies de RLS. Se deixar vazio, o app abre em modo local. */
+   SUPABASE_URL / SUPABASE_ANON_KEY do projeto Supabase usado no modo coletivo
+   (nuvem). Cada deploy aponta para o seu proprio projeto. Para um deploy proprio,
+   troque pelas credenciais do seu projeto (Project Settings > API); deixe vazio
+   para o app abrir em modo local. A anon key e publica por design e fica protegida
+   pelas policies de RLS. Da tambem pra apontar pro seu Supabase sem editar aqui,
+   pelo card "Conexao (Supabase)" do hub do projeto (ver CUSTOM_SUPABASE logo
+   abaixo). */
 let SUPABASE_URL = "https://lpfwnzotmltztfxacahb.supabase.co";
 let SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwZnduem90bWx0enRmeGFjYWhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4NzI2OTYsImV4cCI6MjA5NzQ0ODY5Nn0.qiygh5Nyhf7I7LS5R-z5cEW_hjMGgMbPpiUviMM2ev4";
 // Conexao PERSONALIZADA (card "Conexao (Supabase)" no hub do projeto): URL/key salvas no
@@ -322,9 +321,8 @@ try {
 } catch(e){}
 
 // AI_ENABLED — liga/desliga as telas de IA ("Codificar/Analisar com IA", o card de IA em
-// "Minha Conta" e os caminhos de IA). true nos DOIS forks (jul/2026): o ai-lab e a fonte
-// unica e o estavel/publico passou a rodar com IA tambem — modo BYOK (cada pesquisador traz
-// a propria chave). false esconde tudo de IA (o codigo segue presente, dormente; pra uma
+// "Minha Conta" e os caminhos de IA). Ligado por padrao (jul/2026), em modo BYOK: cada
+// pesquisador traz a propria chave. false esconde tudo de IA (o codigo segue presente, dormente; pra uma
 // versao com ZERO codigo de IA, remova o bloco entre os marcadores "AI-BLOCK START/END").
 // Censura (is_redaction) NAO e gateada aqui: e feature geral de codificacao, nao tela de IA.
 const AI_ENABLED = true;

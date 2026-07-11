@@ -1,5 +1,5 @@
 // ============================================================
-// QUALILAB-AI-LAB — proxy generico pra Gemini / OpenAI / Anthropic / Azure / custom
+// QUALILAB — proxy generico pra Gemini / OpenAI / Anthropic / Azure / custom
 // ------------------------------------------------------------
 // As chaves COMPARTILHADAS (uma por provedor, opcionais) ficam em secrets do
 // projeto Supabase, nunca no front-end. Um pesquisador tambem pode trazer a
@@ -12,7 +12,7 @@
 //   - BYOK (body.apiKey presente, ou provider custom/azure, que so existem como
 //     BYOK): passa SEM exigir sessao — o custo e da chave do proprio pesquisador,
 //     e o modo local/arquivo do app nao tem sessao Supabase nenhuma (bloquear
-//     aqui quebraria o BYOK offline documentado no CLAUDE.md). Este e o caminho
+//     aqui quebraria o BYOK offline do app). Este e o caminho
 //     PADRAO: o app e BYOK — cada pesquisador traz a propria chave.
 //   - Chave DO SERVIDOR (sem body.apiKey): so existe se um secret de provedor
 //     (GEMINI_API_KEY etc.) estiver configurado. Sem secret, a funcao responde

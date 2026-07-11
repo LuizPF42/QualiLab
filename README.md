@@ -242,7 +242,6 @@ QualiLab/
 ├── index.html            # o app inteiro (front-end)
 ├── README.md             # este arquivo
 ├── MANUAL.md             # manual de uso, passo a passo
-├── CLAUDE.md             # guia técnico para contribuir / continuar o projeto
 ├── LICENSE               # MIT
 ├── supabase/
 │   ├── schema.sql        # schema do backend (tabelas, RPCs, RLS, realtime)
@@ -257,7 +256,7 @@ QualiLab/
 
 O QualiLab foi desenvolvido por **Luiz Pimenta Filho** no âmbito do **LabDados / FGV Direito SP** como projeto pessoal. Não representa posição institucional da FGV, que não tem qualquer responsabilidade pelo software.
 
-A maior parte do código deste projeto foi escrita com assistência do [Claude Code](https://claude.com/claude-code) (Anthropic).
+A maior parte do código deste projeto foi escrita com assistência do [Claude Code](https://claude.com/claude-code) (Anthropic). O CLAUDE.md (guia técnico que orienta esse trabalho) não é versionado neste repositório, mas está disponível mediante pedido.
 
 As principais inspirações foram:
 

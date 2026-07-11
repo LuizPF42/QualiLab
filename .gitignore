@@ -13,9 +13,9 @@ desktop.ini
 *.log
 *.tmp
 
-# Dados locais de exportação (não versionar saídas geradas pelo app)
+# Dados de exportação e pesquisa — não versionar (privados / grandes p/ GitHub)
 *.qdpx
-!examples/*.qdpx
-# Dados reais de pesquisa — não versionar (grande demais p/ GitHub e privado)
-examples/HU China 2004-2022_FULL (Michelle_2023_03_15) (1).qdpx
-examples/*.atlasti
+*.atlasti
+
+# Notas de desenvolvimento (guia do Claude Code) — mantidas fora do repo público
+/CLAUDE.md
