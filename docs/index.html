@@ -6350,14 +6350,14 @@ const AI_PROVIDERS = [
     { id:'gemini-3.1-pro-preview', label:'Pro',        note:'mais capaz — mais lento e caro' },
   ]},
   { id:'openai', label:'OpenAI', models:[
-    { id:'gpt-5.4-mini', label:'GPT-5.4-mini', note:'mais rápido e barato' },
-    { id:'gpt-5.4',      label:'GPT-5.4',      note:'padrão — equilíbrio', def:true },
-    { id:'gpt-5.5',      label:'GPT-5.5',      note:'mais capaz — mais lento e caro' },
+    { id:'gpt-5.6-luna',  label:'GPT-5.6 Luna',  note:'mais rápido e barato' },
+    { id:'gpt-5.6-terra', label:'GPT-5.6 Terra', note:'padrão — equilíbrio', def:true },
+    { id:'gpt-5.6-sol',   label:'GPT-5.6 Sol',   note:'mais capaz — mais lento e caro' },
   ]},
   { id:'anthropic', label:'Anthropic', models:[
-    { id:'claude-haiku-4-5-20251001', label:'Haiku',  note:'mais rápido e barato' },
-    { id:'claude-sonnet-4-6',         label:'Sonnet', note:'padrão — equilíbrio', def:true },
-    { id:'claude-opus-4-8',          label:'Opus',   note:'mais capaz — mais lento e caro' },
+    { id:'claude-haiku-4-5-20251001', label:'Haiku',    note:'mais rápido e barato' },
+    { id:'claude-sonnet-5',           label:'Sonnet 5', note:'padrão — equilíbrio', def:true },
+    { id:'claude-opus-4-8',           label:'Opus',     note:'mais capaz — mais lento e caro' },
   ]},
   // Azure OpenAI: como o "custom" (URL base + modelo em texto livre, custom:true), mas
   // autenticacao por header "api-key" e chave obrigatoria — tratado pela Edge Function.
@@ -6467,7 +6467,7 @@ async function askAI(prompt){
   const res = await fetch(`${SUPABASE_URL}/functions/v1/ai-ask`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${await aiAuthToken()}`, apikey: SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt, provider: cfg.provider, ...(cfg.apiKey ? { apiKey: cfg.apiKey } : {}), ...(cfg.model ? { model: cfg.model } : {}), ...(cfg.baseUrl ? { baseUrl: cfg.baseUrl } : {}) }),
+    body: JSON.stringify({ prompt, provider: cfg.provider, ...(cfg.apiKey ? { apiKey: cfg.apiKey } : {}), ...(activeModelId(cfg) ? { model: activeModelId(cfg) } : {}), ...(cfg.baseUrl ? { baseUrl: cfg.baseUrl } : {}) }),
   });
   const data = await res.json().catch(()=>({}));
   if(!res.ok || data.error) throw new Error(data.error || `Erro ${res.status}`);
@@ -6498,7 +6498,7 @@ async function askAIChat({ system, messages, signal, json }){
       messages: msgs,
       provider: cfg.provider,
       ...(cfg.apiKey ? { apiKey: cfg.apiKey } : {}),
-      ...(cfg.model ? { model: cfg.model } : {}),
+      ...(activeModelId(cfg) ? { model: activeModelId(cfg) } : {}),
       ...(cfg.baseUrl ? { baseUrl: cfg.baseUrl } : {}),
     }),
     ...(signal ? { signal } : {}),

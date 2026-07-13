@@ -560,15 +560,21 @@ drop policy if exists ai_prices_read on public.ai_prices;
 create policy ai_prices_read on public.ai_prices for select using (true);
 -- seed inicial (idempotente: on conflict DO NOTHING preserva correcoes feitas depois via UPDATE).
 insert into public.ai_prices (provider, model, input_usd_1m, output_usd_1m) values
-  ('anthropic', 'claude-haiku-4-5',        1.00,  5.00),   -- pricing oficial Anthropic (jun/2026)
-  ('anthropic', 'claude-sonnet-4-6',       3.00, 15.00),   -- idem
-  ('anthropic', 'claude-opus-4-8',         5.00, 25.00),   -- idem
-  ('openai',    'gpt-5.4-mini',            0.75,  4.50),   -- pricing OpenAI (short context, jul/2026)
-  ('openai',    'gpt-5.4',                 2.50, 15.00),   -- idem
-  ('openai',    'gpt-5.5',                 5.00, 30.00),   -- idem
-  ('gemini',    'gemini-3.1-flash-lite',   0.25,  1.50),   -- pricing Gemini (paid, prompts <=200k, jul/2026)
-  ('gemini',    'gemini-3.5-flash',        1.50,  9.00),   -- idem
-  ('gemini',    'gemini-3.1-pro-preview',  2.00, 12.00)    -- idem
+  -- catálogo atual (bate com AI_PROVIDERS no front)
+  ('anthropic', 'claude-haiku-4-5',        1.00,  5.00),   -- Anthropic oficial (jun/2026)
+  ('anthropic', 'claude-sonnet-5',         3.00, 15.00),   -- padrão (standard; intro $2/$10 até 31/08/2026)
+  ('anthropic', 'claude-opus-4-8',         5.00, 25.00),
+  ('openai',    'gpt-5.6-luna',            1.00,  6.00),   -- OpenAI short-context (jul/2026)
+  ('openai',    'gpt-5.6-terra',           2.50, 15.00),   -- padrão
+  ('openai',    'gpt-5.6-sol',             5.00, 30.00),
+  ('gemini',    'gemini-3.1-flash-lite',   0.25,  1.50),   -- Gemini paid, prompts <=200k (jul/2026)
+  ('gemini',    'gemini-3.5-flash',        1.50,  9.00),   -- padrão
+  ('gemini',    'gemini-3.1-pro-preview',  2.00, 12.00),
+  -- legado (fora do catálogo do front, mantidos p/ configs antigas salvas no navegador)
+  ('anthropic', 'claude-sonnet-4-6',       3.00, 15.00),
+  ('openai',    'gpt-5.4-mini',            0.75,  4.50),
+  ('openai',    'gpt-5.4',                 2.50, 15.00),
+  ('openai',    'gpt-5.5',                 5.00, 30.00)
 on conflict (provider, model) do nothing;
 
 -- ---------- limpeza de memos orfaos no proprio banco ----------
