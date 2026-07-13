@@ -6076,7 +6076,7 @@ function svgWordCloud(items, opt={}){
    Memo do projeto + lista de documentos + árvore de códigos. Visual idêntico
    ao painel de Codificação/Visualização (mesmas classes .node-row etc). */
 function MemoNav({ project, docs, codes, codings, memos, sel, onSel, onRenameDoc, aiMemory, iaResults }){
-  const [docsOpen, setDocsOpen] = useState(true);
+  const [docsOpen, setDocsOpen] = useState(false);
   const [codesOpen, setCodesOpen] = useState(false);
   const [trechosOpen, setTrechosOpen] = useState(true);
   const [convsOpen, setConvsOpen] = useState(false);
@@ -6183,6 +6183,7 @@ function MemoNav({ project, docs, codes, codings, memos, sel, onSel, onRenameDoc
     ${AI_ENABLED && html`<div style="border-bottom:1px solid var(--line-soft)">
       <div class="node-row" style="padding:6px 14px;cursor:pointer;border-radius:0" onClick=${()=>setPromptsOpen(o=>!o)}>
         <span class="caret">${promptsOpen?'▾':'▸'}</span>
+        <span style="margin-right:4px">✦</span>
         <span class="node-name" style="font-weight:600">Prompts salvos</span>
         ${promptMemos.length>0 && html`<span class="count">${promptMemos.length}</span>`}
       </div>
@@ -6197,6 +6198,7 @@ function MemoNav({ project, docs, codes, codings, memos, sel, onSel, onRenameDoc
       <div class="node-row" style="padding:6px 14px;cursor:pointer;border-radius:0"
         onClick=${()=>{ setMemOpen(o=>!o); onSel({scope:'ai_memory'}); }}>
         <span class="caret">${memOpen?'▾':'▸'}</span>
+        <span style="margin-right:4px">✦</span>
         <span class="node-name" style="font-weight:600">Memória do projeto</span>
         ${(aiMemory?.length||0)>0 && html`<span class="count">${aiMemory.length}</span>`}
       </div>
