@@ -137,8 +137,10 @@ Toda codificação e toda resposta de categoria registra **quem** fez. Há duas 
 Em **projeto individual**, tudo já vai direto para o gabarito. Em **projeto coletivo**, cada um trabalha na sua camada individual e a equipe consolida o gabarito na tela de **Reconciliação**.
 
 ### Papéis (projeto coletivo)
-- **Admin**: define o esquema de categorias, edita o gabarito, gerencia membros, cores de família e censura.
-- **Membro**: codifica, preenche as próprias respostas de categoria, cria códigos e escreve memos.
+- **Admin**: define o esquema de categorias, edita o gabarito, gerencia membros, define as cores de família e a **censura**, edita o **texto** dos documentos, **importa** material e faz as operações **estruturais e destrutivas** — **excluir** documentos ou códigos e **mesclar** códigos (que afetam o trabalho de toda a equipe).
+- **Membro**: codifica na sua camada, preenche as próprias respostas de categoria, **cria e renomeia** códigos, e escreve memos.
+
+> Essas restrições são impostas pelo **servidor**, não apenas escondidas na interface: um membro não consegue — nem por chamada direta à API — escrever no gabarito, excluir documentos/códigos, editar o texto compartilhado, remover a censura de um código ou importar. Essas ações exigem o papel de admin.
 
 > Onde os dados ficam (nuvem, navegador ou arquivo no disco) é uma escolha **separada** do tipo de projeto. Veja a [seção 16](#16-salvamento-backup-e-modos-de-armazenamento).
 
@@ -540,6 +542,8 @@ Os menus **exportar ▾** e **importar ▾** ficam no cabeçalho (aparecem quand
 | **.sqlite3 (Taguette)** | Projeto nativo do Taguette: documentos, tags (hierarquia por `/` ou `.`) e trechos. Sem atributos nem autor por trecho |
 | **.qdc (codebook REFI-QDA)** | Só o livro de códigos |
 | **planilha (.csv / .xlsx)** | **Cada linha vira um documento**, veja abaixo |
+
+> Em projeto **coletivo na nuvem**, **importar é uma ação de administrador** (o import cria dados compartilhados e pode escrever o gabarito). Em rascunho, arquivo ou projeto individual, qualquer usuário importa.
 
 #### Importar uma planilha (passo a passo)
 1. **importar ▾ → planilha (.csv / .xlsx)** e escolha o arquivo.

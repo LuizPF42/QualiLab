@@ -276,26 +276,55 @@ create policy projects_select on public.projects for select using (public.is_mem
 drop policy if exists members_select on public.members;
 create policy members_select on public.members for select using (public.is_member(project_id));
 
--- documents e codes: qualquer membro escreve (decisao consciente: a codificacao aberta
--- cria/edita codigos o tempo todo; documentos sao material comum do projeto).
-do $$
-declare t text;
+-- documents: membro cria/le/renomeia; alterar o TEXTO e excluir sao admin. UPDATE fica
+-- aberto (pro rename via Memos), mas o trigger documents_guard barra a troca de CONTEUDO
+-- por nao-admin (editar o texto desloca os grifos de todos os codificadores — mesma regra
+-- do gate canEditText). DELETE cascateia codings -> admin. (Antes: for all a qualquer membro.)
+drop policy if exists documents_all    on public.documents;
+drop policy if exists documents_select on public.documents;
+drop policy if exists documents_insert on public.documents;
+drop policy if exists documents_update on public.documents;
+drop policy if exists documents_delete on public.documents;
+create policy documents_select on public.documents for select using (public.is_member(project_id));
+create policy documents_insert on public.documents for insert with check (public.is_member(project_id));
+create policy documents_update on public.documents for update
+  using (public.is_member(project_id)) with check (public.is_member(project_id));
+create policy documents_delete on public.documents for delete using (public.is_admin(project_id));
+
+create or replace function public.documents_guard()
+returns trigger language plpgsql security definer set search_path = public as $$
 begin
-  foreach t in array array['documents','codes'] loop
-    execute format('drop policy if exists %1$s_all on public.%1$s;', t);
-    execute format(
-      'create policy %1$s_all on public.%1$s for all
-         using (public.is_member(project_id)) with check (public.is_member(project_id));', t);
-  end loop;
-end $$;
+  if TG_OP = 'UPDATE' and new.content is distinct from old.content
+     and not public.is_admin(new.project_id) then
+    raise exception 'Apenas administradores podem alterar o texto de um documento compartilhado';
+  end if;
+  return new;
+end; $$;
+revoke execute on function public.documents_guard() from public, anon, authenticated;
+drop trigger if exists trg_documents_guard on public.documents;
+create trigger trg_documents_guard before update on public.documents
+  for each row execute function public.documents_guard();
+
+-- codes: membro cria/edita (codificacao aberta renomeia/recolore o tempo todo); EXCLUIR e
+-- admin (delete cascateia codings de todos). is_redaction protegido no trigger codes_color_guard.
+drop policy if exists codes_all    on public.codes;
+drop policy if exists codes_select on public.codes;
+drop policy if exists codes_insert on public.codes;
+drop policy if exists codes_update on public.codes;
+drop policy if exists codes_delete on public.codes;
+create policy codes_select on public.codes for select using (public.is_member(project_id));
+create policy codes_insert on public.codes for insert with check (public.is_member(project_id));
+create policy codes_update on public.codes for update
+  using (public.is_member(project_id)) with check (public.is_member(project_id));
+create policy codes_delete on public.codes for delete using (public.is_admin(project_id));
 
 -- codings: o servidor passa a ser a autoridade (antes uma unica policy for all deixava
 -- qualquer membro forjar created_by, apagar codificacao alheia e escrever no gabarito).
---   - insert: cada um grava como si mesmo; created_by NULL e o caminho de import
---     (autor de fato em author_name); admin pode inserir com qualquer created_by
---     (necessario pro merge de codigos, que recria codificacoes preservando o autor).
---   - camada 'final' (gabarito da Reconciliacao): so admin — exceto linhas de import
---     (created_by null), que entram em final por design do importQDPX.
+--   - insert: cada um grava so como si mesmo (created_by = auth.uid()); admin pode inserir
+--     com qualquer created_by (necessario pro import e pro merge de codigos, que recriam
+--     codificacoes preservando o autor). Import e merge sao, portanto, admin em coletivo.
+--   - camada 'final' (gabarito da Reconciliacao): so admin (removida a excecao created_by
+--     null antiga, que deixava um membro forjar o gabarito por chamada direta).
 --   - update/delete: dono da linha ou admin.
 drop policy if exists codings_all    on public.codings;
 drop policy if exists codings_select on public.codings;
@@ -305,8 +334,8 @@ drop policy if exists codings_delete on public.codings;
 create policy codings_select on public.codings for select using (public.is_member(project_id));
 create policy codings_insert on public.codings for insert with check (
   public.is_member(project_id)
-  and (created_by = auth.uid() or created_by is null or public.is_admin(project_id))
-  and (layer <> 'final' or created_by is null or public.is_admin(project_id))
+  and (created_by = auth.uid() or public.is_admin(project_id))
+  and (layer <> 'final' or public.is_admin(project_id))
 );
 create policy codings_update on public.codings for update
   using (public.is_member(project_id) and (created_by = auth.uid() or public.is_admin(project_id)))
@@ -337,13 +366,11 @@ create policy doc_values_own on public.doc_values for all
 create policy doc_values_final on public.doc_values for all
   using (public.is_admin(project_id) and layer = 'final')
   with check (public.is_admin(project_id) and layer = 'final');
--- linhas importadas: qualquer membro INSERE (e o que o import precisa), mas so admin
--- altera/apaga — antes um for all deixava qualquer membro reescrever respostas
--- importadas em nome de qualquer autor, a qualquer momento.
+-- linhas importadas (set_by null): so admin insere/altera/apaga. O import passou a ser
+-- admin em coletivo — antes qualquer membro inseria set_by null + author_name livre,
+-- forjando a proveniencia de respostas "importadas".
 drop policy if exists doc_values_imported_insert on public.doc_values;
 drop policy if exists doc_values_imported_admin  on public.doc_values;
-create policy doc_values_imported_insert on public.doc_values for insert
-  with check (public.is_member(project_id) and set_by is null and layer = 'individual');
 create policy doc_values_imported_admin on public.doc_values for all
   using (public.is_admin(project_id) and set_by is null and layer = 'individual')
   with check (public.is_admin(project_id) and set_by is null and layer = 'individual');
@@ -387,9 +414,22 @@ alter table public.memos add column if not exists label text not null default ''
 alter table public.memos drop constraint if exists memos_scope_check;
 alter table public.memos add constraint memos_scope_check check (scope in ('project','document','code','coding','ai_context','ai_instructions','ai_stance','ai_stance_text','ai_prompt'));
 alter table public.memos enable row level security;
+-- nota UNICA compartilhada (co-editavel de proposito): nao travo quem edita, mas o servidor
+-- carimba updated_by (trigger memos_provenance) pra a autoria da ultima edicao nao ser forjavel.
 drop policy if exists memos_all on public.memos;
 create policy memos_all on public.memos for all
   using (public.is_member(project_id)) with check (public.is_member(project_id));
+alter table public.memos add column if not exists updated_by uuid;
+create or replace function public.memos_provenance()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  new.updated_by := auth.uid();
+  return new;
+end; $$;
+revoke execute on function public.memos_provenance() from public, anon, authenticated;
+drop trigger if exists trg_memos_provenance on public.memos;
+create trigger trg_memos_provenance before insert or update on public.memos
+  for each row execute function public.memos_provenance();
 
 -- ---------- cor personalizada de codigo (somente nivel 0 / familia) ----------
 alter table public.codes add column if not exists hue_deg int;
@@ -404,8 +444,15 @@ begin
       raise exception 'Apenas administradores podem definir a cor personalizada de uma família de código';
     end if;
   end if;
+  -- censura (is_redaction, qualquer profundidade): so admin altera — protege a promessa de
+  -- privacidade (senao um membro reexpoe trecho sensivel desmarcando a censura por UPDATE direto).
+  if TG_OP = 'UPDATE' and new.is_redaction is distinct from old.is_redaction
+     and not public.is_admin(new.project_id) then
+    raise exception 'Apenas administradores podem alterar a censura de um código';
+  end if;
   return new;
 end; $$;
+revoke execute on function public.codes_color_guard() from public, anon, authenticated;
 
 drop trigger if exists trg_codes_color_guard on public.codes;
 create trigger trg_codes_color_guard before insert or update on public.codes
@@ -422,9 +469,22 @@ create table if not exists public.ia_results (
   created_at   timestamptz not null default now()
 );
 alter table public.ia_results enable row level security;
-drop policy if exists ia_results_all on public.ia_results;
-create policy ia_results_all on public.ia_results for all
-  using (public.is_member(project_id)) with check (public.is_member(project_id));
+-- proveniencia confiavel (espelha ia_memory): insere so como si mesmo (ou null legado);
+-- edita/apaga so o autor ou admin — antes um for all deixava reescrever/apagar resultado
+-- alheio e forjar created_by/author_name.
+drop policy if exists ia_results_all    on public.ia_results;
+drop policy if exists ia_results_select on public.ia_results;
+drop policy if exists ia_results_insert on public.ia_results;
+drop policy if exists ia_results_update on public.ia_results;
+drop policy if exists ia_results_delete on public.ia_results;
+create policy ia_results_select on public.ia_results for select using (public.is_member(project_id));
+create policy ia_results_insert on public.ia_results for insert
+  with check (public.is_member(project_id) and (created_by = auth.uid() or created_by is null));
+create policy ia_results_update on public.ia_results for update
+  using (public.is_member(project_id) and (created_by = auth.uid() or public.is_admin(project_id)))
+  with check (public.is_member(project_id) and (created_by = auth.uid() or public.is_admin(project_id)));
+create policy ia_results_delete on public.ia_results for delete
+  using (public.is_member(project_id) and (created_by = auth.uid() or public.is_admin(project_id)));
 
 -- ---------- diario de insights da IA: memoria persistente e curada do projeto ----------
 -- Lista de memorias curtas (fatos/decisoes/insights) que a IA propoe e o pesquisador
@@ -489,6 +549,7 @@ begin
   delete from public.memos where scope = TG_ARGV[0] and target_id = old.id;
   return old;
 end; $$;
+revoke execute on function public.memos_gc() from public, anon, authenticated;
 drop trigger if exists trg_memos_gc_documents on public.documents;
 create trigger trg_memos_gc_documents after delete on public.documents
   for each row execute function public.memos_gc('document');
