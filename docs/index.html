@@ -8207,11 +8207,14 @@ const IA_MODES_DOCSCODES = [
     instr:'se os documentos trouxerem categorias atribuídas (entre colchetes), use-as como dimensões de comparação: agrupe os casos pelos valores de uma categoria relevante e descreva como a codificação varia entre os grupos. Diga qual categoria usou para agrupar e por quê, e ancore cada contraste em trecho e documento. Se as categorias não estiverem presentes ou não forem informativas para a pergunta, compare pelo próprio conteúdo e diga que fez isso.' },
   IA_MODE_CUSTOM,
 ];
-// travas de tamanho do material enviado (~1 token ≈ 4 caracteres). O backend usa
-// Gemini (tier gratuito bem mais folgado que o da Groq), mas ainda vale ter um
-// limite pra não gerar prompts gigantes sem necessidade.
-const IA_DOC_CHAR_LIMIT = 8000; // por documento
-const IA_TOTAL_CHAR_LIMIT = 40000; // total do material empírico, somando todos os itens selecionados
+// travas de tamanho do material enviado (~1 token ≈ 4 caracteres). Limites do APP, NAO dos modelos:
+// a janela de contexto real e muito maior (Gemini ~1M, Claude ~200k tokens etc.), mas material grande
+// custa mais (BYOK, e reenviado a cada turno da conversa) e o teto PRATICO na nuvem e o wall-clock de
+// ~150s da Edge Function (erro 546), dirigido pela GERACAO/modelo, nao pelo input. Por-doc subiu de 8k
+// (cortava ~1/6 de uma entrevista de 1h) para 30k (~10 paginas); total de 40k para 100k (~25k tokens):
+// cabe ~3 entrevistas ou os trechos de um codigo inteiro, ainda claramente "uma selecao" e nao o corpus.
+const IA_DOC_CHAR_LIMIT = 30000; // por documento
+const IA_TOTAL_CHAR_LIMIT = 100000; // total do material empírico, somando todos os itens selecionados
 
 // CONTEUDO DA IA (referência consolidada v3 — texto refinado pelo autor). A constituição é a base
 // FIXA (invioláveis) injetada em toda tarefa (Codificar e Analisar); a postura é a camada metodológica
