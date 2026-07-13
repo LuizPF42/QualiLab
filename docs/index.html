@@ -107,12 +107,15 @@
   .btn.primary:hover{background:var(--teal-deep);}
   .btn.violet{color:var(--violet);border-color:var(--violet);}
   .btn.violet:hover{background:var(--violet-soft);}
-  /* "ver o prompt" (transparência da IA): azul-claro FGV do tema escuro (#4A9EDB = var --teal no
-     escuro), FIXO nos dois temas. A borda marinho é um box-shadow INSET (desenhada PRA DENTRO) em
-     vez de border — assim não engorda a caixa: o botão ocupa o mesmo espaço de um botão sem borda
-     e alinha certinho com o .seg (padding 7px do .btn + 0 borda = 6px+1px do .seg = mesma altura). */
-  .btn.accent{background:#4A9EDB;color:#fff;border:none;box-shadow:inset 0 0 0 1.5px #00427A;font-weight:600;}
+  /* botão "configurar prompt" (transparência da IA): acento no azul-claro FGV, o "oposto" do
+     var(--teal) primário. No claro fica #4A9EDB (destaca contra o navy dos primários); no escuro
+     INVERTE pra navy #00427A, porque lá o --teal já é #4A9EDB (os primários viram azul-claros) e o
+     acento precisa contrastar. Texto branco, SEM borda (era box-shadow inset marinho, tirada a
+     pedido do autor). Sem box-shadow o tamanho da caixa não muda, então segue alinhado com o .seg. */
+  .btn.accent{background:#4A9EDB;color:#fff;border:none;font-weight:600;}
   .btn.accent:hover{background:#3E8FCD;}
+  [data-theme="dark"] .btn.accent{background:#00427A;}
+  [data-theme="dark"] .btn.accent:hover{background:#002B5C;}
   .btn.ghost{background:transparent;}
   .btn.sm{font-size:12px;padding:5px 9px;border-radius:7px;}
   .icon-btn{background:transparent;border:none;color:var(--ink-soft);padding:4px;border-radius:6px;display:inline-flex;}
@@ -6275,7 +6278,7 @@ function MemoEditor({ sel, project, codeById, codePath, codings, docs, memos, on
 
   return html`<div class="section" style="max-width:760px;margin:0 auto">
     <p class="h" style="margin-bottom:2px">${label}</p>
-    ${sel.scope==='ai_context' && html`<p class="hint" style="margin:2px 0 8px">Contexto do projeto escrito <b>para a IA</b> — injetado nos prompts por padrão (você controla no painel "Configurar prompt"). O "Memo do projeto" comum deixou de ser enviado automaticamente; use-o como rascunho livre.</p>`}
+    ${sel.scope==='ai_context' && html`<p class="hint" style="margin:2px 0 8px">Contexto do projeto escrito <b>para a IA</b> — injetado nos prompts por padrão (você controla no painel "Configurar Prompt"). O "Memo do projeto" comum deixou de ser enviado automaticamente; use-o como rascunho livre.</p>`}
     ${sel.scope==='ai_prompt' && html`<div style="margin:2px 0 10px">
       <input class="txtin" style="font-size:14px;padding:5px 9px" placeholder="Nome do prompt" value=${labelVal} onInput=${e=>changeLabel(e.target.value)} />
       <p class="hint" style="margin:6px 0 0">Prompt reutilizável da biblioteca (aba Analisar com IA). Editar aqui muda o texto que a sugestão insere.</p>
@@ -7403,7 +7406,7 @@ function IAOrganizarPanel({ project, docs, codes, codeById, codePath, store, all
     <div class="pane-head" style="gap:12px">
       <button class="btn accent" onClick=${()=>setShowPrompt(true)}
         title="Configurar e revisar exatamente o que será enviado à IA">
-        <${PromptGearIcon} /> configurar prompt <span style="font-family:var(--mono);font-size:11px;font-weight:400;opacity:.85">· ≈ ${buildProv().tokens.toLocaleString('pt-BR')} tokens</span>
+        <${PromptGearIcon} /> Configurar Prompt <span style="font-family:var(--mono);font-size:11px;font-weight:400;opacity:.85">· ≈ ${buildProv().tokens.toLocaleString('pt-BR')} tokens</span>
       </button>
       <div class="seg" style="flex-wrap:wrap">
         ${TABS.map(t=>html`<button key=${t.id} class=${tab===t.id?'on':''} onClick=${()=>setTab(t.id)}>${t.label}</button>`)}
@@ -7422,9 +7425,7 @@ function IAOrganizarPanel({ project, docs, codes, codeById, codePath, store, all
             Incluir amostra de trechos por código (a IA decide melhor, mas gasta mais tokens)
           </label>
           <p class="meta" style="margin:8px 0 0">${organizable.length} código(s) para organizar${redactionIds.size?` · ${redactionIds.size} de censura fora`:''}.</p>
-        </div>      </div>
-      ${onToggleMemory && html`<${MemoryPanel} memory=${memory} onToggle=${onToggleMemory} onDelete=${onDeleteMemory} showAdd=${false} />`}
-    </div>
+        </div>      </div>    </div>
 
     <!-- TELA DIREITA: chat da reorganização -->
     <div style="flex:1;min-width:0;display:flex;flex-direction:column;background:var(--paper)">
@@ -7480,8 +7481,9 @@ function IAOrganizarPanel({ project, docs, codes, codeById, codePath, store, all
             </label>`)}
           </details>
         </div>
+        ${onToggleMemory && html`<${MemoryPanel} memory=${memory} onToggle=${onToggleMemory} onDelete=${onDeleteMemory} showAdd=${false} bare=${true} />`}
       </div>`;
-      return html`<${PromptInspector} title="Configurar prompt" hint="Ajuste os controles; a prévia mostra exatamente o que a IA recebe." controls=${controls}
+      return html`<${PromptInspector} title="Configurar Prompt" hint="Ajuste os controles; a prévia mostra exatamente o que a IA recebe." controls=${controls}
         sections=${promptSections()} prov=${buildProv()} onClose=${()=>setShowPrompt(false)} />`; })()}
     </div>
   </section>`;
@@ -7771,7 +7773,7 @@ function IACategorizarPanel({ project, docs, cats, codePath, allValues, store, i
     <div class="pane-head" style="gap:12px">
       <button class="btn accent" onClick=${()=>setShowPrompt(true)}
         title="Configurar e revisar exatamente o que será enviado à IA">
-        <${PromptGearIcon} /> configurar prompt <span style="font-family:var(--mono);font-size:11px;font-weight:400;opacity:.85">· ≈ ${buildProv().tokens.toLocaleString('pt-BR')} tokens</span>
+        <${PromptGearIcon} /> Configurar Prompt <span style="font-family:var(--mono);font-size:11px;font-weight:400;opacity:.85">· ≈ ${buildProv().tokens.toLocaleString('pt-BR')} tokens</span>
       </button>
       <div class="seg" style="flex-wrap:wrap">
         ${TABS.map(t=>html`<button key=${t.id} class=${tab===t.id?'on':''} onClick=${()=>setTab(t.id)}>${t.label}</button>`)}
@@ -7807,9 +7809,7 @@ function IACategorizarPanel({ project, docs, cats, codePath, allValues, store, i
             ${cats.map(c=>html`<button key=${c.id} class="opt ${selCats.includes(c.id)?'on':''}" style="display:flex;gap:6px;align-items:center;width:100%;margin-bottom:4px;font-size:11px"
               onClick=${()=>toggle(selCats,setSelCats,c.id)}>${selCats.includes(c.id)?'☑':'☐'}<span style="flex:1;text-align:left">${c.name} <span class="meta">· ${kindLabel(c.kind)}</span></span></button>`)}
           </div>
-        </details>      </div>
-      ${onToggleMemory && html`<${MemoryPanel} memory=${memory} onToggle=${onToggleMemory} onDelete=${onDeleteMemory} showAdd=${false} />`}
-    </div>
+        </details>      </div>    </div>
 
     <!-- DIREITA: chat -->
     <div style="flex:1;min-width:0;display:flex;flex-direction:column;background:var(--paper)">
@@ -7862,8 +7862,9 @@ function IACategorizarPanel({ project, docs, cats, codePath, allValues, store, i
             </label>`)}
           </details>
         </div>
+        ${onToggleMemory && html`<${MemoryPanel} memory=${memory} onToggle=${onToggleMemory} onDelete=${onDeleteMemory} showAdd=${false} bare=${true} />`}
       </div>`;
-      return html`<${PromptInspector} title="Configurar prompt" hint="Ajuste os controles; a prévia mostra exatamente o que a IA recebe." controls=${controls}
+      return html`<${PromptInspector} title="Configurar Prompt" hint="Ajuste os controles; a prévia mostra exatamente o que a IA recebe." controls=${controls}
         sections=${promptSections()} prov=${buildProv()} onClose=${()=>setShowPrompt(false)} />`; })()}
   </div>
   </section>`;
@@ -8119,7 +8120,7 @@ function IACodificacaoPanel({ project, docs, codes, codeById, codePath, store, a
     <div class="pane-head" style="gap:12px">
       <button class="btn accent" onClick=${()=>setShowPrompt(true)}
         title="Configurar e revisar exatamente o que será enviado à IA">
-        <${PromptGearIcon} /> configurar prompt <span style="font-family:var(--mono);font-size:11px;font-weight:400;opacity:.85">· ≈ ${buildProv().tokens.toLocaleString('pt-BR')} tokens</span>
+        <${PromptGearIcon} /> Configurar Prompt <span style="font-family:var(--mono);font-size:11px;font-weight:400;opacity:.85">· ≈ ${buildProv().tokens.toLocaleString('pt-BR')} tokens</span>
       </button>
       <div class="seg" style="flex-wrap:wrap">
         ${TABS.map(t=>html`<button key=${t.id} class=${tab===t.id?'on':''} onClick=${()=>setTab(t.id)}>${t.label}</button>`)}
@@ -8153,9 +8154,7 @@ function IACodificacaoPanel({ project, docs, codes, codeById, codePath, store, a
             ${selectableCodes.map(c=>html`<button key=${c.id} class="opt ${selCodes.includes(c.id)?'on':''}" style="display:flex;gap:6px;align-items:center;width:100%;margin-bottom:4px;font-size:11px"
               onClick=${()=>toggle(selCodes,setSelCodes,c.id)}>${selCodes.includes(c.id)?'☑':'☐'}<span style="flex:1;text-align:left">${codePath(c.id).join(' ▸ ')}</span></button>`)}
           </div>
-        </details>      </div>
-      ${onToggleMemory && html`<${MemoryPanel} memory=${memory} onToggle=${onToggleMemory} onDelete=${onDeleteMemory} showAdd=${false} />`}
-    </div>
+        </details>      </div>    </div>
 
     <div style="flex:1;min-width:0;display:flex;flex-direction:column;background:var(--paper)">
       <div class="pane-head"><span class="field-label" style="margin:0">Conversa — codificação assistida (recall)</span></div>
@@ -8207,8 +8206,9 @@ function IACodificacaoPanel({ project, docs, codes, codeById, codePath, store, a
             </label>`)}
           </details>
         </div>
+        ${onToggleMemory && html`<${MemoryPanel} memory=${memory} onToggle=${onToggleMemory} onDelete=${onDeleteMemory} showAdd=${false} bare=${true} />`}
       </div>`;
-      return html`<${PromptInspector} title="Configurar prompt" hint="Ajuste os controles; a prévia mostra exatamente o que a IA recebe." controls=${controls}
+      return html`<${PromptInspector} title="Configurar Prompt" hint="Ajuste os controles; a prévia mostra exatamente o que a IA recebe." controls=${controls}
         sections=${promptSections()} prov=${buildProv()} onClose=${()=>setShowPrompt(false)} />`; })()}
   </div>
   </section>`;
@@ -8850,7 +8850,7 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
     <div class="pane-head" style="gap:12px">
       <button class="btn accent" onClick=${openConfig}
         title="Configurar e revisar exatamente o que será enviado à IA">
-        <${PromptGearIcon} /> configurar prompt <span style="font-family:var(--mono);font-size:11px;font-weight:400;opacity:.85">· ${(IA_STANCES.find(s=>s.id===stance)||IA_STANCES[0]).label.toLowerCase()}${hasSelection?` · ≈ ${Math.round((Math.min(rawMaterial.length,IA_TOTAL_CHAR_LIMIT)+1200)/4).toLocaleString('pt-BR')} tokens`:''}</span>
+        <${PromptGearIcon} /> Configurar Prompt <span style="font-family:var(--mono);font-size:11px;font-weight:400;opacity:.85">· ${(IA_STANCES.find(s=>s.id===stance)||IA_STANCES[0]).label.toLowerCase()}${hasSelection?` · ≈ ${Math.round((Math.min(rawMaterial.length,IA_TOTAL_CHAR_LIMIT)+1200)/4).toLocaleString('pt-BR')} tokens`:''}</span>
       </button>
       <div class="seg" style="flex-wrap:wrap">
         ${SCOPES.map(s=>html`<button key=${s.id} class=${scope===s.id?'on':''} onClick=${()=>changeScope(s.id)}>${s.label}</button>`)}
@@ -8868,7 +8868,7 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
           <span style="color:var(--teal-deep);display:inline-flex"><${PromptGearIcon} /></span>
           <h3 style="margin:0">Configure o prompt antes de analisar</h3>
         </div>
-        <p class="hint" style="margin:0 0 14px;font-size:13px;line-height:1.6">Antes de iniciar, vale abrir o <b>configurar prompt</b> (botão azul no topo) e definir a <b>postura</b> da IA, as <b>instruções próprias</b> e <b>quais memos</b> ela recebe — e conferir a prévia exata do que será enviado. Este aviso aparece só desta vez.</p>
+        <p class="hint" style="margin:0 0 14px;font-size:13px;line-height:1.6">Antes de iniciar, vale abrir o <b>Configurar Prompt</b> (botão azul no topo) e definir a <b>postura</b> da IA, as <b>instruções próprias</b> e <b>quais memos</b> ela recebe — e conferir a prévia exata do que será enviado. Este aviso aparece só desta vez.</p>
         <div class="row" style="justify-content:flex-end;gap:8px">
           <button class="btn ghost" onClick=${markIntroSeen}>entendi</button>
           <button class="btn primary" onClick=${openConfig}>configurar agora</button>
@@ -9048,6 +9048,7 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
             </label>`)}
           </details>
         </div>
+        ${onToggleMemory && html`<${MemoryPanel} memory=${memory} onToggle=${onToggleMemory} onDelete=${onDeleteMemory} showAdd=${false} bare=${true} />`}
         ${scope!=='codes' && html`<div class="field" style="margin-top:12px">
           <div class="field-label">Categorias dos documentos</div>
           <label class="row" style="gap:7px;font-size:12.5px;cursor:pointer;align-items:center">
@@ -9057,7 +9058,7 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
           <div class="meta" style="margin:3px 0 0 22px">Anexa a cada documento, entre colchetes, as categorias preenchidas dele (atributos do caso). Desligado por padrão; a IA é instruída a não convertê-las em contagens.</div>
         </div>`}
       </div>`;
-      return html`<${PromptInspector} title="Configurar prompt" hint="Ajuste os controles; a prévia mostra exatamente o que a IA recebe." controls=${controls}
+      return html`<${PromptInspector} title="Configurar Prompt" hint="Ajuste os controles; a prévia mostra exatamente o que a IA recebe." controls=${controls}
         sections=${ps.sys} task=${ps.task} prov=${buildProv()} onClose=${()=>setShowPrompt(false)} />`; })()}
   </section>`;
 }
@@ -9144,7 +9145,7 @@ function MemoryProposalReview({ proposals, onCommit }){
    (controla o flag active → só as ativas entram no prompt, por economia/transparência), autoria
    (membro) e o modelo que gerou (proveniência, auditoria em coletivo). Permite apagar e adicionar
    memória manual (form opcional via showAdd). Lista em .card. */
-function MemoryPanel({ memory, onToggle, onDelete, onAdd, showAdd=true }){
+function MemoryPanel({ memory, onToggle, onDelete, onAdd, showAdd=true, bare=false }){
   const [draft, setDraft] = useState('');
   const [adding, setAdding] = useState(false);
   const [confirmDel, setConfirmDel] = useState(null); // id aguardando o 2º clique de "apagar"
@@ -9157,8 +9158,8 @@ function MemoryPanel({ memory, onToggle, onDelete, onAdd, showAdd=true }){
     try{ await onAdd({ content, reason:'', source:'manual', ai_model:'', mode_label:'' }); setDraft(''); }
     finally{ setAdding(false); }
   }
-  return html`<div class="section" style="padding:14px;border-bottom:1px solid var(--line)">
-    <p class="h" style="margin-bottom:2px">Memória do projeto</p>
+  return html`<div class=${bare?'field':'section'} style=${bare?'':'padding:14px;border-bottom:1px solid var(--line)'}>
+    <p class=${bare?'field-label':'h'} style="margin-bottom:2px">Memória do projeto</p>
     <p class="hint" style="margin:0 0 ${list.length>0?'8px':'10px'}">${activeN} de ${list.length} ativa${activeN===1?'':'s'} — só as marcadas entram no prompt da IA.</p>
     ${list.length>0 && html`<div class="row" style="gap:6px;margin-bottom:10px">
       <button class="btn sm ghost" onClick=${()=>list.forEach(m=>{ if(!m.active) onToggle(m.id,true); })}>ativar todas</button>
