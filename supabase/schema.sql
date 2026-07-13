@@ -393,7 +393,7 @@ end $$;
 create table if not exists public.memos (
   id          uuid primary key default gen_random_uuid(),
   project_id  uuid not null references public.projects(id) on delete cascade,
-  scope       text not null check (scope in ('project','document','code','coding','ai_context','ai_instructions','ai_stance','ai_stance_text','ai_prompt')),
+  scope       text not null check (scope in ('project','document','code','coding','ai_context','ai_instructions','ai_stance','ai_stance_text','ai_prompt','ai_include_cats','ai_inject')),
   target_id   uuid not null,  -- = project_id quando scope='project'; document_id/code_id/coding_id nos demais
   content     text not null default '',
   label       text not null default '',  -- nome do prompt salvo (scope='ai_prompt', biblioteca de prompts); '' nos demais
@@ -410,9 +410,11 @@ create table if not exists public.memos (
 --   ai_stance = postura de analise (guarda so o id: padrao|indutivo|dedutivo|abdutivo|personalizado)
 --   ai_stance_text = texto da postura PERSONALIZADA (usado quando ai_stance='personalizado')
 --   ai_prompt = prompt salvo na "biblioteca de prompts" (varios por projeto: target_id proprio; name em label)
+--   ai_include_cats = toggle "Incluir categorias como metadados dos casos" (Analisar): content '1'=ligado, ''=desligado
+--   ai_inject = selecao de memos injetados no prompt (Analisar): content = JSON array das chaves selecionadas
 alter table public.memos add column if not exists label text not null default '';
 alter table public.memos drop constraint if exists memos_scope_check;
-alter table public.memos add constraint memos_scope_check check (scope in ('project','document','code','coding','ai_context','ai_instructions','ai_stance','ai_stance_text','ai_prompt'));
+alter table public.memos add constraint memos_scope_check check (scope in ('project','document','code','coding','ai_context','ai_instructions','ai_stance','ai_stance_text','ai_prompt','ai_include_cats','ai_inject'));
 alter table public.memos enable row level security;
 -- nota UNICA compartilhada (co-editavel de proposito): nao travo quem edita, mas o servidor
 -- carimba updated_by (trigger memos_provenance) pra a autoria da ultima edicao nao ser forjavel.
