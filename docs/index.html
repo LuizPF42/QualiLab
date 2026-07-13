@@ -6345,9 +6345,9 @@ function CodingMemoModal({ target, memos, onClose, onSave }){
 // O array tambem decide a ordem dos botoes de provedor.
 const AI_PROVIDERS = [
   { id:'gemini', label:'Google Gemini', models:[
-    { id:'gemini-3.1-flash-lite',  label:'Flash Lite', note:'padrão — mais rápido e barato', def:true },
-    { id:'gemini-3.5-flash',       label:'Flash',      note:'equilíbrio' },
-    { id:'gemini-3.1-pro-preview', label:'Pro',        note:'mais capaz — mais lento e caro' },
+    { id:'gemini-3.1-flash-lite',  label:'3.1 Flash Lite', note:'mais rápido e barato' },
+    { id:'gemini-3.5-flash',       label:'3.5 Flash',      note:'padrão — equilíbrio', def:true },
+    { id:'gemini-3.1-pro-preview', label:'3.1 Pro',        note:'mais capaz — mais lento e caro' },
   ]},
   { id:'openai', label:'OpenAI', models:[
     { id:'gpt-5.6-luna',  label:'GPT-5.6 Luna',  note:'mais rápido e barato' },
