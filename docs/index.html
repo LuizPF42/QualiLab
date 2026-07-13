@@ -1050,7 +1050,7 @@ function buildTransparencyReaderHTML(docs, codes, allC, memos, project, anonymiz
       const col = colorOf(vis[0].code_id);
       vis.forEach(c=>{ if(!anns[c.id]){ const p=codePathFor(codes,c.code_id);
         anns[c.id]={ code:p.join(' › '), color:colorOf(c.code_id).solid, author:anonymize?'':(c.author_name||''),
-          note:codingMemo[c.id]||codeMemo[c.code_id]||'' }; } });
+          note:codingMemo[c.id]||'' }; } });
       const bb = vis.length>1 ? `border-bottom:2px solid ${col.solid}` : '';
       body += `<span class="hl" data-ann="${vis.map(c=>c.id).join(' ')}" style="background:${col.tint};${bb}">${t}</span>`;
     });
@@ -1060,21 +1060,33 @@ function buildTransparencyReaderHTML(docs, codes, allC, memos, project, anonymiz
     const memoDot = hasDocMemo ? ` <span class="memo-dot linky" data-ann="doc:${xmlEsc(d.id)}" title="ver memo do documento">●</span>` : '';
     return `<details class="doc"><summary class="doc-title">${xmlEsc(d.name)}${memoDot}</summary><div class="reader">${body}</div></details>`;
   }).join('\n');
-  // legenda só com os códigos visíveis (já sem censura, pois useC a exclui); o swatch/código
-  // com memo vira "link" pro memo do código (abre no painel, igual o título e os grifos)
-  const usedCodes = [...new Set(useC.map(c=>c.code_id))].map(id=>codeById[id]).filter(Boolean);
-  const legendItems = usedCodes.map(c=>{ const col=codeColor(c.hue,c.depth,c.hue_deg); const hasMemo=!!codeMemo[c.id];
-    return `<span class="leg${hasMemo?' linky':''}"${hasMemo?` data-ann="code:${xmlEsc(c.id)}"`:''}><i style="background:${col.solid}"></i>${xmlEsc(codePathFor(codes,c.id).join(' › '))}${hasMemo?' <span class="memo-dot">●</span>':''}</span>`; }).join('');
+  // legenda em ÁRVORE (como a aba Esquema): mostra os códigos usados na sua HIERARQUIA,
+  // incluindo os ancestrais mesmo não usados diretamente (pra a estrutura fazer sentido).
+  // Swatch + nome + contagem agregada; código com memo vira "link" pro memo (abre no painel).
+  const usedIds = new Set(useC.map(c=>c.code_id));
+  const showIds = new Set(usedIds);
+  usedIds.forEach(id=>{ let p=codeById[id]?.parent_id; while(p){ showIds.add(p); p=codeById[p]?.parent_id; } });
+  const legAgg = {}; // contagem agregada (código + descendentes) no recorte da transparência
+  useC.forEach(c=>{ let id=c.code_id; while(id){ legAgg[id]=(legAgg[id]||0)+1; id=codeById[id]?.parent_id; } });
+  const byPos = (a,b)=> (a.position??0)-(b.position??0) || String(a.name).localeCompare(String(b.name));
+  const legNode = (c)=>{ const col=codeColor(c.hue,c.depth,c.hue_deg).solid; const hasMemo=!!codeMemo[c.id]; const n=legAgg[c.id]||0;
+    const kids = codes.filter(k=>k.parent_id===c.id && showIds.has(k.id)).sort(byPos);
+    const row = `<div class="legrow${hasMemo?' linky':''}"${hasMemo?` data-ann="code:${xmlEsc(c.id)}"`:''}>`
+      + `<i style="background:${col}"></i><span class="nm">${xmlEsc(c.name)}${hasMemo?' <span class="memo-dot">●</span>':''}</span>`
+      + (n?`<span class="ct">${n}</span>`:'') + `</div>`;
+    return `<div class="legnode" data-name="${xmlEsc(String(c.name).toLowerCase())}">${row}`
+      + (kids.length?`<div class="legkids">${kids.map(legNode).join('')}</div>`:'') + `</div>`; };
+  const legTree = codes.filter(c=>!c.parent_id && showIds.has(c.id)).sort(byPos).map(legNode).join('');
   // muitos códigos (grounded theory) viram um paredão ilegível no topo: recolhe por padrão
   // acima do limite, com filtro + altura limitada. <details> nativo, sem JS pra abrir/fechar.
-  const manyCodes = usedCodes.length > 12;
-  const legend = usedCodes.length ? `<details class="legend"${manyCodes?'':' open'}>`
-    + `<summary>Legenda de códigos (${usedCodes.length})</summary>`
+  const manyCodes = showIds.size > 12;
+  const legend = usedIds.size ? `<details class="legend"${manyCodes?'':' open'}>`
+    + `<summary>Legenda de códigos (${usedIds.size})</summary>`
     + (manyCodes ? `<input class="legfilter" type="text" placeholder="filtrar códigos…" oninput="filterLeg(this.value)">` : '')
-    + `<div class="legitems${manyCodes?' capped':''}">${legendItems}</div></details>` : '';
+    + `<div class="legtree${manyCodes?' capped':''}" id="legtree">${legTree}</div></details>` : '';
   // entradas de memo de documento/código no mesmo mapa do painel (chaves prefixadas, sem colidir com ids de coding)
   docs.forEach(d=>{ if(docMemo[d.id]) anns['doc:'+d.id]={ code:d.name, color:'#00427A', author:'', note:docMemo[d.id] }; });
-  usedCodes.forEach(c=>{ if(codeMemo[c.id]) anns['code:'+c.id]={ code:codePathFor(codes,c.id).join(' › '), color:codeColor(c.hue,c.depth,c.hue_deg).solid, author:'', note:codeMemo[c.id] }; });
+  codes.filter(c=>showIds.has(c.id)).forEach(c=>{ if(codeMemo[c.id]) anns['code:'+c.id]={ code:codePathFor(codes,c.id).join(' › '), color:codeColor(c.hue,c.depth,c.hue_deg).solid, author:'', note:codeMemo[c.id] }; });
   const overview = projectMemo ? `<div class="overview"><h3>Visão geral</h3><div>${xmlEsc(projectMemo).replace(/\n/g,'<br>')}</div></div>` : '';
   const docsCtrl = docs.length>1 ? `<div class="docctrl"><span>${docs.length} documentos</span><button onclick="allDocs(true)">expandir todos</button><button onclick="allDocs(false)">recolher todos</button></div>` : '';
   const dataJson = JSON.stringify(anns).replace(/</g,'\\u003c');
@@ -1097,9 +1109,15 @@ header .sub{opacity:.85;font-size:13px;margin-top:4px}
 .legend>summary{cursor:pointer;font-weight:600;color:var(--teal);list-style:revert}
 .legend[open]>summary{margin-bottom:10px}
 .legfilter{width:100%;padding:6px 9px;margin-bottom:10px;border:1px solid var(--line);border-radius:6px;font:inherit;font-size:12px}
-.legitems.capped{max-height:240px;overflow:auto;padding-right:4px}
-.leg{display:inline-flex;align-items:center;gap:6px;margin:3px 12px 3px 0}
-.leg i{width:12px;height:12px;border-radius:3px;display:inline-block;flex:none}
+.legtree{font-size:13px}
+.legtree.capped{max-height:300px;overflow:auto;padding-right:4px}
+.legrow{display:flex;align-items:center;gap:7px;padding:2px 4px;border-radius:5px}
+.legrow i{width:12px;height:12px;border-radius:3px;display:inline-block;flex:none}
+.legrow .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.legrow .ct{color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}
+.legkids{margin-left:13px;border-left:1px solid var(--line);padding-left:5px}
+.legrow.linky{cursor:pointer}
+.legrow.linky:hover{background:#eef4fb}
 .doc>summary{font-size:18px;color:var(--teal);font-weight:600;cursor:pointer;list-style:revert}
 .doc[open]>summary{margin-bottom:10px}
 .docctrl{display:flex;align-items:center;gap:10px;margin-bottom:14px;font-family:system-ui,sans-serif;font-size:12px;color:var(--muted)}
@@ -1109,7 +1127,7 @@ header .sub{opacity:.85;font-size:13px;margin-top:4px}
 .linky{cursor:pointer}
 .leg.linky:hover{text-decoration:underline}
 .memo-dot{color:var(--muted);font-size:9px;vertical-align:middle}
-.leg.active,.doc-title.active{outline:2px solid var(--teal);outline-offset:2px;border-radius:4px}
+.legrow.active,.doc-title.active{outline:2px solid var(--teal);outline-offset:2px;border-radius:4px}
 .hl{border-radius:2px;cursor:pointer;padding:1px 0}
 .hl.active{outline:2px solid var(--teal);outline-offset:1px}
 .redacted{background:#1a2330;color:#cbd5e1;border-radius:2px;padding:0 5px;font-family:system-ui,sans-serif;font-size:12px;letter-spacing:.02em;user-select:none}
@@ -1134,8 +1152,14 @@ footer a{color:var(--teal)}
 var ANNS = JSON.parse(${JSON.stringify(dataJson)});
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function filterLeg(q){ q=(q||'').toLowerCase();
-  var els=document.querySelectorAll('.legitems .leg');
-  for(var i=0;i<els.length;i++){ els[i].style.display = els[i].textContent.toLowerCase().indexOf(q)>=0 ? '' : 'none'; }
+  function walk(node){ var name=node.getAttribute('data-name')||'';
+    var kids=node.querySelectorAll(':scope > .legkids > .legnode'), anyKid=false;
+    for(var i=0;i<kids.length;i++){ if(walk(kids[i])) anyKid=true; }
+    var vis = !q || name.indexOf(q)>=0 || anyKid;
+    node.style.display = vis ? '' : 'none'; return vis;
+  }
+  var roots=document.querySelectorAll('#legtree > .legnode');
+  for(var i=0;i<roots.length;i++) walk(roots[i]);
 }
 function allDocs(open){ var d=document.querySelectorAll('details.doc'); for(var i=0;i<d.length;i++) d[i].open=open; }
 document.addEventListener('click',function(e){
@@ -1147,7 +1171,7 @@ document.addEventListener('click',function(e){
   ids.forEach(function(id){ var a=ANNS[id]; if(!a) return;
     out+='<div class="ann"><div class="ann-code" style="color:'+a.color+'">'+esc(a.code)+'</div>'
       +(a.author?'<div class="ann-meta">'+esc(a.author)+'</div>':'')
-      +(a.note?'<div class="ann-note">'+esc(a.note)+'</div>':'<div class="ann-empty">Sem nota analítica.</div>')
+      +(a.note?'<div class="ann-note">'+esc(a.note)+'</div>':'<div class="ann-empty">Sem nota para este trecho.</div>')
       +'</div>';
   });
   panel.innerHTML=out;
@@ -4884,6 +4908,11 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
     setBusy(true);
     try{
       const survivor = codeById[survivorId];
+      // notas-por-trecho (scope='coding') dos codings que serao recriados: como o merge
+      // recria cada coding com id NOVO (addCoding) e apaga o antigo (deleteCoding faz GC do
+      // memo do trecho), a nota se perderia. Busca fresco e migra pro id novo antes do delete.
+      let memoByCoding = {};
+      try{ (await store.listMemos(project.id)).forEach(m=>{ if(m.scope==='coding' && m.content) memoByCoding[m.target_id]=m; }); }catch(e){}
       // 1) reatribui as codificacoes dos mesclados pro sobrevivente (recria + apaga a
       // original, ja que os stores nao tem updateCoding — so addCoding/deleteCoding).
       // Batch (local/arquivo) + Promise.all (nuvem): mesclar um codigo com centenas de
@@ -4894,9 +4923,11 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
       try{
         for(const mid of mergedIds){
           await Promise.all(allCodings.filter(c=>c.code_id===mid).map(async cod=>{
-            await store.addCoding(project.id, { document_id:cod.document_id, code_id:survivorId,
+            const nc = await store.addCoding(project.id, { document_id:cod.document_id, code_id:survivorId,
               span_start:cod.span_start, span_end:cod.span_end, quote:cod.quote, layer:cod.layer,
               created_by:cod.created_by??null, author_name:cod.author_name });
+            const mem = memoByCoding[cod.id];
+            if(mem && nc && nc.id) await store.setMemo(project.id, 'coding', nc.id, mem.content, mem.author_name);
             await store.deleteCoding(cod.id);
           }));
         }
@@ -7114,6 +7145,10 @@ function IAOrganizarPanel({ project, docs, codes, codeById, codePath, store, all
       }
     }
     let applied=0, skipped=0;
+    // notas-por-trecho (scope='coding'): o merge recria os codings (id novo) e o delete do
+    // antigo faz GC do memo; busca fresco pra migrar a nota pro id novo (mesmo fix do Esquema).
+    let memoByCoding = {};
+    try{ (await store.listMemos(project.id)).forEach(m=>{ if(m.scope==='coding' && m.content) memoByCoding[m.target_id]=m; }); }catch(e){}
     if(store.beginBatch) store.beginBatch();
     try{
       for(let i=0;i<ops.length;i++){
@@ -7126,9 +7161,11 @@ function IAOrganizarPanel({ project, docs, codes, codeById, codePath, store, all
             if(!survivor || survivor._deleted || !merged.length){ skipped++; continue; }
             for(const mid of merged){
               for(const cod of (allCodings||[]).filter(c=>c.code_id===mid)){
-                await store.addCoding(project.id, { document_id:cod.document_id, code_id:o.survivor,
+                const nc = await store.addCoding(project.id, { document_id:cod.document_id, code_id:o.survivor,
                   span_start:cod.span_start, span_end:cod.span_end, quote:cod.quote, layer:cod.layer,
                   created_by:cod.created_by??null, author_name:cod.author_name });
+                const mem = memoByCoding[cod.id];
+                if(mem && nc && nc.id) await store.setMemo(project.id, 'coding', nc.id, mem.content, mem.author_name);
                 await store.deleteCoding(cod.id);
               }
             }

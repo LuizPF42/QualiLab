@@ -173,6 +173,8 @@ Ao baixar, o arquivo abre direto no navegador (`file://`) sem precisar de servid
 
 ### 2.2. A tela de entrada
 
+![A tela de entrada do QualiLab: os três caminhos (Novo em arquivo, Entrar na nuvem e Só testar), com "Abrir arquivo existente" e "Conectar ao meu Supabase" logo abaixo.](manual-img/01-welcome.png)
+
 A primeira tela oferece três caminhos (com o logo no topo):
 
 1. **Novo em arquivo**: cria um projeto salvo como arquivo `.qualilab` no seu disco (Chrome/Edge): portátil, offline, sem nuvem. Ideal para dados sensíveis.
@@ -201,6 +203,8 @@ Depois do login (ou direto, sem nuvem) aparece **"Meus projetos"**:
 ---
 
 ## 3. A interface
+
+![A tela de Codificação com um projeto aberto: à esquerda o leitor com os trechos grifados na cor de cada código; à direita, os painéis de Categorias e Códigos. No topo, o cabeçalho em duas linhas, com as abas e a pílula do projeto.](manual-img/02-codificacao.png)
 
 Depois de abrir um projeto, o **cabeçalho** tem duas linhas:
 
@@ -246,6 +250,7 @@ Use o botão de **colar** (ao lado de ＋ enviar) para criar um documento a part
 
 ### Trocar de documento, renomear e editar o texto
 - O **seletor** no topo do leitor alterna entre os documentos do projeto.
+- O botão **🗑 deletar** (ao lado) remove o documento aberto e todas as suas codificações. Não há desfazer, então confirme com cuidado.
 - O botão **✏ editar** (ao lado do seletor) abre o modo de edição do documento aberto: nele você corrige o **título** e o **texto extraído**, útil quando um PDF vem com sujeira (um trecho grudado, um rodapé que sobrou, uma linha quebrada). **Salvar** grava as duas coisas; **Cancelar** descarta.
 - Ao salvar uma edição do texto, **os grifos já feitos são reancorados automaticamente** às novas posições. Se alguma codificação cair exatamente sobre o trecho que você mexeu, o app avisa antes de salvar (esses grifos podem precisar de conferência).
 - Editar serve para **limpeza local**; corrupção do documento inteiro (por exemplo, um PDF antigo que sai inteiro sem espaços) é caso de OCR, não de correção à mão.
@@ -266,6 +271,9 @@ No painel **Códigos** (direita) você cria e organiza os rótulos. Um código n
 > **Dica de pesquisa.** Deixe os códigos *emergirem* do material (a abordagem **indutiva**, em que os temas nascem da leitura) ou aplique um esquema teórico prévio (a abordagem **dedutiva**). As duas são válidas; o que importa é ter consciência de qual você está usando. Evite criar um código para cada frase: se um rótulo aparece uma única vez, pergunte se é mesmo um tema ou só um detalhe. E, ao criar um código, anote num **[memo](#11-memos)** o que ele *inclui e exclui*: esse é, na prática, o seu **livro de códigos** (*codebook*), o que mantém a codificação consistente ao longo do tempo e entre pessoas.
 
 ### 5.2. Aplicar um código a um trecho
+
+![Com um trecho selecionado, o clique com o botão direito abre o menu de códigos: clique num código para aplicá-lo, ou em "+ Criar novo código". A faixa azul no topo confirma o trecho selecionado.](manual-img/03-codificacao-menu.png)
+
 1. **Selecione** o trecho no texto com o mouse.
 2. **Clique com o botão direito** sobre a seleção.
 3. No menu de contexto, clique no código desejado; ele é aplicado na hora.
@@ -334,6 +342,8 @@ Cada categoria pode ter uma **descrição/instrução** e habilitar duas opçõe
 
 ## 7. Esquema
 
+![A aba Esquema (sub-aba Códigos): a árvore de códigos com a hierarquia (a família "Adoção e motivação" aparece expandida em subcódigos), reordenável arrastando pelo punho ⠿. Marcar duas ou mais caixas libera as ações "Agrupar" e "Mesclar".](manual-img/04-esquema.png)
+
 A aba **Esquema** é uma tela cheia (sem documento aberto) para organizar tudo de uma vez. Tem duas sub-abas.
 
 ### 7.1. Categorias
@@ -348,7 +358,17 @@ Pensado para quem terminou uma codificação aberta com **centenas de códigos s
   - **Mesclar**: escolhe um **sobrevivente** (sugestão = o mais frequente); as codificações dos demais são **reatribuídas** a ele e os outros são excluídos. **Irreversível**: confirma antes. Os filhos dos mesclados são preservados (passam para o sobrevivente).
 - **Reordenar entre irmãos**: arraste pelo punho **⠿** (só reordena dentro do mesmo pai; para mudar de pai, use **Agrupar**).
 
-### 7.3. Cores e censura (admin)
+### 7.3. Ver os códigos como Mapa (quadro branco espacial)
+
+![O Mapa dos códigos (Esquema → Códigos → ⊞ Mapa): cada código é uma bolha (o tamanho reflete quantas vezes foi usado; a cor é a da família), ligada aos filhos por linhas. Arraste para organizar; o layout fica salvo com o projeto.](manual-img/13-mapa.png)
+
+No alto do painel de códigos, o seletor **⛼ Árvore / ⊞ Mapa** troca a lista hierárquica por um **quadro branco espacial**: cada código vira uma **bolha** (o tamanho reflete o número de trechos; a cor é a da família) e linhas ligam pai e filho. É outra forma de enxergar e reorganizar o mesmo esquema, útil quando há muitos códigos.
+
+- **Arraste** as bolhas para posicioná-las como quiser — o layout **fica salvo** com o projeto. **⤢ ajustar** enquadra tudo na tela; **↻ reembaralhar** recalcula as posições (sobrescreve o layout); **☑ linhas** mostra/esconde as ligações de hierarquia.
+- **Selecionar**: clique numa bolha; **Ctrl+clique** ou o **laço** (ferramenta **▚**, arrastando no vazio) marcam várias. A ferramenta **✜** move a tela; a **roda do mouse** dá zoom.
+- **Botão direito** sobre uma bolha abre um menu cujo alvo é o **destino**: criar subcódigo, **mover** a seleção para dentro dele, **mesclar** a seleção ali (o alvo sobrevive), **promover** ao topo, **agrupar** sob um novo pai, ou **excluir**. São as mesmas operações da Árvore, com as mesmas proteções.
+
+### 7.4. Cores e censura (admin)
 Ao editar um código, o admin pode:
 - Escolher a **cor da família** por um controle de **matiz** (0–359), ou **cinza** / **preto**, propagada aos subcódigos.
 - Marcar o código como **censura** (força a cor preta). Veja [5.5](#55-censura-mascarar-trechos-sensíveis).
@@ -359,16 +379,24 @@ Ao editar um código, o admin pode:
 
 ## 8. Reconciliação
 
-*Só em projeto coletivo.* É onde a equipe consolida o **gabarito** a partir do trabalho individual. Tem duas partes:
+![Reconciliação, aba Códigos, documento ENT-01: cada grupo reúne as codificações que se sobrepõem num mesmo código (o caminho do código, quem codificou e o trecho). Aqui já estão todas "na camada final", com a opção de removê-las; quando ainda não estão, aparece "Consolidar no final".](manual-img/14-reconciliacao.png)
 
-- **Categorias**: para cada documento/categoria, vê as respostas de cada pesquisador (com ✓/✗) e o admin define o valor final.
-- **Códigos**: agrupa as codificações que se **sobrepõem** no mesmo código, mostra **quantos codificadores concordam** e permite **consolidar** o trecho na camada final.
+*Só em projeto coletivo.* É onde a equipe consolida o **gabarito** a partir do trabalho individual de cada pesquisador. A coluna da esquerda escolhe entre **Categorias** e **Códigos**, e navega por documento — incluindo a opção **(Todos os documentos)**, que reconcilia o projeto inteiro de uma vez.
+
+**Categorias.** Para cada documento e categoria, você vê o **Gabarito** (que o admin define) e, abaixo, a resposta de cada pesquisador com **✓** (igual ao gabarito) ou **✗** (diferente). No modo (Todos os documentos), escolhe-se uma categoria e ela é consolidada documento a documento.
+
+**Códigos.** Cada **grupo** reúne as codificações que se **sobrepõem** no mesmo código, com o trecho e quem codificou. O selo **"N de M · consenso"** mostra quantos codificadores marcaram aquele trecho — quando todos concordam, o card ganha destaque. Você **consolida** cada grupo na camada final (**Consolidar no final →**) ou, se já estiver lá, pode **remover do final**.
+
+- **Consolidar em massa**: havendo grupos pendentes, aparecem **Consolidar tudo feito por mim (N)** e **Consolidar tudo (N)** — do documento aberto ou, em (Todos os documentos), do projeto inteiro (respeitando o filtro de código). É irreversível; o app confirma antes.
+- **Atalho pelo leitor**: na aba Codificação, o admin pode aceitar um grifo direto no gabarito pelo **botão direito → "Aceitar no gabarito"**, sem passar por esta tela.
 
 O resultado vira a camada **Final**, usada nos relatórios e gráficos quando você escolhe "gabarito".
 
 ---
 
 ## 9. Visualização
+
+![Visualização: à esquerda, os filtros por categoria e a árvore de códigos; à direita, todos os trechos do código selecionado, agrupados por documento e com a autoria e a camada de cada codificação.](manual-img/05-visualizacao.png)
 
 Tela mestre-detalhe para **ler todos os trechos de um código**:
 
@@ -378,10 +406,14 @@ Tela mestre-detalhe para **ler todos os trechos de um código**:
 Recursos:
 - **Filtro por categoria**: restringe aos documentos que atendem certos atributos.
 - **Co-ocorrência**: mostra trechos onde dois códigos aparecem juntos.
+- **Abrir no leitor**: um atalho em cada trecho pula até ele na aba Codificação, no lugar exato do grifo.
+- **Aceitar no gabarito** *(admin, projeto coletivo)*: consolida um trecho individual direto na camada final, sem ir à Reconciliação.
 
 ---
 
 ## 10. Gráficos
+
+![A aba Gráficos, no gráfico de Frequência: quantas vezes cada código foi usado. À esquerda, os filtros por categoria e "Ignorar censura"; no topo, as demais abas (Nuvem, Co-ocorrência, Cobertura, etc.) e a exportação em SVG/PNG.](manual-img/06-graficos.png)
 
 A aba **Gráficos** é um explorador: filtros à esquerda, um gráfico por vez à direita (escolhido nas abas). Todos os gráficos são desenhados em SVG (sem bibliotecas) e podem ser **exportados em SVG ou PNG**.
 
@@ -403,18 +435,22 @@ A aba **Gráficos** é um explorador: filtros à esquerda, um gráfico por vez �
 - **Co-ocorrência**: dois seletores escolhem os eixos **X** (colunas) e **Y** (linhas); vazio = os 12 mais frequentes.
 - **Ver:** e **Top:** (10/25/50/Todos) refinam o recorte.
 
+> **Do gráfico para os trechos.** Clique numa **barra** (Frequência, Cobertura, Concordância) ou numa **célula** (Co-ocorrência, Código × atributo) para abrir a **Visualização** já naquele código — o filtro de categorias e o recorte "Ver:" viajam junto, então os trechos exibidos batem com o número do gráfico.
+
 ---
 
 ## 11. Memos
+
+![A aba Memos: à esquerda, os alvos das notas (memo do projeto, documentos, códigos, trechos anotados e as seções de IA); à direita, o memo do projeto em edição, com salvamento automático.](manual-img/07-memos.png)
 
 A aba **Memos** guarda **notas analíticas**, texto livre que você anexa a um alvo do projeto, compartilhado entre os membros e com salvamento automático. Se a codificação **organiza** o material, o memo é onde a **interpretação acontece**: é aqui que você registra o que um código quer dizer, uma hipótese que surgiu, uma dúvida a resolver. Memoar cedo e com frequência é um dos hábitos que mais distinguem uma boa análise qualitativa. A coluna da esquerda navega por alvo:
 
 - **Memo do projeto**: uma nota geral do projeto (rascunho livre; veja o aviso sobre a IA abaixo).
 - **Documentos**: uma nota por documento.
 - **Códigos**: uma nota por código (sua definição, regra de aplicação etc.).
-- **Trechos anotados**: a nota ancorada num **grifo** específico (a seção aparece quando há alguma). Também se escreve direto na codificação: **botão direito sobre o grifo → "Anotar trecho (nota analítica)"**.
+- **Trechos anotados**: a nota ancorada num **grifo** específico (a seção aparece quando há alguma). Escreve-se pelo **botão direito sobre o grifo → "Anotar trecho (nota analítica)"**, ou aqui nos Memos. *(Por enquanto o grifo anotado não ganha marca no leitor de codificação; você reencontra a nota nesta seção ou no [Relatório Interativo](#121-relatório-interativo-ati).)*
 
-As notas de **código** e de **trecho** alimentam as saídas de transparência do [Relatório](#12-relatório).
+No [Relatório Interativo (ATI)](#121-relatório-interativo-ati), a **nota de trecho** é o que aparece ao clicar num grifo, e a **nota de código** aparece na legenda (em árvore) — é assim que as duas alimentam a transparência ativa.
 
 **Seções de IA** (aparecem com a IA ligada, abaixo das anteriores):
 
@@ -427,10 +463,12 @@ As notas de **código** e de **trecho** alimentam as saídas de transparência d
 
 ## 12. Relatório
 
+![A aba Relatório: na coluna esquerda, as três saídas (Relatório Interativo/ATI, Relatório Padrão e Web Annotation/W3C) e a opção de ocultar autoria; à direita, a prévia ao vivo do relatório interativo.](manual-img/08-relatorio.png)
+
 A aba **Relatório** é o **hub de publicação**. Na coluna esquerda você escolhe entre três saídas. Em projeto coletivo, todas respeitam a **camada** escolhida (gabarito final ou individuais); em todas, trechos de **censura** saem mascarados. As saídas de transparência (ATI e W3C) ainda oferecem **anonimizar autoria**, que omite os nomes de quem codificou, útil para publicar sem expor a equipe. *Atenção: isso não anonimiza o conteúdo dos documentos. Veja [Dados sensíveis e responsabilidade](#0-a-ideia-do-qualilab).*
 
 ### 12.1. Relatório Interativo (ATI)
-Uma **página HTML auto-contida** (sem servidor): cada documento aparece com os trechos grifados clicáveis; clicar abre, num painel lateral, a **nota analítica** daquele trecho. Títulos de documento e códigos da legenda também abrem seus memos. É o equivalente ao *overlay* da **Annotation for Transparent Inquiry (ATI)** do QDR, mas hospedável por você (ex.: GitHub Pages, Dataverse como anexo). Documentos vêm colapsados e a legenda é recolhível, para escalar a projetos grandes.
+Uma **página HTML auto-contida** (sem servidor): cada documento aparece com os trechos grifados clicáveis. Clicar num **grifo** abre, num painel lateral, a **nota daquele trecho** (a *nota analítica por trecho* da [seção 11](#11-memos)); um trecho sem nota própria mostra "sem nota", e a definição do código fica na legenda. Os **títulos de documento** e os **códigos da legenda** abrem, no mesmo painel, o memo do documento e o memo do código. A **legenda de códigos vem em árvore** (mesma hierarquia do [Esquema](#7-esquema)), recolhível e com filtro, para escalar a projetos grandes; documentos vêm colapsados. É o equivalente ao *overlay* da **Annotation for Transparent Inquiry (ATI)** do QDR, mas hospedável por você (ex.: GitHub Pages, Dataverse como anexo).
 
 ### 12.2. Relatório Padrão
 Um **montador**: marque as seções na coluna esquerda e o texto se monta ao vivo. Seções: resumo, lista de documentos, contagens e listas do esquema, frequência de códigos, distribuição por categoria, trechos por código, códigos não utilizados. Depois:
@@ -462,6 +500,8 @@ Se o projeto ativo for **rascunho** ou **arquivo**, a pílula mostra **"Enviar p
 ---
 
 ## 14. Minha conta
+
+![Minha conta: o nome de exibição e o card "IA — sua chave e modelo" (BYOK), com a escolha de provedor, o campo da chave de API e o modelo.](manual-img/11-conta.png)
 
 Clique no **seu nome** no cabeçalho para abrir **Minha conta** (funciona **em todos os modos**: nuvem, rascunho e arquivo):
 - Trocar o **nome de exibição** (usado nas codificações).
@@ -513,6 +553,8 @@ Os menus **exportar ▾** e **importar ▾** ficam no cabeçalho (aparecem quand
 ---
 
 ## 16. Salvamento, backup e modos de armazenamento
+
+![O hub do projeto, aberto pela pílula do cabeçalho: o tipo (individual/coletivo), a gestão (renomear, limpar, excluir) e as opções de armazenamento — backup automático em pasta, salvar como arquivo .qualilab e enviar para a nuvem.](manual-img/12-projeto.png)
 
 O QualiLab **salva sozinho** a cada ação. *Onde* ele salva depende do modo:
 
@@ -598,7 +640,13 @@ A IA do QualiLab não "codifica sozinha" nem escreve no seu projeto sem permiss�
 
 ### 17.2 Codificar com IA: três assistentes em abas
 
+![Codificar com IA: os três assistentes em abas (Sugerir Codificação, Sugerir Categorização, Organizar Códigos). À esquerda, a seleção de documentos e códigos; no topo, o botão "configurar prompt" com a estimativa de tokens.](manual-img/09-ia-codificar.png)
+
 A tela **Codificar com IA** reúne **três assistentes** em abas, no topo: **Sugerir Codificação** (que abre por padrão), **Sugerir Categorização** e **Organizar Códigos**. Os três seguem o mesmo padrão: a IA **propõe**, você **aprova ou recusa item a item**, e **nada é gravado sem a sua confirmação**. O **Memo para a IA** e a memória do projeto entram como contexto ([seção 11](#11-memos)), a censura é mascarada, e o botão **⚙ configurar prompt** mostra o prompt inteiro e deixa ajustar as *instruções próprias à IA* e os *memos injetados* (veja [17.1](#171-como-a-ia-funciona-aqui)). Se a resposta for muito longa e vier cortada, o QualiLab aproveita os itens completos e descarta só o último (incompleto).
+
+O botão **⚙ configurar prompt** (no topo de cada assistente) abre a janela abaixo. Em cima ficam os **controles**: **Instruções próprias à IA** (guias que entram em todo prompt, compartilhadas com o Analisar com IA) e **Memos injetados** (por padrão o *Memo para a IA*; dá para incluir outros). Embaixo, a **prévia exata do que será enviado** — o modelo ativo, a contagem de material, **quantos códigos de censura foram mascarados**, a **estimativa de tokens** (avisando quando o material será truncado) e o prompt **seção por seção** (papel e princípios, memos, memória do projeto, material). Um botão **copiar prompt** leva tudo para a área de transferência. **Nada sai do navegador sem passar por aqui** — é a face concreta da regra de transparência.
+
+![Configurar prompt, aberto na tela Codificar com IA: em cima, os controles (instruções próprias à IA e memos injetados); embaixo, a prévia do que será enviado — modelo, material, censura mascarada e estimativa de tokens — e o prompt seção por seção, com "Papel e princípios" mostrando as regras invioláveis da IA (a IA propõe, não inventa, cita a fonte).](manual-img/15-ia-configurar-prompt.png)
 
 #### 17.2.1 Sugerir Codificação: a segunda codificadora
 
@@ -627,6 +675,8 @@ Ajuda quem terminou uma codificação aberta com **dezenas ou centenas de códig
 As operações aparecem **dentro da resposta da IA** (no chat), cada uma com aprovar/recusar; aplique as aprovadas para mudar o esquema. Refine pedindo ajustes num follow-up. Códigos de **censura** ficam de fora desta reorganização (não são categoria analítica).
 
 ### 17.3 Analisar com IA: leitura assistida do material
+
+![Analisar com IA: no topo, o seletor de Material e o botão "configurar prompt"; à esquerda, a seleção do material; à direita, a Tarefa (texto livre, com a biblioteca de prompts) e a conversa.](manual-img/10-ia-analisar.png)
 
 Ajuda a **interpretar** o material, sempre **citando as fontes**, numa **conversa** iterativa. Você escolhe o **escopo** (que material entra) e descreve uma **tarefa** (a pergunta ou o pedido de análise). As conversas úteis podem ser **salvas**: passam a aparecer na aba **Memos**, em "Conversas salvas".
 

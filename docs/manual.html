@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Manual do QualiLab</title>
+<meta name="description" content="Guia completo de uso do QualiLab, do primeiro acesso a publicacao dos resultados.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2300427A'/%3E%3Ctext x='16' y='23' font-family='Georgia,serif' font-size='21' fill='white' text-anchor='middle'%3EQ%3C/text%3E%3C/svg%3E">
+<script>
+/* tema aplicado antes da pintura pra evitar flash */
+(function(){try{var t=localStorage.getItem('qualilab-manual-theme');
+if(!t){t=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}
+document.documentElement.setAttribute('data-theme',t);}catch(e){}})();
+</script>
+<style>
+/* ===== paleta e fontes: identicas ao app (index.html) ===== */
+:root{
+  --paper:#F4F3EF; --surface:#FFFFFF; --ink:#1A1B1E; --ink-soft:#5C5F66; --ink-faint:#6E7176;
+  --line:#E5E3DD; --line-soft:#EEECE6;
+  --teal:#00427A; --teal-deep:#002B5C; --teal-soft:#E2ECF5; --sky:#1B9DD9;
+  --amber:#8A6D1F; --amber-soft:#F3ECD9; --danger:#B23A3A;
+  --ok:#256B43; --ok-soft:#E4F2E9; --violet:#5B3C96; --violet-soft:#EEE9F8;
+  --serif:"Newsreader","Iowan Old Style",Palatino,Georgia,serif;
+  --sans:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:"JetBrains Mono","SF Mono",ui-monospace,"Roboto Mono",Menlo,monospace;
+}
+[data-theme="dark"]{
+  --paper:#1C1C1E; --surface:#2C2C2E; --ink:#F0EFEB; --ink-soft:#A0A09A; --ink-faint:#98988F;
+  --line:#3A3A3C; --line-soft:#2E2E30;
+  --teal:#4A9EDB; --teal-deep:#76BBEC; --teal-soft:#1A2E3F; --sky:#5BB8F5;
+  --amber:#C8A84B; --amber-soft:#2E2510; --danger:#E06060;
+  --ok:#7CC79A; --ok-soft:#17281D; --violet:#B49DE0; --violet-soft:#251C38;
+}
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:var(--paper);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+
+/* ===== barra superior ===== */
+.topbar{position:sticky;top:0;z-index:40;height:58px;display:flex;align-items:center;gap:12px;padding:0 18px;background:var(--surface);border-bottom:1px solid var(--line)}
+.logo{display:inline-flex;align-items:center;gap:1px;font-family:var(--serif);font-weight:600;font-size:20px;color:var(--teal-deep);text-decoration:none;letter-spacing:-.01em}
+.logo b{display:inline-flex;align-items:center;justify-content:center;width:27px;height:27px;border-radius:7px;background:#00427A;color:#fff;font-size:17px;margin-right:2px}
+.tagword{font-size:12px;color:var(--ink-faint);border-left:1px solid var(--line);padding-left:12px;letter-spacing:.03em;text-transform:uppercase}
+.spacer{flex:1}
+.top-link{font-size:13px;color:var(--ink-soft);text-decoration:none;padding:6px 9px;border-radius:7px;display:inline-flex;align-items:center;gap:6px}
+.top-link:hover{background:var(--line-soft);color:var(--ink)}
+.iconbtn{background:none;border:1px solid var(--line);color:var(--ink-soft);width:34px;height:34px;border-radius:8px;cursor:pointer;font-size:15px;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.iconbtn:hover{background:var(--line-soft);color:var(--ink)}
+.hamburger{display:none}
+
+/* ===== layout ===== */
+.layout{display:flex;align-items:flex-start;max-width:1320px;margin:0 auto}
+.sidebar{position:sticky;top:58px;align-self:flex-start;width:308px;flex:none;height:calc(100vh - 58px);overflow-y:auto;border-right:1px solid var(--line);padding:16px 12px 48px;background:var(--surface)}
+.content{flex:1;min-width:0;padding:26px 44px 96px;max-width:904px;margin:0 auto}
+
+/* ===== busca ===== */
+.searchbox{position:relative;margin-bottom:14px}
+.searchbox input{width:100%;padding:9px 10px 9px 32px;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--ink);font-size:13px;font-family:var(--sans)}
+.searchbox input:focus{outline:2px solid var(--sky);outline-offset:1px;border-color:transparent}
+.searchbox .ic{position:absolute;left:10px;top:9px;color:var(--ink-faint);pointer-events:none;display:inline-flex}
+
+/* ===== indice (TOC) ===== */
+.toc{font-size:13px}
+.toc-group{margin:1px 0}
+.toc-grouphead{display:flex;align-items:flex-start;gap:1px}
+.toc-caret{flex:none;width:20px;height:26px;border:none;background:none;color:var(--ink-faint);font-size:10px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:transform .15s;padding:0}
+.toc-caret.empty{cursor:default;visibility:hidden}
+.toc-group.open>.toc-grouphead>.toc-caret{transform:rotate(90deg)}
+.toc-link{display:block;flex:1;padding:5px 8px;border-radius:6px;color:var(--ink-soft);text-decoration:none;line-height:1.35}
+a.toc-link:hover{background:var(--line-soft);color:var(--ink)}
+.toc-l2{font-weight:600;color:var(--ink)}
+.toc-sub{display:none;margin:1px 0 5px 21px;border-left:1px solid var(--line);padding-left:4px}
+.toc-group.open>.toc-sub{display:block}
+.toc-l3{font-size:12.5px}
+a.toc-link.active{background:var(--teal-soft);color:var(--teal-deep);font-weight:600}
+.toc-group.open>.toc-grouphead>.toc-l2{color:var(--teal-deep)}
+.toc-empty{padding:8px;color:var(--ink-faint);font-size:12.5px}
+
+/* ===== conteudo (markdown) ===== */
+.md-content{color:var(--ink)}
+.md-content>*:first-child{margin-top:0}
+.md-content :is(h1,h2,h3,h4){position:relative;scroll-margin-top:80px}
+.md-content h1{font-family:var(--serif);font-size:35px;font-weight:600;letter-spacing:-.02em;line-height:1.14;margin:6px 0 6px;color:var(--teal-deep)}
+.md-content h2{font-family:var(--serif);font-size:26px;font-weight:600;margin:46px 0 12px;padding-top:16px;border-top:1px solid var(--line);letter-spacing:-.01em}
+.md-content h3{font-size:19px;font-weight:600;margin:30px 0 8px}
+.md-content h4{font-size:15.5px;font-weight:700;margin:22px 0 6px;color:var(--ink-soft)}
+.md-content p{margin:0 0 14px}
+.md-content a{color:var(--teal);text-decoration:none;border-bottom:1px solid transparent}
+.md-content a:hover{border-bottom-color:currentColor}
+.md-content ul,.md-content ol{margin:0 0 14px;padding-left:24px}
+.md-content li{margin:5px 0}
+.md-content li>ul,.md-content li>ol{margin:5px 0}
+.md-content strong{font-weight:600;color:var(--ink)}
+.md-content em{font-style:italic}
+.md-content code{font-family:var(--mono);font-size:.85em;background:var(--line-soft);padding:2px 5px;border-radius:4px}
+.md-content pre{background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:13px 15px;overflow-x:auto;margin:0 0 16px}
+.md-content pre code{background:none;padding:0;font-size:12.5px;color:var(--ink)}
+.md-content hr{border:none;border-top:1px solid var(--line);margin:30px 0}
+.md-content sub{font-size:12px;color:var(--ink-faint)}
+.headerlink{position:absolute;left:-.86em;top:.06em;opacity:0;color:var(--teal);text-decoration:none;font-weight:400;font-size:.8em;padding-right:.2em}
+.md-content :is(h1,h2,h3,h4):hover .headerlink{opacity:.45}
+.headerlink:hover{opacity:1;border:none}
+
+/* tabelas */
+.table-wrap{overflow-x:auto;margin:0 0 18px;border:1px solid var(--line);border-radius:9px}
+.md-content table{border-collapse:collapse;width:100%;font-size:13.5px}
+.md-content th,.md-content td{border:1px solid var(--line);padding:8px 12px;text-align:left;vertical-align:top}
+.md-content thead th{background:var(--teal-soft);color:var(--teal-deep);font-weight:600}
+.md-content tbody tr:nth-child(even){background:var(--line-soft)}
+.table-wrap table th:first-child,.table-wrap table td:first-child{border-left:none}
+.table-wrap table th:last-child,.table-wrap table td:last-child{border-right:none}
+.table-wrap table tr:first-child th{border-top:none}
+
+/* callouts (blockquote) */
+.md-content blockquote{margin:0 0 16px}
+blockquote.callout{background:var(--teal-soft);border:1px solid var(--line);border-left:3px solid var(--teal);border-radius:9px;padding:12px 16px;color:var(--ink)}
+blockquote.callout>*{margin:0 0 8px}
+blockquote.callout>*:last-child{margin-bottom:0}
+blockquote.callout.warn{background:var(--amber-soft);border-left-color:var(--amber)}
+blockquote.callout.tip{background:var(--ok-soft);border-left-color:var(--ok)}
+
+/* figuras (capturas de tela) */
+.figure{margin:20px 0;text-align:center}
+.figure img{max-width:100%;height:auto;border:1px solid var(--line);border-radius:9px;box-shadow:0 2px 12px rgba(0,0,0,.07)}
+.figure figcaption{margin-top:9px;font-size:12.5px;color:var(--ink-faint);font-style:italic;max-width:640px;margin-left:auto;margin-right:auto}
+.md-content img{max-width:100%;height:auto}
+
+.loading{color:var(--ink-faint)}
+.load-error{max-width:620px;margin:56px auto;padding:26px 28px;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink-soft);line-height:1.65}
+.load-error h2{font-family:var(--serif);color:var(--teal-deep);margin:0 0 12px;font-size:22px}
+.load-error code{font-family:var(--mono);background:var(--line-soft);padding:2px 6px;border-radius:5px;color:var(--ink);font-size:.9em}
+.load-error a{color:var(--teal)}
+
+/* scrim + voltar ao topo */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.42);z-index:50;opacity:0;pointer-events:none;transition:opacity .2s;display:none}
+.backtop{position:fixed;right:22px;bottom:22px;z-index:30;width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--teal);font-size:19px;cursor:pointer;opacity:0;pointer-events:none;transition:opacity .2s;box-shadow:0 2px 14px rgba(0,0,0,.14)}
+.backtop.show{opacity:1;pointer-events:auto}
+.backtop:hover{background:var(--teal-soft)}
+
+/* ===== responsivo ===== */
+@media(max-width:1080px){.content{padding:24px 30px 90px}}
+@media(max-width:860px){
+  .hamburger{display:inline-flex}
+  .tagword,.top-link.pdf{display:none}
+  .headerlink{display:none}
+  .sidebar{position:fixed;top:0;left:0;height:100vh;width:min(86vw,330px);z-index:60;transform:translateX(-100%);transition:transform .22s ease;box-shadow:0 0 40px rgba(0,0,0,.28);padding-top:18px}
+  .sidebar.open{transform:none}
+  .content{padding:18px 18px 72px;max-width:100%}
+  .md-content h1{font-size:29px}
+  .md-content h2{font-size:22px}
+  .scrim{display:block}
+  .scrim.show{opacity:1;pointer-events:auto}
+}
+
+@media print{
+  .topbar,.sidebar,.scrim,.backtop{display:none!important}
+  .layout{display:block}
+  .content{max-width:100%;padding:0}
+  .headerlink{display:none}
+  :root{--paper:#fff;--surface:#fff;--ink:#111;--line:#ccc}
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <button class="iconbtn hamburger" id="hamburger" aria-label="Abrir menu">
+    <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h14M3 10h14M3 14h14" stroke-linecap="round"/></svg>
+  </button>
+  <a class="logo" href="#top" aria-label="QualiLab"><b>Q</b>ualiLab</a>
+  <span class="tagword">Manual</span>
+  <span class="spacer"></span>
+  <a class="top-link pdf" href="MANUAL.pdf" target="_blank" rel="noopener">Baixar PDF</a>
+  <a class="top-link" href="https://github.com/LuizPF42/QualiLab" target="_blank" rel="noopener">GitHub</a>
+  <button class="iconbtn" id="themeBtn" aria-label="Alternar tema claro/escuro">⏾</button>
+</header>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="searchbox">
+      <span class="ic"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="4.5"/><path d="M11 11l3.4 3.4" stroke-linecap="round"/></svg></span>
+      <input id="search" type="search" placeholder="Buscar no manual..." autocomplete="off" spellcheck="false">
+    </div>
+    <nav id="toc-nav" class="toc" aria-label="Indice do manual"></nav>
+  </aside>
+
+  <main class="content" id="top">
+    <div class="md-content" id="content"><p class="loading">Carregando o manual...</p></div>
+  </main>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<button class="backtop" id="backtop" aria-label="Voltar ao topo" title="Voltar ao topo">&#8593;</button>
+
+<script type="module">
+const MARKED_URL = 'https://cdn.jsdelivr.net/npm/marked@12.0.2/lib/marked.esm.js';
+const MANUAL_PATH = 'MANUAL.md';
+const GITHUB_BLOB = 'https://github.com/LuizPF42/QualiLab/blob/main/';
+
+const contentEl = document.getElementById('content');
+const tocEl     = document.getElementById('toc-nav');
+const sidebar   = document.getElementById('sidebar');
+const scrim     = document.getElementById('scrim');
+
+function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function norm(s){return s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();}
+function closeSidebar(){sidebar.classList.remove('open');scrim.classList.remove('show');}
+function openSidebar(){sidebar.classList.add('open');scrim.classList.add('show');}
+
+function showError(html){contentEl.innerHTML = '<div class="load-error">'+html+'</div>';}
+
+/* slug identico ao do GitHub: minusculas, remove pontuacao, espacos->hifen, mantem acentos */
+const slugSeen = {};
+function slug(text){
+  let s = text.toLowerCase().trim()
+    .replace(/[^\p{L}\p{N}\s-]/gu,'')
+    .replace(/\s+/g,'-')
+    .replace(/-{2,}/g,'-')
+    .replace(/^-+|-+$/g,'');
+  if(s in slugSeen){slugSeen[s]++;s = s+'-'+slugSeen[s];}
+  else slugSeen[s]=0;
+  return s;
+}
+
+/* remove o logo do topo e a secao "Indice" (a sidebar cumpre esse papel); aponta links .md pro GitHub */
+function preprocess(md){
+  md = md.replace(/<p align="center">[\s\S]*?logo\.png[\s\S]*?<\/p>\s*/i,'');
+  const lines = md.split('\n');
+  const start = lines.findIndex(l => /^##\s+Índice\s*$/.test(l));
+  if(start !== -1){
+    let end = start+1;
+    while(end < lines.length && !/^##\s+/.test(lines[end])) end++;
+    lines.splice(start, end-start);
+  }
+  md = lines.join('\n');
+  md = md.replace(/\]\((README|CLAUDE)\.md\)/g, '](' + GITHUB_BLOB + '$1.md)');
+  return md;
+}
+
+function enhance(){
+  // ids + links de ancora nos titulos
+  contentEl.querySelectorAll('h1,h2,h3,h4').forEach(h=>{
+    if(!h.id) h.id = slug(h.textContent);
+    h.dataset.title = h.textContent.trim();
+    const a = document.createElement('a');
+    a.className='headerlink'; a.href='#'+h.id; a.textContent='#'; a.setAttribute('aria-hidden','true');
+    a.title='Link para esta secao';
+    h.appendChild(a);
+  });
+  // tabelas com rolagem horizontal
+  contentEl.querySelectorAll('table').forEach(t=>{
+    const w = document.createElement('div'); w.className='table-wrap';
+    t.replaceWith(w); w.appendChild(t);
+  });
+  // imagens -> figura com legenda (a partir do alt)
+  contentEl.querySelectorAll('img').forEach(img=>{
+    img.loading='lazy';
+    const alt = (img.getAttribute('alt')||'').trim();
+    const fig = document.createElement('figure'); fig.className='figure';
+    const p = img.parentElement;
+    if(p && p.tagName==='P' && p.textContent.trim()===''){ p.replaceWith(fig); }
+    else { img.replaceWith(fig); }
+    fig.appendChild(img);
+    if(alt){ const cap=document.createElement('figcaption'); cap.textContent=alt; fig.appendChild(cap); }
+  });
+  // callouts a partir de blockquote
+  contentEl.querySelectorAll('blockquote').forEach(bq=>{
+    bq.classList.add('callout');
+    const t = bq.textContent;
+    if(/⚠️/.test(t)) bq.classList.add('warn');
+    else if(/⚡/.test(t)) bq.classList.add('tip');
+  });
+}
+
+function buildToc(){
+  const heads = [...contentEl.querySelectorAll('h2,h3')];
+  const groups = []; let cur = null;
+  heads.forEach(h=>{
+    if(h.tagName==='H2'){ cur = {id:h.id, title:h.dataset.title, children:[]}; groups.push(cur); }
+    else { if(!cur){ cur = {id:null, title:'', children:[]}; groups.push(cur); } cur.children.push({id:h.id, title:h.dataset.title}); }
+  });
+  let html = '';
+  groups.forEach((g,gi)=>{
+    const gid = g.id || ('grp'+gi);
+    html += '<div class="toc-group" data-group="'+gid+'">';
+    html += '<div class="toc-grouphead">';
+    html += g.children.length
+      ? '<button class="toc-caret" data-caret="'+gid+'" aria-label="Expandir">&#9656;</button>'
+      : '<span class="toc-caret empty"></span>';
+    html += g.id
+      ? '<a class="toc-link toc-l2" href="#'+g.id+'" data-id="'+g.id+'">'+escapeHtml(g.title)+'</a>'
+      : '<span class="toc-link toc-l2">'+escapeHtml(g.title)+'</span>';
+    html += '</div>';
+    if(g.children.length){
+      html += '<div class="toc-sub">';
+      g.children.forEach(c=>{ html += '<a class="toc-link toc-l3" href="#'+c.id+'" data-id="'+c.id+'">'+escapeHtml(c.title)+'</a>'; });
+      html += '</div>';
+    }
+    html += '</div>';
+  });
+  tocEl.innerHTML = html;
+}
+
+function wire(){
+  const groups = [...tocEl.querySelectorAll('.toc-group')];
+  const links  = [...tocEl.querySelectorAll('.toc-link[data-id]')];
+  const spyHeads = [...contentEl.querySelectorAll('h2,h3')];
+  const headGroup = {};
+  { let g=null; spyHeads.forEach(h=>{ if(h.tagName==='H2') g=h.id; headGroup[h.id]=g||h.id; }); }
+  const groupByGid = {}; groups.forEach(g=>groupByGid[g.dataset.group]=g);
+
+  function openGroup(gid){ groups.forEach(g=>g.classList.toggle('open', g.dataset.group===gid)); }
+  let lastActive=null;
+  function setActive(id){
+    if(id===lastActive) return; lastActive=id;
+    links.forEach(l=>l.classList.toggle('active', l.dataset.id===id));
+    const gid = headGroup[id]; if(gid && groupByGid[gid]) openGroup(gid);
+  }
+
+  // caret: abre/fecha sem rolar (acordeao)
+  tocEl.addEventListener('click', e=>{
+    const c = e.target.closest('[data-caret]');
+    if(c){ e.preventDefault(); const gid=c.getAttribute('data-caret'); const g=groupByGid[gid];
+      const was=g.classList.contains('open'); groups.forEach(x=>x.classList.remove('open')); if(!was) g.classList.add('open'); return; }
+    if(e.target.closest('a.toc-link')) closeSidebar();
+  });
+
+  // scrollspy
+  const OFFSET=96; let ticking=false;
+  function spy(){ ticking=false;
+    let active = spyHeads.length ? spyHeads[0].id : null;
+    for(const h of spyHeads){ if(h.getBoundingClientRect().top<=OFFSET) active=h.id; else break; }
+    if(active) setActive(active);
+  }
+  window.addEventListener('scroll', ()=>{ if(!ticking){ ticking=true; requestAnimationFrame(spy); } }, {passive:true});
+  spy();
+
+  // busca no indice (sem acento)
+  const search = document.getElementById('search');
+  search.addEventListener('input', ()=>{
+    const q = norm(search.value.trim());
+    if(!q){ groups.forEach(g=>{ g.style.display=''; g.querySelectorAll('.toc-l3').forEach(c=>c.style.display=''); }); lastActive=null; spy(); return; }
+    groups.forEach(g=>{
+      const head = g.querySelector('.toc-grouphead .toc-link');
+      const kids = [...g.querySelectorAll('.toc-l3')];
+      const headMatch = norm(head.textContent).includes(q);
+      let any=false;
+      kids.forEach(c=>{ const m=norm(c.textContent).includes(q); c.style.display = (m||headMatch)?'':'none'; if(m) any=true; });
+      if(headMatch||any){ g.style.display=''; g.classList.add('open'); } else g.style.display='none';
+    });
+  });
+}
+
+/* rolagem suave para qualquer ancora #id (sidebar, titulos, links internos) */
+document.addEventListener('click', e=>{
+  const a = e.target.closest('a[href^="#"]'); if(!a) return;
+  const raw = a.getAttribute('href').slice(1); if(!raw) return;
+  const id = decodeURIComponent(raw);
+  const el = document.getElementById(id); if(!el) return;
+  e.preventDefault();
+  el.scrollIntoView({behavior:'smooth', block:'start'});
+  history.pushState(null,'','#'+raw);
+  closeSidebar();
+});
+
+// tema
+const themeBtn = document.getElementById('themeBtn');
+function updateThemeBtn(){ const d=document.documentElement.getAttribute('data-theme')==='dark'; themeBtn.textContent=d?'☀︎':'⏾'; themeBtn.title=d?'Tema claro':'Tema escuro'; }
+themeBtn.addEventListener('click', ()=>{
+  const next = document.documentElement.getAttribute('data-theme')==='dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  try{ localStorage.setItem('qualilab-manual-theme', next); }catch(e){}
+  updateThemeBtn();
+});
+updateThemeBtn();
+
+// menu mobile + voltar ao topo
+document.getElementById('hamburger').addEventListener('click', openSidebar);
+scrim.addEventListener('click', closeSidebar);
+const backtop = document.getElementById('backtop');
+backtop.addEventListener('click', ()=>window.scrollTo({top:0,behavior:'smooth'}));
+window.addEventListener('scroll', ()=>{ backtop.classList.toggle('show', window.scrollY>620); }, {passive:true});
+
+async function main(){
+  if(location.protocol==='file:'){
+    showError('<h2>Sirva a pasta para ler o manual</h2><p>Esta pagina carrega o conteudo do arquivo <code>MANUAL.md</code>, e o navegador bloqueia essa leitura quando a pagina e aberta direto do disco (<code>file://</code>).</p><p>Rode um servidor local na raiz do projeto e abra pelo <code>http://</code>:</p><pre><code>py -m http.server 8000</code></pre><p>Depois acesse <a href="http://localhost:8000/docs/manual.html">http://localhost:8000/docs/manual.html</a>. (No GitHub Pages ja funciona direto.) Enquanto isso, o manual em texto esta em <a href="'+GITHUB_BLOB+'docs/MANUAL.md">MANUAL.md</a>.</p>');
+    return;
+  }
+  let marked;
+  try{ ({marked} = await import(MARKED_URL)); }
+  catch(e){ showError('<h2>Nao consegui carregar o formatador</h2><p>A pagina precisa de internet na primeira vez para baixar a biblioteca que formata o texto. Verifique a conexao e recarregue.</p><p>O manual em texto puro esta sempre em <a href="'+GITHUB_BLOB+'docs/MANUAL.md">MANUAL.md</a>.</p>'); return; }
+  let md;
+  try{ const r = await fetch(MANUAL_PATH, {cache:'no-cache'}); if(!r.ok) throw new Error('HTTP '+r.status); md = await r.text(); }
+  catch(e){ showError('<h2>Nao consegui abrir o MANUAL.md</h2><p>Erro: <code>'+escapeHtml(String(e.message||e))+'</code>. Confirme que <code>MANUAL.md</code> esta na mesma pasta desta pagina.</p>'); return; }
+
+  marked.setOptions({gfm:true, breaks:false});
+  contentEl.innerHTML = marked.parse(preprocess(md));
+  enhance();
+  buildToc();
+  wire();
+  document.title = (contentEl.querySelector('h1')?.dataset.title || 'Manual do QualiLab');
+  if(location.hash){ const el=document.getElementById(decodeURIComponent(location.hash.slice(1))); if(el) setTimeout(()=>el.scrollIntoView(),60); }
+}
+main();
+</script>
+</body>
+</html>

@@ -12,7 +12,7 @@ QualiLab é uma ferramenta **gratuita e de código aberto** para análise qualit
 
 Acesse a ferramenta **[aqui](https://luizpf42.github.io/QualiLab)** / Baixe a ferramenta **[aqui](https://github.com/LuizPF42/QualiLab/releases/download/alpha/index.html)**
 
-📖 **Novo por aqui?** Comece pelo **[Manual de uso](MANUAL.md)** — guia completo, passo a passo, de todas as telas.
+📖 **Novo por aqui?** Comece pelo **[Manual de uso](https://luizpf42.github.io/QualiLab/manual.html)** — guia completo, passo a passo, de todas as telas (também em [docs/MANUAL.md](docs/MANUAL.md)).
 
 ---
 
@@ -239,9 +239,12 @@ Sem build, sem bundler, sem framework pesado.
 
 ```
 QualiLab/
-├── index.html            # o app inteiro (front-end)
+├── docs/                 # publicado via GitHub Pages
+│   ├── index.html        # o app inteiro (front-end)
+│   ├── manual.html       # site do manual (renderiza o MANUAL.md)
+│   ├── MANUAL.md         # manual de uso, passo a passo
+│   └── manual-img/       # capturas de tela do manual
 ├── README.md             # este arquivo
-├── MANUAL.md             # manual de uso, passo a passo
 ├── LICENSE               # MIT
 ├── supabase/
 │   ├── schema.sql        # schema do backend (tabelas, RPCs, RLS, realtime)
