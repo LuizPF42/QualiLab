@@ -9960,7 +9960,6 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
   const refRow = (!provDef?.custom && aiPrices)
     ? (aiPrices[`${aiProvider}|${refModelId}`] || aiPrices[`${aiProvider}|${String(refModelId).replace(/-\d{8}$/,'')}`])
     : null;
-  const refIsEstimate = aiProvider==='openai' || aiProvider==='gemini'; // Anthropic = oficial; resto = estimativa
 
   const run = async (fn)=>{ setErr(null); setMsg(null); try{ await fn(); }catch(e){ setErr(String(e.message||e)); } };
 
@@ -10063,7 +10062,7 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
           : provDef?.custom
           ? html`Este provedor não tem preço de referência. Informe a tarifa do seu provedor (US$ por 1M de tokens) para ver a estimativa de custo.`
           : refRow
-          ? html`Referência para <b>${refModelId}</b>: <b>US$ ${Number(refRow.input).toFixed(2)}</b> entrada / <b>US$ ${Number(refRow.output).toFixed(2)}</b> saída por 1M tokens${refIsEstimate?html` <span style="color:var(--danger)">(estimativa — confira na página do provedor)</span>`:' (oficial)'}.`
+          ? html`Referência para <b>${refModelId}</b>: <b>US$ ${Number(refRow.input).toFixed(2)}</b> entrada / <b>US$ ${Number(refRow.output).toFixed(2)}</b> saída por 1M tokens (preço de lista — confira com o provedor se mudar).`
           : html`Sem preço de referência cadastrado para <b>${refModelId||'este modelo'}</b> ainda.`}</p>
         ${provDef?.custom && !isLocal && html`<div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:8px">
           <label style="flex:1;min-width:120px"><div class="field-label" style="font-weight:400">US$ / 1M entrada</div>

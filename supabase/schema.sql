@@ -543,7 +543,8 @@ grant execute on function public.set_memory_active(uuid, boolean) to anon, authe
 -- Preco de LISTA por 1M de tokens, so pra estimar o custo das chamadas de IA em US$/R$. Leitura
 -- PUBLICA (preco de lista nao e segredo; o front le pra estimar antes/depois da chamada); escrita
 -- so por service_role via SQL (anon/authenticated NAO alteram — sem policy de insert/update/delete).
--- Fonte dos valores: Anthropic = pricing oficial (jun/2026); OpenAI/Gemini = ESTIMATIVA a conferir.
+-- Fonte dos valores: paginas oficiais de pricing (Anthropic jun/2026; OpenAI e Gemini jul/2026,
+-- tier padrao/short-context <=200k). Confira periodicamente e ajuste com UPDATE.
 -- Atualizar preco = UPDATE aqui (nao mexe no codigo, nao precisa deploy). BYOK: o pesquisador pode
 -- sobrescrever com a tarifa dele em "Minha Conta" (localStorage), e isso vence esta referencia.
 create table if not exists public.ai_prices (
@@ -562,12 +563,12 @@ insert into public.ai_prices (provider, model, input_usd_1m, output_usd_1m) valu
   ('anthropic', 'claude-haiku-4-5',        1.00,  5.00),   -- pricing oficial Anthropic (jun/2026)
   ('anthropic', 'claude-sonnet-4-6',       3.00, 15.00),   -- idem
   ('anthropic', 'claude-opus-4-8',         5.00, 25.00),   -- idem
-  ('openai',    'gpt-5.4-mini',            0.25,  2.00),   -- ESTIMATIVA — conferir na pagina da OpenAI
-  ('openai',    'gpt-5.4',                 1.25, 10.00),   -- ESTIMATIVA
-  ('openai',    'gpt-5.5',                 2.00, 15.00),   -- ESTIMATIVA
-  ('gemini',    'gemini-3.1-flash-lite',   0.10,  0.40),   -- ESTIMATIVA — conferir na pagina do Google
-  ('gemini',    'gemini-3.5-flash',        0.30,  2.50),   -- ESTIMATIVA
-  ('gemini',    'gemini-3.1-pro-preview',  1.25, 10.00)    -- ESTIMATIVA
+  ('openai',    'gpt-5.4-mini',            0.75,  4.50),   -- pricing OpenAI (short context, jul/2026)
+  ('openai',    'gpt-5.4',                 2.50, 15.00),   -- idem
+  ('openai',    'gpt-5.5',                 5.00, 30.00),   -- idem
+  ('gemini',    'gemini-3.1-flash-lite',   0.25,  1.50),   -- pricing Gemini (paid, prompts <=200k, jul/2026)
+  ('gemini',    'gemini-3.5-flash',        1.50,  9.00),   -- idem
+  ('gemini',    'gemini-3.1-pro-preview',  2.00, 12.00)    -- idem
 on conflict (provider, model) do nothing;
 
 -- ---------- limpeza de memos orfaos no proprio banco ----------
