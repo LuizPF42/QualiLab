@@ -8215,6 +8215,9 @@ const IA_MODES_DOCSCODES = [
 // cabe ~3 entrevistas ou os trechos de um codigo inteiro, ainda claramente "uma selecao" e nao o corpus.
 const IA_DOC_CHAR_LIMIT = 30000; // por documento
 const IA_TOTAL_CHAR_LIMIT = 100000; // total do material empírico, somando todos os itens selecionados
+// exibicao em unidade humana (NAO afeta o corte): "pagina comum" ~3000 caracteres (~500 palavras).
+const IA_CHARS_PER_PAGE = 3000;
+const iaPages = (chars)=> Math.round((chars||0)/IA_CHARS_PER_PAGE);
 
 // CONTEUDO DA IA (referência consolidada v3 — texto refinado pelo autor). A constituição é a base
 // FIXA (invioláveis) injetada em toda tarefa (Codificar e Analisar); a postura é a camada metodológica
@@ -8290,7 +8293,7 @@ function PromptInspector({ title, hint, controls, sections, task, prov, onClose 
         <div style="height:5px;border-radius:99px;background:rgba(0,66,122,.16);margin-top:9px;overflow:hidden">
           <div style=${`height:100%;width:${pct}%;background:${pct>=100?'var(--danger)':'var(--teal)'}`}></div>
         </div>
-        <div class="meta" style="margin-top:4px;color:var(--teal-deep)">material ${prov.chars.toLocaleString('pt-BR')} / ${prov.limit.toLocaleString('pt-BR')} caracteres${pct>=100?' — será truncado':''}</div>
+        <div class="meta" style="margin-top:4px;color:var(--teal-deep)">material ~${iaPages(prov.chars)} / ~${iaPages(prov.limit)} páginas <span style="opacity:.7">(${prov.chars.toLocaleString('pt-BR')} / ${prov.limit.toLocaleString('pt-BR')} caracteres)</span>${pct>=100?' — será truncado':''}</div>
       </div>`}
       <div class="card" style="padding:0;max-height:52vh;overflow:auto">
         ${all.map((s,i)=>html`<details key=${s.key} class="collap" style=${`padding:9px 12px;${i>0?'border-top:1px solid var(--line-soft)':''}`} open=${s.key==='role'||s.key==='mat'}>
@@ -8850,7 +8853,7 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
       </label>`)}
     </div>`}
 
-    ${materialTruncated && html`<div class="banner warn" style="margin-bottom:10px">Material selecionado (~${rawMaterial.length} caracteres) excede o limite de tamanho por requisição e será truncado em ${IA_TOTAL_CHAR_LIMIT} caracteres antes de enviar — selecione menos itens para uma análise completa.</div>`}
+    ${materialTruncated && html`<div class="banner warn" style="margin-bottom:10px">A seleção tem ~${iaPages(rawMaterial.length)} páginas — mais do que a IA analisa bem de uma vez (o limite é ~${iaPages(IA_TOTAL_CHAR_LIMIT)} páginas). Só as primeiras ~${iaPages(IA_TOTAL_CHAR_LIMIT)} páginas serão enviadas; para uma leitura completa, selecione menos itens de cada vez — a IA rende mais em recortes focados.</div>`}
     ${history.length>0 && html`<p class="hint" style="margin:0">Conversa em andamento à direita. Mude a seleção e clique em <b>Analisar de novo</b> (no chat) para recomeçar com outro material.</p>`}
     </div>
     </div>
