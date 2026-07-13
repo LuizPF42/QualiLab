@@ -6423,6 +6423,13 @@ function currentModelLabel(){
 function isLocalProvider(provider){
   return !!AI_PROVIDERS.find(p=>p.id===provider)?.local;
 }
+// --- CALCULADORA DE CUSTO DA IA (jul/2026) — helpers de preco/custo logo apos askAIChat ---
+// LAST_AI_USAGE guarda o { input, output, cached } (tokens REAIS) da ULTIMA chamada de IA — a
+// Edge Function ai-ask agora devolve `usage`, e o caminho local reusa prompt_tokens/completion_tokens.
+// O painel le via lastAiUsage() logo apos o await (single-thread, sem chamadas concorrentes). AI_PRICES
+// e o cache (map) da tabela ai_prices = referencia de preco por modelo (leitura publica).
+let LAST_AI_USAGE = null;
+let AI_PRICES = null;
 // Chamada direta do navegador a um servidor local compativel com o formato classico da OpenAI
 // (/chat/completions). Mesmo corpo do callCustom da Edge Function, porem disparado no cliente —
 // funciona offline/air-gapped, sem tunel nem nuvem. Requer OLLAMA_ORIGINS liberando a origem do
@@ -6451,6 +6458,7 @@ async function askLocalChat({ system, messages, signal, json }){
   }
   if(!res.ok){ const t = await res.text().catch(()=> ''); throw new Error(`Servidor local (${res.status}): ${t || 'sem detalhe'}`); }
   const data = await res.json().catch(()=>({}));
+  LAST_AI_USAGE = data.usage ? { input: data.usage.prompt_tokens||0, output: data.usage.completion_tokens||0, cached: 0 } : null;
   return data.choices?.[0]?.message?.content || '';
 }
 async function askAI(prompt){
@@ -6463,6 +6471,7 @@ async function askAI(prompt){
   });
   const data = await res.json().catch(()=>({}));
   if(!res.ok || data.error) throw new Error(data.error || `Erro ${res.status}`);
+  LAST_AI_USAGE = data.usage || null;
   return data.text || '';
 }
 
@@ -6496,7 +6505,75 @@ async function askAIChat({ system, messages, signal, json }){
   });
   const data = await res.json().catch(()=>({}));
   if(!res.ok || data.error) throw new Error(data.error || `Erro ${res.status}`);
+  LAST_AI_USAGE = data.usage || null;
   return data.text || '';
+}
+
+function lastAiUsage(){ return LAST_AI_USAGE; }
+// carrega (uma vez, cacheado) a tabela ai_prices por REST com a anon key (leitura publica).
+// Funciona em qualquer modo (nuvem/arquivo/rascunho): as chamadas de IA ja usam SUPABASE_URL/ANON.
+async function loadAiPrices(){
+  if(AI_PRICES) return AI_PRICES;
+  try{
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/ai_prices?select=provider,model,input_usd_1m,output_usd_1m`, {
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
+    });
+    if(r.ok){ const rows = await r.json(); const m = {}; (rows||[]).forEach(x=>{ m[`${x.provider}|${x.model}`] = { input:+x.input_usd_1m, output:+x.output_usd_1m }; }); AI_PRICES = m; }
+  }catch(e){}
+  return AI_PRICES || {};
+}
+// cambio US$->R$ ajustavel (Minha Conta); default provisorio, o pesquisador acerta.
+function aiUsdBrl(){ const v = parseFloat(localStorage.getItem('qualilab:usd_brl')||''); return (v>0 && isFinite(v)) ? v : 5.5; }
+// tarifa do usuario (BYOK) pra custom/azure (US$/1M), guardada em Minha Conta
+function aiUserRate(){
+  const i = parseFloat(localStorage.getItem('qualilab:ai_price_in')||'');
+  const o = parseFloat(localStorage.getItem('qualilab:ai_price_out')||'');
+  return (isFinite(i) && isFinite(o) && i>=0 && o>=0 && (i||o)) ? { input:i, output:o } : null;
+}
+// modelo efetivo do config ativo (config.model, ou o default def:true do provedor quando vazio —
+// mesmo id que a Edge Function usa via DEFAULT_MODELS, mantidos em sincronia manual).
+function activeModelId(cfg){
+  cfg = cfg || getAIConfig();
+  const prov = AI_PROVIDERS.find(p=>p.id===cfg.provider);
+  return cfg.model || (prov?.models||[]).find(m=>m.def)?.id || '';
+}
+// preco unitario (US$/1M) do provedor+modelo: ollama/local = gratis; custom/azure = tarifa do
+// usuario (sem referencia possivel); catalogo = referencia da ai_prices (id normalizado tirando
+// sufixo de data, ex. claude-haiku-4-5-20251001 -> claude-haiku-4-5). null = sem preco conhecido.
+function aiUnitPrice(provider, model){
+  if(isLocalProvider(provider)) return { input:0, output:0, src:'local' };
+  const provDef = AI_PROVIDERS.find(p=>p.id===provider);
+  if(provDef?.custom){ const r = aiUserRate(); return r ? { input:r.input, output:r.output, src:'sua tarifa' } : null; }
+  const norm = String(model||'').replace(/-\d{8}$/,'');
+  const row = AI_PRICES && (AI_PRICES[`${provider}|${model}`] || AI_PRICES[`${provider}|${norm}`]);
+  return row ? { input: row.input, output: row.output, src:'referência' } : null;
+}
+// estimativa de custo de UMA chamada dado o usage (tokens). Ignora desconto de cache (=teto
+// conservador). Retorna { usd, brl, src } ou null (sem preco). provider/model default = config ativo.
+function aiCostEstimate(usage, provider, model){
+  if(!usage) return null;
+  const c = getAIConfig();
+  provider = provider || c.provider;
+  if(model==null) model = activeModelId(c);
+  const p = aiUnitPrice(provider, model);
+  if(!p) return null;
+  const usd = (Number(usage.input||0)/1e6)*p.input + (Number(usage.output||0)/1e6)*p.output;
+  return { usd, brl: usd*aiUsdBrl(), src: p.src };
+}
+// formata dinheiro pt-BR com precisao pra valores pequenos (chamadas custam centavos)
+function iaMoney(v, cur){
+  const sym = cur==='USD' ? 'US$' : 'R$';
+  if(!(v>0)) return `${sym} 0`;
+  if(v<0.005) return `${sym} <0,01`;
+  return `${sym} ${v.toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2})}`;
+}
+// rotulo curto de custo pra exibir num balao/turno: "~R$ 0,04" (+ "US$ 0,007" no title) ou
+// "grátis (local)" ou null (sem preco configurado). tokens sempre disponiveis a parte.
+function aiCostLabel(usage, provider, model){
+  const est = aiCostEstimate(usage, provider, model);
+  if(!est) return null;
+  if(est.src==='local') return 'grátis (local)';
+  return `~${iaMoney(est.brl,'BRL')}`;
 }
 
 // extrai os objetos {...} de NIVEL SUPERIOR de uma string, respeitando strings/escapes —
@@ -8345,6 +8422,7 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
   const [err, setErr] = useState('');
   const [saved, setSaved] = useState(!!cachedConv.saved);
   useEffect(()=>{ IA_CONV_CACHE[convCacheKey] = { history, convSystem, convLabel, followup, saved }; }, [convCacheKey, history, convSystem, convLabel, followup, saved]);
+  useEffect(()=>{ loadAiPrices(); }, []); // carrega a referencia de preco (calculadora de custo)
   const [memProps, setMemProps] = useState([]);     // memorias sugeridas pela IA (a revisar)
   const [memBusy, setMemBusy] = useState(false);    // turno extra "Sugerir memorias" em andamento
   const [showPrompt, setShowPrompt] = useState(false); // inspetor / configurador do prompt (modal)
@@ -8692,6 +8770,9 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
   const isAbort = (e)=> e?.name==='AbortError' || /abort/i.test(String(e?.message||''));
 
   const unsavedConv = history.length>0 && !saved;
+  // custo acumulado da conversa (soma das estimativas por turno; ignora local/gratis)
+  const convCost = history.reduce((a,t)=> (t.est && t.est.src!=='local') ? a + (t.est.brl||0) : a, 0);
+  const convHasCost = history.some(t=>t.est && t.est.src!=='local');
 
   // 1o turno: trava o material no system e manda a tarefa do modo como 1a mensagem de usuario.
   const analyze = async ()=>{
@@ -8704,7 +8785,8 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
     const ac = newAbort();
     try{
       const text = await askAIChat({ system, messages: h, signal: ac.signal });
-      setHistory(x=>[...x, { role:'assistant', content: text, model: currentModelLabel() }]);
+      const usage = lastAiUsage(), est = aiCostEstimate(usage);
+      setHistory(x=>[...x, { role:'assistant', content: text, model: currentModelLabel(), usage, est }]);
     }catch(e){ if(!isAbort(e)) setErr(String(e?.message || e)); }
     finally{ setBusy(false); }
   };
@@ -8719,7 +8801,8 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
     const ac = newAbort();
     try{
       const reply = await askAIChat({ system: convSystem, messages: h, signal: ac.signal });
-      setHistory(x=>[...x, { role:'assistant', content: reply, model: currentModelLabel() }]);
+      const usage = lastAiUsage(), est = aiCostEstimate(usage);
+      setHistory(x=>[...x, { role:'assistant', content: reply, model: currentModelLabel(), usage, est }]);
     }catch(e){ if(!isAbort(e)) setErr(String(e?.message || e)); }
     finally{ setBusy(false); }
   };
@@ -8896,7 +8979,10 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
           ${!canRun && !busy && html`<p class="hint" style="margin:10px 0 0">Selecione ${scope==='codes'?'ao menos um código':'ao menos um documento'} e escreva a tarefa (ou use uma sugestão) para começar.</p>`}
         </div>`}
         ${history.map((t,i)=> i===0 ? null : html`<div key=${i} class="card" style=${`margin-bottom:10px;${t.role==='user'?'background:var(--teal-soft);border-color:var(--teal-soft)':''}`}>
-          <div class="field-label" style="margin-bottom:4px">${t.role==='user' ? 'Você' : ('IA' + (t.model ? ' — '+t.model : ''))}</div>
+          <div class="field-label" style="margin-bottom:4px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap">
+            <span>${t.role==='user' ? 'Você' : ('IA' + (t.model ? ' — '+t.model : ''))}</span>
+            ${t.role==='assistant' && t.est && html`<span class="meta" style="font-weight:400" title=${t.usage?`entrada ${(t.usage.input||0).toLocaleString('pt-BR')} · saída ${(t.usage.output||0).toLocaleString('pt-BR')} tokens${t.est.src&&t.est.src!=='local'?' · US$ '+(t.est.usd||0).toFixed(4)+' · '+t.est.src:''}`:''}>· ${t.est.src==='local' ? 'grátis (local)' : ('~'+iaMoney(t.est.brl,'BRL'))}</span>`}
+          </div>
           ${t.role==='user'
             ? html`<div style="white-space:pre-wrap;font-size:13px">${t.content}</div>`
             : html`<div dangerouslySetInnerHTML=${{__html: mdLite(t.content)}} />`}
@@ -8924,6 +9010,7 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
           ${onAddMemory && html`<button class="btn sm ghost" disabled=${busy || memBusy} onClick=${suggestMemories}>${memBusy?'sugerindo…':'Sugerir memórias'}</button>`}
           <button class="btn sm ghost" disabled=${busy || !canRun} onClick=${analyze}>Analisar de novo</button>
           <button class="btn sm ghost" disabled=${busy} onClick=${resetConv}>Limpar conversa</button>
+          ${convHasCost && html`<span class="meta" style="margin-left:auto" title="Estimativa somando as chamadas desta conversa (não inclui desconto de cache). Ajuste tarifa/câmbio em Minha Conta.">conversa: ~${iaMoney(convCost,'BRL')}</span>`}
         </div>
       </div>`}
     </div>
@@ -9856,12 +9943,24 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
   const [aiKey,setAiKey]=useState(()=>{ try{return localStorage.getItem('qualilab:ai_key')||'';}catch(e){return '';} });
   const [aiModel,setAiModel]=useState(()=>{ try{return localStorage.getItem('qualilab:ai_model')||'';}catch(e){return '';} });
   const [aiBaseUrl,setAiBaseUrl]=useState(()=>{ try{return localStorage.getItem('qualilab:ai_baseurl')||'';}catch(e){return '';} });
+  // calculadora de custo: cambio US$->R$ + tarifa propria (custom/azure) — todos em localStorage
+  const [usdBrl,setUsdBrl]=useState(()=>{ try{return localStorage.getItem('qualilab:usd_brl')||'';}catch(e){return '';} });
+  const [priceIn,setPriceIn]=useState(()=>{ try{return localStorage.getItem('qualilab:ai_price_in')||'';}catch(e){return '';} });
+  const [priceOut,setPriceOut]=useState(()=>{ try{return localStorage.getItem('qualilab:ai_price_out')||'';}catch(e){return '';} });
+  const [aiPrices,setAiPrices]=useState(null); // tabela de referencia (pra exibir o preco do modelo)
+  useEffect(()=>{ loadAiPrices().then(setAiPrices); }, []);
   // custom e azure compartilham a UI de "URL base + modelo em texto livre" (custom:true);
   // azure tem rotulos proprios e exige a chave (azure:true).
   const provDef = AI_PROVIDERS.find(p=>p.id===aiProvider);
   const needsBaseUrl = !!provDef?.custom;
   const isAzure = !!provDef?.azure;
   const isLocal = !!provDef?.local;
+  // preco de referencia do modelo ativo (catalogo), pra exibir; id normalizado (tira sufixo de data)
+  const refModelId = activeModelId({ provider:aiProvider, model:aiModel });
+  const refRow = (!provDef?.custom && aiPrices)
+    ? (aiPrices[`${aiProvider}|${refModelId}`] || aiPrices[`${aiProvider}|${String(refModelId).replace(/-\d{8}$/,'')}`])
+    : null;
+  const refIsEstimate = aiProvider==='openai' || aiProvider==='gemini'; // Anthropic = oficial; resto = estimativa
 
   const run = async (fn)=>{ setErr(null); setMsg(null); try{ await fn(); }catch(e){ setErr(String(e.message||e)); } };
 
@@ -9881,6 +9980,16 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
       if(aiKey.trim()) localStorage.setItem('qualilab:ai_key', aiKey.trim()); else localStorage.removeItem('qualilab:ai_key');
       if(aiModel.trim()) localStorage.setItem('qualilab:ai_model', aiModel.trim()); else localStorage.removeItem('qualilab:ai_model');
       if(needsBaseUrl && aiBaseUrl.trim()) localStorage.setItem('qualilab:ai_baseurl', aiBaseUrl.trim()); else localStorage.removeItem('qualilab:ai_baseurl');
+      // calculadora de custo (aceita virgula ou ponto). Cambio: so grava se > 0. Tarifa propria:
+      // so pra custom/azure (catalogo usa a referencia); grava o numero, ou remove se vazio.
+      const fx = parseFloat(String(usdBrl).replace(',','.'));
+      if(usdBrl.trim() && fx>0) localStorage.setItem('qualilab:usd_brl', String(fx)); else localStorage.removeItem('qualilab:usd_brl');
+      if(needsBaseUrl){
+        const pi = parseFloat(String(priceIn).replace(',','.')), po = parseFloat(String(priceOut).replace(',','.'));
+        if(priceIn.trim()!=='' && pi>=0) localStorage.setItem('qualilab:ai_price_in', String(pi)); else localStorage.removeItem('qualilab:ai_price_in');
+        if(priceOut.trim()!=='' && po>=0) localStorage.setItem('qualilab:ai_price_out', String(po)); else localStorage.removeItem('qualilab:ai_price_out');
+      }
+      AI_PRICES = null; // proxima estimativa recarrega a referencia (caso tenha mudado)
     }catch(e){}
     setMsg('Configuração de IA salva.');
   });
@@ -9946,6 +10055,25 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
                 title=${m.note} onClick=${()=>setAiModel(m.id)}>${m.label}${m.def?html`<span style="opacity:.65;font-size:10px;margin-left:5px">padrão</span>`:''}</button>`)}
             </div>`}
         <p class="hint" style="margin:6px 0 0">${isAzure ? 'Obrigatório — use o nome do deployment criado no portal do Azure (não o nome do modelo base, ex.: o deployment de um gpt-4.1-mini pode ter qualquer nome).' : isLocal ? html`Obrigatório — escolha uma sugestão ou digite <b>qualquer</b> modelo que você tenha baixado, com o nome exato (<code>ollama pull llama3.1</code>; confira com <code>ollama list</code>, incluindo tags como <code>llama3.1:70b</code>).` : needsBaseUrl ? 'Obrigatório para o provedor personalizado — use o id de modelo exatamente como o servidor espera.' : 'Modelo "vazio" usa o padrão do projeto pra esse provedor. Em geral, modelos maiores/mais capazes (à direita) são mais lentos e mais caros por uso do que os menores (à esquerda) — escolha conforme a complexidade da tarefa.'}</p>
+      </div>
+      <div class="field" style="border-top:1px solid var(--line-soft);padding-top:10px;margin-top:2px">
+        <div class="field-label">Custo estimado (calculadora)</div>
+        <p class="hint" style="margin:0 0 8px">${isLocal
+          ? html`Servidor local não tem custo por token — as telas de IA mostram "grátis (local)".`
+          : provDef?.custom
+          ? html`Este provedor não tem preço de referência. Informe a tarifa do seu provedor (US$ por 1M de tokens) para ver a estimativa de custo.`
+          : refRow
+          ? html`Referência para <b>${refModelId}</b>: <b>US$ ${Number(refRow.input).toFixed(2)}</b> entrada / <b>US$ ${Number(refRow.output).toFixed(2)}</b> saída por 1M tokens${refIsEstimate?html` <span style="color:var(--danger)">(estimativa — confira na página do provedor)</span>`:' (oficial)'}.`
+          : html`Sem preço de referência cadastrado para <b>${refModelId||'este modelo'}</b> ainda.`}</p>
+        ${provDef?.custom && !isLocal && html`<div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:8px">
+          <label style="flex:1;min-width:120px"><div class="field-label" style="font-weight:400">US$ / 1M entrada</div>
+            <input class="txtin" value=${priceIn} onInput=${e=>setPriceIn(e.target.value)} placeholder="ex.: 1.25" /></label>
+          <label style="flex:1;min-width:120px"><div class="field-label" style="font-weight:400">US$ / 1M saída</div>
+            <input class="txtin" value=${priceOut} onInput=${e=>setPriceOut(e.target.value)} placeholder="ex.: 10" /></label>
+        </div>`}
+        ${!isLocal && html`<label style="display:block;max-width:240px"><div class="field-label" style="font-weight:400">Câmbio US$ → R$</div>
+          <input class="txtin" value=${usdBrl} onInput=${e=>setUsdBrl(e.target.value)} placeholder="ex.: 5,50 (padrão se vazio)" /></label>`}
+        <p class="hint" style="margin:6px 0 0">A estimativa é um teto (ignora desconto de cache). Os preços de referência são de lista — atualize com o provedor se mudarem.</p>
       </div>
       <p class="hint" style="margin:0 0 8px">Temperatura padrão: <code>0,3</code> (respostas mais focadas e consistentes, menos "criativas"). Top-p: não definido pela aplicação — usa o padrão do provedor/modelo escolhido (em geral entre 0,9 e 1). Nenhum dos dois é configurável por aqui ainda.</p>
       <div class="row" style="gap:6px">

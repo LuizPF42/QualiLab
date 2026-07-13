@@ -539,6 +539,37 @@ begin
 end; $$;
 grant execute on function public.set_memory_active(uuid, boolean) to anon, authenticated;
 
+-- ---------- ai_prices (referencia de preco por modelo — "calculadora de custo" da IA) ----------
+-- Preco de LISTA por 1M de tokens, so pra estimar o custo das chamadas de IA em US$/R$. Leitura
+-- PUBLICA (preco de lista nao e segredo; o front le pra estimar antes/depois da chamada); escrita
+-- so por service_role via SQL (anon/authenticated NAO alteram — sem policy de insert/update/delete).
+-- Fonte dos valores: Anthropic = pricing oficial (jun/2026); OpenAI/Gemini = ESTIMATIVA a conferir.
+-- Atualizar preco = UPDATE aqui (nao mexe no codigo, nao precisa deploy). BYOK: o pesquisador pode
+-- sobrescrever com a tarifa dele em "Minha Conta" (localStorage), e isso vence esta referencia.
+create table if not exists public.ai_prices (
+  provider       text not null,   -- gemini | openai | anthropic
+  model          text not null,   -- id do modelo (bate com AI_PROVIDERS no front-end)
+  input_usd_1m   numeric not null default 0,   -- US$ por 1.000.000 de tokens de ENTRADA
+  output_usd_1m  numeric not null default 0,   -- US$ por 1.000.000 de tokens de SAIDA
+  updated_at     timestamptz not null default now(),
+  primary key (provider, model)
+);
+alter table public.ai_prices enable row level security;
+drop policy if exists ai_prices_read on public.ai_prices;
+create policy ai_prices_read on public.ai_prices for select using (true);
+-- seed inicial (idempotente: on conflict DO NOTHING preserva correcoes feitas depois via UPDATE).
+insert into public.ai_prices (provider, model, input_usd_1m, output_usd_1m) values
+  ('anthropic', 'claude-haiku-4-5',        1.00,  5.00),   -- pricing oficial Anthropic (jun/2026)
+  ('anthropic', 'claude-sonnet-4-6',       3.00, 15.00),   -- idem
+  ('anthropic', 'claude-opus-4-8',         5.00, 25.00),   -- idem
+  ('openai',    'gpt-5.4-mini',            0.25,  2.00),   -- ESTIMATIVA — conferir na pagina da OpenAI
+  ('openai',    'gpt-5.4',                 1.25, 10.00),   -- ESTIMATIVA
+  ('openai',    'gpt-5.5',                 2.00, 15.00),   -- ESTIMATIVA
+  ('gemini',    'gemini-3.1-flash-lite',   0.10,  0.40),   -- ESTIMATIVA — conferir na pagina do Google
+  ('gemini',    'gemini-3.5-flash',        0.30,  2.50),   -- ESTIMATIVA
+  ('gemini',    'gemini-3.1-pro-preview',  1.25, 10.00)    -- ESTIMATIVA
+on conflict (provider, model) do nothing;
+
 -- ---------- limpeza de memos orfaos no proprio banco ----------
 -- memos.target_id nao tem FK (aponta pra tabelas diferentes conforme o scope), entao o
 -- Postgres nao limpa sozinho. Os stores do cliente ja limpam nos fluxos do app, mas as

@@ -282,6 +282,32 @@ async function callAnthropic(apiKey: string, model: string, systemParts: string[
   return { text, raw: data };
 }
 
+// Normaliza o "usage" (contagem de tokens REAL da resposta) de cada provedor pra um formato unico
+// { input, output, cached } — pro front-end estimar custo (calculadora de custo da IA). input = total
+// de tokens de ENTRADA (inclui os servidos de cache); output = tokens de SAIDA; cached = porcao de
+// entrada servida de cache (subconjunto de input). ATENCAO: a Anthropic reporta input_tokens SEM o
+// cache, entao somamos cache_read + cache_creation pra obter o total de entrada processada.
+function normUsage(provider: string, data: any) {
+  try {
+    if (provider === 'gemini') {
+      const u = data?.usageMetadata || {};
+      return { input: u.promptTokenCount ?? 0, output: u.candidatesTokenCount ?? 0, cached: u.cachedContentTokenCount ?? 0 };
+    }
+    if (provider === 'openai') {
+      const u = data?.usage || {};
+      return { input: u.input_tokens ?? 0, output: u.output_tokens ?? 0, cached: u.input_tokens_details?.cached_tokens ?? 0 };
+    }
+    if (provider === 'anthropic') {
+      const u = data?.usage || {};
+      const cacheRead = u.cache_read_input_tokens ?? 0, cacheCreate = u.cache_creation_input_tokens ?? 0;
+      return { input: (u.input_tokens ?? 0) + cacheRead + cacheCreate, output: u.output_tokens ?? 0, cached: cacheRead };
+    }
+    // custom / azure (formato classico OpenAI chat completions)
+    const u = data?.usage || {};
+    return { input: u.prompt_tokens ?? 0, output: u.completion_tokens ?? 0, cached: u.prompt_tokens_details?.cached_tokens ?? 0 };
+  } catch (_e) { return { input: 0, output: 0, cached: 0 }; }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
@@ -361,7 +387,8 @@ Deno.serve(async (req: Request) => {
       : provider === 'azure' ? await callAzure(String(body.baseUrl), apiKey, model, systemParts, contents, body)
       : await callAnthropic(apiKey, model, systemParts, contents, body);
 
-    return new Response(JSON.stringify({ text, raw }), {
+    const usage = normUsage(provider, raw);
+    return new Response(JSON.stringify({ text, raw, usage }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (e) {
