@@ -254,7 +254,7 @@ QualiLab/
 
 ## Créditos e inspirações
 
-O QualiLab foi desenvolvido por **Luiz Pimenta Filho** no âmbito do **LabDados / FGV Direito SP** como projeto pessoal. Não representa posição institucional da FGV, que não tem qualquer responsabilidade pelo software.
+O QualiLab foi desenvolvido por [**Luiz Pimenta Filho**](http://lattes.cnpq.br/1096752907228813) no âmbito do [**LabDados / FGV Direito SP**](https://direitosp.fgv.br/nucleos-de-pesquisa/laboratorio-dados-pesquisa-empirica-direito-labdados) como projeto pessoal. Não representa posição institucional da FGV, que não tem qualquer responsabilidade pelo software.
 
 A maior parte do código deste projeto foi escrita com assistência do [Claude Code](https://claude.com/claude-code) (Anthropic). O CLAUDE.md (guia técnico que orienta esse trabalho) não é versionado neste repositório, mas está disponível mediante pedido.
 
