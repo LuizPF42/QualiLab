@@ -133,6 +133,9 @@
   .reader span[data-c]{border-radius:3px;padding:0 1px;cursor:default;}
   .reader span[data-match]{border-radius:2px;box-shadow:inset 0 0 0 1px #C98A12;}
   .reader span[data-match].current{background:#FFD54A!important;color:#3a2c00;box-shadow:none;}
+  /* destaque momentaneo ao "pular ao trecho" a partir da Visualizacao */
+  .reader span.qljump{border-radius:3px;animation:qlJumpFlash 1.6s ease-out;}
+  @keyframes qlJumpFlash{0%,25%{box-shadow:0 0 0 3px var(--sky);}100%{box-shadow:0 0 0 3px transparent;}}
 
   /* preferencias de leitura (zoom/largura/tema), aplicadas no .pane-body que envolve o .reader */
   .reader-pane.width-narrow .reader{max-width:760px;margin:0 auto;}
@@ -225,6 +228,12 @@
   .empty .t{font-family:var(--serif);font-size:20px;color:var(--ink);margin:10px 0 6px;}
 
   .author{font-size:10.5px;background:var(--line-soft);color:var(--ink-soft);border-radius:99px;padding:1px 7px;}
+  /* botoezinhos dentro do balao de codificador (Visualizacao): ● abre a nota analitica, × remove */
+  .anndot{border:0;background:none;color:var(--sky);cursor:pointer;font-size:10px;line-height:1;padding:0;}
+  .balx{border:0;background:none;color:var(--ink-faint);cursor:pointer;font-size:13px;line-height:1;padding:0;}
+  .balx:hover{color:var(--danger);}
+  .anncard{margin-top:8px;background:var(--teal-soft);border-radius:8px;padding:8px 10px;font-size:13px;white-space:pre-wrap;line-height:1.5;color:var(--ink);}
+  .vizquote:hover{box-shadow:inset 0 0 0 9999px rgba(27,157,217,.06);border-radius:4px;}
   .banner{font-size:12.5px;padding:9px 12px;border-radius:9px;margin:0 14px 12px;}
   .banner.warn{background:var(--amber-soft);border:1px solid rgba(138,109,31,.3);color:var(--amber);}
   .banner.err{background:#F8E6E6;border:1px solid #D9A3A3;color:#8A2A2A;}
@@ -2773,6 +2782,8 @@ function App(){
 
   const [sel, setSel] = useState(null);
   const [codingMemoTarget, setCodingMemoTarget] = useState(null); // { id, quote, codePath } -> abre CodingMemoModal (nota por trecho)
+  const [pendingJump, setPendingJump] = useState(null); // { docId, start } -> ao vir da Visualizacao, rola o leitor ate o trecho
+  const [readerFlash, setReaderFlash] = useState(null); // span_start do run a destacar momentaneamente no leitor
   const [ctxMenu, setCtxMenu] = useState(null); // menu de contexto (botão direito) p/ aplicar/remover código
   const [ctxCreating, setCtxCreating] = useState(false); // mini-formulário "criar novo código" dentro do menu
   const [ctxNewName, setCtxNewName] = useState('');
@@ -2938,6 +2949,20 @@ function App(){
     }
     return runs;
   }, [activeDoc, visibleCodings, searchMatches]);
+
+  // veio da Visualizacao (clicou num trecho): quando o leitor do doc certo estiver montado,
+  // rola ate o run que comeca no span e o destaca (span_start e sempre uma fronteira em buildRuns).
+  // Declarado DEPOIS de readerRuns de proposito — o array de dependencias referencia readerRuns,
+  // avaliado no render; declarar antes daria TDZ ("Cannot access 'readerRuns' before initialization").
+  useEffect(()=>{
+    if(!pendingJump || mainView!=='codificar' || !activeDoc || String(activeDoc.id)!==String(pendingJump.docId)) return;
+    const el = readerRef.current?.querySelector(`[data-start="${pendingJump.start}"]`);
+    if(!el) return; // runs ainda nao montaram (ex.: conteudo carregando na nuvem) — espera o proximo tick
+    el.scrollIntoView({ block:'center' });
+    setReaderFlash(pendingJump.start);
+    setPendingJump(null);
+  }, [pendingJump, mainView, activeDoc, readerRuns]);
+  useEffect(()=>{ if(readerFlash==null) return; const t=setTimeout(()=>setReaderFlash(null), 1600); return ()=>clearTimeout(t); }, [readerFlash]);
 
   /* lista "Meus Projetos" por conta (cache local, complementa o servidor) */
   const recentKey = (st)=> 'qualilab:projects:'+((st||store)?.currentUser?.()?.id || 'anon');
@@ -3177,7 +3202,7 @@ function App(){
     if(!store || !project || !store.listMemos){ setMemos([]); return; }
     try{ setMemos(await store.listMemos(project.id) || []); }catch(e){ setMemos([]); }
   }, [store, project]);
-  useEffect(()=>{ if(phase==='work' && (mainView==='memos'||mainView==='ia_analisar'||mainView==='codificar'||mainView==='relatorio')) loadMemos(); }, [phase, mainView, loadMemos]);
+  useEffect(()=>{ if(phase==='work' && (mainView==='memos'||mainView==='ia_analisar'||mainView==='codificar'||mainView==='relatorio'||mainView==='visualizar')) loadMemos(); }, [phase, mainView, loadMemos]);
   async function saveMemo(scope, targetId, content, label){
     await store.setMemo(project.id, scope, targetId, content, user?.name||'anônimo', label);
     await loadMemos();
@@ -4006,8 +4031,9 @@ function App(){
                 const matchI = run.matchI;
                 const isCurrent = matchI>=0 && matchI===((searchIdx%searchMatches.length+searchMatches.length)%searchMatches.length);
                 const matchAttrs = matchI>=0 ? { 'data-match': matchI } : {};
+                const jumpCls = (readerFlash!=null && run.start===readerFlash) ? ' qljump' : '';
                 if(run.codings.length===0) return html`<span key=${i} data-start=${run.start} data-end=${run.end} ...${matchAttrs}
-                   class=${isCurrent?'current':''}>${run.text}</span>`;
+                   class=${(isCurrent?'current':'')+jumpCls}>${run.text}</span>`;
                 // censura sempre na frente quando ha mais de um codigo no mesmo trecho — senao
                 // a caixa fechada (sinal visual de censura) podia ficar escondida atras de
                 // outro codigo que por acaso vem depois na lista (ordem nao tem prioridade).
@@ -4028,7 +4054,7 @@ function App(){
                 const border = code?.is_redaction ? `border:2px solid ${readerDark ? '#fff' : col.solid}`
                   : run.codings.length>1 ? `border-bottom:2px solid ${col.solid}` : '';
                 return html`<span key=${i} data-start=${run.start} data-end=${run.end} data-c="1" title=${title} ...${matchAttrs}
-                   class=${isCurrent?'current':''}
+                   class=${(isCurrent?'current':'')+jumpCls}
                    style=${`background:${col.tint};${border}`}>${run.text}</span>`;
               })}
             </div>`}
@@ -4229,14 +4255,14 @@ function App(){
       <section class="pane" style="flex:1;min-width:0;background:var(--paper)">
         <div class="pane-body scroll" style="padding:0">
           <${VizExcerpts} docs=${docs} codes=${codes} codeById=${codeById} codePath=${codePath}
-            allCodings=${allCodings} allValues=${allValues}
+            allCodings=${allCodings} allValues=${allValues} memos=${memos}
             view=${viewCoder} catFilter=${vizCatFilter} selCode=${vizSelCode}
             userId=${user?.id}
             crossCodes=${vizCross} setCrossCodes=${setVizCross}
             isAdmin=${isAdmin} mode=${mode}
             onDelCoding=${async id=>{ await delCoding(id); loadAll(); }}
             onAccept=${async c=>{ await addFinalCoding(c.document_id, c.code_id, c.span_start, c.span_end, c.quote); loadAll(); }}
-            onJump=${(docId)=>{ setActiveId(docId); setMainView('codificar'); }} projectMode=${projectMode} darkMode=${darkMode} />
+            onJump=${(docId, span)=>{ setActiveId(docId); setMainView('codificar'); if(span && span.start!=null) setPendingJump({ docId, start:span.start }); }} projectMode=${projectMode} darkMode=${darkMode} />
         </div>
       </section>
     </div>`}
@@ -5725,12 +5751,15 @@ function CloudCodeNode({ code, childrenOf, counts, selectedIds, onToggle, depthP
 
 /* ============ VizExcerpts — painel direito da Visualização ============
    Trechos do código selecionado, legíveis, agrupados por documento. */
-function VizExcerpts({ docs, codes, codeById, codePath, allCodings, allValues,
+function VizExcerpts({ docs, codes, codeById, codePath, allCodings, allValues, memos,
                        view, userId, catFilter, selCode, crossCodes, setCrossCodes,
                        onDelCoding, onAccept, onJump, projectMode, isAdmin, mode }){
   const layerCodings = useMemo(()=>
     codingsForView(allCodings, view, userId, projectMode)
   , [allCodings, view, userId, projectMode]);
+  // notas analiticas por coding (scope='coding'): { coding_id -> conteudo }. Alimenta o ● no balao.
+  const codingMemo = useMemo(()=> indexMemos(memos).codingMemo, [memos]);
+  const [openNote, setOpenNote] = useState(null); // coding.id cuja nota esta aberta no card (um por vez)
 
   // conjunto de codificações já no gabarito (final), por doc+código+intervalo — pra não
   // oferecer "aceitar no gabarito" de algo que já está consolidado (evita duplicata).
@@ -5791,10 +5820,23 @@ function VizExcerpts({ docs, codes, codeById, codePath, allCodings, allValues,
       });
   }, [selCode, crossCodes, layerCodings, matchingDocIds, docById, selWithDescendants]);
 
+  // agrupa codings de MESMO span+codigo no mesmo documento numa unidade so: um trecho identico
+  // grifado por varios codificadores aparece uma vez, com um balao por pessoa (mesmo padrao da
+  // Reconciliacao). So funde span EXATO (o quote e o mesmo) — spans parecidos mas diferentes
+  // continuam separados. excerpts ja vem ordenado e o Map preserva a ordem de insercao (= ordem de span).
   const byDoc = useMemo(()=>{
     const g={};
     excerpts.forEach(c=>{ (g[c.document_id]=g[c.document_id]||[]).push(c); });
-    return Object.entries(g);
+    return Object.entries(g).map(([docId, cods])=>{
+      const groups = new Map();
+      cods.forEach(c=>{
+        const k = c.code_id+'|'+c.span_start+'|'+c.span_end;
+        let grp = groups.get(k);
+        if(!grp){ grp = { key:k, code_id:c.code_id, span_start:c.span_start, span_end:c.span_end, quote:c.quote, items:[] }; groups.set(k, grp); }
+        grp.items.push(c);
+      });
+      return [docId, [...groups.values()]];
+    });
   }, [excerpts]);
 
   const selCodeObj = selCode ? codeById[selCode] : null;
@@ -5835,28 +5877,44 @@ function VizExcerpts({ docs, codes, codeById, codePath, allCodings, allValues,
         <button class="btn sm" title="Abrir no leitor" onClick=${()=>onJump&&onJump(docId)}>${docById[docId]?.name||docId}</button>
         <span class="count">${cods.length}</span>
       </div>
-      ${cods.map(c=>{
-        // quando a seleção agrega subcódigos (família), cada trecho mostra a cor/caminho do seu código específico (folha)
-        const codeObj = codeById[c.code_id];
-        const codeCol = c.code_id===selCode ? col : codeColor(codeObj?.hue??selCodeObj?.hue??0, codeObj?.depth??selCodeObj?.depth??0, codeObj?.hue_deg??selCodeObj?.hue_deg);
-        const showSubPath = c.code_id!==selCode;
-        return html`<div key=${c.id} class="card"
+      ${cods.map(g=>{
+        // familia agrega subcodigos: cada trecho mostra a cor/caminho do seu codigo especifico (folha)
+        const codeObj = codeById[g.code_id];
+        const codeCol = g.code_id===selCode ? col : codeColor(codeObj?.hue??selCodeObj?.hue??0, codeObj?.depth??selCodeObj?.depth??0, codeObj?.hue_deg??selCodeObj?.hue_deg);
+        const showSubPath = g.code_id!==selCode;
+        const indivItems = g.items.filter(i=>(i.layer||'individual')!=='final');
+        const finalItem = g.items.find(i=>i.layer==='final');
+        const acceptRep = indivItems[0] || g.items[0];
+        const groupCanAccept = isAdmin && projectMode==='collective' && !finalItem && indivItems.length>0 && !isFinalAlready(acceptRep);
+        const openIt = g.items.find(i=>i.id===openNote && codingMemo[i.id]);
+        // ● abre a nota analitica daquele coding; × remove aquela marca (respeitando quem pode)
+        const dot = (it)=> codingMemo[it.id] ? html`<button class="anndot" title="Ver nota analítica" onClick=${e=>{ e.stopPropagation(); setOpenNote(o=>o===it.id?null:it.id); }}>●</button>` : null;
+        const rmx = (it, lbl)=> canRemove(it) ? html`<button class="balx" title=${lbl} onClick=${()=>onDelCoding(it.id)}>×</button>` : null;
+        return html`<div key=${g.key} class="card"
           style=${`margin-bottom:8px;padding:0;overflow:hidden;display:flex;border-left:3px solid ${codeCol.solid}`}>
         <div style="flex:1;padding:12px 14px;min-width:0">
           ${showSubPath && html`<div class="row" style="gap:6px;margin-bottom:6px">
             <span class="swatch" style=${`background:${codeCol.solid}`}></span>
-            <span class="meta" style="font-weight:600">${codePath(c.code_id).join(' ▸ ')}</span>
+            <span class="meta" style="font-weight:600">${codePath(g.code_id).join(' ▸ ')}</span>
           </div>`}
-          <div class="reader" style="padding:0;font-size:16px;white-space:normal;margin-bottom:8px">${c.quote}</div>
-          <div class="row" style="gap:8px;align-items:center">
-            ${c.author_name && html`<span class="author">${c.author_name}</span>`}
-            ${c.layer==='final' && html`<span class="pill" title="Codificação consolidada no gabarito">gabarito</span>`}
+          <div class="reader vizquote" title="Abrir no leitor (ir ao trecho)" style="padding:0;font-size:16px;white-space:normal;margin-bottom:8px;cursor:pointer"
+            onClick=${()=>{ if(window.getSelection && !window.getSelection().isCollapsed) return; onJump&&onJump(docId, { start:g.span_start }); }}>${g.quote}</div>
+          <div class="row" style="gap:6px;align-items:center;flex-wrap:wrap">
+            ${indivItems.map(it=>html`<span class="author" key=${it.id} style="display:inline-flex;align-items:center;gap:5px">
+              ${it.author_name||'—'}${dot(it)}${rmx(it, isAdmin&&it.created_by!==userId?'remover (admin)':'remover')}
+            </span>`)}
+            ${finalItem && html`<span class="author" style="background:var(--teal-soft);color:var(--teal-deep);display:inline-flex;align-items:center;gap:5px" title="Codificação consolidada no gabarito">
+              ✓ gabarito${dot(finalItem)}${rmx(finalItem, 'remover do gabarito')}
+            </span>`}
             <div class="grow"></div>
-            ${canAccept(c) && html`<button class="btn sm primary" title="Consolidar este trecho na camada final (gabarito)"
-              onClick=${()=>onAccept&&onAccept(c)}>Aceitar no gabarito →</button>`}
-            ${!canAccept(c) && c.layer!=='final' && isFinalAlready(c) && html`<span class="meta" title="Já existe no gabarito">✓ no gabarito</span>`}
-            ${canRemove(c) && html`<button class="icon-btn" onClick=${()=>onDelCoding(c.id)} title=${isAdmin&&c.created_by!==userId?'remover (admin)':'remover'}>🗑</button>`}
+            ${groupCanAccept && html`<button class="btn sm primary" title="Consolidar este trecho na camada final (gabarito)"
+              onClick=${()=>onAccept&&onAccept(acceptRep)}>Aceitar no gabarito →</button>`}
+            ${!groupCanAccept && !finalItem && isFinalAlready(acceptRep) && html`<span class="meta" title="Já existe no gabarito">✓ no gabarito</span>`}
           </div>
+          ${openIt && html`<div class="anncard">
+            <div class="meta" style="font-weight:600;margin-bottom:3px">Nota analítica${openIt.author_name?` · ${openIt.author_name}`:''}</div>
+            ${codingMemo[openIt.id]}
+          </div>`}
         </div>
       </div>`; })}
     </div>`)}

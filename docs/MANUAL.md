@@ -406,9 +406,11 @@ Tela mestre-detalhe para **ler todos os trechos de um código**:
 - **Direita**: todos os trechos do código selecionado, em tipografia de leitura, **agrupados por documento**.
 
 Recursos:
+- **Trechos idênticos, um card só**: quando **mais de um pesquisador** marca o **mesmo trecho com o mesmo código**, ele aparece **uma vez**, com um **balão de nome por pesquisador** embaixo — em vez de cards repetidos. Cada balão traz um **×** para remover aquela marcação específica.
+- **Nota analítica (●)**: um balão com **●** avisa que aquele trecho tem uma nota analítica; clique no **●** para **ler a nota ali mesmo**. (A nota se escreve pelo menu de contexto do leitor, em "Anotar trecho".)
+- **Abrir no leitor**: clique no **texto do trecho** para pular até ele na aba Codificação, **no lugar exato do grifo** — ele pisca por um instante para você achar.
 - **Filtro por categoria**: restringe aos documentos que atendem certos atributos.
 - **Co-ocorrência**: mostra trechos onde dois códigos aparecem juntos.
-- **Abrir no leitor**: um atalho em cada trecho pula até ele na aba Codificação, no lugar exato do grifo.
 - **Aceitar no gabarito** *(admin, projeto coletivo)*: consolida um trecho individual direto na camada final, sem ir à Reconciliação.
 
 ---
