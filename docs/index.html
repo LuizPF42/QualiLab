@@ -8930,9 +8930,11 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
           <div class="seg" style="flex-wrap:wrap">
             ${IA_STANCES.map(s=>html`<button key=${s.id} class=${stance===s.id?'on':''} onClick=${()=>changeStance(s.id)}>${s.label}</button>`)}
           </div>
-          ${stance==='personalizado' && html`<textarea class="txtin" rows="3" style="resize:vertical;margin-top:8px"
-            placeholder="Descreva a postura/papel que a IA deve assumir nesta análise (substitui as posturas prontas acima)…"
-            value=${stanceText} onInput=${e=>changeStanceText(e.target.value)}></textarea>`}
+          ${stance==='personalizado'
+            ? html`<textarea class="txtin" rows="3" style="resize:vertical;margin-top:8px"
+                placeholder="Descreva a postura/papel que a IA deve assumir nesta análise (substitui as posturas prontas acima)…"
+                value=${stanceText} onInput=${e=>changeStanceText(e.target.value)}></textarea>`
+            : html`<div style="margin-top:8px;font-size:12.5px;line-height:1.55;color:var(--ink-soft)">${(IA_STANCES.find(s=>s.id===stance)||IA_STANCES[0]).text}</div>`}
         </div>
         <div class="field" style="margin-bottom:12px">
           <div class="field-label">Instruções próprias à IA</div>
