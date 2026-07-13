@@ -178,21 +178,43 @@ async function callGemini(apiKey: string, model: string, systemParts: string[], 
 // max_completion_tokens em vez de max_tokens; gpt-5.4 puro chegou a dar 404 em
 // /v1/chat/completions "nao e um chat model"). A Responses API e o endpoint unificado que a
 // OpenAI recomenda pra GPT-5.x e continua funcionando pros modelos antigos (gpt-4o etc.).
+// Modelos de RACIOCINIO da OpenAI (serie o* e gpt-5+) NAO aceitam "temperature" na
+// Responses API — mandar o parametro da 400 ("Unsupported parameter: 'temperature'
+// is not supported with this model"). Os classicos (gpt-4o, gpt-4.1, gpt-3.5...)
+// aceitam, entao so omitimos pra familia de raciocinio e mantemos 0.3 no resto.
+function openaiTemperatureOK(model: string) {
+  const m = String(model).toLowerCase();
+  if (/^o\d/.test(m)) return false;    // o1, o3, o4-mini... (raciocinio)
+  if (/^gpt-5/.test(m)) return false;  // gpt-5, gpt-5.4, gpt-5.6-*... (raciocinio)
+  return true;
+}
+
 async function callOpenAI(apiKey: string, model: string, systemParts: string[], contents: any[], opts: any) {
   const input = [
     ...(systemParts.length ? [{ role: 'system', content: systemParts.join('\n') }] : []),
     ...contents.map(m => ({ role: m.role, content: m.content })),
   ];
-  const res = await fetchRetry('https://api.openai.com/v1/responses', {
+  const base: Record<string, unknown> = {
+    model,
+    input,
+    max_output_tokens: Math.min(opts.max_tokens || MAX_TOKENS, MAX_TOKENS),
+  };
+  const temp = opts.temperature ?? 0.3;
+  const post = (withTemp: boolean) => fetchRetry('https://api.openai.com/v1/responses', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model,
-      input,
-      temperature: opts.temperature ?? 0.3,
-      max_output_tokens: Math.min(opts.max_tokens || MAX_TOKENS, MAX_TOKENS),
-    }),
+    body: JSON.stringify(withTemp ? { ...base, temperature: temp } : base),
   });
+
+  const tempOK = openaiTemperatureOK(model);
+  let res = await post(tempOK);
+  // Rede de seguranca (BYOK aceita qualquer id de modelo): se o heuristico deixou
+  // passar um modelo que ainda assim rejeita temperature, refaz sem o parametro.
+  if (res.status === 400 && tempOK) {
+    const errText = await res.text();
+    if (/temperature/i.test(errText)) res = await post(false);
+    else throw new Error(`OpenAI API (400): ${trunc(errText)}`);
+  }
   if (!res.ok) throw new Error(`OpenAI API (${res.status}): ${trunc(await res.text())}`);
   const data = await res.json();
   // "output_text" e um campo de conveniencia (string unica) que a API costuma incluir; se
