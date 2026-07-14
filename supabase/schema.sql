@@ -435,14 +435,18 @@ create trigger trg_memos_provenance before insert or update on public.memos
 
 -- ---------- cor personalizada de codigo (somente nivel 0 / familia) ----------
 alter table public.codes add column if not exists hue_deg int;
+-- saturacao personalizada da familia (eixo vivo<->apagado, 35-75; null = padrao 58). Propaga aos
+-- subcodigos igual ao hue_deg; NAO afeta luminosidade (profundidade). Mesmo gate de admin.
+alter table public.codes add column if not exists sat int;
 
 create or replace function public.codes_color_guard()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
   -- so trava a cor de codigos de nivel 0 (familia); subcodigos sempre herdam, nunca escolhem
   if new.parent_id is null and not public.is_admin(new.project_id) then
-    if (TG_OP = 'INSERT' and new.hue_deg is not null)
-       or (TG_OP = 'UPDATE' and new.hue_deg is distinct from old.hue_deg) then
+    if (TG_OP = 'INSERT' and (new.hue_deg is not null or new.sat is not null))
+       or (TG_OP = 'UPDATE' and (new.hue_deg is distinct from old.hue_deg
+                                 or new.sat is distinct from old.sat)) then
       raise exception 'Apenas administradores podem definir a cor personalizada de uma família de código';
     end if;
   end if;
