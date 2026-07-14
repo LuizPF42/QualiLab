@@ -150,6 +150,22 @@ async function fetchRetry(url: string, init: RequestInit, attempts = 3): Promise
   throw (lastErr ?? new HttpError(504, 'Sem resposta do provedor de IA dentro do tempo limite.'));
 }
 
+// Alguns modelos de RACIOCINIO recusam "temperature" com 400: OpenAI (o*/gpt-5+) na
+// Responses API, Anthropic (familia 5, Opus 4.7+) na Messages API, ou qualquer um desses
+// servido por um endpoint custom/azure. Este helper faz a chamada e, se vier 400
+// mencionando "temperature", REFAZ sem o parametro. `post(withTemp)` monta a request;
+// `tempOK` = ja mandamos temperature (heuristico) — quando false nem tentamos com ela.
+async function postWithTempFallback(post: (withTemp: boolean) => Promise<Response>, tempOK: boolean, label: string): Promise<Response> {
+  let res = await post(tempOK);
+  // so cai aqui quando MANDAMOS temperature; um 400 citando o parametro = recusa -> refaz sem ele
+  if (res.status === 400 && tempOK) {
+    const errText = await res.text();
+    if (/temperature/i.test(errText)) res = await post(false);
+    else throw new Error(`${label} (400): ${trunc(errText)}`);
+  }
+  return res;
+}
+
 // chave no HEADER (x-goog-api-key), nunca na query string: uma URL invalida ou
 // erro de rede poderia ecoar a URL inteira (com a chave) na mensagem de erro.
 async function callGemini(apiKey: string, model: string, systemParts: string[], contents: any[], opts: any) {
@@ -206,15 +222,9 @@ async function callOpenAI(apiKey: string, model: string, systemParts: string[], 
     body: JSON.stringify(withTemp ? { ...base, temperature: temp } : base),
   });
 
-  const tempOK = openaiTemperatureOK(model);
-  let res = await post(tempOK);
-  // Rede de seguranca (BYOK aceita qualquer id de modelo): se o heuristico deixou
-  // passar um modelo que ainda assim rejeita temperature, refaz sem o parametro.
-  if (res.status === 400 && tempOK) {
-    const errText = await res.text();
-    if (/temperature/i.test(errText)) res = await post(false);
-    else throw new Error(`OpenAI API (400): ${trunc(errText)}`);
-  }
+  // heuristico omite temperature pra familia de raciocinio; postWithTempFallback e a rede
+  // de seguranca (BYOK aceita qualquer id de modelo) — refaz sem temperature num 400 do tipo.
+  const res = await postWithTempFallback(post, openaiTemperatureOK(model), 'OpenAI API');
   if (!res.ok) throw new Error(`OpenAI API (${res.status}): ${trunc(await res.text())}`);
   const data = await res.json();
   // "output_text" e um campo de conveniencia (string unica) que a API costuma incluir; se
@@ -240,16 +250,16 @@ async function callCustom(baseUrl: string, apiKey: string, model: string, system
     ...(systemParts.length ? [{ role: 'system', content: systemParts.join('\n') }] : []),
     ...contents.map(m => ({ role: m.role, content: m.content })),
   ];
-  const res = await fetchRetry(url, {
+  const temp = opts.temperature ?? 0.3;
+  const base = { model, messages, max_tokens: Math.min(opts.max_tokens || MAX_TOKENS, MAX_TOKENS) };
+  const post = (withTemp: boolean) => fetchRetry(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}) },
-    body: JSON.stringify({
-      model,
-      messages,
-      temperature: opts.temperature ?? 0.3,
-      max_tokens: Math.min(opts.max_tokens || MAX_TOKENS, MAX_TOKENS),
-    }),
+    body: JSON.stringify(withTemp ? { ...base, temperature: temp } : base),
   });
+  // sem heuristico (o modelo custom e livre): tenta com temperature e cai na rede de
+  // seguranca se um modelo de raciocinio atras do endpoint recusar o parametro.
+  const res = await postWithTempFallback(post, true, 'API personalizada');
   if (!res.ok) throw new Error(`API personalizada (${res.status}): ${trunc(await res.text())}`);
   const data = await res.json();
   const text = data.choices?.[0]?.message?.content ?? '';
@@ -270,34 +280,48 @@ async function callAzure(baseUrl: string, apiKey: string, model: string, systemP
     ...(systemParts.length ? [{ role: 'system', content: systemParts.join('\n') }] : []),
     ...contents.map(m => ({ role: m.role, content: m.content })),
   ];
-  const res = await fetchRetry(url, {
+  const temp = opts.temperature ?? 0.3;
+  const base = { model, messages, max_tokens: Math.min(opts.max_tokens || MAX_TOKENS, MAX_TOKENS) };
+  const post = (withTemp: boolean) => fetchRetry(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'api-key': apiKey },
-    body: JSON.stringify({
-      model,
-      messages,
-      temperature: opts.temperature ?? 0.3,
-      max_tokens: Math.min(opts.max_tokens || MAX_TOKENS, MAX_TOKENS),
-    }),
+    body: JSON.stringify(withTemp ? { ...base, temperature: temp } : base),
   });
+  // Azure serve modelos OpenAI, inclusive os de raciocinio (o*/gpt-5) que recusam
+  // temperature — mesma rede de seguranca do custom (sem heuristico, deployment e livre).
+  const res = await postWithTempFallback(post, true, 'Azure OpenAI');
   if (!res.ok) throw new Error(`Azure OpenAI (${res.status}): ${trunc(await res.text())}`);
   const data = await res.json();
   const text = data.choices?.[0]?.message?.content ?? '';
   return { text, raw: data };
 }
 
+// Anthropic: os modelos mais novos NAO aceitam "temperature" — respondem 400
+// ("`temperature` is deprecated for this model."). Recusam: familia 5 (Sonnet 5,
+// Opus 5, Fable/Mythos 5) e Opus 4.7/4.8. Aceitam: Sonnet/Opus 4.6 e anteriores e
+// Haiku 4.5. Como e BYOK (qualquer id de modelo), heuristico + rede de seguranca,
+// igual ao OpenAI (postWithTempFallback cobre o que o heuristico deixar passar).
+function anthropicTemperatureOK(model: string) {
+  const m = String(model).toLowerCase();
+  if (/claude-\w+-5\b/.test(m)) return false;        // sonnet-5, opus-5, fable-5, mythos-5...
+  if (/claude-opus-4-[78]\b/.test(m)) return false;  // opus 4.7 / 4.8
+  return true;                                        // sonnet/opus 4.6 e anteriores, haiku 4.5...
+}
+
 async function callAnthropic(apiKey: string, model: string, systemParts: string[], contents: any[], opts: any) {
-  const res = await fetchRetry('https://api.anthropic.com/v1/messages', {
+  const temp = opts.temperature ?? 0.3;
+  const base: Record<string, unknown> = {
+    model,
+    max_tokens: Math.min(opts.max_tokens || MAX_TOKENS, MAX_TOKENS),
+    ...(systemParts.length ? { system: systemParts.join('\n') } : {}),
+    messages: contents.map(m => ({ role: m.role, content: m.content })),
+  };
+  const post = (withTemp: boolean) => fetchRetry('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({
-      model,
-      max_tokens: Math.min(opts.max_tokens || MAX_TOKENS, MAX_TOKENS),
-      temperature: opts.temperature ?? 0.3,
-      ...(systemParts.length ? { system: systemParts.join('\n') } : {}),
-      messages: contents.map(m => ({ role: m.role, content: m.content })),
-    }),
+    body: JSON.stringify(withTemp ? { ...base, temperature: temp } : base),
   });
+  const res = await postWithTempFallback(post, anthropicTemperatureOK(model), 'Anthropic API');
   if (!res.ok) throw new Error(`Anthropic API (${res.status}): ${trunc(await res.text())}`);
   const data = await res.json();
   const text = (data.content ?? []).filter((b: any) => b.type === 'text').map((b: any) => b.text).join('') ?? '';
