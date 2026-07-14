@@ -6543,12 +6543,13 @@ function activeModelId(cfg){
 // preco unitario (US$/1M) do provedor+modelo: ollama/local = gratis; custom/azure = tarifa do
 // usuario (sem referencia possivel); catalogo = referencia da ai_prices (id normalizado tirando
 // sufixo de data, ex. claude-haiku-4-5-20251001 -> claude-haiku-4-5). null = sem preco conhecido.
-function aiUnitPrice(provider, model){
+function aiUnitPrice(provider, model, prices){
   if(isLocalProvider(provider)) return { input:0, output:0, src:'local' };
   const provDef = AI_PROVIDERS.find(p=>p.id===provider);
   if(provDef?.custom){ const r = aiUserRate(); return r ? { input:r.input, output:r.output, src:'sua tarifa' } : null; }
+  const map = prices || AI_PRICES;
   const norm = String(model||'').replace(/-\d{8}$/,'');
-  const row = AI_PRICES && (AI_PRICES[`${provider}|${model}`] || AI_PRICES[`${provider}|${norm}`]);
+  const row = map && (map[`${provider}|${model}`] || map[`${provider}|${norm}`]);
   return row ? { input: row.input, output: row.output, src:'referência' } : null;
 }
 // estimativa de custo de UMA chamada dado o usage (tokens). Ignora desconto de cache (=teto
@@ -6577,6 +6578,29 @@ function aiCostLabel(usage, provider, model){
   if(!est) return null;
   if(est.src==='local') return 'grátis (local)';
   return `~${iaMoney(est.brl,'BRL')}`;
+}
+// tokens ESTIMADOS de entrada de um prompt de IA: material capado no limite + escala fixa do prompt
+// (~1200 chars de andaime), a ~4 chars/token. FONTE UNICA (buildProv das 4 telas de IA + os botoes).
+function iaPromptTokens(chars){ return Math.round((Math.min(chars, IA_TOTAL_CHAR_LIMIT) + 1200) / 4); }
+// IA_FORECAST_OUT_TOKENS: orcamento de saida ASSUMIDO na estimativa PRE-envio. Diferente do custo por
+// turno (usage REAL), aqui a saida ainda nao existe — e costuma custar mais por token que a entrada.
+// Valor modesto e explicado no title; ajuste aqui pra mudar o padrao de todas as telas de IA.
+const IA_FORECAST_OUT_TOKENS = 1500;
+// rotulo PROSPECTIVO de custo (antes de enviar) = entrada (inTok) + IA_FORECAST_OUT_TOKENS de saida
+// assumida. prices = mapa opcional (default global AI_PRICES); os paineis passam o proprio estado pra
+// forcar o recalculo quando a referencia de preco chega. Retorna { text, title } (text = "≈ R$ X" ou
+// "grátis") ou null (sem preco conhecido -> a UI mostra so os tokens, como antes).
+function aiForecastLabel(inTok, prices){
+  const c = getAIConfig();
+  const p = aiUnitPrice(c.provider, activeModelId(c), prices);
+  if(!p) return null;
+  if(p.src==='local') return { text:'grátis', title:'modelo local (Ollama) — sem custo de API' };
+  const outTok = IA_FORECAST_OUT_TOKENS;
+  const usd = (Number(inTok||0)/1e6)*p.input + (outTok/1e6)*p.output;
+  return {
+    text: '≈ ' + iaMoney(usd*aiUsdBrl(), 'BRL'),
+    title: `custo estimado (${p.src}): entrada ~${Number(inTok||0).toLocaleString('pt-BR')} + saída estimada ~${outTok.toLocaleString('pt-BR')} tokens · teto (ignora desconto de cache); a saída real varia`,
+  };
 }
 
 // extrai os objetos {...} de NIVEL SUPERIOR de uma string, respeitando strings/escapes —
@@ -7048,6 +7072,8 @@ function IAOrganizarPanel({ project, docs, codes, codeById, codePath, store, all
   // --- CONFIG DO PROMPT (mesmo padrão do Analisar, MENOS postura/biblioteca): ai_instructions
   // (COMPARTILHADO com o Analisar) + ai_context (Memo para a IA) + memos injetados. ---
   const [showPrompt, setShowPrompt] = useState(false);
+  const [aiPrices, setAiPrices] = useState(AI_PRICES); // referencia de preco p/ estimativa de custo (re-render quando chega)
+  useEffect(()=>{ if(!AI_PRICES) loadAiPrices().then(setAiPrices); }, []);
   const aiInstrMemo = (memos||[]).find(m=>m.scope==='ai_instructions' && m.target_id===project?.id);
   const ctxMemo     = (memos||[]).find(m=>m.scope==='ai_context' && m.target_id===project?.id);
   const [aiInstr, setAiInstr] = useState('');
@@ -7183,7 +7209,8 @@ function IAOrganizarPanel({ project, docs, codes, codeById, codePath, store, all
       mem: nMem ? `${nAtiv} de ${nMem}` : 'nenhuma',
       censura: redactionIds.size ? `${redactionIds.size} código(s) de censura fora` : '—',
       chars, limit: IA_TOTAL_CHAR_LIMIT,
-      tokens: Math.round((Math.min(chars, IA_TOTAL_CHAR_LIMIT) + 1200) / 4),
+      tokens: iaPromptTokens(chars),
+      cost: aiForecastLabel(iaPromptTokens(chars), aiPrices),
     };
   };
 
@@ -7406,7 +7433,7 @@ function IAOrganizarPanel({ project, docs, codes, codeById, codePath, store, all
     <div class="pane-head" style="gap:12px">
       <button class="btn accent" onClick=${()=>setShowPrompt(true)}
         title="Configurar e revisar exatamente o que será enviado à IA">
-        <${PromptGearIcon} /> Configurar Prompt <span style="font-family:var(--mono);font-size:11px;font-weight:400;opacity:.85">· ≈ ${buildProv().tokens.toLocaleString('pt-BR')} tokens</span>
+        <${PromptGearIcon} /> Configurar Prompt ${(()=>{ const pv=buildProv(); return html`<span style="font-family:var(--mono);font-size:11px;font-weight:400;opacity:.85">· ≈ ${pv.tokens.toLocaleString('pt-BR')} tokens${pv.cost?html` · <span title=${pv.cost.title}>${pv.cost.text}</span>`:''}</span>`; })()}
       </button>
       <div class="seg" style="flex-wrap:wrap">
         ${TABS.map(t=>html`<button key=${t.id} class=${tab===t.id?'on':''} onClick=${()=>setTab(t.id)}>${t.label}</button>`)}
@@ -7541,6 +7568,8 @@ function IACategorizarPanel({ project, docs, cats, codePath, allValues, store, i
   // --- CONFIG DO PROMPT (mesmo padrão do Analisar, MENOS postura/biblioteca): ai_instructions
   // (COMPARTILHADO com o Analisar) + ai_context (Memo para a IA) + memos injetados. ---
   const [showPrompt, setShowPrompt] = useState(false);
+  const [aiPrices, setAiPrices] = useState(AI_PRICES); // referencia de preco p/ estimativa de custo (re-render quando chega)
+  useEffect(()=>{ if(!AI_PRICES) loadAiPrices().then(setAiPrices); }, []);
   const aiInstrMemo = (memos||[]).find(m=>m.scope==='ai_instructions' && m.target_id===project?.id);
   const ctxMemo     = (memos||[]).find(m=>m.scope==='ai_context' && m.target_id===project?.id);
   const [aiInstr, setAiInstr] = useState('');
@@ -7648,7 +7677,8 @@ function IACategorizarPanel({ project, docs, cats, codePath, allValues, store, i
       mem: nMem ? `${nAtiv} de ${nMem}` : 'nenhuma',
       censura: redactionIds.size ? `${redactionIds.size} código(s) de censura mascarado(s)` : '—',
       chars, limit: IA_TOTAL_CHAR_LIMIT,
-      tokens: Math.round((Math.min(chars, IA_TOTAL_CHAR_LIMIT) + 1200) / 4),
+      tokens: iaPromptTokens(chars),
+      cost: aiForecastLabel(iaPromptTokens(chars), aiPrices),
     };
   };
 
@@ -7773,7 +7803,7 @@ function IACategorizarPanel({ project, docs, cats, codePath, allValues, store, i
     <div class="pane-head" style="gap:12px">
       <button class="btn accent" onClick=${()=>setShowPrompt(true)}
         title="Configurar e revisar exatamente o que será enviado à IA">
-        <${PromptGearIcon} /> Configurar Prompt <span style="font-family:var(--mono);font-size:11px;font-weight:400;opacity:.85">· ≈ ${buildProv().tokens.toLocaleString('pt-BR')} tokens</span>
+        <${PromptGearIcon} /> Configurar Prompt ${(()=>{ const pv=buildProv(); return html`<span style="font-family:var(--mono);font-size:11px;font-weight:400;opacity:.85">· ≈ ${pv.tokens.toLocaleString('pt-BR')} tokens${pv.cost?html` · <span title=${pv.cost.title}>${pv.cost.text}</span>`:''}</span>`; })()}
       </button>
       <div class="seg" style="flex-wrap:wrap">
         ${TABS.map(t=>html`<button key=${t.id} class=${tab===t.id?'on':''} onClick=${()=>setTab(t.id)}>${t.label}</button>`)}
@@ -7900,6 +7930,8 @@ function IACodificacaoPanel({ project, docs, codes, codeById, codePath, store, a
   // --- CONFIG DO PROMPT (mesmo padrão do Analisar, MENOS postura/biblioteca). Persistida via
   // memos: ai_instructions (COMPARTILHADO com o Analisar) e ai_context (Memo para a IA). ---
   const [showPrompt, setShowPrompt] = useState(false);
+  const [aiPrices, setAiPrices] = useState(AI_PRICES); // referencia de preco p/ estimativa de custo (re-render quando chega)
+  useEffect(()=>{ if(!AI_PRICES) loadAiPrices().then(setAiPrices); }, []);
   const aiInstrMemo = (memos||[]).find(m=>m.scope==='ai_instructions' && m.target_id===project?.id);
   const ctxMemo     = (memos||[]).find(m=>m.scope==='ai_context' && m.target_id===project?.id);
   const [aiInstr, setAiInstr] = useState('');
@@ -7995,7 +8027,8 @@ function IACodificacaoPanel({ project, docs, codes, codeById, codePath, store, a
       mem: nMem ? `${nAtiv} de ${nMem}` : 'nenhuma',
       censura: redactionIds.size ? `${redactionIds.size} código(s) de censura mascarado(s)` : '—',
       chars, limit: IA_TOTAL_CHAR_LIMIT,
-      tokens: Math.round((Math.min(chars, IA_TOTAL_CHAR_LIMIT) + 1200) / 4),
+      tokens: iaPromptTokens(chars),
+      cost: aiForecastLabel(iaPromptTokens(chars), aiPrices),
     };
   };
 
@@ -8120,7 +8153,7 @@ function IACodificacaoPanel({ project, docs, codes, codeById, codePath, store, a
     <div class="pane-head" style="gap:12px">
       <button class="btn accent" onClick=${()=>setShowPrompt(true)}
         title="Configurar e revisar exatamente o que será enviado à IA">
-        <${PromptGearIcon} /> Configurar Prompt <span style="font-family:var(--mono);font-size:11px;font-weight:400;opacity:.85">· ≈ ${buildProv().tokens.toLocaleString('pt-BR')} tokens</span>
+        <${PromptGearIcon} /> Configurar Prompt ${(()=>{ const pv=buildProv(); return html`<span style="font-family:var(--mono);font-size:11px;font-weight:400;opacity:.85">· ≈ ${pv.tokens.toLocaleString('pt-BR')} tokens${pv.cost?html` · <span title=${pv.cost.title}>${pv.cost.text}</span>`:''}</span>`; })()}
       </button>
       <div class="seg" style="flex-wrap:wrap">
         ${TABS.map(t=>html`<button key=${t.id} class=${tab===t.id?'on':''} onClick=${()=>setTab(t.id)}>${t.label}</button>`)}
@@ -8366,6 +8399,7 @@ function PromptInspector({ title, hint, controls, sections, task, prov, onClose 
           <div><b>Memórias</b> · ${prov.mem}</div>
           <div><b>Censura</b> · ${prov.censura}</div>
           <div><b>Estimativa</b> · <span style="font-family:var(--mono)">≈ ${prov.tokens.toLocaleString('pt-BR')} tokens</span></div>
+          ${prov.cost && html`<div><b>Custo estimado</b> · <span style="font-family:var(--mono)" title=${prov.cost.title}>${prov.cost.text}</span></div>`}
         </div>
         <div style="height:5px;border-radius:99px;background:rgba(0,66,122,.16);margin-top:9px;overflow:hidden">
           <div style=${`height:100%;width:${pct}%;background:${pct>=100?'var(--danger)':'var(--teal)'}`}></div>
@@ -8422,7 +8456,8 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
   const [err, setErr] = useState('');
   const [saved, setSaved] = useState(!!cachedConv.saved);
   useEffect(()=>{ IA_CONV_CACHE[convCacheKey] = { history, convSystem, convLabel, followup, saved }; }, [convCacheKey, history, convSystem, convLabel, followup, saved]);
-  useEffect(()=>{ loadAiPrices(); }, []); // carrega a referencia de preco (calculadora de custo)
+  const [aiPrices, setAiPrices] = useState(AI_PRICES); // referencia de preco p/ estimativa de custo (re-render quando chega)
+  useEffect(()=>{ if(!AI_PRICES) loadAiPrices().then(setAiPrices); }, []); // carrega a referencia de preco (calculadora de custo)
   const [memProps, setMemProps] = useState([]);     // memorias sugeridas pela IA (a revisar)
   const [memBusy, setMemBusy] = useState(false);    // turno extra "Sugerir memorias" em andamento
   const [showPrompt, setShowPrompt] = useState(false); // inspetor / configurador do prompt (modal)
@@ -8755,7 +8790,8 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
       mem: nMem ? `${nAtiv} de ${nMem}` : 'nenhuma',
       censura: maskedCodeIds.size ? `${maskedCodeIds.size} mascarada(s)` : (redactionCodesPresent.length ? 'incluída' : '—'),
       chars, limit: IA_TOTAL_CHAR_LIMIT,
-      tokens: Math.round((Math.min(chars, IA_TOTAL_CHAR_LIMIT) + 1200) / 4),
+      tokens: iaPromptTokens(chars),
+      cost: aiForecastLabel(iaPromptTokens(chars), aiPrices),
     };
   };
 
@@ -8850,7 +8886,7 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
     <div class="pane-head" style="gap:12px">
       <button class="btn accent" onClick=${openConfig}
         title="Configurar e revisar exatamente o que será enviado à IA">
-        <${PromptGearIcon} /> Configurar Prompt <span style="font-family:var(--mono);font-size:11px;font-weight:400;opacity:.85">· ${(IA_STANCES.find(s=>s.id===stance)||IA_STANCES[0]).label.toLowerCase()}${hasSelection?` · ≈ ${Math.round((Math.min(rawMaterial.length,IA_TOTAL_CHAR_LIMIT)+1200)/4).toLocaleString('pt-BR')} tokens`:''}</span>
+        <${PromptGearIcon} /> Configurar Prompt <span style="font-family:var(--mono);font-size:11px;font-weight:400;opacity:.85">· ${(IA_STANCES.find(s=>s.id===stance)||IA_STANCES[0]).label.toLowerCase()}${hasSelection?(()=>{ const tk=iaPromptTokens(rawMaterial.length), fc=aiForecastLabel(tk,aiPrices); return html` · ≈ ${tk.toLocaleString('pt-BR')} tokens${fc?html` · <span title=${fc.title}>${fc.text}</span>`:''}`; })():''}</span>
       </button>
       <div class="seg" style="flex-wrap:wrap">
         ${SCOPES.map(s=>html`<button key=${s.id} class=${scope===s.id?'on':''} onClick=${()=>changeScope(s.id)}>${s.label}</button>`)}
