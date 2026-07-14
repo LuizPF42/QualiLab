@@ -383,7 +383,14 @@ function codeColor(hue, depth, hueDeg, dark=false, sat=null){
   const baseS = (sat!=null) ? Math.max(0, Math.min(100, sat)) : 58;
   // o tint (fundo do grifo) e levemente menos saturado que o solido — preserva a relacao 58/55
   const S = (isGray||isBlack) ? 0 : baseS, tintS = (isGray||isBlack) ? 0 : Math.max(0, baseS-3);
-  const solidL = isBlack ? 0 : Math.min(70, 32 + depth*13);
+  // compensacao perceptual de luminosidade por matiz: laranja/amarelo (~48 graus) so "leem" como
+  // laranja/amarelo em L mais alto — a 32% viram MARROM/oliva (o classico "nao existe laranja, so
+  // marrom claro"). Empurramos o solid pra cima nos quentes (pico ~+16 em ~48 graus, zero fora de
+  // ~-72..168), SOMADO por cima do incremento de profundidade — entao "luminosidade = profundidade"
+  // segue valendo DENTRO da familia; so a base parte mais clara nos quentes. Frios (azul/roxo) ficam
+  // como antes (a 32% ja leem certo). So no solid; o tint claro/escuro nao precisa.
+  const warm = (isGray||isBlack) ? 0 : Math.max(0, Math.cos((H-48)*Math.PI/120));
+  const solidL = isBlack ? 0 : Math.min(72, 32 + depth*13 + Math.round(warm*16));
   // em dark mode, o tint (fundo do grifo) usa luminosidade baixa (fundo escuro tintado) em vez
   // do pastel claro — senao os grifos viram blocos claros e berrantes sobre o fundo escuro.
   const bgL = dark ? Math.max(18, 24 - depth*2) : Math.min(94, 86 + depth*3);
@@ -9658,7 +9665,9 @@ function RenameCode({ code, onUpd, onSetColor, onSetSat, onSetRedaction, isAdmin
   function ringMove(e){ if(!draggingRef.current) return; setHueLive(hueFromEvent(e)); }
   function ringUp(e){ if(!draggingRef.current) return; draggingRef.current=false; onSetColor(code, hslToHex(hueFromEvent(e),58,32)); }
   const knobA=hueLive*Math.PI/180, kx=CX+KR*Math.sin(knobA), ky=CY-KR*Math.cos(knobA);
-  const previewHex = isBlack ? '#000000' : isGray ? '#808080' : hslToHex(hueLive, satLive, 32);
+  // preview WYSIWYG: usa o proprio codeColor (inclui a compensacao de luminosidade por matiz),
+  // nao um hslToHex(...,32) fixo — senao o laranja apareceria marrom aqui e certo na arvore.
+  const previewHex = isBlack ? '#000000' : isGray ? '#808080' : codeColor(0, 0, hueLive, false, satLive).solid;
   return html`<div>
     <div class="row" style="gap:6px;margin-top:6px">
       <input class="txtin" value=${v} onInput=${e=>setV(e.target.value)} />
