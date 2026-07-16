@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>QualiLab — o seu laboratório de pesquisa qualitativa -- your own lab for qualitative research</title>
 <!-- favicon SVG inline (sem arquivo externo): "Q" serifada branca sobre quadrado azul-marinho FGV -->
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%2300427A'/><text x='16.02' y='23.13' font-family='Georgia,serif' font-size='26' font-weight='700' fill='white' text-anchor='middle'>Q</text></svg>" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%2300427A'/><text x='16.02' y='23.13' font-family='Georgia,serif' font-size='26' font-weight='700' fill='white' text-anchor='middle'>Q</text></svg>">
 <script>
   // captura erros do modulo (import falho, sintaxe, runtime) e mostra na tela
   function showFatal(msg){
@@ -32,22 +32,27 @@
   window.addEventListener('unhandledrejection', function(e){ var r=e.reason; handleGlobal((r&&(r.stack||r.message))||String(r)); });
 </script>
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
   :root{
     /* --ink-faint escurecido de #8B8E94 pra #6E7176 (jul/2026): era ~3.3:1 sobre branco,
        abaixo do minimo WCAG AA de 4.5:1 pra texto pequeno — e .meta/.count (11px) carregam
        informacao real (autoria, datas, contadores) */
     --paper:#F4F3EF; --surface:#FFFFFF; --ink:#1A1B1E; --ink-soft:#5C5F66; --ink-faint:#6E7176;
     --line:#E5E3DD; --line-soft:#EEECE6;
+
     /* paleta FGV: azul-marinho (primario) + azul-celeste (acento). nomes --teal* mantidos por compatibilidade */
     --teal:#00427A; --teal-deep:#002B5C; --teal-soft:#E2ECF5; --sky:#1B9DD9;
     --amber:#8A6D1F; --amber-soft:#F3ECD9; --danger:#B23A3A;
+
     /* estados de conexao da pilula do projeto: verde = arquivo (dados no disco do pesquisador),
        violeta = nuvem pessoal (Supabase do proprio pesquisador) */
     --ok:#256B43; --ok-soft:#E4F2E9; --violet:#5B3C96; --violet-soft:#EEE9F8;
-    --serif:"Newsreader","Iowan Old Style",Palatino,Georgia,serif;
-    --sans:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    --mono:"JetBrains Mono","SF Mono",ui-monospace,"Roboto Mono",Menlo,monospace;
+    --serif:"Newsreader","Iowan Old Style",palatino,georgia,serif;
+    --sans:"Inter",system-ui,-apple-system,"Segoe UI",roboto,helvetica,arial,sans-serif;
+    --mono:"JetBrains Mono","SF Mono",ui-monospace,"Roboto Mono",menlo,monospace;
   }
+
   /* modo escuro do app inteiro: sobrepoe as MESMAS variaveis do :root quando html[data-theme=dark]
      (setado pelo state darkMode no App). A maior parte da UI vira escura de graca por usar var(--*).
      As 3 regras abaixo cobrem o que nao depende so de variavel (banner de erro e o tema sepia do
@@ -62,12 +67,12 @@
   [data-theme="dark"] .banner.err{background:#3D1A1A;border-color:#7A3A3A;color:#F08080;}
   [data-theme="dark"] .reader-pane.theme-sepia{background:#2A2218;}
   [data-theme="dark"] .reader-pane.theme-sepia .reader{color:#D4C9A8;}
-  @import url('https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
   *{box-sizing:border-box;}
   html,body{margin:0;height:100%;}
   body{font-family:var(--sans);color:var(--ink);background:var(--paper);font-size:14px;}
   #app{height:100%;}
-  ::selection{background:rgba(0,66,122,.18);}
+  ::selection{background:rgb(0 66 122 / 18%);}
   button{font-family:var(--sans);cursor:pointer;}
   input,select,textarea{font-family:var(--sans);color:var(--ink);}
   .scroll::-webkit-scrollbar{width:10px;height:10px;}
@@ -81,18 +86,21 @@
   .tag{font-size:11px;color:var(--ink-faint);letter-spacing:.04em;}
   .grow{flex:1;}
   .pill{font-size:12px;padding:4px 10px;border-radius:99px;border:1px solid var(--line);background:var(--surface);color:var(--ink);display:inline-flex;align-items:center;gap:6px;}
+
   /* pilula do projeto: uma cor por estado de conexao (o texto ja diz o modo — cor e reforco).
      local = neutra (sem classe); arquivo = verde; nuvem oficial = azul FGV; nuvem pessoal =
      violeta; offline = ambar (nao esta salvando). bg/cor via var(--*) viram dark de graca. */
-  .pill.mode-cloud{background:var(--teal-soft);border-color:rgba(0,66,122,.35);color:var(--teal-deep);}
-  .pill.mode-custom{background:var(--violet-soft);border-color:rgba(91,60,150,.4);color:var(--violet);}
-  .pill.mode-file{background:var(--ok-soft);border-color:rgba(37,107,67,.4);color:var(--ok);}
+  .pill.mode-cloud{background:var(--teal-soft);border-color:rgb(0 66 122 / 35%);color:var(--teal-deep);}
+  .pill.mode-custom{background:var(--violet-soft);border-color:rgb(91 60 150 / 40%);color:var(--violet);}
+  .pill.mode-file{background:var(--ok-soft);border-color:rgb(37 107 67 / 40%);color:var(--ok);}
   .pill.mode-offline{background:var(--amber-soft);border-color:var(--amber);color:var(--amber);}
+
   /* nudge do rascunho: faixa fina e sobria abaixo do header (modo localStorage), com atalhos
      pra salvar como arquivo ou conectar a nuvem. Colapsavel por sessao (state nudgeHidden). */
   .nudge{display:flex;align-items:center;gap:10px;padding:6px 14px;font-size:12.5px;background:var(--amber-soft);border-bottom:1px solid var(--line);}
   .nudge .msg{flex:1;color:var(--ink-soft);}
   .nudge b{color:var(--amber);}
+
   /* tela de entrada (Welcome): cartoes de escolha arquivo/nuvem/rascunho */
   .wcard{display:flex;flex-direction:column;align-items:flex-start;gap:5px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:15px 16px;cursor:pointer;width:100%;color:var(--ink);}
   .wcard:hover{border-color:var(--teal);background:var(--paper);}
@@ -103,16 +111,17 @@
   .wdesc{font-size:12.5px;color:var(--ink-soft);line-height:1.45;}
   .btn{font-size:13px;font-weight:500;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:7px 12px;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;}
   .btn:hover{background:var(--paper);}
-  .btn.primary{background:var(--teal);color:#fff;border:none;font-weight:600;}
+  .btn.primary{background:var(--teal);color:#ffffff;border:none;font-weight:600;}
   .btn.primary:hover{background:var(--teal-deep);}
   .btn.violet{color:var(--violet);border-color:var(--violet);}
   .btn.violet:hover{background:var(--violet-soft);}
+
   /* botão "configurar prompt" (transparência da IA): acento no azul-claro FGV, o "oposto" do
      var(--teal) primário. No claro fica #4A9EDB (destaca contra o navy dos primários); no escuro
      INVERTE pra navy #00427A, porque lá o --teal já é #4A9EDB (os primários viram azul-claros) e o
      acento precisa contrastar. Texto branco, SEM borda (era box-shadow inset marinho, tirada a
      pedido do autor). Sem box-shadow o tamanho da caixa não muda, então segue alinhado com o .seg. */
-  .btn.accent{background:#4A9EDB;color:#fff;border:none;font-weight:600;}
+  .btn.accent{background:#4A9EDB;color:#ffffff;border:none;font-weight:600;}
   .btn.accent:hover{background:#3E8FCD;}
   [data-theme="dark"] .btn.accent{background:#00427A;}
   [data-theme="dark"] .btn.accent:hover{background:#002B5C;}
@@ -125,6 +134,7 @@
   .pane{min-width:0;display:flex;flex-direction:column;}
   .pane.left{flex:1 1 58%;border-right:1px solid var(--line);}
   .pane.right{flex:none;min-width:180px;}
+
   /* divisa arrastavel entre leitor e painel direito (tela Codificacao). So a Codificacao usa
      .pane.right; as outras views usam .pane.left com flex:1 1 100% inline, intocadas por isto. */
   .pane-resize{width:5px;flex:none;background:var(--line);cursor:col-resize;transition:background .15s;}
@@ -136,9 +146,11 @@
   .reader span[data-c]{border-radius:3px;padding:0 1px;cursor:default;}
   .reader span[data-match]{border-radius:2px;box-shadow:inset 0 0 0 1px #C98A12;}
   .reader span[data-match].current{background:#FFD54A!important;color:#3a2c00;box-shadow:none;}
+
   /* destaque momentaneo ao "pular ao trecho" a partir da Visualizacao */
-  .reader span.qljump{border-radius:3px;animation:qlJumpFlash 1.6s ease-out;}
-  @keyframes qlJumpFlash{0%,25%{box-shadow:0 0 0 3px var(--sky);}100%{box-shadow:0 0 0 3px transparent;}}
+  .reader span.qljump{border-radius:3px;animation:ql-jump-flash 1.6s ease-out;}
+
+  @keyframes ql-jump-flash{0%,25%{box-shadow:0 0 0 3px var(--sky);}100%{box-shadow:0 0 0 3px transparent;}}
 
   /* preferencias de leitura (zoom/largura/tema), aplicadas no .pane-body que envolve o .reader */
   .reader-pane.width-narrow .reader{max-width:760px;margin:0 auto;}
@@ -151,12 +163,12 @@
   .search-bar{display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid var(--line-soft);background:var(--paper);}
   .search-bar input{flex:1;max-width:320px;}
 
-  .toolbar{position:sticky;top:0;z-index:5;background:var(--teal-soft);border-bottom:1px solid rgba(0,66,122,.3);padding:8px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .toolbar{position:sticky;top:0;z-index:5;background:var(--teal-soft);border-bottom:1px solid rgb(0 66 122 / 30%);padding:8px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
   .toolbar .q{font-family:var(--mono);font-size:12px;color:var(--ink);max-width:50%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
   .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;}
   .seg button{border:none;background:var(--surface);padding:6px 12px;font-size:13px;color:var(--ink-soft);}
-  .seg button.on{background:var(--teal);color:#fff;font-weight:600;}
+  .seg button.on{background:var(--teal);color:#ffffff;font-weight:600;}
 
   .section{padding:14px;}
   .h{font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:8px;margin:0 0 8px;}
@@ -166,12 +178,13 @@
   .field{margin-bottom:14px;}
   .field-label{font-size:12.5px;font-weight:600;margin-bottom:6px;display:flex;align-items:center;gap:7px;}
   .opt{font-size:12.5px;padding:5px 11px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);}
-  .opt.on{background:var(--teal);border-color:var(--teal);color:#fff;font-weight:600;}
+  .opt.on{background:var(--teal);border-color:var(--teal);color:#ffffff;font-weight:600;}
+
   /* descricao (.meta) dentro de um .opt selecionado: no claro o fundo e navy (texto claro);
      no escuro o --teal vira azul-claro, entao texto/descricao ficam ESCUROS pra contrastar. */
-  .opt.on .meta{color:rgba(255,255,255,.82);}
+  .opt.on .meta{color:rgb(255 255 255 / 82%);}
   [data-theme="dark"] .opt.on{color:#0A1A2A;}
-  [data-theme="dark"] .opt.on .meta{color:rgba(8,20,33,.72);}
+  [data-theme="dark"] .opt.on .meta{color:rgb(8 20 33 / 72%);}
   .txtin{width:100%;font-size:13px;padding:7px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);}
   .meta{font-size:11px;color:var(--ink-faint);}
 
@@ -191,7 +204,6 @@
   .md hr{border:none;border-top:1px solid var(--line);margin:6px 0;}
 
   .tree{margin-top:6px;}
-  .node{}
   .node-row{display:flex;align-items:center;gap:7px;padding:5px 6px;border-radius:8px;}
   .node-row:hover{background:var(--paper);}
   .node-row.sel{background:var(--teal-soft);}
@@ -200,49 +212,54 @@
   .node-name{font-size:13px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .count{font-family:var(--mono);font-size:11px;color:var(--ink-faint);}
   .caret{width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;color:var(--ink-faint);cursor:pointer;flex:none;}
+
   /* <details> colapsavel com caret proprio — o marcador nativo some quando o <summary> e
      display:flex (ex.: .field-label), entao desenhamos com ::before e alternamos por [open]. */
   .collap>summary{cursor:pointer;list-style:none;}
   .collap>summary::-webkit-details-marker{display:none;}
   .collap>summary::before{content:'▸';color:var(--ink-faint);font-size:10px;flex:none;}
   .collap[open]>summary::before{content:'▾';}
+
   /* dica clicavel em negrito dentro do summary; alterna "ver"/"ocultar" conforme [open] */
   .collap>summary .clickhint{margin-top:4px;font-weight:700;color:var(--teal);font-size:11.5px;}
   .collap>summary .clickhint.on-closed{display:block;}
   .collap>summary .clickhint.on-open{display:none;}
   .collap[open]>summary .clickhint.on-closed{display:none;}
   .collap[open]>summary .clickhint.on-open{display:block;}
+
   /* indicador "pensando" (tres bolinhas) enquanto a IA processa */
   .typing{display:inline-flex;gap:5px;align-items:center;}
-  .typing span{width:7px;height:7px;border-radius:50%;background:var(--teal);animation:typingDot 1s infinite ease-in-out;}
+  .typing span{width:7px;height:7px;border-radius:50%;background:var(--teal);animation:typing-dot 1s infinite ease-in-out;}
   .typing span:nth-child(2){animation-delay:.16s;}
   .typing span:nth-child(3){animation-delay:.32s;}
-  @keyframes typingDot{0%,70%,100%{opacity:.3;transform:translateY(0);}35%{opacity:1;transform:translateY(-4px);}}
+
+  @keyframes typing-dot{0%,70%,100%{opacity:.3;transform:translateY(0);}35%{opacity:1;transform:translateY(-4px);}}
   .crumb{font-size:11px;color:var(--ink-faint);font-family:var(--mono);}
 
   .docitem{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--line);border-radius:9px;margin-bottom:6px;background:var(--surface);}
   .docitem.active{border-color:var(--teal);background:var(--teal-soft);}
 
-  .modal-bg{position:fixed;inset:0;background:rgba(20,20,22,.45);display:flex;align-items:center;justify-content:center;z-index:50;padding:18px;}
-  .modal{background:var(--surface);border-radius:16px;border:1px solid var(--line);max-width:460px;width:100%;padding:22px;box-shadow:0 18px 50px rgba(0,0,0,.2);max-height:calc(100vh - 36px);overflow-y:auto;}
+  .modal-bg{position:fixed;inset:0;background:rgb(20 20 22 / 45%);display:flex;align-items:center;justify-content:center;z-index:50;padding:18px;}
+  .modal{background:var(--surface);border-radius:16px;border:1px solid var(--line);max-width:460px;width:100%;padding:22px;box-shadow:0 18px 50px rgb(0 0 0 / 20%);max-height:calc(100vh - 36px);overflow-y:auto;}
   .modal h2{font-family:var(--serif);font-size:22px;margin:0 0 4px;}
 
   .empty{max-width:440px;margin:40px auto;text-align:center;color:var(--ink-soft);}
   .empty .t{font-family:var(--serif);font-size:20px;color:var(--ink);margin:10px 0 6px;}
 
   .author{font-size:10.5px;background:var(--line-soft);color:var(--ink-soft);border-radius:99px;padding:1px 7px;}
+
   /* botoezinhos dentro do balao de codificador (Visualizacao): ● abre a nota analitica, × remove */
   .anndot{border:0;background:none;color:var(--sky);cursor:pointer;font-size:10px;line-height:1;padding:0;}
   .balx{border:0;background:none;color:var(--ink-faint);cursor:pointer;font-size:13px;line-height:1;padding:0;}
   .balx:hover{color:var(--danger);}
   .anncard{margin-top:8px;background:var(--teal-soft);border-radius:8px;padding:8px 10px;font-size:13px;white-space:pre-wrap;line-height:1.5;color:var(--ink);}
-  .vizquote:hover{box-shadow:inset 0 0 0 9999px rgba(27,157,217,.06);border-radius:4px;}
+  .vizquote:hover{box-shadow:inset 0 0 0 9999px rgb(27 157 217 / 6%);border-radius:4px;}
   .banner{font-size:12.5px;padding:9px 12px;border-radius:9px;margin:0 14px 12px;}
-  .banner.warn{background:var(--amber-soft);border:1px solid rgba(138,109,31,.3);color:var(--amber);}
+  .banner.warn{background:var(--amber-soft);border:1px solid rgb(138 109 31 / 30%);color:var(--amber);}
   .banner.err{background:#F8E6E6;border:1px solid #D9A3A3;color:#8A2A2A;}
-  .progress-track{height:6px;border-radius:4px;background:rgba(138,109,31,.18);margin-top:7px;overflow:hidden;}
+  .progress-track{height:6px;border-radius:4px;background:rgb(138 109 31 / 18%);margin-top:7px;overflow:hidden;}
   .progress-fill{height:100%;background:var(--amber);border-radius:4px;transition:width .15s linear;}
-  .exmenu{position:absolute;right:0;top:112%;z-index:41;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.14);overflow:hidden;min-width:212px;}
+  .exmenu{position:absolute;right:0;top:112%;z-index:41;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 30px rgb(0 0 0 / 14%);overflow:hidden;min-width:212px;}
   .exmenu button{display:block;width:100%;text-align:left;border:none;background:var(--surface);padding:9px 12px;font-size:13px;color:var(--ink);cursor:pointer;font-family:var(--sans);}
   .exmenu button:hover{background:var(--paper);}
   .exmenu button:disabled:hover{background:var(--surface);}
@@ -259,20 +276,25 @@
   @media print{
     body *{visibility:hidden}
     #report-print, #report-print *{visibility:visible}
+
     /* sempre tinta escura sobre papel branco, mesmo com o app em tema escuro */
-    #report-print{position:absolute;left:0;top:0;width:100%;background:#fff;
-      --ink:#1A1B1E; --ink-soft:#5C5F66; --ink-faint:#8B8E94; --surface:#fff; --paper:#fff;
-      --line:#d8d8d2; --line-soft:#ececec; color:#1A1B1E;}
+    #report-print{position:absolute;left:0;top:0;width:100%;background:#ffffff;
+
+      --ink:#1A1B1E; --ink-soft:#5C5F66; --ink-faint:#8B8E94; --surface:#ffffff; --paper:#ffffff;
+      --line:#d8d8d2; --line-soft:#ececec;
+
+      color:#1A1B1E;}
     #report-print h1, #report-print h2{color:#1A1B1E !important;}
     .no-print{display:none !important}
   }
 
-  @media (max-width:900px){
+  @media (width <=900px){
     .split{flex-direction:column;}
     .pane.left{flex:none;height:50vh;border-right:none;border-bottom:1px solid var(--line);}
     .pane.right{flex:none;max-width:none;width:auto!important;height:50vh;}
     .pane-resize{display:none;}
   }
+
   @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
 </style>
 </head>
