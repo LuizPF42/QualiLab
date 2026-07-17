@@ -33,87 +33,197 @@
 // por padrao: sem dominios definidos, a chave do servidor fica indisponivel (so BYOK).
 // ============================================================
 
-import { createClient } from 'npm:@supabase/supabase-js@2';
+import { createClient } from '@supabase/supabase-js';
 
-const SHARED_KEYS: Record<string, string | undefined> = {
-  gemini: Deno.env.get('GEMINI_API_KEY'),
-  openai: Deno.env.get('OPENAI_API_KEY'),
-  anthropic: Deno.env.get('ANTHROPIC_API_KEY'),
+type ProviderMessage = {
+  role: string;
+  content: string;
 };
-const DEFAULT_MODELS: Record<string, string> = {
+
+type ProviderOptions = {
+  temperature?: number | null;
+  max_tokens?: number | null;
+  json?: unknown;
+};
+
+type RequestMessage = {
+  role?: string;
+  content?: unknown;
+};
+
+type AiAskBody = ProviderOptions & {
+  provider?: string;
+  apiKey?: string;
+  model?: string;
+  baseUrl?: string;
+  messages?: RequestMessage[];
+  system?: unknown;
+  prompt?: unknown;
+};
+
+type TextPart = {
+  type?: string;
+  text?: string;
+};
+
+type ProviderResponse = {
+  candidates?: Array<{ content?: { parts?: TextPart[] } }>;
+  output_text?: string;
+  output?: Array<{ type?: string; content?: TextPart[] }>;
+  choices?: Array<{ message?: { content?: string } }>;
+  content?: TextPart[];
+  usageMetadata?: {
+    promptTokenCount?: number;
+    candidatesTokenCount?: number;
+    cachedContentTokenCount?: number;
+  };
+  usage?: {
+    input_tokens?: number;
+    output_tokens?: number;
+    input_tokens_details?: { cached_tokens?: number };
+    cache_read_input_tokens?: number;
+    cache_creation_input_tokens?: number;
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    prompt_tokens_details?: { cached_tokens?: number };
+  };
+};
+
+export const DEFAULT_MODELS: Readonly<Record<string, string>> = Object.freeze({
   gemini: Deno.env.get('GEMINI_MODEL') || 'gemini-3.1-flash-lite',
   openai: Deno.env.get('OPENAI_MODEL') || 'gpt-5.4',
   anthropic: Deno.env.get('ANTHROPIC_MODEL') || 'claude-sonnet-4-6',
-};
-const MAX_TOKENS = 8192;            // trava de seguranca da SAIDA, independente do que o front pedir
-const MAX_BODY_CHARS = 2_000_000;   // trava da ENTRADA (o app respeita IA_TOTAL_CHAR_LIMIT, bem menor)
-const FETCH_TIMEOUT_MS = 60_000;    // por tentativa; NAO baixar — provedores BYOK lentos (raciocinio/Azure) chegam a ~50s/resposta
+});
+const MAX_TOKENS = 8192; // trava de seguranca da SAIDA, independente do que o front pedir
+const MAX_BODY_CHARS = 2_000_000; // trava da ENTRADA (o app respeita IA_TOTAL_CHAR_LIMIT, bem menor)
+const FETCH_TIMEOUT_MS = 60_000; // por tentativa; NAO baixar — provedores BYOK lentos (raciocinio/Azure) chegam a ~50s/resposta
 // A Edge Function tem teto de wall-clock de ~150s na plataforma Supabase: passou disso, o worker
 // e MORTO com HTTP 546, sem nem rodar o catch la embaixo — o front so ve "Erro 546" cru (sem
 // mensagem). O retry de 3x FETCH_TIMEOUT_MS (=180s) sozinho ja ultrapassava esse teto quando o
 // provedor era lento, GARANTINDO 546 em qualquer tentativa repetida. Por isso fetchRetry respeita
 // um PRAZO GLOBAL abaixo do teto: se nao cabe outra tentativa util, devolve erro limpo (504) em vez
 // de ser morto. (Diagnosticado nos logs: um request de 150.112ms morreu em 546; vizinhos de ~50s OK.)
-const WALL_CLOCK_BUDGET_MS = 135_000;  // deadline global < ~150s do teto (margem pra parse + montar resposta)
-const MIN_ATTEMPT_MS = 15_000;         // nao inicia tentativa sem ao menos isso de orcamento restante
-const SHARED_KEY_DOMAINS = (Deno.env.get('SHARED_KEY_DOMAINS') || '')
-  .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+const WALL_CLOCK_BUDGET_MS = 135_000; // deadline global < ~150s do teto (margem pra parse + montar resposta)
+const MIN_ATTEMPT_MS = 15_000; // nao inicia tentativa sem ao menos isso de orcamento restante
+type SharedKeyConfiguration = Readonly<{
+  keys: Readonly<Record<string, string | undefined>>;
+  domains: readonly string[];
+}>;
 
-const corsHeaders = {
+const sharedKeyConfiguration: SharedKeyConfiguration = Object.freeze({
+  keys: Object.freeze({
+    gemini: Deno.env.get('GEMINI_API_KEY'),
+    openai: Deno.env.get('OPENAI_API_KEY'),
+    anthropic: Deno.env.get('ANTHROPIC_API_KEY'),
+  }),
+  domains: Object.freeze(
+    (Deno.env.get('SHARED_KEY_DOMAINS') || '')
+      .split(',')
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean),
+  ),
+});
+
+export const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
 // erro com status proprio (validacao = 4xx; o catch generico continua 500)
-class HttpError extends Error {
+export class HttpError extends Error {
   status: number;
-  constructor(status: number, msg: string) { super(msg); this.status = status; }
+  constructor(status: number, msg: string) {
+    super(msg);
+    this.status = status;
+  }
 }
 
 // corpo de erro do provedor e truncado antes de voltar pro cliente — evita
 // despejar paginas de HTML/stack do upstream (e qualquer URL interna) na UI
-const trunc = (s: string, n = 600) => (s.length > n ? s.slice(0, n) + '…' : s);
+export const trunc = (s: string, n = 600) => (s.length > n ? s.slice(0, n) + '…' : s);
 
 // valida a sessao do chamador contra o Auth do proprio projeto (o JWT vem no
 // header Authorization; o front manda o token da sessao quando existe)
-async function getCaller(req: Request) {
+type Caller = { email?: string | null };
+type CallerClientFactory = (
+  url: string,
+  anon: string,
+  options: {
+    global: { headers: { Authorization: string } };
+    auth: { persistSession: boolean; autoRefreshToken: boolean };
+  },
+) => {
+  auth: {
+    getUser(): Promise<{ data: { user?: Caller | null } | null; error: unknown }>;
+  };
+};
+
+const defaultCallerClientFactory: CallerClientFactory = (url, anon, options) =>
+  createClient(url, anon, options) as unknown as ReturnType<CallerClientFactory>;
+
+export async function getCaller(
+  req: Request,
+  createAuthClient: CallerClientFactory = defaultCallerClientFactory,
+) {
   const authHeader = req.headers.get('Authorization') || '';
   if (!/^Bearer .+/i.test(authHeader)) return null;
   const url = Deno.env.get('SUPABASE_URL');
   const anon = Deno.env.get('SUPABASE_ANON_KEY');
   if (!url || !anon) return null;
   try {
-    const sb = createClient(url, anon, {
+    const sb = createAuthClient(url, anon, {
       global: { headers: { Authorization: authHeader } },
       auth: { persistSession: false, autoRefreshToken: false },
     });
     const { data, error } = await sb.auth.getUser();
     if (error) return null;
     return data?.user ?? null;
-  } catch (_e) { return null; }
+  } catch (_e) {
+    return null;
+  }
 }
 
-function sharedKeyAllowed(user: { email?: string | null } | null) {
+export function sharedKeyAllowed(
+  user: { email?: string | null } | null,
+  allowedDomains: readonly string[],
+) {
   const email = String(user?.email || '').toLowerCase();
   const domain = email.split('@')[1] || '';
   if (!domain) return false; // sessao anonima nao tem e-mail
-  return SHARED_KEY_DOMAINS.some(d => domain === d || domain.endsWith('.' + d));
+  return allowedDomains.some((d) => domain === d || domain.endsWith('.' + d));
 }
 
 // anti-SSRF: a funcao faz POST pra baseUrl vinda do corpo (custom/azure) — sem
 // isso ela vira um proxy aberto contra a rede interna da edge runtime. Exige
 // https + dominio publico (tuneis tipo ngrok/cloudflared ja dao os dois).
-function assertPublicBaseUrl(raw: unknown) {
+export function assertPublicBaseUrl(raw: unknown) {
   let u: URL;
-  try { u = new URL(String(raw)); } catch { throw new HttpError(400, 'URL base inválida'); }
+  try {
+    u = new URL(String(raw));
+  } catch {
+    throw new HttpError(400, 'URL base inválida');
+  }
   if (u.protocol !== 'https:') {
-    throw new HttpError(400, 'A URL base precisa usar https:// (túneis como ngrok/cloudflared já fornecem HTTPS)');
+    throw new HttpError(
+      400,
+      'A URL base precisa usar https:// (túneis como ngrok/cloudflared já fornecem HTTPS)',
+    );
   }
   const h = u.hostname.toLowerCase();
   const ipV4 = /^\d{1,3}(\.\d{1,3}){3}$/.test(h);
   const ipV6 = h.includes(':');
-  if (ipV4 || ipV6 || h === 'localhost' || h.endsWith('.localhost') || h.endsWith('.local') || h.endsWith('.internal')) {
-    throw new HttpError(400, 'A URL base precisa ser um domínio público (IPs e endereços internos não são aceitos)');
+  if (
+    ipV4 ||
+    ipV6 ||
+    h === 'localhost' ||
+    h.endsWith('.localhost') ||
+    h.endsWith('.local') ||
+    h.endsWith('.internal')
+  ) {
+    throw new HttpError(
+      400,
+      'A URL base precisa ser um domínio público (IPs e endereços internos não são aceitos)',
+    );
   }
 }
 
@@ -122,32 +232,59 @@ function assertPublicBaseUrl(raw: unknown) {
 // 400 request ruim) NAO sao reentados. Cada tentativa tem timeout proprio, E o conjunto
 // respeita WALL_CLOCK_BUDGET_MS pra nunca ser morto com 546 pela plataforma (ver acima).
 const TRANSIENT = new Set([429, 500, 502, 503, 504]);
-const isTimeoutErr = (e: any) => !!e && (e.name === 'TimeoutError' || e.name === 'AbortError');
-async function fetchRetry(url: string, init: RequestInit, attempts = 3): Promise<Response> {
-  const deadline = Date.now() + WALL_CLOCK_BUDGET_MS;
+export const isTimeoutErr = (error: unknown) => {
+  if (!error || typeof error !== 'object' || !('name' in error)) return false;
+  const name = error.name;
+  return name === 'TimeoutError' || name === 'AbortError';
+};
+type RetryDependencies = {
+  now?: () => number;
+  random?: () => number;
+  request?: typeof fetch;
+  sleep?: (milliseconds: number) => Promise<void>;
+};
+
+export async function fetchRetry(
+  url: string,
+  init: RequestInit,
+  attempts = 3,
+  dependencies: RetryDependencies = {},
+): Promise<Response> {
+  const now = dependencies.now ?? Date.now;
+  const random = dependencies.random ?? Math.random;
+  const request = dependencies.request ?? fetch;
+  const sleep = dependencies.sleep ??
+    ((milliseconds) => new Promise((r) => setTimeout(r, milliseconds)));
+  const deadline = now() + WALL_CLOCK_BUDGET_MS;
   let last: Response | undefined;
   let lastErr: unknown;
   for (let i = 0; i < attempts; i++) {
-    const remaining = deadline - Date.now();
-    if (remaining < MIN_ATTEMPT_MS) break;  // sem orcamento pra outra tentativa util — para ANTES do 546
+    const remaining = deadline - now();
+    if (remaining < MIN_ATTEMPT_MS) break; // sem orcamento pra outra tentativa util — para ANTES do 546
     try {
       // o timeout da tentativa nunca passa do que resta do prazo global
-      const res = await fetch(url, { ...init, signal: AbortSignal.timeout(Math.min(FETCH_TIMEOUT_MS, remaining)) });
+      const res = await request(url, {
+        ...init,
+        signal: AbortSignal.timeout(Math.min(FETCH_TIMEOUT_MS, remaining)),
+      });
       if (!TRANSIENT.has(res.status)) return res;
-      last = res;  // transitorio: guarda e tenta de novo (vira erro do provedor se as tentativas acabarem)
+      last = res; // transitorio: guarda e tenta de novo (vira erro do provedor se as tentativas acabarem)
     } catch (e) {
       lastErr = e;
     }
-    const backoff = 500 * Math.pow(2, i) + Math.random() * 300;
-    if (deadline - Date.now() - backoff < MIN_ATTEMPT_MS) break;  // nao espera o backoff se nao sobra tentativa depois
-    await new Promise(r => setTimeout(r, backoff));
+    const backoff = 500 * Math.pow(2, i) + random() * 300;
+    if (deadline - now() - backoff < MIN_ATTEMPT_MS) break; // nao espera o backoff se nao sobra tentativa depois
+    await sleep(backoff);
   }
-  if (last) return last;  // ultima resposta transitoria -> o call* correspondente a transforma em erro do provedor
+  if (last) return last; // ultima resposta transitoria -> o call* correspondente a transforma em erro do provedor
   // estourou o prazo sem resposta: se foi timeout, mensagem acionavel (senao propaga o erro real de rede)
   if (isTimeoutErr(lastErr)) {
-    throw new HttpError(504, 'O provedor de IA demorou demais para responder (a função tem limite de ~150s). Reduza o material selecionado ou escolha um modelo mais rápido.');
+    throw new HttpError(
+      504,
+      'O provedor de IA demorou demais para responder (a função tem limite de ~150s). Reduza o material selecionado ou escolha um modelo mais rápido.',
+    );
   }
-  throw (lastErr ?? new HttpError(504, 'Sem resposta do provedor de IA dentro do tempo limite.'));
+  throw lastErr ?? new HttpError(504, 'Sem resposta do provedor de IA dentro do tempo limite.');
 }
 
 // Alguns modelos de RACIOCINIO recusam "temperature" com 400: OpenAI (o*/gpt-5+) na
@@ -155,7 +292,11 @@ async function fetchRetry(url: string, init: RequestInit, attempts = 3): Promise
 // servido por um endpoint custom/azure. Este helper faz a chamada e, se vier 400
 // mencionando "temperature", REFAZ sem o parametro. `post(withTemp)` monta a request;
 // `tempOK` = ja mandamos temperature (heuristico) — quando false nem tentamos com ela.
-async function postWithTempFallback(post: (withTemp: boolean) => Promise<Response>, tempOK: boolean, label: string): Promise<Response> {
+export async function postWithTempFallback(
+  post: (withTemp: boolean) => Promise<Response>,
+  tempOK: boolean,
+  label: string,
+): Promise<Response> {
   let res = await post(tempOK);
   // so cai aqui quando MANDAMOS temperature; um 400 citando o parametro = recusa -> refaz sem ele
   if (res.status === 400 && tempOK) {
@@ -168,14 +309,27 @@ async function postWithTempFallback(post: (withTemp: boolean) => Promise<Respons
 
 // chave no HEADER (x-goog-api-key), nunca na query string: uma URL invalida ou
 // erro de rede poderia ecoar a URL inteira (com a chave) na mensagem de erro.
-async function callGemini(apiKey: string, model: string, systemParts: string[], contents: any[], opts: any) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+export async function callGemini(
+  apiKey: string,
+  model: string,
+  systemParts: string[],
+  contents: ProviderMessage[],
+  opts: ProviderOptions,
+) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${
+    encodeURIComponent(model)
+  }:generateContent`;
   const res = await fetchRetry(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
     body: JSON.stringify({
-      contents: contents.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })),
-      ...(systemParts.length ? { systemInstruction: { parts: [{ text: systemParts.join('\n') }] } } : {}),
+      contents: contents.map((m) => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }],
+      })),
+      ...(systemParts.length
+        ? { systemInstruction: { parts: [{ text: systemParts.join('\n') }] } }
+        : {}),
       generationConfig: {
         temperature: opts.temperature ?? 0.3,
         maxOutputTokens: Math.min(opts.max_tokens || MAX_TOKENS, MAX_TOKENS),
@@ -184,8 +338,8 @@ async function callGemini(apiKey: string, model: string, systemParts: string[], 
     }),
   });
   if (!res.ok) throw new Error(`Gemini API (${res.status}): ${trunc(await res.text())}`);
-  const data = await res.json();
-  const text = data.candidates?.[0]?.content?.parts?.map((p: any) => p.text).join('') ?? '';
+  const data = await res.json() as ProviderResponse;
+  const text = data.candidates?.[0]?.content?.parts?.map((part) => part.text).join('') ?? '';
   return { text, raw: data };
 }
 
@@ -198,17 +352,23 @@ async function callGemini(apiKey: string, model: string, systemParts: string[], 
 // Responses API — mandar o parametro da 400 ("Unsupported parameter: 'temperature'
 // is not supported with this model"). Os classicos (gpt-4o, gpt-4.1, gpt-3.5...)
 // aceitam, entao so omitimos pra familia de raciocinio e mantemos 0.3 no resto.
-function openaiTemperatureOK(model: string) {
+export function openaiTemperatureOK(model: string) {
   const m = String(model).toLowerCase();
-  if (/^o\d/.test(m)) return false;    // o1, o3, o4-mini... (raciocinio)
-  if (/^gpt-5/.test(m)) return false;  // gpt-5, gpt-5.4, gpt-5.6-*... (raciocinio)
+  if (/^o\d/.test(m)) return false; // o1, o3, o4-mini... (raciocinio)
+  if (/^gpt-5/.test(m)) return false; // gpt-5, gpt-5.4, gpt-5.6-*... (raciocinio)
   return true;
 }
 
-async function callOpenAI(apiKey: string, model: string, systemParts: string[], contents: any[], opts: any) {
+export async function callOpenAI(
+  apiKey: string,
+  model: string,
+  systemParts: string[],
+  contents: ProviderMessage[],
+  opts: ProviderOptions,
+) {
   const input = [
     ...(systemParts.length ? [{ role: 'system', content: systemParts.join('\n') }] : []),
-    ...contents.map(m => ({ role: m.role, content: m.content })),
+    ...contents.map((m) => ({ role: m.role, content: m.content })),
   ];
   const base: Record<string, unknown> = {
     model,
@@ -216,25 +376,29 @@ async function callOpenAI(apiKey: string, model: string, systemParts: string[], 
     max_output_tokens: Math.min(opts.max_tokens || MAX_TOKENS, MAX_TOKENS),
   };
   const temp = opts.temperature ?? 0.3;
-  const post = (withTemp: boolean) => fetchRetry('https://api.openai.com/v1/responses', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify(withTemp ? { ...base, temperature: temp } : base),
-  });
+  const post = (withTemp: boolean) =>
+    fetchRetry('https://api.openai.com/v1/responses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify(withTemp ? { ...base, temperature: temp } : base),
+    });
 
   // heuristico omite temperature pra familia de raciocinio; postWithTempFallback e a rede
   // de seguranca (BYOK aceita qualquer id de modelo) — refaz sem temperature num 400 do tipo.
   const res = await postWithTempFallback(post, openaiTemperatureOK(model), 'OpenAI API');
   if (!res.ok) throw new Error(`OpenAI API (${res.status}): ${trunc(await res.text())}`);
-  const data = await res.json();
+  const data = await res.json() as ProviderResponse;
   // "output_text" e um campo de conveniencia (string unica) que a API costuma incluir; se
   // nao vier, monta concatenando os blocos de texto de data.output[].content[].
-  const text = data.output_text
-    ?? (data.output ?? [])
-        .filter((item: any) => item.type === 'message')
-        .flatMap((item: any) => (item.content ?? []).filter((c: any) => c.type === 'output_text').map((c: any) => c.text))
-        .join('')
-    ?? '';
+  const text = data.output_text ??
+    (data.output ?? [])
+      .filter((item) => item.type === 'message')
+      .flatMap((item) =>
+        (item.content ?? []).filter((content) => content.type === 'output_text').map((content) =>
+          content.text
+        )
+      )
+      .join('');
   return { text, raw: data };
 }
 
@@ -244,24 +408,35 @@ async function callOpenAI(apiKey: string, model: string, systemParts: string[], 
 // alcanca localhost da maquina do pesquisador; precisa de URL publica, ex. via tunel).
 // O pesquisador preenche baseUrl + apiKey (opcional, servidores locais costumam nao exigir)
 // + model — tudo isso e enviado no corpo da requisicao, nada fica configurado no servidor.
-async function callCustom(baseUrl: string, apiKey: string, model: string, systemParts: string[], contents: any[], opts: any) {
+export async function callCustom(
+  baseUrl: string,
+  apiKey: string,
+  model: string,
+  systemParts: string[],
+  contents: ProviderMessage[],
+  opts: ProviderOptions,
+) {
   const url = `${baseUrl.replace(/\/+$/, '')}/chat/completions`;
   const messages = [
     ...(systemParts.length ? [{ role: 'system', content: systemParts.join('\n') }] : []),
-    ...contents.map(m => ({ role: m.role, content: m.content })),
+    ...contents.map((m) => ({ role: m.role, content: m.content })),
   ];
   const temp = opts.temperature ?? 0.3;
   const base = { model, messages, max_tokens: Math.min(opts.max_tokens || MAX_TOKENS, MAX_TOKENS) };
-  const post = (withTemp: boolean) => fetchRetry(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}) },
-    body: JSON.stringify(withTemp ? { ...base, temperature: temp } : base),
-  });
+  const post = (withTemp: boolean) =>
+    fetchRetry(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+      },
+      body: JSON.stringify(withTemp ? { ...base, temperature: temp } : base),
+    });
   // sem heuristico (o modelo custom e livre): tenta com temperature e cai na rede de
   // seguranca se um modelo de raciocinio atras do endpoint recusar o parametro.
   const res = await postWithTempFallback(post, true, 'API personalizada');
   if (!res.ok) throw new Error(`API personalizada (${res.status}): ${trunc(await res.text())}`);
-  const data = await res.json();
+  const data = await res.json() as ProviderResponse;
   const text = data.choices?.[0]?.message?.content ?? '';
   return { text, raw: data };
 }
@@ -274,24 +449,32 @@ async function callCustom(baseUrl: string, apiKey: string, model: string, system
 // e o nome do DEPLOYMENT criado no portal do Azure (nao o nome do modelo base).
 // baseUrl + apiKey + model vem todos do corpo (BYOK, igual ao custom). A chave e
 // obrigatoria aqui (o Azure sempre exige), diferente do custom.
-async function callAzure(baseUrl: string, apiKey: string, model: string, systemParts: string[], contents: any[], opts: any) {
+export async function callAzure(
+  baseUrl: string,
+  apiKey: string,
+  model: string,
+  systemParts: string[],
+  contents: ProviderMessage[],
+  opts: ProviderOptions,
+) {
   const url = `${baseUrl.replace(/\/+$/, '')}/chat/completions`;
   const messages = [
     ...(systemParts.length ? [{ role: 'system', content: systemParts.join('\n') }] : []),
-    ...contents.map(m => ({ role: m.role, content: m.content })),
+    ...contents.map((m) => ({ role: m.role, content: m.content })),
   ];
   const temp = opts.temperature ?? 0.3;
   const base = { model, messages, max_tokens: Math.min(opts.max_tokens || MAX_TOKENS, MAX_TOKENS) };
-  const post = (withTemp: boolean) => fetchRetry(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'api-key': apiKey },
-    body: JSON.stringify(withTemp ? { ...base, temperature: temp } : base),
-  });
+  const post = (withTemp: boolean) =>
+    fetchRetry(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'api-key': apiKey },
+      body: JSON.stringify(withTemp ? { ...base, temperature: temp } : base),
+    });
   // Azure serve modelos OpenAI, inclusive os de raciocinio (o*/gpt-5) que recusam
   // temperature — mesma rede de seguranca do custom (sem heuristico, deployment e livre).
   const res = await postWithTempFallback(post, true, 'Azure OpenAI');
   if (!res.ok) throw new Error(`Azure OpenAI (${res.status}): ${trunc(await res.text())}`);
-  const data = await res.json();
+  const data = await res.json() as ProviderResponse;
   const text = data.choices?.[0]?.message?.content ?? '';
   return { text, raw: data };
 }
@@ -301,30 +484,44 @@ async function callAzure(baseUrl: string, apiKey: string, model: string, systemP
 // Opus 5, Fable/Mythos 5) e Opus 4.7/4.8. Aceitam: Sonnet/Opus 4.6 e anteriores e
 // Haiku 4.5. Como e BYOK (qualquer id de modelo), heuristico + rede de seguranca,
 // igual ao OpenAI (postWithTempFallback cobre o que o heuristico deixar passar).
-function anthropicTemperatureOK(model: string) {
+export function anthropicTemperatureOK(model: string) {
   const m = String(model).toLowerCase();
-  if (/claude-\w+-5\b/.test(m)) return false;        // sonnet-5, opus-5, fable-5, mythos-5...
-  if (/claude-opus-4-[78]\b/.test(m)) return false;  // opus 4.7 / 4.8
-  return true;                                        // sonnet/opus 4.6 e anteriores, haiku 4.5...
+  if (/claude-\w+-5\b/.test(m)) return false; // sonnet-5, opus-5, fable-5, mythos-5...
+  if (/claude-opus-4-[78]\b/.test(m)) return false; // opus 4.7 / 4.8
+  return true; // sonnet/opus 4.6 e anteriores, haiku 4.5...
 }
 
-async function callAnthropic(apiKey: string, model: string, systemParts: string[], contents: any[], opts: any) {
+export async function callAnthropic(
+  apiKey: string,
+  model: string,
+  systemParts: string[],
+  contents: ProviderMessage[],
+  opts: ProviderOptions,
+) {
   const temp = opts.temperature ?? 0.3;
   const base: Record<string, unknown> = {
     model,
     max_tokens: Math.min(opts.max_tokens || MAX_TOKENS, MAX_TOKENS),
     ...(systemParts.length ? { system: systemParts.join('\n') } : {}),
-    messages: contents.map(m => ({ role: m.role, content: m.content })),
+    messages: contents.map((m) => ({ role: m.role, content: m.content })),
   };
-  const post = (withTemp: boolean) => fetchRetry('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify(withTemp ? { ...base, temperature: temp } : base),
-  });
+  const post = (withTemp: boolean) =>
+    fetchRetry('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify(withTemp ? { ...base, temperature: temp } : base),
+    });
   const res = await postWithTempFallback(post, anthropicTemperatureOK(model), 'Anthropic API');
   if (!res.ok) throw new Error(`Anthropic API (${res.status}): ${trunc(await res.text())}`);
-  const data = await res.json();
-  const text = (data.content ?? []).filter((b: any) => b.type === 'text').map((b: any) => b.text).join('') ?? '';
+  const data = await res.json() as ProviderResponse;
+  const text = (data.content ?? [])
+    .filter((block) => block.type === 'text')
+    .map((block) => block.text)
+    .join('');
   return { text, raw: data };
 }
 
@@ -333,28 +530,54 @@ async function callAnthropic(apiKey: string, model: string, systemParts: string[
 // de tokens de ENTRADA (inclui os servidos de cache); output = tokens de SAIDA; cached = porcao de
 // entrada servida de cache (subconjunto de input). ATENCAO: a Anthropic reporta input_tokens SEM o
 // cache, entao somamos cache_read + cache_creation pra obter o total de entrada processada.
-function normUsage(provider: string, data: any) {
+export function normUsage(provider: string, data: unknown) {
   try {
+    const response = data as ProviderResponse | null | undefined;
     if (provider === 'gemini') {
-      const u = data?.usageMetadata || {};
-      return { input: u.promptTokenCount ?? 0, output: u.candidatesTokenCount ?? 0, cached: u.cachedContentTokenCount ?? 0 };
+      const u = response?.usageMetadata || {};
+      return {
+        input: u.promptTokenCount ?? 0,
+        output: u.candidatesTokenCount ?? 0,
+        cached: u.cachedContentTokenCount ?? 0,
+      };
     }
     if (provider === 'openai') {
-      const u = data?.usage || {};
-      return { input: u.input_tokens ?? 0, output: u.output_tokens ?? 0, cached: u.input_tokens_details?.cached_tokens ?? 0 };
+      const u = response?.usage || {};
+      return {
+        input: u.input_tokens ?? 0,
+        output: u.output_tokens ?? 0,
+        cached: u.input_tokens_details?.cached_tokens ?? 0,
+      };
     }
     if (provider === 'anthropic') {
-      const u = data?.usage || {};
-      const cacheRead = u.cache_read_input_tokens ?? 0, cacheCreate = u.cache_creation_input_tokens ?? 0;
-      return { input: (u.input_tokens ?? 0) + cacheRead + cacheCreate, output: u.output_tokens ?? 0, cached: cacheRead };
+      const u = response?.usage || {};
+      const cacheRead = u.cache_read_input_tokens ?? 0,
+        cacheCreate = u.cache_creation_input_tokens ?? 0;
+      return {
+        input: (u.input_tokens ?? 0) + cacheRead + cacheCreate,
+        output: u.output_tokens ?? 0,
+        cached: cacheRead,
+      };
     }
     // custom / azure (formato classico OpenAI chat completions)
-    const u = data?.usage || {};
-    return { input: u.prompt_tokens ?? 0, output: u.completion_tokens ?? 0, cached: u.prompt_tokens_details?.cached_tokens ?? 0 };
-  } catch (_e) { return { input: 0, output: 0, cached: 0 }; }
+    const u = response?.usage || {};
+    return {
+      input: u.prompt_tokens ?? 0,
+      output: u.completion_tokens ?? 0,
+      cached: u.prompt_tokens_details?.cached_tokens ?? 0,
+    };
+  } catch (_e) {
+    return { input: 0, output: 0, cached: 0 };
+  }
 }
 
-Deno.serve(async (req: Request) => {
+export async function handleRequest(
+  req: Request,
+  dependencies: {
+    getCaller(req: Request): Promise<{ email?: string | null } | null>;
+    sharedKeyConfiguration: SharedKeyConfiguration;
+  } = { getCaller, sharedKeyConfiguration },
+): Promise<Response> {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
@@ -363,12 +586,19 @@ Deno.serve(async (req: Request) => {
     if (rawBody.length > MAX_BODY_CHARS) {
       throw new HttpError(413, 'Requisição grande demais — reduza a seleção de material');
     }
-    let body: any = {};
-    try { body = JSON.parse(rawBody || '{}'); } catch (_e) { throw new HttpError(400, 'Corpo da requisição não é JSON válido'); }
+    let body: AiAskBody = {};
+    try {
+      body = JSON.parse(rawBody || '{}') as AiAskBody;
+    } catch (_e) {
+      throw new HttpError(400, 'Corpo da requisição não é JSON válido');
+    }
 
     const provider = String(body.provider || 'gemini').toLowerCase();
     if (!['gemini', 'openai', 'anthropic', 'custom', 'azure'].includes(provider)) {
-      throw new HttpError(400, `Provedor "${provider}" não suportado (use gemini, openai, anthropic, azure ou custom)`);
+      throw new HttpError(
+        400,
+        `Provedor "${provider}" não suportado (use gemini, openai, anthropic, azure ou custom)`,
+      );
     }
 
     // provedores "custom" e "azure": sem secret/modelo compartilhado no servidor — tudo
@@ -377,10 +607,14 @@ Deno.serve(async (req: Request) => {
     let model: string;
     if (provider === 'custom' || provider === 'azure') {
       const nome = provider === 'azure' ? 'Azure OpenAI' : 'provedor personalizado';
-      if (!body.baseUrl) throw new HttpError(400, `Parâmetro "baseUrl" é obrigatório para o ${nome}`);
+      if (!body.baseUrl) {
+        throw new HttpError(400, `Parâmetro "baseUrl" é obrigatório para o ${nome}`);
+      }
       if (!body.model) throw new HttpError(400, `Parâmetro "model" é obrigatório para o ${nome}`);
       // Azure sempre exige chave; no custom ela e opcional (servidores locais podem nao exigir).
-      if (provider === 'azure' && !body.apiKey) throw new HttpError(400, 'Parâmetro "apiKey" é obrigatório para o Azure OpenAI');
+      if (provider === 'azure' && !body.apiKey) {
+        throw new HttpError(400, 'Parâmetro "apiKey" é obrigatório para o Azure OpenAI');
+      }
       assertPublicBaseUrl(body.baseUrl);
       apiKey = body.apiKey || '';
       model = body.model;
@@ -391,20 +625,29 @@ Deno.serve(async (req: Request) => {
       model = body.model || DEFAULT_MODELS[provider];
     } else {
       // Sem body.apiKey: tenta a chave configurada no servidor por secret (opcional).
-      const serverKey = SHARED_KEYS[provider] || '';
+      const serverKey = dependencies.sharedKeyConfiguration.keys[provider] || '';
       if (!serverKey) {
         // Nenhuma chave no servidor pra esse provedor — o app e BYOK: o pesquisador traz a sua.
         // (Estado padrao: sem secret configurado, este e o unico caminho, e nada mais e revelado.)
-        throw new HttpError(400, 'Nenhuma chave de IA configurada — informe a sua própria chave (BYOK) em "Minha Conta"');
+        throw new HttpError(
+          400,
+          'Nenhuma chave de IA configurada — informe a sua própria chave (BYOK) em "Minha Conta"',
+        );
       }
       // Ha uma chave no servidor: liberada so a sessoes validas de dominios autorizados
       // (SHARED_KEY_DOMAINS, por secret; vazio por padrao = ninguem usa a chave do servidor).
-      const user = await getCaller(req);
+      const user = await dependencies.getCaller(req);
       if (!user) {
-        throw new HttpError(401, 'Esta chave exige uma sessão válida — entre com sua conta, ou configure sua própria chave (BYOK) em "Minha Conta"');
+        throw new HttpError(
+          401,
+          'Esta chave exige uma sessão válida — entre com sua conta, ou configure sua própria chave (BYOK) em "Minha Conta"',
+        );
       }
-      if (!sharedKeyAllowed(user)) {
-        throw new HttpError(403, 'Sua conta não tem acesso à chave do servidor — configure sua própria chave (BYOK) em "Minha Conta"');
+      if (!sharedKeyAllowed(user, dependencies.sharedKeyConfiguration.domains)) {
+        throw new HttpError(
+          403,
+          'Sua conta não tem acesso à chave do servidor — configure sua própria chave (BYOK) em "Minha Conta"',
+        );
       }
       apiKey = serverKey;
       model = body.model || DEFAULT_MODELS[provider];
@@ -418,19 +661,32 @@ Deno.serve(async (req: Request) => {
       { role: 'user', content: String(body.prompt || '') },
     ];
 
-    if (!Array.isArray(messages) || !messages.length || !messages.some((m: any) => m && m.content)) {
+    if (
+      !Array.isArray(messages) ||
+      !messages.length ||
+      !messages.some((message) => message && message.content)
+    ) {
       throw new HttpError(400, 'Parâmetro "prompt" (ou "messages") é obrigatório');
     }
 
-    const systemParts = messages.filter((m: any) => m.role === 'system').map((m: any) => String(m.content || ''));
+    const systemParts = messages
+      .filter((message) => message.role === 'system')
+      .map((message) => String(message.content || ''));
     const contents = messages
-      .filter((m: any) => m.role !== 'system')
-      .map((m: any) => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: String(m.content || '') }));
+      .filter((message) => message.role !== 'system')
+      .map((message) => ({
+        role: message.role === 'assistant' ? 'assistant' : 'user',
+        content: String(message.content || ''),
+      }));
 
-    const { text, raw } = provider === 'gemini' ? await callGemini(apiKey, model, systemParts, contents, body)
-      : provider === 'openai' ? await callOpenAI(apiKey, model, systemParts, contents, body)
-      : provider === 'custom' ? await callCustom(String(body.baseUrl), apiKey, model, systemParts, contents, body)
-      : provider === 'azure' ? await callAzure(String(body.baseUrl), apiKey, model, systemParts, contents, body)
+    const { text, raw } = provider === 'gemini'
+      ? await callGemini(apiKey, model, systemParts, contents, body)
+      : provider === 'openai'
+      ? await callOpenAI(apiKey, model, systemParts, contents, body)
+      : provider === 'custom'
+      ? await callCustom(String(body.baseUrl), apiKey, model, systemParts, contents, body)
+      : provider === 'azure'
+      ? await callAzure(String(body.baseUrl), apiKey, model, systemParts, contents, body)
       : await callAnthropic(apiKey, model, systemParts, contents, body);
 
     const usage = normUsage(provider, raw);
@@ -444,4 +700,19 @@ Deno.serve(async (req: Request) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
-});
+}
+
+type ServeAiAsk = (handler: (request: Request) => Response | Promise<Response>) => unknown;
+
+export function serveAiAsk(serve: ServeAiAsk = Deno.serve as ServeAiAsk) {
+  return serve((req) => handleRequest(req));
+}
+
+export function runAiAskMain(
+  isMain = import.meta.main,
+  serve: ServeAiAsk = Deno.serve as ServeAiAsk,
+) {
+  return isMain ? serveAiAsk(serve) : undefined;
+}
+
+runAiAskMain();
