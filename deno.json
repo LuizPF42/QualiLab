@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "lib": ["deno.ns", "dom", "dom.iterable", "esnext"],
+    "strict": true
+  },
+  "imports": {
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@2"
+  },
+  "fmt": {
+    "include": ["supabase/functions"],
+    "lineWidth": 100,
+    "semiColons": true,
+    "singleQuote": true
+  },
+  "lint": {
+    "include": ["supabase/functions"]
+  },
+  "lock": false,
+  "nodeModulesDir": "none",
+  "tasks": {
+    "quality:check": "deno check supabase/functions/ai-ask/index.ts",
+    "quality:fmt": "deno fmt --check supabase/functions",
+    "quality:lint": "deno lint supabase/functions"
+  }
+}
