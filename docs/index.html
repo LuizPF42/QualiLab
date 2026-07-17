@@ -897,13 +897,15 @@ function download(name,text,mime){ const b=new Blob([text],{type:mime}); const u
    Compatível com ATLAS.ti, MAXQDA, NVivo, Quirkos, Taguette.
    Mapeamento: documento -> TextSource; categoria do documento -> Variable + Case;
    codigo -> Code (hierarquico); trecho codificado -> PlainTextSelection + Coding. */
-function buildCodeXml(code, byParent){
+function buildCodeXml(code, byParent, memoByCode){
   const kids = byParent[code.id] || [];
   const H = (code.hue_deg!=null) ? ((code.hue_deg%360)+360)%360 : HUES[((code.hue%HUES.length)+HUES.length)%HUES.length];
   const S = (code.hue_deg===-1||code.hue_deg===-2) ? 0 : (code.sat!=null ? Math.max(0,Math.min(100,code.sat)) : 58);
   const hex = hslToHex(H, S, Math.min(70,32+code.depth*13));
+  const memo = memoByCode && memoByCode[code.id]; // #18: memo de codigo -> <Description>
   return `<Code guid="${stripGuid(code.id)}" name="${xmlEsc(code.name)}" isCodable="true" color="${hex}">`
-    + kids.map(k=>buildCodeXml(k, byParent)).join('')
+    + ((memo && String(memo).trim()) ? `<Description>${xmlEsc(memo)}</Description>` : '') // Description = 1o filho (XSD CodeType)
+    + kids.map(k=>buildCodeXml(k, byParent, memoByCode)).join('')
     + `</Code>`;
 }
 
@@ -967,6 +969,17 @@ function maskSlice(content, start, end, ranges){
   for(const [s,e] of ranges){ if(e<=start||s>=end) continue; const a=Math.max(s,start), b=Math.min(e,end);
     if(a>pos) out+=content.slice(pos,a); out+='[trecho censurado]'; pos=Math.max(pos,b); }
   if(pos<end) out+=content.slice(pos,end);
+  return out;
+}
+/* #10: como maskSlice, mas para o TEXTO INTEGRAL de um export QDPX — preserva a CONTAGEM DE CODE
+   POINTS (1 bloco █ por code point censurado). Os offsets do .qdpx sao code points, entao trocar por
+   "[trecho censurado]" (comprimento diferente) desalinharia toda selecao seguinte; o █ por code point
+   mantem a contagem, entao os offsets (u16ToCp sobre o texto ORIGINAL) seguem validos no arquivo. */
+function maskContentForExport(content, ranges){
+  if(!ranges || !ranges.length) return content;
+  let out='', pos=0;
+  for(const [s,e] of ranges){ if(s>pos) out += content.slice(pos,s); for(const ch of content.slice(s,e)) out += '█'; pos=e; }
+  if(pos<content.length) out += content.slice(pos);
   return out;
 }
 /* mascara PARCIAL de uma citacao trabalhando sobre o PROPRIO quote (sem precisar do conteudo do
@@ -1214,10 +1227,14 @@ function exportTransparencyReader(docs, codes, allC, memos, project, anonymize){
   download((project?.name||'projeto').replace(/[^\w\-]+/g,'_')+(anonymize?'_anon':'')+'_transparencia.html', htmlStr, 'text/html;charset=utf-8');
 }
 
-async function exportQDPX(docs, cats, allV, codes, allC, project){
+async function exportQDPX(docs, cats, allV, codes, allC, project, memos, allCodingsArg){
   const JSZip = await getJSZip();
   const zip = new JSZip();
   const srcFolder = zip.folder('sources');
+  memos = memos || [];
+  const allCodings = allCodingsArg || allC;   // #10: conjunto COMPLETO (todas as camadas) p/ detectar censura
+  const { codeMemo, docMemo, codingMemo, projectMemo } = indexMemos(memos); // #18: memos por escopo
+  const redactionCodeIds = new Set((codes||[]).filter(c=>c.is_redaction).map(c=>c.id)); // #10: codigos de censura
 
   // usuarios (autores distintos -> guid)
   const authorGuid = {};
@@ -1229,7 +1246,7 @@ async function exportQDPX(docs, cats, allV, codes, allC, project){
   const byParent = {};
   codes.forEach(c=>{ const p=c.parent_id||'__root__'; (byParent[p]=byParent[p]||[]).push(c); });
   const topCodes = byParent['__root__']||[];
-  const codesXml = topCodes.map(c=>buildCodeXml(c, byParent)).join('');
+  const codesXml = topCodes.map(c=>buildCodeXml(c, byParent, codeMemo)).join(''); // #18: memos de codigo
 
   // variaveis (categorias do documento). o tipo e a lista de valores entram na
   // Description em texto legivel; o proprio QualiLab reconstroi tudo na importacao.
@@ -1243,19 +1260,27 @@ async function exportQDPX(docs, cats, allV, codes, allC, project){
   // sources (um TextSource por documento, conteudo gravado em sources/<guid>.txt)
   let sourcesXml = '';
   for(const d of docs){
-    srcFolder.file(`${stripGuid(d.id)}.txt`, d.content);
-    const docCodings = allC.filter(c=>c.document_id===d.id);
-    const selXml = docCodings.map(c=>{
+    // #10: mascara a censura no texto integral preservando a CONTAGEM de code points (offsets validos)
+    const ranges = redactionRanges(allCodings, redactionCodeIds, d.id);
+    srcFolder.file(`${stripGuid(d.id)}.txt`, maskContentForExport(d.content, ranges));
+    const docAll = allCodings.filter(c=>c.document_id===d.id); // p/ mascarar citacao sobreposta por censura de outro codificador
+    // #10: exclui as proprias codings de censura das selecoes (nao viram anotacao nem vazam o quote)
+    const selXml = allC.filter(c=>c.document_id===d.id && !redactionCodeIds.has(c.code_id)).map(c=>{
       const codingGuid = uid();
       const au = ensureAuthor(c.author_name);
-      const name = (c.quote||'').slice(0,80);
+      const name = maskQuoteSpans(c, docAll, redactionCodeIds).slice(0,80); // #10: mascara sobreposicao de censura no preview
       // posicoes em code points (REFI-QDA/QualCoder), convertidas do offset UTF-16 interno
       const cs = u16ToCp(d.content, c.span_start), ce = u16ToCp(d.content, c.span_end);
+      const cmemo = codingMemo[c.id]; // #18: memo de trecho
       return `<PlainTextSelection guid="${stripGuid(c.id)}" name="${xmlEsc(name)}" startPosition="${cs}" endPosition="${ce}" creatingUser="${au}">`
+        + ((cmemo && String(cmemo).trim()) ? `<Description>${xmlEsc(cmemo)}</Description>` : '') // #18: Description antes de Coding (XSD)
         + `<Coding guid="${codingGuid}" creatingUser="${au}"><CodeRef targetGUID="${stripGuid(c.code_id)}"/></Coding>`
         + `</PlainTextSelection>`;
     }).join('');
-    sourcesXml += `<TextSource guid="${stripGuid(d.id)}" name="${xmlEsc(d.name)}" plainTextPath="internal://${stripGuid(d.id)}.txt">${selXml}</TextSource>`;
+    const dmemo = docMemo[d.id]; // #18: memo de documento
+    sourcesXml += `<TextSource guid="${stripGuid(d.id)}" name="${xmlEsc(d.name)}" plainTextPath="internal://${stripGuid(d.id)}.txt">`
+      + ((dmemo && String(dmemo).trim()) ? `<Description>${xmlEsc(dmemo)}</Description>` : '') // #18: Description antes de PlainTextSelection (XSD)
+      + `${selXml}</TextSource>`;
   }
 
   // cases (um por documento, com os valores de categoria daquele documento)
@@ -1279,6 +1304,7 @@ async function exportQDPX(docs, cats, allV, codes, allC, project){
     + `<Variables>${variablesXml}</Variables>`
     + `<Cases>${casesXml}</Cases>`
     + `<Sources>${sourcesXml}</Sources>`
+    + ((projectMemo && String(projectMemo).trim()) ? `<Notes><Note guid="${uid()}" name="Memo do projeto"><PlainTextContent>${xmlEsc(projectMemo)}</PlainTextContent></Note></Notes>` : '') // #18: memo de projeto (Notes apos Sources, ordem XSD)
     + `</Project>`;
 
   zip.file('project.qde', qde);
@@ -1323,7 +1349,7 @@ function buildMatchIndex(content){
   const n = content.length; let i = 0;
   while(i < n){
     const c = content[i]; const code = c.charCodeAt(0);
-    if(code < 128){ // caminho rapido ASCII (a grande maioria dos caracteres)
+    if(code < 128 && !(i+1 < n && COMBINING_MARK.test(content[i+1]))){ // caminho rapido ASCII (base ASCII + marca combinante cai no cluster p/ normalizar NFC — issue #21)
       if(code===32||code===9||code===10||code===13||code===12||code===11){
         if(!lastSpace){ parts.push(' '); map.push(i); lastSpace = true; }
       } else { parts.push(code>=65&&code<=90 ? c.toLowerCase() : c); map.push(i); lastSpace = false; }
@@ -1847,24 +1873,55 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress){
     // ignora a camada original do arquivo de origem, que pode ter sido exportado de um
     // projeto coletivo com codificações ainda 'individual'.
     const codingMap = {}; // id antigo -> id novo (p/ remapear memos de trecho)
-    for(const c of (db.codings||[])){
-      if(docMap[c.document_id] && codeMap[c.code_id]){
-        const layer = projectMode==='individual' ? codLayer : (c.layer||codLayer);
-        const nc = await store.addCoding(projectId, { created_by:null, layer, document_id:docMap[c.document_id], code_id:codeMap[c.code_id], span_start:c.span_start, span_end:c.span_end, quote:c.quote, author_name:c.author_name||'importado' });
-        if(c.id && nc?.id) codingMap[c.id] = nc.id;
+    if(projectMode==='individual'){
+      // #19: destino individual nao tem reconciliacao — UMA coding por (doc,code,span). Um .qualilab
+      // COLETIVO traz a coding individual E o gabarito (mesmo span) do MESMO trecho; sem dedup, os dois
+      // virariam 'final' e DUPLICARIAM o gabarito. Colapsa preferindo 'final' (mesma chave/semantica do
+      // RPC set_project_mode e do pickVal de doc_values acima). O codingMap mapeia TODO id colapsado
+      // para o id do sobrevivente, pra os memos de trecho reancorarem (nao orfanarem).
+      const keep = {}, groups = {};
+      for(const c of (db.codings||[])){
+        if(!(docMap[c.document_id] && codeMap[c.code_id])) continue;
+        const k = c.document_id+':'+c.code_id+':'+c.span_start+':'+c.span_end;
+        (groups[k] = groups[k] || []).push(c.id);
+        const cur = keep[k];
+        if(!cur || (c.layer==='final' && cur.layer!=='final')) keep[k]=c;
       }
-      await tick();
+      for(const k of Object.keys(keep)){
+        const c = keep[k];
+        const nc = await store.addCoding(projectId, { created_by:null, layer:codLayer, document_id:docMap[c.document_id], code_id:codeMap[c.code_id], span_start:c.span_start, span_end:c.span_end, quote:c.quote, author_name:c.author_name||'importado' });
+        if(nc?.id) for(const oldId of groups[k]) if(oldId) codingMap[oldId] = nc.id;
+      }
+      for(let i=0;i<(db.codings||[]).length;i++) await tick(); // progresso: 1 por coding de origem
+    } else {
+      for(const c of (db.codings||[])){
+        if(docMap[c.document_id] && codeMap[c.code_id]){
+          const nc = await store.addCoding(projectId, { created_by:null, layer:(c.layer||codLayer), document_id:docMap[c.document_id], code_id:codeMap[c.code_id], span_start:c.span_start, span_end:c.span_end, quote:c.quote, author_name:c.author_name||'importado' });
+          if(c.id && nc?.id) codingMap[c.id] = nc.id;
+        }
+        await tick();
+      }
     }
 
     // memos: remapeia o alvo (documento/código/trecho); memo de projeto vira o memo do projeto de destino
     if(store.setMemo){
+      const codingMemoAcc = {}; // #19: dois memos de trecho colapsados no dedup -> concatena (nao sobrescreve)
       for(const m of (db.memos||[])){
         let targetId = m.target_id;
         if(m.scope==='document') targetId = docMap[m.target_id];
         else if(m.scope==='code') targetId = codeMap[m.target_id];
         else if(m.scope==='coding') targetId = codingMap[m.target_id];
         else if(m.scope==='project') targetId = projectId;
-        if(targetId) await store.setMemo(projectId, m.scope, targetId, m.content, m.author_name);
+        if(targetId){
+          if(m.scope==='coding'){
+            const prev = codingMemoAcc[targetId];
+            const merged = prev ? (prev + '\n\n———\n\n' + (m.content||'')) : (m.content||'');
+            codingMemoAcc[targetId] = merged;
+            await store.setMemo(projectId, 'coding', targetId, merged, m.author_name);
+          } else {
+            await store.setMemo(projectId, m.scope, targetId, m.content, m.author_name);
+          }
+        }
         await tick();
       }
     }
@@ -2082,7 +2139,12 @@ async function importTaguette(file, store, projectId, projectMode, onProgress){
   };
 
   try{
-    const tableNames = new Set(all("SELECT name FROM sqlite_master WHERE type='table'").map(r=>r.name));
+    // #20: sql.js abre o .sqlite3 de forma PREGUICOSA — bytes que nao sao um DB valido passam
+    // pelo new SQL.Database(buf) acima e so estouram AQUI, na 1a leitura real do schema
+    // (SQLITE_NOTADB / "file is not a database"). Sem este catch a msg interna vazaria pra UI.
+    let tableNames;
+    try{ tableNames = new Set(all("SELECT name FROM sqlite_master WHERE type='table'").map(r=>r.name)); }
+    catch(e){ throw new Error('Arquivo .sqlite3 inválido ou corrompido'); }
     for(const need of ['projects','documents','tags','highlights','highlight_tags']){
       if(!tableNames.has(need)) throw new Error(`Arquivo não parece ser um projeto do Taguette (.sqlite3) — tabela "${need}" não encontrada.`);
     }
@@ -2237,8 +2299,13 @@ async function createFileStore(fileHandle, isNew){
     const file = await fileHandle.getFile();
     // arquivo ilegível NÃO vira projeto vazio em silêncio (o primeiro save sobrescreveria
     // o conteúdo possivelmente recuperável) — aborta e deixa o usuário decidir
-    try{ const parsed=JSON.parse(await file.text()); if(parsed.documents) db=parsed; }
+    let parsed;
+    try{ parsed=JSON.parse(await file.text()); }
     catch(e){ throw new Error(`O arquivo "${fileHandle.name}" não pôde ser lido como projeto .qualilab (conteúdo corrompido ou de outro formato). Nada foi alterado nele.`); }
+    // #15: valida o contrato minimo ANTES de qualquer save — JSON valido de outro formato
+    // (sem documents[]) nao pode virar "projeto vazio" e sobrescrever o arquivo original.
+    if(!parsed || !Array.isArray(parsed.documents)){ throw new Error(`O arquivo "${fileHandle.name}" não é um projeto .qualilab válido (estrutura não reconhecida). Nada foi alterado nele.`); }
+    db=parsed;
   }
   if(!db.memos) db.memos = [];
   let name = db._meta?.displayName || 'pesquisador';
@@ -2249,13 +2316,13 @@ async function createFileStore(fileHandle, isNew){
   // passava so pro console — o usuario continuava editando sem saber que nada mais estava
   // sendo escrito no arquivo. _onSaveError avisa o App pra mostrar um banner persistente.
   let _onSaveError = null;
-  const save = async ()=>{
+  const save = async (throwOnError)=>{
     if(batching){ dirty = true; return; }
     try{ db._meta.displayName=name; const w=await fileHandle.createWritable(); await w.write(JSON.stringify(db,null,2)); await w.close(); _onSaveError?.(null); }
-    catch(e){ console.warn('Falha ao salvar arquivo:',e); _onSaveError?.(e); }
+    catch(e){ console.warn('Falha ao salvar arquivo:',e); _onSaveError?.(e); if(throwOnError) throw e; } // #16: gravacao inicial propaga
   };
   const P = v=>Promise.resolve(v);
-  if(isNew) await save();
+  if(isNew) await save(true); // #16: 1a gravacao faz parte do contrato — falha rejeita createFileStore (antes de IDB.saveHandle)
   // persiste o fileHandle no IDB para reabrir na próxima sessão
   await IDB.saveHandle('qualilab:file', fileHandle).catch(()=>{});
   return {
@@ -2543,7 +2610,7 @@ function SupabaseStore(sb){
     async signOut(){ try{ await sb.auth.signOut(); }catch(e){} user=null; },
     currentUser(){ return user ? { id:user.id, name, email:user.email||null, anon:!!user.is_anonymous } : null; },
     async changePassword(newPw){ const r = await sb.auth.updateUser({ password:newPw }); if(r.error) throw r.error; },
-    async changeDisplayName(newName){ name = newName || name; const r = await sb.auth.updateUser({ data:{ name } }); if(r.error) throw r.error; if(r.data&&r.data.user) user = r.data.user; },
+    async changeDisplayName(newName){ const nn = newName || name; const r = await sb.auth.updateUser({ data:{ name: nn } }); if(r.error) throw r.error; name = nn; if(r.data&&r.data.user) user = r.data.user; }, // #14: so muta o local apos confirmar
     // p_mode PRECISA ir na RPC: sem ele o banco grava 'collective' e o projeto "individual"
     // virava coletivo ao reabrir (bug real — o retorno local mentia o mode)
     async createProject(pn, display, pmode){ name=display||name; const d=must(await sb.rpc('create_project',{p_name:pn,p_display:name,p_mode:pmode||'collective'})); return { id:d.id, name:d.name, code:d.code, created_by:d.created_by, mode:d.mode||pmode||'collective' }; },
@@ -2572,11 +2639,13 @@ function SupabaseStore(sb){
     async updateCoding(id,patch){ must(await sb.from('codings').update(patch).eq('id',id)); },
     async deleteDocument(id){ let cids=[]; try{ cids=(await sb.from('codings').select('id').eq('document_id',id)).data?.map(r=>r.id)||[]; }catch(e){} must(await sb.from('documents').delete().eq('id',id)); await sb.from('memos').delete().eq('scope','document').eq('target_id',id); if(cids.length) await sb.from('memos').delete().eq('scope','coding').in('target_id',cids); },
     async clearProject(pid){
-      await sb.from('codings').delete().eq('project_id',pid);
-      await sb.from('doc_values').delete().eq('project_id',pid);
-      await sb.from('documents').delete().eq('project_id',pid);
-      await sb.from('codes').delete().eq('project_id',pid);
-      await sb.from('categories').delete().eq('project_id',pid);
+      // #12: cada delete e verificado com must() — supabase-js resolve {data,error} sem rejeitar,
+      // entao sem isso uma falha de rede/RLS/timeout virava "Projeto limpo" com dados restantes.
+      must(await sb.from('codings').delete().eq('project_id',pid));
+      must(await sb.from('doc_values').delete().eq('project_id',pid));
+      must(await sb.from('documents').delete().eq('project_id',pid));
+      must(await sb.from('codes').delete().eq('project_id',pid));
+      must(await sb.from('categories').delete().eq('project_id',pid));
       // mantem o memo do projeto; remove memos de documento/codigo/trecho (orfaos apos a
       // limpeza — 'coding' faltava e as notas analiticas ficavam orfas). O trigger
       // memos_gc no banco tambem cobre isso; aqui e o cinto pra banco ainda nao migrado.
@@ -3203,7 +3272,7 @@ function App(){
     if(tok !== reqSeqRef.current.all) return; // resposta velha (outro loadAll ja começou)
     const V=[], C=[];
     for(const { d, v, co } of per){
-      v.forEach(x=>V.push({ document_id:d.id, category_id:x.category_id, value:x.value, author_name:x.author_name, layer:x.layer||'individual' }));
+      v.forEach(x=>V.push({ document_id:d.id, category_id:x.category_id, value:x.value, set_by:x.set_by??null, author_name:x.author_name, layer:x.layer||'individual' }));
       co.forEach(x=>C.push(x));
     }
     setAllValues(x=> sameJson(x,V) ? x : V);
@@ -3579,7 +3648,8 @@ function App(){
         // prefere a camada final (gabarito consolidado); se nao houver, usa as individuais
         const finalCods = allC.filter(c=>c.layer==='final');
         const codForQdpx = finalCods.length > 0 ? finalCods : allC.filter(c=>(c.layer||'individual')!=='final');
-        await exportQDPX(docs, cats, Object.values(pick), codes, codForQdpx, project);
+        let memosForQdpx=[]; try{ memosForQdpx=(await store.listMemos?.(project.id))||[]; }catch(e){} // #18: memos no round-trip
+        await exportQDPX(docs, cats, Object.values(pick), codes, codForQdpx, project, memosForQdpx, allC); // #10: allC = todas as camadas p/ censura
       } else if(kind==='ati' || kind==='leitor'){
         let memosForExport=[]; try{ memosForExport=(await store.listMemos?.(project.id))||[]; }catch(e){}
         if(kind==='ati') exportWebAnnotations(docs, codes, allC, memosForExport, project);
@@ -3810,7 +3880,7 @@ function App(){
   // precisar abrir um projeto antes. Mesma logica do card "Conexao" do ProjectModal: credenciais
   // no localStorage (so neste navegador) + reload; CUSTOM_SUPABASE re-deriva no boot seguinte.
   // DEFINIDO ANTES dos returns de fase (o Auth referencia connectCustomCloud) pra evitar TDZ.
-  const connectCustomCloud = (url,key)=>{ try{ localStorage.setItem('qualilab:url',url); localStorage.setItem('qualilab:key',key); localStorage.removeItem('qualilab:forcelocal'); }catch(e){} location.reload(); };
+  const connectCustomCloud = (url,key)=>{ try{ localStorage.setItem('qualilab:url',url); localStorage.setItem('qualilab:key',key); localStorage.removeItem('qualilab:forcelocal'); }catch(e){ return 'Não foi possível salvar a conexão neste navegador ('+((e&&e.name)||'erro')+'). O armazenamento pode estar cheio, desabilitado ou bloqueado (ex.: janela anônima).'; } location.reload(); }; // #25: erro nao recarrega
   const resetCustomCloud = ()=>{ try{ localStorage.removeItem('qualilab:url'); localStorage.removeItem('qualilab:key'); localStorage.removeItem('qualilab:forcelocal'); }catch(e){} location.reload(); };
 
   if(phase==='boot') return html`<div class="empty"><div class="t">Carregando…</div></div>`;
@@ -4367,7 +4437,7 @@ function App(){
     onClose=${()=>setProjEdit(false)} onSetMode=${changeProjectMode}
     onSetRole=${changeMemberRole} onRemoveMember=${removeMember}
     onRename=${renameProject} onClear=${()=>{ setProjEdit(false); doClearProject(); }} onDelete=${deleteProject}
-    onSaveCloud=${(url,key)=>{ try{localStorage.setItem('qualilab:url',url);localStorage.setItem('qualilab:key',key);localStorage.removeItem('qualilab:forcelocal');}catch(e){} location.reload(); }}
+    onSaveCloud=${connectCustomCloud}
     onClearCloud=${()=>{ /* desconectar = modo local de verdade (FORCE_LOCAL); mantem url/key salvas pra reconectar facil */ try{localStorage.setItem('qualilab:forcelocal','1');localStorage.removeItem('qualilab:project');}catch(e){} location.reload(); }}
     onResetCloud=${()=>{ /* volta ao servidor padrao: descarta as credenciais pessoais */ try{localStorage.removeItem('qualilab:url');localStorage.removeItem('qualilab:key');localStorage.removeItem('qualilab:project');localStorage.removeItem('qualilab:forcelocal');}catch(e){} location.reload(); }}
     onReconnectCloud=${()=>{ try{localStorage.removeItem('qualilab:forcelocal');}catch(e){} location.reload(); }}
@@ -4462,9 +4532,11 @@ function CsvImportModal({ parsed, fileName, onCancel, onConfirm }){
    Botao violeta ("nuvem pessoal") reusado no Welcome e no Auth: conecta ao Supabase do proprio
    pesquisador (onde vivem os projetos coletivos dele) ANTES de logar. Se ja esta num servidor
    pessoal (CUSTOM_SUPABASE), mostra o estado + "voltar ao padrao" (escape pra nao ficar preso). */
+// #26: valida URL Supabase normalizada (https + host com ponto) antes de habilitar/enviar.
+function validSupabaseUrl(s){ try{ const u=new URL(s); const local=u.hostname==='localhost'||u.hostname==='127.0.0.1'; return (u.protocol==='https:' || (u.protocol==='http:' && local)) && !!u.hostname && (u.hostname.includes('.') || local); }catch(e){ return false; } } // #26: https publico OU http localhost (self-hosted)
 function ServerConnect({ onConnect, onReset }){
   const [open,setOpen]=useState(false);
-  const [url,setUrl]=useState(''); const [key,setKey]=useState('');
+  const [url,setUrl]=useState(''); const [key,setKey]=useState(''); const [connErr,setConnErr]=useState(null);
   if(CUSTOM_SUPABASE) return html`<div style="margin-top:12px;text-align:center">
     <span class="pill mode-custom" style="font-size:11px">nuvem pessoal conectada</span>
     <button class="btn sm ghost" style="font-size:11.5px;margin-left:6px" onClick=${onReset}>voltar ao servidor padrão</button>
@@ -4472,13 +4544,16 @@ function ServerConnect({ onConnect, onReset }){
   if(!open) return html`<div style="margin-top:12px;text-align:center">
     <button class="btn sm violet" onClick=${()=>setOpen(true)}>Conectar ao meu Supabase</button>
   </div>`;
+  const u=url.trim(), k=key.trim(); const urlOk=validSupabaseUrl(u), canConnect=urlOk && !!k; // #26: valida o normalizado
   return html`<div style="text-align:left;margin-top:12px;border:1px solid var(--violet);border-radius:12px;padding:12px;background:var(--violet-soft)">
     <div class="field-label" style="color:var(--violet)">Meu servidor Supabase</div>
     <p class="hint" style="margin:0 0 8px">Conecte ao seu próprio projeto Supabase (é onde ficam seus projetos de equipe). Depois de conectar, faça login ali e entre no projeto coletivo pelo código. As credenciais ficam só neste navegador.</p>
-    <div class="field"><input class="txtin" value=${url} onInput=${e=>setUrl(e.target.value)} placeholder="https://xxxx.supabase.co" /></div>
-    <div class="field"><input class="txtin" value=${key} onInput=${e=>setKey(e.target.value)} placeholder="anon key (eyJhbGci...)" /></div>
+    <div class="field"><input class="txtin" value=${url} onInput=${e=>{ setUrl(e.target.value); setConnErr(null); }} placeholder="https://xxxx.supabase.co" /></div>
+    <div class="field"><input class="txtin" value=${key} onInput=${e=>{ setKey(e.target.value); setConnErr(null); }} placeholder="anon key (eyJhbGci...)" /></div>
+    ${u && !urlOk && html`<p class="hint" style="color:var(--danger);margin:0 0 8px">Informe uma URL https:// válida do seu projeto Supabase.</p>`}
+    ${connErr && html`<div class="banner err" style="margin:0 0 8px">${connErr}</div>`}
     <div class="row" style="gap:8px">
-      <button class="btn sm primary" disabled=${!url||!key} onClick=${()=>onConnect(url.trim(),key.trim())}>Conectar e recarregar</button>
+      <button class="btn sm primary" disabled=${!canConnect} onClick=${()=>{ setConnErr(null); const e=onConnect(u,k); if(e) setConnErr(e); }}>Conectar e recarregar</button>
       <button class="btn sm ghost" onClick=${()=>setOpen(false)}>cancelar</button>
     </div>
   </div>`;
@@ -4562,7 +4637,7 @@ function Welcome({ onNewFile, onOpenFile, onCloud, onRascunho, onServer, onReset
     ${onServer && html`<${ServerConnect} onConnect=${onServer} onReset=${onResetServer} />`}
     <div style="text-align:center;margin-top:18px;padding-top:12px;border-top:1px solid var(--line-soft)">
       <p class="meta" style="margin:0;font-size:11.5px;line-height:1.6">
-        <a href="https://github.com/LuizPF42/QualiLab" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">GitHub</a> · licença MIT · por Luiz Pimenta Filho · LabDados / FGV Direito SP
+        <a href="https://github.com/LuizPF42/QualiLab" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:underline;text-underline-offset:2px">GitHub</a> · licença MIT · por Luiz Pimenta Filho · LabDados / FGV Direito SP
       </p>
     </div>
   </div></div>`;
@@ -6117,8 +6192,9 @@ function MemoNav({ project, docs, codes, codings, memos, sel, onSel, onRenameDoc
   const [promptsOpen, setPromptsOpen] = useState(false);
   const [renamingId, setRenamingId] = useState(null); // doc em edição de nome
   const [renameVal, setRenameVal] = useState('');
-  const startRename = (d)=>{ setRenamingId(d.id); setRenameVal(d.name); };
-  const commitRename = ()=>{ if(renamingId && renameVal.trim()) onRenameDoc?.(renamingId, renameVal); setRenamingId(null); };
+  const cancelRenameRef = useRef(false); // #24: Escape cancela sem persistir (a remoção do input dispara blur com closure velha)
+  const startRename = (d)=>{ cancelRenameRef.current=false; setRenamingId(d.id); setRenameVal(d.name); };
+  const commitRename = ()=>{ if(cancelRenameRef.current){ cancelRenameRef.current=false; setRenamingId(null); return; } if(renamingId && renameVal.trim()) onRenameDoc?.(renamingId, renameVal); setRenamingId(null); };
   const hasMemo = (scope, targetId)=> memos.some(m=>m.scope===scope && m.target_id===targetId && m.content);
   const tops = codes.filter(c=>!c.parent_id);
   const childrenOf = (id)=>codes.filter(c=>c.parent_id===id);
@@ -6150,7 +6226,7 @@ function MemoNav({ project, docs, codes, codings, memos, sel, onSel, onRenameDoc
             <input class="txtin" autoFocus style="font-size:12.5px;padding:2px 6px" value=${renameVal}
               onClick=${e=>e.stopPropagation()}
               onInput=${e=>setRenameVal(e.target.value)}
-              onKeyDown=${e=>{ if(e.key==='Enter') commitRename(); else if(e.key==='Escape') setRenamingId(null); }}
+              onKeyDown=${e=>{ if(e.key==='Enter') commitRename(); else if(e.key==='Escape'){ cancelRenameRef.current=true; setRenamingId(null); } }}
               onBlur=${commitRename} />
           </div>`
         : html`<div key=${d.id} class="node-row ${sel.scope==='document'&&sel.targetId===d.id?'sel':''}"
@@ -6274,6 +6350,7 @@ function MemoEditor({ sel, project, codeById, codePath, codings, docs, memos, on
   const [saving, setSaving] = useState(false);
   const [editingName, setEditingName] = useState(false); // renomear documento inline no topo do memo
   const [nameVal, setNameVal] = useState('');
+  const cancelEditNameRef = useRef(false); // #24: Escape cancela sem persistir (o blur pós-remoção do input usa closure velha)
   const debRef = useRef(null), labelDebRef = useRef(null);
 
   useEffect(()=>{ setText(current?.content||''); setLabelVal(current?.label||''); setEditingName(false); }, [sel.scope, targetId]); // eslint-disable-line
@@ -6317,10 +6394,10 @@ function MemoEditor({ sel, project, codeById, codePath, codings, docs, memos, on
       ${editingName
         ? html`<input class="txtin" autoFocus style="max-width:460px;font-size:14px;padding:3px 8px" value=${nameVal}
             onInput=${e=>setNameVal(e.target.value)}
-            onKeyDown=${e=>{ if(e.key==='Enter'){ if(nameVal.trim()) onRenameDoc?.(doc.id, nameVal); setEditingName(false); } else if(e.key==='Escape') setEditingName(false); }}
-            onBlur=${()=>{ if(nameVal.trim()) onRenameDoc?.(doc.id, nameVal); setEditingName(false); }} />`
+            onKeyDown=${e=>{ if(e.key==='Enter'){ if(nameVal.trim()) onRenameDoc?.(doc.id, nameVal); setEditingName(false); } else if(e.key==='Escape'){ cancelEditNameRef.current=true; setEditingName(false); } }}
+            onBlur=${()=>{ if(!cancelEditNameRef.current && nameVal.trim()) onRenameDoc?.(doc.id, nameVal); cancelEditNameRef.current=false; setEditingName(false); }} />`
         : html`<span style="font-weight:600;font-size:15px">${doc.name}</span>
-          ${onRenameDoc && html`<button class="icon-btn" title="Renomear documento" style="font-size:13px" onClick=${()=>{ setNameVal(doc.name); setEditingName(true); }}>✏</button>`}`}
+          ${onRenameDoc && html`<button class="icon-btn" title="Renomear documento" style="font-size:13px" onClick=${()=>{ cancelEditNameRef.current=false; setNameVal(doc.name); setEditingName(true); }}>✏</button>`}`}
     </div>`}
     ${subtitle && html`<p class="hint" style="margin:0 0 4px">${subtitle}</p>`}
     ${coding && coding.quote && html`<blockquote style="margin:0 0 8px;padding:8px 12px;background:var(--surface);border-left:3px solid var(--teal);font-family:var(--serif);font-size:14px;max-height:140px;overflow:auto">${coding.quote}</blockquote>`}
@@ -7759,18 +7836,20 @@ function IACategorizarPanel({ project, docs, cats, codePath, allValues, store, i
     const turn = history[turnIdx]; if(!turn) return;
     const setVal = projectMode==='individual' ? store.setFinalValue : store.setDocValue;
     if(!setVal){ setErr('Este armazenamento não suporta gravar valores de categoria.'); return; }
-    const approved = (turn.values||[]).filter((_,i)=>decided[dkey(turnIdx,i)]);
-    if(!approved.length){ setErr('Nenhuma sugestão aprovada para aplicar.'); return; }
+    const saved = { ...(turn.saved||{}) }; // #27: indices ja persistidos — nunca reaplica
+    const toApply = (turn.values||[]).map((v,i)=>({v,i})).filter(({i})=> decided[dkey(turnIdx,i)] && !saved[i]);
+    if(!toApply.length){ setErr('Nenhuma sugestão aprovada pendente para aplicar.'); return; }
     setErr(''); setApplyMsg(''); setBusy(true);
     let applied=0, skipped=0;
     if(store.beginBatch) store.beginBatch();
     try{
-      for(const v of approved){ try{ await setVal.call(store, project.id, v.docId, v.catId, v.value); applied++; }catch(e){ skipped++; } }
+      for(const {v,i} of toApply){ try{ await setVal.call(store, project.id, v.docId, v.catId, v.value); saved[i]=true; applied++; }catch(e){ skipped++; } }
     } finally { if(store.endBatch) await store.endBatch(); }
     await reload(); await loadAll();
-    patchTurn(turnIdx, { applied:true });
-    setApplyMsg(`${applied} valor(es) aplicado(s)${skipped?`, ${skipped} falhou(aram)`:''}. Confira na aba Codificação (Categorias do documento) ou no Esquema.`);
-    setHistory(h=>[...h, { role:'user', content:`(Apliquei ${applied} valor(es) de categoria da sua sugestão.)` }]);
+    // #27: so conclui (somente-leitura) sem falhas; parcial mantem interativo e guarda os salvos.
+    patchTurn(turnIdx, skipped===0 ? { applied:true, saved } : { saved });
+    setApplyMsg(`${applied} valor(es) aplicado(s)${skipped?`, ${skipped} falhou(aram) — clique em Aplicar de novo para tentar só os pendentes`:''}. Confira na aba Codificação (Categorias do documento) ou no Esquema.`);
+    if(skipped===0 && applied) setHistory(h=>[...h, { role:'user', content:`(Apliquei ${applied} valor(es) de categoria da sua sugestão.)` }]);
     setBusy(false);
   }
 
@@ -7786,6 +7865,7 @@ function IACategorizarPanel({ project, docs, cats, codePath, allValues, store, i
     const vals = t.values || [];
     const interactive = idx===lastAssistantIdx && !t.applied;
     const appr = turnApprovedCount(t, idx);
+    const pend = vals.filter((_,i)=> decided[dkey(idx,i)] && !(t.saved||{})[i]).length; // #27: aprovados ainda NAO salvos
     return html`<div key=${'a'+idx} class="card" style="margin-bottom:10px">
       <div class="field-label" style="margin-bottom:4px">IA</div>
       ${t.summary && html`<div dangerouslySetInnerHTML=${{__html: mdLite(t.summary)}} />`}
@@ -7815,7 +7895,7 @@ function IACategorizarPanel({ project, docs, cats, codePath, allValues, store, i
             </div>`}
           </div>
         </div>`; })}
-        ${interactive && html`<button class="btn primary" disabled=${busy || !appr} onClick=${()=>applyApproved(idx)}>Aplicar ${appr} valor(es)</button>`}
+        ${interactive && html`<button class="btn primary" disabled=${busy || !pend} onClick=${()=>applyApproved(idx)}>Aplicar ${pend} valor(es)</button>`}
         ${t.applied && html`<div class="meta" style="margin-top:4px">✓ Valores aplicados.</div>`}
         ${!interactive && !t.applied && vals.length>0 && html`<div class="meta" style="margin-top:4px">Sugestão anterior — envie um refinamento para gerar nova.</div>`}
       </div>`}
@@ -8107,19 +8187,22 @@ function IACodificacaoPanel({ project, docs, codes, codeById, codePath, store, a
 
   async function applyApproved(turnIdx){
     const turn = history[turnIdx]; if(!turn) return;
-    const approved = (turn.codings||[]).filter((_,i)=>decided[dkey(turnIdx,i)]);
-    if(!approved.length){ setErr('Nenhuma codificação aprovada para aplicar.'); return; }
+    const saved = { ...(turn.saved||{}) }; // #27: indices ja persistidos — nunca reaplica
+    const toApply = (turn.codings||[]).map((o,i)=>({o,i})).filter(({i})=> decided[dkey(turnIdx,i)] && !saved[i]);
+    if(!toApply.length){ setErr('Nenhuma codificação aprovada pendente para aplicar.'); return; }
     setErr(''); setApplyMsg(''); setBusy(true);
     const layer = projectMode==='individual' ? 'final' : 'individual';
     let applied=0, skipped=0;
     if(store.beginBatch) store.beginBatch();
     try{
-      for(const o of approved){ try{ await store.addCoding(project.id, { document_id:o.docId, code_id:o.codeId, span_start:o.start, span_end:o.end, quote:o.quote, layer }); applied++; }catch(e){ skipped++; } }
+      for(const {o,i} of toApply){ try{ await store.addCoding(project.id, { document_id:o.docId, code_id:o.codeId, span_start:o.start, span_end:o.end, quote:o.quote, layer }); saved[i]=true; applied++; }catch(e){ skipped++; } }
     } finally { if(store.endBatch) await store.endBatch(); }
     await reload(); await loadAll();
-    patchTurn(turnIdx, { applied:true });
-    setApplyMsg(`${applied} codificação(ões) aplicada(s)${skipped?`, ${skipped} falhou(aram)`:''}. Confira no leitor (aba Codificação) ou na Visualização.`);
-    setHistory(h=>[...h, { role:'user', content:`(Apliquei ${applied} codificação(ões) da sua proposta.)` }]);
+    // #27: so marca como concluido (somente-leitura) quando NADA falhou; havendo falha, mantem o turno
+    // interativo (via !t.applied) e guarda os indices salvos pra reaplicar SO os pendentes.
+    patchTurn(turnIdx, skipped===0 ? { applied:true, saved } : { saved });
+    setApplyMsg(`${applied} codificação(ões) aplicada(s)${skipped?`, ${skipped} falhou(aram) — clique em Aplicar de novo para tentar só as pendentes`:''}. Confira no leitor (aba Codificação) ou na Visualização.`);
+    if(skipped===0 && applied) setHistory(h=>[...h, { role:'user', content:`(Apliquei ${applied} codificação(ões) da sua proposta.)` }]);
     setBusy(false);
   }
 
@@ -8138,6 +8221,7 @@ function IACodificacaoPanel({ project, docs, codes, codeById, codePath, store, a
     const cods = t.codings || [];
     const interactive = idx===lastAssistantIdx && !t.applied;
     const appr = turnApprovedCount(t, idx);
+    const pend = cods.filter((_,i)=> decided[dkey(idx,i)] && !(t.saved||{})[i]).length; // #27: aprovados ainda NAO salvos
     const drops = (t.bad||0)+(t.notFound||0)+(t.dup||0);
     return html`<div key=${'a'+idx} class="card" style="margin-bottom:10px">
       <div class="field-label" style="margin-bottom:4px">IA</div>
@@ -8165,7 +8249,7 @@ function IACodificacaoPanel({ project, docs, codes, codeById, codePath, store, a
             </div>`}
           </div>
         </div>`; })}
-        ${interactive && html`<button class="btn primary" disabled=${busy || !appr} onClick=${()=>applyApproved(idx)}>Aplicar ${appr} codificação(ões)</button>`}
+        ${interactive && html`<button class="btn primary" disabled=${busy || !pend} onClick=${()=>applyApproved(idx)}>Aplicar ${pend} codificação(ões)</button>`}
         ${t.applied && html`<div class="meta" style="margin-top:4px">✓ Codificações aplicadas.</div>`}
         ${!interactive && !t.applied && cods.length>0 && html`<div class="meta" style="margin-top:4px">Sugestão anterior — envie um refinamento para gerar nova.</div>`}
       </div>`}
@@ -9668,10 +9752,11 @@ function RenameCode({ code, onUpd, onSetColor, onSetSat, onSetRedaction, isAdmin
   // preview WYSIWYG: usa o proprio codeColor (inclui a compensacao de luminosidade por matiz),
   // nao um hslToHex(...,32) fixo — senao o laranja apareceria marrom aqui e certo na arvore.
   const previewHex = isBlack ? '#000000' : isGray ? '#808080' : codeColor(0, 0, hueLive, false, satLive).solid;
+  const nm=v.trim(); const canRename = nm!=='' && nm!==code.name; // #28: nao grava nome vazio nem no-op
   return html`<div>
     <div class="row" style="gap:6px;margin-top:6px">
-      <input class="txtin" value=${v} onInput=${e=>setV(e.target.value)} />
-      <button class="btn sm" onClick=${()=>onUpd(code.id,{name:v})}>renomear</button>
+      <input class="txtin" value=${v} onInput=${e=>setV(e.target.value)} onKeyDown=${e=>{ if(e.key==='Enter' && canRename) onUpd(code.id,{name:nm}); }} />
+      <button class="btn sm" disabled=${!canRename} onClick=${()=>canRename && onUpd(code.id,{name:nm})}>renomear</button>
     </div>
     ${code.depth===0 && isAdmin && html`<div style="margin-top:8px">
       <span class="meta">Cor da família</span>
@@ -9711,11 +9796,11 @@ function RenameCode({ code, onUpd, onSetColor, onSetSat, onSetRedaction, isAdmin
 
 /* inputs com debounce / colar */
 function DebInput({ value, onCommit, placeholder, disabled }){
-  const [v,setV]=useState(value||''); const t=useRef(null);
-  useEffect(()=>setV(value||''),[value]);
+  const [v,setV]=useState(value||''); const t=useRef(null); const vRef=useRef(value||''); // #29: vRef = ultimo valor digitado (o blur nao pode ler o v do closure de render)
+  useEffect(()=>{ vRef.current=value||''; setV(value||''); },[value]);
   return html`<input class="txtin" placeholder=${placeholder} value=${v} disabled=${!!disabled}
-    onInput=${e=>{ setV(e.target.value); clearTimeout(t.current); const val=e.target.value; t.current=setTimeout(()=>onCommit(val),600); }}
-    onBlur=${()=>{ clearTimeout(t.current); onCommit(v); }} />`;
+    onInput=${e=>{ const val=e.target.value; vRef.current=val; setV(val); clearTimeout(t.current); t.current=setTimeout(()=>onCommit(val),600); }}
+    onBlur=${()=>{ clearTimeout(t.current); onCommit(vRef.current); }} />`;
 }
 
 /* data possivelmente parcial: DD/MM/AAAA com partes em branco quando o documento nao informa.
@@ -9728,17 +9813,17 @@ function parseDate(val){
   return m ? { d:m[1], mo:m[2], y:m[3] } : { d:'', mo:'', y:'' };
 }
 function DateInput({ value, onCommit, disabled }){
-  const [p,setP]=useState(parseDate(value)); const t=useRef(null);
-  useEffect(()=>setP(parseDate(value)),[value]);
+  const [p,setP]=useState(parseDate(value)); const t=useRef(null); const pRef=useRef(parseDate(value)); // #29: pRef = ultimo estado digitado (o flush do blur nao pode ler o p do closure de render)
+  useEffect(()=>{ const q=parseDate(value); pRef.current=q; setP(q); },[value]);
   const build = (q)=> (q.d||q.mo||q.y) ? `${q.d}/${q.mo}/${q.y}` : '';
-  const set = (k,raw,max)=>{ const digits=String(raw).replace(/\D/g,'').slice(0,max); const q={...p,[k]:digits}; setP(q);
+  const set = (k,raw,max)=>{ const digits=String(raw).replace(/\D/g,'').slice(0,max); const q={...pRef.current,[k]:digits}; pRef.current=q; setP(q);
     clearTimeout(t.current); t.current=setTimeout(()=>onCommit(build(q)),600); };
-  const flush = ()=>{ clearTimeout(t.current); onCommit(build(p)); };
+  const flush = ()=>{ clearTimeout(t.current); onCommit(build(pRef.current)); };
   const informada = !!(p.d||p.mo||p.y);
   return html`<div>
     <div class="row" style="gap:8px;margin-bottom:8px">
       <button class="opt ${informada?'':'on'}" disabled=${!!disabled} title="Marca a data como não informada (limpa os campos)"
-        onClick=${()=>{ const q={d:'',mo:'',y:''}; setP(q); clearTimeout(t.current); onCommit(''); }}>Não informada</button>
+        onClick=${()=>{ const q={d:'',mo:'',y:''}; pRef.current=q; setP(q); clearTimeout(t.current); onCommit(''); }}>Não informada</button>
     </div>
     <div class="row" style="gap:6px;align-items:center">
       <input class="txtin" style="width:60px;text-align:center" inputmode="numeric" placeholder="DD" maxlength="2" disabled=${!!disabled}
@@ -9775,7 +9860,7 @@ function ProjectModal({ mode, user, project, projectMode, isAdmin, members, hasD
   const [sel,setSel]=useState(projectMode);
   const [pname,setPname]=useState(project?.name||'');
   const [copied,setCopied]=useState(false);
-  const [url,setUrl]=useState(''); const [key,setKey]=useState('');
+  const [url,setUrl]=useState(''); const [key,setKey]=useState(''); const [connErr,setConnErr]=useState(null); // #25/#26
   const list = members||[];
   const admins = list.filter(m=>m.role==='admin').length;
   const toIndividual = projectMode==='collective' && sel==='individual';
@@ -9913,10 +9998,12 @@ function ProjectModal({ mode, user, project, projectMode, isAdmin, members, hasD
               <button class="btn sm ghost" onClick=${onClearCloud}>Desconectar (modo local)</button>
             </div></div>`
         : html`<div><p class="hint">Para usar a nuvem, informe a URL e a anon key do seu projeto Supabase (salvas só neste navegador)${(SUPABASE_URL&&SUPABASE_ANON_KEY)?' — ou reconecte ao servidor salvo':''}.</p>
-            <div class="field"><div class="field-label">Supabase URL</div><input class="txtin" value=${url} onInput=${e=>setUrl(e.target.value)} placeholder="https://xxxx.supabase.co" /></div>
-            <div class="field"><div class="field-label">Anon key</div><input class="txtin" value=${key} onInput=${e=>setKey(e.target.value)} placeholder="eyJhbGciOi..." /></div>
+            <div class="field"><div class="field-label">Supabase URL</div><input class="txtin" value=${url} onInput=${e=>{ setUrl(e.target.value); setConnErr(null); }} placeholder="https://xxxx.supabase.co" /></div>
+            <div class="field"><div class="field-label">Anon key</div><input class="txtin" value=${key} onInput=${e=>{ setKey(e.target.value); setConnErr(null); }} placeholder="eyJhbGciOi..." /></div>
+            ${url.trim() && !validSupabaseUrl(url.trim()) && html`<p class="hint" style="color:var(--danger);margin:0 0 8px">Informe uma URL https:// válida do seu projeto Supabase.</p>`}
+            ${connErr && html`<div class="banner err" style="margin:0 0 8px">${connErr}</div>`}
             <div class="row" style="gap:8px;flex-wrap:wrap">
-              <button class="btn sm primary" disabled=${!url||!key} onClick=${()=>onSaveCloud(url.trim(),key.trim())}>Conectar e recarregar</button>
+              <button class="btn sm primary" disabled=${!(validSupabaseUrl(url.trim()) && key.trim())} onClick=${()=>{ setConnErr(null); const e=onSaveCloud(url.trim(),key.trim()); if(e) setConnErr(e); }}>Conectar e recarregar</button>
               ${(SUPABASE_URL&&SUPABASE_ANON_KEY) && html`<button class="btn sm ghost" title=${'Reconecta a '+SUPABASE_URL} onClick=${onReconnectCloud}>Reconectar à nuvem</button>`}
             </div></div>`}
       </div>
@@ -10071,6 +10158,8 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
     if(needsBaseUrl && !aiBaseUrl.trim()){ setErr(isAzure?'Informe a URL base (endpoint) do Azure OpenAI.':'Informe a URL base da API personalizada.'); return; }
     if(needsBaseUrl && !aiModel.trim()){ setErr(isAzure?'Informe o deployment do Azure OpenAI.':'Informe o modelo da API personalizada.'); return; }
     if(isAzure && !aiKey.trim()){ setErr('A chave de API é obrigatória para o Azure OpenAI.'); return; }
+    // #22: provedores hospedados (gemini/openai/anthropic) exigem chave quando nao ha chave de servidor
+    if(!needsBaseUrl && !AI_SHARED_KEY && !aiKey.trim()){ setErr('A chave de IA é obrigatória para este provedor — informe a sua chave (BYOK) ou use o Ollama local.'); return; }
     try{
       localStorage.setItem('qualilab:ai_provider', aiProvider);
       if(aiKey.trim()) localStorage.setItem('qualilab:ai_key', aiKey.trim()); else localStorage.removeItem('qualilab:ai_key');
@@ -10086,7 +10175,11 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
         if(priceOut.trim()!=='' && po>=0) localStorage.setItem('qualilab:ai_price_out', String(po)); else localStorage.removeItem('qualilab:ai_price_out');
       }
       AI_PRICES = null; // proxima estimativa recarrega a referencia (caso tenha mudado)
-    }catch(e){}
+    }catch(e){
+      // #23: nao mente "salva" quando o localStorage recusa (quota/bloqueio/janela anonima)
+      setErr('Não foi possível salvar a configuração de IA neste navegador — o armazenamento pode estar cheio, desabilitado ou bloqueado (ex.: janela anônima). Detalhe: '+String(e&&e.message||e));
+      return;
+    }
     setMsg('Configuração de IA salva.');
   });
   const clearAI = ()=>run(async()=>{

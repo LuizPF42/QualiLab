@@ -261,6 +261,9 @@ grant execute on function public.rename_project(uuid,text)        to anon, authe
 grant execute on function public.delete_project(uuid)             to anon, authenticated;
 grant execute on function public.set_project_mode(uuid,text,text) to anon, authenticated;
 
+-- (issue #7) Os GRANTs de tabela ficam no FIM do arquivo, depois de TODAS as tabelas —
+-- ver o bloco "GRANTS de tabela" no final.
+
 -- ---------- RLS ----------
 alter table public.projects   enable row level security;
 alter table public.members    enable row level security;
@@ -603,3 +606,25 @@ create trigger trg_memos_gc_codes after delete on public.codes
 drop trigger if exists trg_memos_gc_codings on public.codings;
 create trigger trg_memos_gc_codings after delete on public.codings
   for each row execute function public.memos_gc('coding');
+
+-- ---------- GRANTS de tabela (issue #7 — portabilidade/autocontencao) ----------
+-- FICAM NO FIM DE PROPOSITO: referenciam TODAS as tabelas (memos/ia_results/ia_memory/
+-- ai_prices sao criadas acima), entao rodar o schema.sql inteiro num banco NOVO nao falha
+-- com "relation does not exist". GRANT e RLS sao camadas ORTOGONAIS: o grant nao enfraquece
+-- a RLS (que decide linha a linha). No Supabase hospedado o ALTER DEFAULT PRIVILEGES do
+-- bootstrap ja concede ALL a anon/authenticated; este bloco torna o schema AUTOCONTIDO
+-- para stacks novas / self-hosted onde esse mecanismo nao existe.
+grant usage on schema public to anon, authenticated;
+grant select, insert, update, delete on
+  public.projects, public.members, public.documents, public.categories,
+  public.doc_values, public.codes, public.codings,
+  public.memos, public.ia_results, public.ia_memory
+  to authenticated;
+-- ai_prices: leitura publica (preco de lista nao e segredo); escrita so service_role.
+-- O ALTER DEFAULT PRIVILEGES abaixo roda DEPOIS do create de ai_prices, entao NAO concede
+-- escrita a ela (default privileges so valem para tabelas criadas APOS o statement).
+grant select on public.ai_prices to anon, authenticated;
+-- join_attempts NAO recebe grant direto: so a RPC security-definer join_project a toca.
+-- Alinha tabelas FUTURAS (proximas migracoes) ao mesmo contrato (idempotente).
+alter default privileges in schema public
+  grant select, insert, update, delete on tables to authenticated;

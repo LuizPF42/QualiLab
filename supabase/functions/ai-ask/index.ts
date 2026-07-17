@@ -117,6 +117,35 @@ function assertPublicBaseUrl(raw: unknown) {
   }
 }
 
+// anti-SSRF parte 2 (issue #9): assertPublicBaseUrl valida so a URL INICIAL. Se o fetch seguisse
+// redirects sozinho (redirect:'follow', o default), um host publico aprovado poderia responder
+// 302 -> http://localhost / IP privado / 169.254.169.254 (metadata) e o runtime emitiria o POST
+// pro alvo interno SEM revalidar. Aqui seguimos os redirects MANUALMENTE, revalidando CADA hop com
+// a mesma checagem, ate MAX_REDIRECTS. Se o runtime devolver status opaco (0), loc fica null e
+// retornamos a resposta (o call* trata como erro) — falha SEGURO. Nao fecha DNS rebinding (hostname
+// publico com registro A apontando pra IP interno passa ja no hop 0; fechar exigiria resolver o IP).
+const MAX_REDIRECTS = 5;
+const SENSITIVE_HEADER = /^(authorization|api-key|x-api-key|x-goog-api-key)$/i;
+async function fetchSsrfSafe(url: string, init: RequestInit): Promise<Response> {
+  let current = url;
+  let headers: Record<string, string> = { ...(init.headers as Record<string, string> || {}) };
+  for (let hop = 0; ; hop++) {
+    const res = await fetch(current, { ...init, headers, redirect: 'manual' });
+    const loc = res.status >= 300 && res.status < 400 ? res.headers.get('location') : null;
+    if (!loc) return res;                 // nao e redirect (ou status opaco): resposta final
+    await res.body?.cancel();             // libera a conexao do 3xx antes de seguir/lancar
+    if (hop >= MAX_REDIRECTS) throw new HttpError(400, 'Muitos redirecionamentos da URL base');
+    const next = new URL(loc, current).toString();  // resolve Location absoluta ou relativa
+    assertPublicBaseUrl(next);            // recusa http/localhost/IP/.internal em CADA hop
+    // #9: num redirect CROSS-ORIGIN, stripa as credenciais (o redirect:'follow' do spec ja remove
+    // Authorization em hop cross-origin; no modo manual replicamos pra nao vazar a chave BYOK).
+    if (new URL(next).origin !== new URL(current).origin) {
+      headers = Object.fromEntries(Object.entries(headers).filter(([h]) => !SENSITIVE_HEADER.test(h)));
+    }
+    current = next;
+  }
+}
+
 // Tentativas com backoff exponencial em erros TRANSITORIOS do provedor: 429 (rate limit),
 // 503 (UNAVAILABLE/"high demand"), 500/502/504. Erros definitivos (401 chave invalida,
 // 400 request ruim) NAO sao reentados. Cada tentativa tem timeout proprio, E o conjunto
@@ -132,10 +161,11 @@ async function fetchRetry(url: string, init: RequestInit, attempts = 3): Promise
     if (remaining < MIN_ATTEMPT_MS) break;  // sem orcamento pra outra tentativa util — para ANTES do 546
     try {
       // o timeout da tentativa nunca passa do que resta do prazo global
-      const res = await fetch(url, { ...init, signal: AbortSignal.timeout(Math.min(FETCH_TIMEOUT_MS, remaining)) });
+      const res = await fetchSsrfSafe(url, { ...init, signal: AbortSignal.timeout(Math.min(FETCH_TIMEOUT_MS, remaining)) });
       if (!TRANSIENT.has(res.status)) return res;
       last = res;  // transitorio: guarda e tenta de novo (vira erro do provedor se as tentativas acabarem)
     } catch (e) {
+      if (e instanceof HttpError) throw e;  // bloqueio SSRF (issue #9) propaga na hora, sem gastar tentativas
       lastErr = e;
     }
     const backoff = 500 * Math.pow(2, i) + Math.random() * 300;
