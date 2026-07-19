@@ -4763,13 +4763,11 @@ function App(){
   // PDF-BLOCK: clique direito na página do PDF abre o menu de aplicar código para a seleção ativa
   // (o trecho recém-lido pelo OCR de área) — reusa o mesmo ctxMenu do leitor
   function onRequestApplyMenu(x, y){ if(!sel) return; setCtxMenu({ x, y, sel:{ start:sel.start, end:sel.end, quote:sel.quote }, quote:sel.quote, boundRight: window.innerWidth }); }
-  // PDF-BLOCK/§4: clique direito num GRIFO de texto na página do PDF (sem seleção nova) — acha o
-  // frag do índice sob o cursor, converte pro offset no content e abre o MESMO menu do leitor
-  // (anotar/remover/alterar/aceitar), espelhando o caminho do grifo (`marked`) do onContextMenu.
-  // Codings de região (pdf_region) ficam de fora: o retângulo delas já intercepta o clique direito.
-  function pdfTextGrifoContext(page, nx, ny, x, y){
+  // PDF-BLOCK/§4: acha o frag do índice sob um ponto (0..1) da página — base dos DOIS gestos de
+  // grifo no PDF (clique esquerdo = focar/abrir a nota; direito = menu do leitor)
+  function pdfFragAt(page, nx, ny){
     const pi = pdfIndex;
-    if(!activeDoc || !pi || pi.docId!==activeId || pi.content!==activeDoc.content || !pi.index) return false;
+    if(!activeDoc || !pi || pi.docId!==activeId || pi.content!==activeDoc.content || !pi.index) return null;
     let f=null, near=null;
     for(const g of pi.index){
       if(g.page!==page || g.x==null || !(g.end>g.start)) continue;
@@ -4779,16 +4777,31 @@ function App(){
         if(!near && nx>=g.x-tol && nx<=g.x+g.w+tol) near=g;
       }
     }
-    f = f || near;
-    if(!f) return false;
-    // cobertura por SOBREPOSIÇÃO com o frag inteiro (não ponto->caractere): o tint é desenhado na
-    // granularidade do frag (item do pdf.js pode ser a linha toda), então o menu tem que abrir em
-    // qualquer ponto do grifo VISÍVEL — um clique em "JORGE" de "JORGE BORNHAUSEN" com só
-    // "BORNHAUSEN" codificado ainda está sobre o tint (bug pego no e2e)
-    const covered = visibleCodings.some(c=> c.document_id===activeId && !c.pdf_region && c.span_start<f.end && c.span_end>f.start);
-    if(!covered) return false;
+    return f || near;
+  }
+  // cobertura por SOBREPOSIÇÃO com o frag inteiro (não ponto->caractere): o tint é desenhado na
+  // granularidade do frag (item do pdf.js pode ser a linha toda), então o gesto tem que valer em
+  // qualquer ponto do grifo VISÍVEL — um clique em "JORGE" de "JORGE BORNHAUSEN" com só
+  // "BORNHAUSEN" codificado ainda está sobre o tint (bug pego no e2e)
+  function pdfCodingsAtFrag(f){
+    return visibleCodings.filter(c=> c.document_id===activeId && !c.pdf_region && c.span_start<f.end && c.span_end>f.start);
+  }
+  // clique direito num GRIFO de texto na página (sem seleção nova) — abre o MESMO menu do leitor
+  // (anotar/remover/alterar/aceitar), espelhando o caminho do grifo (`marked`) do onContextMenu.
+  // Codings de região (pdf_region) ficam de fora: o retângulo delas já intercepta o clique direito.
+  function pdfTextGrifoContext(page, nx, ny, x, y){
+    const f = pdfFragAt(page, nx, ny);
+    if(!f || !pdfCodingsAtFrag(f).length) return false;
     setCtxMenu({ x, y, sel:null, pos:f.start, runEnd:f.end, quote:(activeDoc.content||'').slice(f.start, f.end).trim(), boundRight: window.innerWidth });
     return true;
+  }
+  // clique ESQUERDO (sem seleção) num grifo de texto — foca a coding e abre a aba Memos já na nota
+  // do trecho, espelhando o onMouseUp do leitor ("de cima" = censura na frente, senão a última)
+  function pdfTextGrifoClick(page, nx, ny){
+    const f = pdfFragAt(page, nx, ny);
+    if(!f) return;
+    const covering = pdfCodingsAtFrag(f);
+    if(covering.length){ const top = covering.find(c=>codeById[c.code_id]?.is_redaction) || covering[covering.length-1]; setFocusedCoding(top.id); setRtab('memos'); }
   }
   // PDF-BLOCK: clicar num retângulo (esq ou dir) abre o MODAL do bloco (texto do OCR em destaque +
   // trocar código / anotar / remover), no estilo do "Revisar texto do OCR" — não o menu compacto
@@ -5151,7 +5164,7 @@ function App(){
         </div>`}
         <div class="pane-body scroll reader-pane theme-${readerPrefs.theme} width-${readerPrefs.width}" ref=${readerRef}>
           ${!activeDoc ? html`<div class="empty"><div class="t">Nenhum documento</div><div>Envie arquivos (.txt, .md, .docx, .pdf) ou cole um texto. O conteúdo é extraído e exibido aqui para codificação.</div></div>`
-          : (showPdf && pdfBytes) ? html`<${PdfView} bytes=${pdfBytes} onPickText=${pickPdfText} onOcrRegion=${ocrRegion} initialPage=${pdfPageRef.current} onPageChange=${p=>{ pdfPageRef.current=p; }} regions=${pdfRegionsForDoc} textHl=${pdfTextHlForDoc} canApply=${!!sel} onRequestMenu=${onRequestApplyMenu} onPageContext=${pdfTextGrifoContext} onRegionClick=${openRegionModal} onRegionContext=${openRegionModal} />`
+          : (showPdf && pdfBytes) ? html`<${PdfView} bytes=${pdfBytes} onPickText=${pickPdfText} onOcrRegion=${ocrRegion} initialPage=${pdfPageRef.current} onPageChange=${p=>{ pdfPageRef.current=p; }} regions=${pdfRegionsForDoc} textHl=${pdfTextHlForDoc} canApply=${!!sel} onRequestMenu=${onRequestApplyMenu} onPageContext=${pdfTextGrifoContext} onPagePick=${pdfTextGrifoClick} onRegionClick=${openRegionModal} onRegionContext=${openRegionModal} />`
           : editingText ? html`<textarea autoFocus spellcheck="false" onInput=${e=>setEditDraft(e.target.value)} value=${editDraft}
               style=${`display:block;width:100%;height:100%;min-height:60vh;box-sizing:border-box;font-family:var(--serif);font-size:${(17*readerPrefs.scale).toFixed(1)}px;line-height:1.62;padding:14px 22px;border:0;background:transparent;color:inherit;resize:none;outline:none`}></textarea>`
           : html`<div class="reader" style=${`font-size:${(17*readerPrefs.scale).toFixed(1)}px`} onMouseUp=${onMouseUp} onContextMenu=${onContextMenu}>
@@ -11131,7 +11144,7 @@ function DateInput({ value, onCommit, disabled }){
    do content (findQuoteSpan) e seta `sel`, e o painel de codigos aplica normalmente. O
    alinhamento NAO precisa ser pixel-perfeito (camada transparente + findQuoteSpan e fuzzy).
    Pagina ESCANEADA nao tem getTextContent -> camada vazia (precisa de OCR, proximo passo). */
-function PdfView({ bytes, onPickText, onOcrRegion, initialPage, onPageChange, regions, textHl, canApply, onRequestMenu, onPageContext, onRegionClick, onRegionContext }){
+function PdfView({ bytes, onPickText, onOcrRegion, initialPage, onPageChange, regions, textHl, canApply, onRequestMenu, onPageContext, onPagePick, onRegionClick, onRegionContext }){
   const [pdf, setPdf] = useState(null);
   const [pageNum, setPageNum] = useState(initialPage||1);   // PDF-BLOCK: começa na página lembrada (o App preserva entre idas/voltas)
   const [numPages, setNumPages] = useState(0);
@@ -11207,7 +11220,20 @@ function PdfView({ bytes, onPickText, onOcrRegion, initialPage, onPageChange, re
     })();
     return ()=>{ cancelled=true; try{ task && task.cancel(); }catch(e){} };
   }, [pdf, pageNum, scale]);
-  const onUp = ()=>{ const s=((window.getSelection && window.getSelection().toString())||'').trim(); if(s.length>=3 && onPickText) onPickText(s, pageNum); };  // §4: a página junto — o App escopa a busca a ela
+  // §4: a página junto — o App escopa a busca a ela; SEM seleção, clique esquerdo num grifo
+  // espelha o leitor (foca a coding e abre a nota na aba Memos, via onPagePick)
+  const onUp = (e)=>{
+    if(e && e.button!==0) return;   // mouseup do botão direito é do onCtx
+    const s=((window.getSelection && window.getSelection().toString())||'').trim();
+    if(s.length>=3 && onPickText){ onPickText(s, pageNum); return; }
+    if(s.length===0 && onPagePick && canvasRef.current){
+      const r = canvasRef.current.getBoundingClientRect();
+      if(r.width>0 && r.height>0){
+        const nx=(e.clientX-r.left)/r.width, ny=(e.clientY-r.top)/r.height;
+        if(nx>=0 && nx<=1 && ny>=0 && ny<=1) onPagePick(pageNum, nx, ny);
+      }
+    }
+  };
   // PDF-BLOCK: OCR de área — arrasta um retângulo, recorta o canvas já renderizado, manda pro OCR
   const cropCanvas = (rc)=>{ const src=canvasRef.current; const w=Math.round(rc.w), h=Math.round(rc.h); const c=document.createElement('canvas'); c.width=w; c.height=h; c.getContext('2d').drawImage(src, Math.round(rc.x), Math.round(rc.y), w, h, 0, 0, w, h); return c; };
   const rectDown = (e)=>{ const r=e.currentTarget.getBoundingClientRect(); dragRef.current={ x0:e.clientX-r.left, y0:e.clientY-r.top }; setRect({ x:dragRef.current.x0, y:dragRef.current.y0, w:0, h:0 }); };
@@ -11244,7 +11270,7 @@ function PdfView({ bytes, onPickText, onOcrRegion, initialPage, onPageChange, re
       <button class="btn sm ghost" disabled=${pageNum<=1} onClick=${()=>setPageNum(p=>Math.max(1,p-1))}>‹ anterior</button>
       <span class="meta">${numPages?`página ${pageNum} de ${numPages}`:'carregando…'}</span>
       <button class="btn sm ghost" disabled=${pageNum>=numPages} onClick=${()=>setPageNum(p=>Math.min(numPages,p+1))}>próxima ›</button>
-      <span class="meta">${rectMode ? '· arraste um retângulo sobre a região para OCR' : canApply ? '· escolha o código à direita ou clique direito para aplicar (vira retângulo colorido)' : (bodyNative?'· selecione um trecho para codificar · botão direito num grifo: anotar/remover':'· corpo escaneado — use "▭ OCR de área"')}</span>
+      <span class="meta">${rectMode ? '· arraste um retângulo sobre a região para OCR' : canApply ? '· escolha o código à direita ou clique direito para aplicar (vira retângulo colorido)' : (bodyNative?'· selecione um trecho para codificar · grifo: clique abre a nota, botão direito o menu':'· corpo escaneado — use "▭ OCR de área"')}</span>
       ${onOcrRegion && html`<button class="btn sm ${rectMode?'primary':'ghost'}" title="OCR só do retângulo que você arrastar sobre a página (para regiões escaneadas)" onClick=${()=>setRectMode(m=>!m)}>▭ OCR de área</button>`}
       <div class="grow"></div>
       <button class="icon-btn" title="Diminuir" onClick=${()=>setScale(s=>Math.max(0.6,+(s-0.2).toFixed(2)))}>A-</button>
