@@ -17,6 +17,14 @@ create table if not exists public.projects (
   created_by  uuid
 );
 alter table public.projects add column if not exists mode text not null default 'collective';
+-- DISTRIBUICAO/CEGO (jul/2026): duas dimensoes ORTOGONAIS, ambas DESLIGADAS por padrao
+-- (projeto que ja existe nao muda de comportamento):
+--   restrict_docs = membro so ENXERGA os documentos atribuidos a ele (tabela assignments)
+--   blind         = membro so ENXERGA as PROPRIAS codificacoes/respostas (true blind)
+-- Combinam: cego + o MESMO doc para 2 pessoas = duplo-cego (confiabilidade inter-codificador);
+-- restrito + 1 pessoa por doc = divisao de trabalho. Ver can_see_doc/can_see_authored abaixo.
+alter table public.projects add column if not exists blind         boolean not null default false;
+alter table public.projects add column if not exists restrict_docs boolean not null default false;
 
 create table if not exists public.members (
   id           uuid primary key default gen_random_uuid(),
@@ -40,6 +48,18 @@ create table if not exists public.documents (
   created_at  timestamptz not null default now(),
   created_by  uuid
 );
+-- PDF-BLOCK (Camada 2): o texto+offset continua a espinha; guardar o PDF ORIGINAL e' aditivo.
+-- Nos modos arquivo/local os bytes vivem no .qualilab (zip) / IndexedDB. Na NUVEM iriam pro
+-- Supabase Storage (bucket 'pdfs', objeto '<doc_id>.pdf') e a linha so marca has_pdf. So com
+-- CONSENTIMENTO EXPLICITO (decisao do autor) e planejado como removivel.
+alter table public.documents add column if not exists has_pdf boolean not null default false;
+-- bucket privado 'pdfs' (bytes como '<doc_id>.pdf') + RLS por MEMBRO do projeto do documento.
+-- O front so sobe o PDF pra nuvem com CONSENTIMENTO explicito (cloudPdfConsentOk no index.html).
+insert into storage.buckets (id, name, public) values ('pdfs','pdfs',false) on conflict (id) do nothing;
+-- As 4 policies do bucket MUDARAM DE LUGAR (jul/2026): passaram a depender de can_see_doc()
+-- (distribuicao restritiva), que so pode ser criada depois de is_admin e da tabela assignments.
+-- Rodar este arquivo de cima para baixo num banco NOVO falharia aqui. Elas agora ficam na
+-- secao RLS, logo apos as policies de doc_values. Ver "RLS: storage (PDF original)".
 
 create table if not exists public.categories (
   id          uuid primary key default gen_random_uuid(),
@@ -103,9 +123,29 @@ create table if not exists public.codings (
   layer        text not null default 'individual',  -- individual | final (consolidada)
   created_by   uuid,
   author_name  text not null default 'anonimo',
-  created_at   timestamptz not null default now()
+  created_at   timestamptz not null default now(),
+  pdf_region   jsonb   -- PDF-BLOCK: geometria do retângulo do OCR de área {page,x,y,w,h} (0..1); null = codificação de texto comum
 );
 alter table public.codings add column if not exists layer text not null default 'individual';
+alter table public.codings add column if not exists pdf_region jsonb;   -- PDF-BLOCK (idempotente p/ bancos já criados)
+
+-- ---------- distribuicao: quem codifica o que (jul/2026) ----------
+-- Uma linha por (documento, pesquisador). Sozinha e so um PLANO de trabalho; vira restricao
+-- de verdade quando projects.restrict_docs esta ligado (ver can_see_doc). Serve aos dois
+-- caminhos que o autor pediu: divisao de trabalho (1 pessoa por doc) e true blind (o MESMO
+-- doc para 2+ pessoas, com projects.blind ligado).
+create table if not exists public.assignments (
+  id          uuid primary key default gen_random_uuid(),
+  project_id  uuid not null references public.projects(id) on delete cascade,
+  document_id uuid not null references public.documents(id) on delete cascade,
+  user_id     uuid not null,
+  assigned_at timestamptz not null default now(),
+  assigned_by uuid,
+  unique (document_id, user_id)
+);
+create index if not exists assignments_doc_idx     on public.assignments (document_id, user_id);
+create index if not exists assignments_user_idx    on public.assignments (user_id);
+create index if not exists assignments_project_idx on public.assignments (project_id);
 
 -- ---------- funções de pertencimento ----------
 create or replace function public.is_member(p uuid)
@@ -121,6 +161,46 @@ $$;
 -- ---------- RPCs ----------
 -- codigo de convite com 10 chars hex (16^10 ~ 1,1 trilhao de combinacoes; os 6 antigos
 -- eram enumeraveis, 16,7M). p_mode validado — antes qualquer string era aceita.
+-- ---------- helpers de visibilidade (distribuicao / cego) ----------
+-- CUIDADO (mesma classe do bug de shadowing que negou o bucket 'pdfs' inteiro): estas funcoes
+-- comparam colunas homonimas (documents.id, projects.id, assignments.document_id) dentro de
+-- subselects usados em POLICY. Por isso TODO parametro leva prefixo p_ e TODA tabela leva alias.
+
+-- documento visivel? restricao desligada, ou admin, ou atribuido a mim.
+-- Com restrict_docs LIGADO, documento SEM nenhuma atribuicao fica so com o admin (senao
+-- sobraria um meio-estado ambiguo: corpus recem-importado aberto a todos ate ser distribuido).
+create or replace function public.can_see_doc(p_project uuid, p_doc uuid)
+returns boolean language sql security definer stable set search_path = public as $$
+  select not coalesce((select pr.restrict_docs from public.projects pr where pr.id = p_project), false)
+      or public.is_admin(p_project)
+      or exists (select 1 from public.assignments a
+                  where a.document_id = p_doc and a.user_id = auth.uid());
+$$;
+
+-- linha autoral visivel? cego desligado, ou admin, ou a linha e minha.
+-- Vale para codings.created_by e doc_values.set_by. No cego a camada 'final' (gabarito, que o
+-- admin carimba) TAMBEM sai da vista do membro, de proposito: revelar o gabarito no meio de um
+-- estudo cego contamina a codificacao. Desligue o cego para liberar.
+create or replace function public.can_see_authored(p_project uuid, p_owner uuid)
+returns boolean language sql security definer stable set search_path = public as $$
+  select not coalesce((select pr.blind from public.projects pr where pr.id = p_project), false)
+      or public.is_admin(p_project)
+      or p_owner = auth.uid();
+$$;
+
+-- memo visivel? os escopos que apontam para um documento ('document') ou para um trecho
+-- ('coding', via a coding) herdam a visibilidade do documento; os demais (project, code,
+-- ai_*) seguem abertos ao membro.
+create or replace function public.memo_visible(p_project uuid, p_scope text, p_target uuid)
+returns boolean language sql security definer stable set search_path = public as $$
+  select case
+    when p_scope = 'document' then public.can_see_doc(p_project, p_target)
+    when p_scope = 'coding'   then public.can_see_doc(p_project,
+                                    (select c.document_id from public.codings c where c.id = p_target))
+    else true
+  end;
+$$;
+
 create or replace function public.create_project(p_name text, p_display text, p_mode text default 'collective')
 returns public.projects language plpgsql security definer set search_path = public as $$
 declare v_code text; v_proj public.projects;
@@ -173,13 +253,15 @@ end; $$;
 drop function if exists public.my_projects();
 create or replace function public.my_projects()
 returns table (id uuid, name text, code text, mode text, role text,
-               created_at timestamptz, n_documents bigint, n_codings bigint)
+               created_at timestamptz, n_documents bigint, n_codings bigint,
+               blind boolean, restrict_docs boolean)
 language sql security definer stable set search_path = public as $$
   select p.id, p.name, p.code, p.mode,
     (select m.role from public.members m where m.project_id = p.id and m.user_id = auth.uid()) as role,
     p.created_at,
     (select count(*) from public.documents d where d.project_id = p.id),
-    (select count(*) from public.codings  c where c.project_id = p.id)
+    (select count(*) from public.codings  c where c.project_id = p.id),
+    p.blind, p.restrict_docs
   from public.projects p
   where exists (select 1 from public.members m where m.project_id = p.id and m.user_id = auth.uid())
   order by p.created_at desc;
@@ -251,6 +333,23 @@ begin
   update public.projects set mode = p_mode where id = p_project;
 end; $$;
 
+-- ligar/desligar distribuicao restritiva e cego (admin). Precisa de RPC porque projects
+-- nao tem policy de UPDATE nenhuma -- so o select.
+create or replace function public.set_project_flags(p_project uuid, p_blind boolean default null, p_restrict boolean default null)
+returns public.projects language plpgsql security definer set search_path = public as $$
+declare v_proj public.projects;
+begin
+  if not public.is_admin(p_project) then
+    raise exception 'Apenas administradores alteram a distribuicao e o modo cego';
+  end if;
+  update public.projects
+     set blind         = coalesce(p_blind, blind),
+         restrict_docs = coalesce(p_restrict, restrict_docs)
+   where id = p_project
+   returning * into v_proj;
+  return v_proj;
+end; $$;
+
 grant execute on function public.create_project(text, text, text) to anon, authenticated;
 grant execute on function public.join_project(text, text)         to anon, authenticated;
 grant execute on function public.my_projects()                    to anon, authenticated;
@@ -260,6 +359,7 @@ grant execute on function public.remove_member(uuid,uuid)         to anon, authe
 grant execute on function public.rename_project(uuid,text)        to anon, authenticated;
 grant execute on function public.delete_project(uuid)             to anon, authenticated;
 grant execute on function public.set_project_mode(uuid,text,text) to anon, authenticated;
+grant execute on function public.set_project_flags(uuid,boolean,boolean) to anon, authenticated;
 
 -- (issue #7) Os GRANTs de tabela ficam no FIM do arquivo, depois de TODAS as tabelas —
 -- ver o bloco "GRANTS de tabela" no final.
@@ -272,6 +372,7 @@ alter table public.categories enable row level security;
 alter table public.doc_values enable row level security;
 alter table public.codes      enable row level security;
 alter table public.codings    enable row level security;
+alter table public.assignments enable row level security;
 
 drop policy if exists projects_select on public.projects;
 create policy projects_select on public.projects for select using (public.is_member(id));
@@ -288,10 +389,24 @@ drop policy if exists documents_select on public.documents;
 drop policy if exists documents_insert on public.documents;
 drop policy if exists documents_update on public.documents;
 drop policy if exists documents_delete on public.documents;
-create policy documents_select on public.documents for select using (public.is_member(project_id));
-create policy documents_insert on public.documents for insert with check (public.is_member(project_id));
+create policy documents_select on public.documents for select
+  using (public.is_member(project_id) and public.can_see_doc(project_id, id));
+-- Com restrict_docs LIGADO, criar documento passa a ser ADMIN. Motivo (descoberto em teste):
+-- addDocument faz INSERT ... RETURNING, e o Postgres aplica a policy de SELECT a linha
+-- retornada. Documento nasce SEM atribuicao -> o proprio criador nao-admin nao passaria no
+-- can_see_doc e o insert falharia ("new row violates row-level security policy"); e, se
+-- passasse, o documento sumiria da tela dele no ato. Nao da pra consertar por trigger:
+-- AFTER INSERT roda DEPOIS da projecao do RETURNING e BEFORE INSERT violaria a FK.
+-- Sob distribuicao restritiva o corpus e do admin -- que e o fluxo que a restricao sustenta.
+-- Projeto SEM restricao segue igual: qualquer membro adiciona documento.
+create policy documents_insert on public.documents for insert with check (
+  public.is_member(project_id)
+  and (public.is_admin(project_id)
+       or not coalesce((select pr.restrict_docs from public.projects pr where pr.id = project_id), false))
+);
 create policy documents_update on public.documents for update
-  using (public.is_member(project_id)) with check (public.is_member(project_id));
+  using (public.is_member(project_id) and public.can_see_doc(project_id, id))
+  with check (public.is_member(project_id) and public.can_see_doc(project_id, id));
 create policy documents_delete on public.documents for delete using (public.is_admin(project_id));
 
 create or replace function public.documents_guard()
@@ -334,17 +449,29 @@ drop policy if exists codings_select on public.codings;
 drop policy if exists codings_insert on public.codings;
 drop policy if exists codings_update on public.codings;
 drop policy if exists codings_delete on public.codings;
-create policy codings_select on public.codings for select using (public.is_member(project_id));
+-- DISTRIBUICAO/CEGO: esconder so o DOCUMENTO nao bastaria -- codings.quote carrega o TEXTO
+-- do trecho, entao sem can_see_doc aqui o membro puxaria os trechos de um documento que nao
+-- e dele direto pela API, sem nunca abrir o documento. A restricao vale tambem na ESCRITA
+-- (nao adianta impedir de ler e deixar codificar).
+create policy codings_select on public.codings for select using (
+  public.is_member(project_id)
+  and public.can_see_doc(project_id, document_id)
+  and public.can_see_authored(project_id, created_by)
+);
 create policy codings_insert on public.codings for insert with check (
   public.is_member(project_id)
+  and public.can_see_doc(project_id, document_id)
   and (created_by = auth.uid() or public.is_admin(project_id))
   and (layer <> 'final' or public.is_admin(project_id))
 );
 create policy codings_update on public.codings for update
-  using (public.is_member(project_id) and (created_by = auth.uid() or public.is_admin(project_id)))
-  with check (public.is_member(project_id) and (created_by = auth.uid() or public.is_admin(project_id)));
+  using (public.is_member(project_id) and public.can_see_doc(project_id, document_id)
+         and (created_by = auth.uid() or public.is_admin(project_id)))
+  with check (public.is_member(project_id) and public.can_see_doc(project_id, document_id)
+         and (created_by = auth.uid() or public.is_admin(project_id)));
 create policy codings_delete on public.codings for delete
-  using (public.is_member(project_id) and (created_by = auth.uid() or public.is_admin(project_id)));
+  using (public.is_member(project_id) and public.can_see_doc(project_id, document_id)
+         and (created_by = auth.uid() or public.is_admin(project_id)));
 
 -- categorias: membros leem; apenas admins escrevem
 drop policy if exists categories_all    on public.categories;
@@ -362,10 +489,16 @@ drop policy if exists doc_values_select   on public.doc_values;
 drop policy if exists doc_values_own      on public.doc_values;
 drop policy if exists doc_values_final    on public.doc_values;
 drop policy if exists doc_values_imported on public.doc_values;
-create policy doc_values_select on public.doc_values for select using (public.is_member(project_id));
+create policy doc_values_select on public.doc_values for select using (
+  public.is_member(project_id)
+  and public.can_see_doc(project_id, document_id)
+  and public.can_see_authored(project_id, set_by)
+);
 create policy doc_values_own on public.doc_values for all
-  using (public.is_member(project_id) and set_by = auth.uid() and layer = 'individual')
-  with check (public.is_member(project_id) and set_by = auth.uid() and layer = 'individual');
+  using (public.is_member(project_id) and public.can_see_doc(project_id, document_id)
+         and set_by = auth.uid() and layer = 'individual')
+  with check (public.is_member(project_id) and public.can_see_doc(project_id, document_id)
+         and set_by = auth.uid() and layer = 'individual');
 create policy doc_values_final on public.doc_values for all
   using (public.is_admin(project_id) and layer = 'final')
   with check (public.is_admin(project_id) and layer = 'final');
@@ -377,6 +510,45 @@ drop policy if exists doc_values_imported_admin  on public.doc_values;
 create policy doc_values_imported_admin on public.doc_values for all
   using (public.is_admin(project_id) and set_by is null and layer = 'individual')
   with check (public.is_admin(project_id) and set_by is null and layer = 'individual');
+
+-- ---------- RLS: assignments (o plano de distribuicao) ----------
+-- membro ve so a PROPRIA distribuicao (nao o plano inteiro do projeto); admin ve e escreve tudo.
+drop policy if exists assignments_select on public.assignments;
+drop policy if exists assignments_write  on public.assignments;
+create policy assignments_select on public.assignments for select
+  using (public.is_member(project_id) and (public.is_admin(project_id) or user_id = auth.uid()));
+create policy assignments_write on public.assignments for all
+  using (public.is_admin(project_id)) with check (public.is_admin(project_id));
+
+-- ---------- RLS: storage (PDF original) ----------
+-- Este bloco MOROU no topo (junto do create do bucket) ate jul/2026; desceu para ca porque
+-- passou a depender de can_see_doc(). O PDF e a FONTE do texto: esconder o documento e deixar
+-- o PDF acessivel vazaria o conteudo inteiro por outro caminho.
+-- IMPORTANTE: qualifique storage.objects.name -- 'name' cru, dentro do subselect "from documents d",
+-- liga em documents.name (o TITULO do doc), nao no nome do objeto -> a checagem nunca casava e a
+-- RLS negava TODO upload/select do bucket (bug de shadowing, corrigido jul/2026; 0 objetos ate entao).
+do $$ begin
+  drop policy if exists "pdfs_select" on storage.objects;
+  create policy "pdfs_select" on storage.objects for select to authenticated
+    using ( bucket_id='pdfs' and exists (select 1 from public.documents d
+      where d.id::text = split_part(storage.objects.name,'.',1)
+        and public.is_member(d.project_id) and public.can_see_doc(d.project_id, d.id)) );
+  drop policy if exists "pdfs_insert" on storage.objects;
+  create policy "pdfs_insert" on storage.objects for insert to authenticated
+    with check ( bucket_id='pdfs' and exists (select 1 from public.documents d
+      where d.id::text = split_part(storage.objects.name,'.',1)
+        and public.is_member(d.project_id) and public.can_see_doc(d.project_id, d.id)) );
+  drop policy if exists "pdfs_update" on storage.objects;
+  create policy "pdfs_update" on storage.objects for update to authenticated
+    using ( bucket_id='pdfs' and exists (select 1 from public.documents d
+      where d.id::text = split_part(storage.objects.name,'.',1)
+        and public.is_member(d.project_id) and public.can_see_doc(d.project_id, d.id)) );
+  drop policy if exists "pdfs_delete" on storage.objects;
+  create policy "pdfs_delete" on storage.objects for delete to authenticated
+    using ( bucket_id='pdfs' and exists (select 1 from public.documents d
+      where d.id::text = split_part(storage.objects.name,'.',1)
+        and public.is_member(d.project_id) and public.can_see_doc(d.project_id, d.id)) );
+end $$;
 
 -- ---------- realtime ----------
 do $$
@@ -423,7 +595,8 @@ alter table public.memos enable row level security;
 -- carimba updated_by (trigger memos_provenance) pra a autoria da ultima edicao nao ser forjavel.
 drop policy if exists memos_all on public.memos;
 create policy memos_all on public.memos for all
-  using (public.is_member(project_id)) with check (public.is_member(project_id));
+  using (public.is_member(project_id) and public.memo_visible(project_id, scope, target_id))
+  with check (public.is_member(project_id) and public.memo_visible(project_id, scope, target_id));
 alter table public.memos add column if not exists updated_by uuid;
 create or replace function public.memos_provenance()
 returns trigger language plpgsql security definer set search_path = public as $$
@@ -607,6 +780,19 @@ drop trigger if exists trg_memos_gc_codings on public.codings;
 create trigger trg_memos_gc_codings after delete on public.codings
   for each row execute function public.memos_gc('coding');
 
+-- tirar um membro do projeto tira junto a distribuicao dele (assignments.user_id e um uuid
+-- solto, sem FK para members -- entao a limpeza nao vem de cascade).
+create or replace function public.assignments_gc()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  delete from public.assignments where project_id = old.project_id and user_id = old.user_id;
+  return old;
+end; $$;
+revoke execute on function public.assignments_gc() from public, anon, authenticated;
+drop trigger if exists trg_assignments_gc on public.members;
+create trigger trg_assignments_gc after delete on public.members
+  for each row execute function public.assignments_gc();
+
 -- ---------- GRANTS de tabela (issue #7 — portabilidade/autocontencao) ----------
 -- FICAM NO FIM DE PROPOSITO: referenciam TODAS as tabelas (memos/ia_results/ia_memory/
 -- ai_prices sao criadas acima), entao rodar o schema.sql inteiro num banco NOVO nao falha
@@ -617,7 +803,7 @@ create trigger trg_memos_gc_codings after delete on public.codings
 grant usage on schema public to anon, authenticated;
 grant select, insert, update, delete on
   public.projects, public.members, public.documents, public.categories,
-  public.doc_values, public.codes, public.codings,
+  public.doc_values, public.codes, public.codings, public.assignments,
   public.memos, public.ia_results, public.ia_memory
   to authenticated;
 -- ai_prices: leitura publica (preco de lista nao e segredo); escrita so service_role.

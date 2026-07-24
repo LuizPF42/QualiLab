@@ -20,7 +20,7 @@ Este manual ensina a *usar* o QualiLab passo a passo. Para a lista de recursos e
 1. [Conceitos fundamentais](#1-conceitos-fundamentais): o modelo mental antes de tudo
 2. [Começando](#2-começando): acessar, escolher onde salvar, criar projeto
 3. [A interface](#3-a-interface): cabeçalho e as telas principais
-4. [Documentos](#4-documentos): enviar, colar, renomear, editar o texto
+4. [Documentos](#4-documentos): enviar, colar, renomear, editar o texto, ver o PDF original e OCR
 5. [Codificação de trechos](#5-codificação-de-trechos): o coração da ferramenta
 6. [Categorias (atributos do documento)](#6-categorias-atributos-do-documento)
 7. [Esquema](#7-esquema): organizar códigos e categorias em lote
@@ -29,7 +29,7 @@ Este manual ensina a *usar* o QualiLab passo a passo. Para a lista de recursos e
 10. [Gráficos](#10-gráficos)
 11. [Memos](#11-memos): notas analíticas
 12. [Relatório](#12-relatório): o hub de publicação e transparência
-13. [Colaboração](#13-colaboração): equipe, papéis, convites
+13. [Colaboração](#13-colaboração): equipe, papéis, convites, distribuição e codificação cega
 14. [Minha conta](#14-minha-conta)
 15. [Importar e exportar](#15-importar-e-exportar)
 16. [Salvamento, backup e modos de armazenamento](#16-salvamento-backup-e-modos-de-armazenamento)
@@ -244,8 +244,8 @@ Logo abaixo do cabeçalho podem aparecer **faixas de aviso**: erro (vermelho), i
 ### Enviar arquivos
 Na aba **Codificação**, no topo do leitor, clique em **＋ enviar** e escolha um ou mais arquivos `.txt`, `.md`, `.docx` ou `.pdf`. O texto é extraído e exibido para leitura.
 
-- **PDF**: o texto é reagrupado em parágrafos (junta linhas quebradas, trata hifenização). Tabelas **não** são reconstruídas. PDFs muito visuais podem sair com a leitura imperfeita.
-- **DOCX**: convertido para texto. A formatação rica não é preservada (o foco é o conteúdo a codificar).
+- **PDF**: o texto passa por um *reflow* geométrico que **detecta colunas** (artigos em duas colunas deixam de sair embaralhados), **remove cabeçalhos, rodapés e números de página** repetidos, remonta parágrafos e corrige a hifenização de fim de linha. Tabelas **não** são reconstruídas, e PDF **digitalizado** (imagem, sem camada de texto) precisa de **OCR** (veja abaixo).
+- **DOCX**: a estrutura vira texto limpo — títulos, parágrafos, listas (com o aninhamento por indentação) e tabelas (linhas/colunas) —, sem sujar o conteúdo com marcadores artificiais. A formatação rica (negrito, cor) não vira estilo no leitor: o foco é o conteúdo a codificar.
 
 ### Colar texto
 Use o botão de **colar** (ao lado de ＋ enviar) para criar um documento a partir de texto copiado, sem arquivo.
@@ -257,6 +257,15 @@ Use o botão de **colar** (ao lado de ＋ enviar) para criar um documento a part
 - Ao salvar uma edição do texto, **os grifos já feitos são reancorados automaticamente** às novas posições. Se alguma codificação cair exatamente sobre o trecho que você mexeu, o app avisa antes de salvar (esses grifos podem precisar de conferência).
 - Editar serve para **limpeza local**; corrupção do documento inteiro (por exemplo, um PDF antigo que sai inteiro sem espaços) é caso de OCR, não de correção à mão.
 - Em projeto **coletivo na nuvem**, editar o texto é restrito ao **administrador** (o texto é compartilhado, então a edição desloca os grifos de todos os codificadores).
+
+### Ver o PDF original e OCR (documentos digitalizados)
+Quando o documento veio de um **PDF**, o leitor ganha um botão **▤ original** (que alterna com **≡ texto**): ele mostra a **página do PDF de verdade**, com zoom e navegação de páginas. Sobre a página, os seus grifos aparecem desenhados na cor do código; selecionar um trecho na página do PDF codifica igual ao leitor de texto (botão direito → menu de códigos).
+
+Para **PDF digitalizado** (escaneado, só imagem), use o **◫ OCR**: o app reconstrói o texto página a página — aproveitando o texto nativo onde existe e lendo por OCR (offline, no seu navegador) onde é imagem —, com barra de progresso e opção de cancelar. Também dá para fazer **OCR de uma área**: no modo original, o botão **▭ OCR de área** deixa você arrastar um retângulo sobre um pedaço da página; o texto lido abre num quadro **editável** para você corrigir antes de aplicar e codificar. A primeira vez baixa o modelo de OCR (~15 MB) e o processo é lento (alguns segundos por página).
+
+> **Sinal de qualidade da extração.** Documentos com extração provavelmente ruim (vazios, PDF sem espaços entre palavras, glifos quebrados `�■□` ou OCR de baixa confiança) ganham um **⚠︎** antes do nome no seletor e uma pílula âmbar **⚠︎ extração** no leitor. É um aviso para **conferir e limpar** (pelo **✏ editar**) ou rodar **OCR** antes de codificar aquele documento.
+
+> **Números de página.** Como o QualiLab guarda a correspondência trecho ↔ página do PDF, o número da página (**p. N**) do original acompanha o trecho na **Visualização**, no **Relatório**, nos exports **CSV/JSON** e nas anotações **W3C** — e o **▤ original** abre já na página do trecho selecionado.
 
 ### Importar muitos documentos de uma vez
 Uma planilha (`.csv`/`.xlsx`) vira **um documento por linha**. Veja [Importar e exportar](#15-importar-e-exportar).
@@ -495,6 +504,14 @@ Abra a **pílula do projeto** (cabeçalho) → ali está o **código de acesso**
 ### Gerenciar membros e o projeto
 Ainda na pílula do projeto, o admin pode: ver a **lista de membros** e mudar papéis (**admin/membro**), **renomear**, **limpar conteúdo**, **excluir** o projeto, mudar o **tipo** e ajustar a **conexão** (credenciais Supabase).
 
+### Distribuir documentos e codificação cega
+*(Só admin, projeto coletivo na nuvem.)* No hub do projeto, o card **Distribuição e sigilo → Distribuir documentos…** abre uma **matriz de documentos × pesquisadores**, onde você marca quem codifica o quê. Um selo **C** mostra quem **já codificou** cada documento; o botão de **rodízio automático** distribui tudo de uma vez (1 ou mais pessoas por documento). Sozinha, a matriz é só um **plano de trabalho** — ela vira regra quando você liga um dos dois interruptores (**independentes**):
+
+- **Distribuição restritiva** — cada pesquisador só **enxerga** os documentos atribuídos a ele. Serve para **dividir o corpus** (cada um cuida da sua parte, ninguém codifica em duplicidade). Documento sem ninguém atribuído fica só com os administradores; desligada, todos veem o corpus inteiro.
+- **Codificação cega (*true blind*)** — cada pesquisador só **enxerga as próprias** codificações e respostas. Para **confiabilidade entre codificadores**, atribua o **mesmo** documento a duas pessoas (fica duplo-cego). Enquanto está ligada, o gabarito também fica oculto para os membros (revelá-lo no meio contamina); desligue para reconciliar em conjunto. Administradores continuam vendo tudo.
+
+> As duas regras são impostas pelo **servidor**, não só escondidas na tela: o membro não alcança pela API o que está oculto (nem o texto do trecho, nem o PDF). Para o membro em projeto cego somem o filtro **"Ver:"** e a aba **Reconciliação**. Mudanças na distribuição aparecem ao **recarregar** (não em tempo real). É recurso **só da nuvem coletiva** (depende de contas de vários pesquisadores) e **não** viaja no `.qualilab`.
+
 ### Enviar para a nuvem
 Se o projeto ativo for **rascunho** ou **arquivo**, a pílula mostra **"Enviar para a nuvem"**: cria um projeto novo na nuvem e copia tudo (documentos, categorias, códigos, codificações, memos) de uma vez, sem exportar/importar `.qualilab` na mão.
 
@@ -611,6 +628,8 @@ A pergunta que mais importa é **de quem é esse Supabase**:
 - **Não há recuperação de senha** por e-mail (a troca exige estar logado).
 
 Vale, então, a mesma lógica de confiança da [seção 17.5](#175-para-onde-vão-os-seus-dados-provedores-e-configuração): a nuvem é ótima para colaborar e sincronizar, mas usá-la é **confiar o conteúdo a quem administra o banco**. Para dado **sensível**, prefira o **seu próprio Supabase**, o **modo arquivo** ou o **rascunho local**, onde o conteúdo não passa pelo servidor de outra pessoa.
+
+> **PDF original na nuvem.** Guardar os *bytes* do PDF original na nuvem (para "ver original"/OCR em outro aparelho) é **opcional** e pede um **consentimento explícito** no envio — porque, aí, quem administra o banco passa a poder abrir o **PDF inteiro**, não só o texto que você codificou. Sem marcar, sobe só o texto e a codificação. Para dado sensível, mantenha o PDF no **modo arquivo**.
 
 ### Backup automático em pasta (modo rascunho, Chrome/Edge)
 Mantém um `backup-automatico.qualilab` sempre atualizado numa pasta sua, como espelho do `localStorage`. Ative em **pílula do projeto → Backup automático em pasta → Escolher pasta…**.

@@ -50,7 +50,9 @@ As ferramentas disponíveis, pagas ou gratuitas, também não têm colaboração
 ## Recursos
 
 ### Documentos
-Importe `.txt`, `.md`, `.docx` e `.pdf`, ou cole texto diretamente. O conteúdo é extraído e exibido para leitura e codificação.
+Importe `.txt`, `.md`, `.docx` e `.pdf`, ou cole texto diretamente. O `.pdf` passa por um *reflow* geométrico (detecta colunas, remove cabeçalhos/rodapés/números de página repetidos, remonta parágrafos e corrige a hifenização); o `.docx` vira texto limpo preservando títulos, listas e tabelas. Como a extração é imperfeita, o botão **✏ editar** no leitor corrige o título e o texto de qualquer documento — e os grifos já feitos são reancorados automaticamente às novas posições.
+
+Documentos vindos de **PDF** trazem ainda o botão **▤ original**, que mostra a página do PDF de verdade (com zoom), com os seus grifos desenhados sobre ela — dá para selecionar e codificar direto na página. Para **PDF digitalizado**, o **◫ OCR** reconstrói o texto no próprio navegador (offline), a página inteira ou por **área** (arraste um retângulo → revise o texto lido → codifique). O número de página do original (**p. N**) acompanha o trecho na Visualização, no Relatório e nos exports (CSV/JSON/W3C), e um **sinal de qualidade da extração** (⚠︎ no nome do documento e no leitor) avisa quando um documento provavelmente saiu mal extraído, para você conferir/limpar ou rodar OCR antes de codificar.
 
 ### Codificação por trechos
 Selecione qualquer trecho e aplique um código — ou clique com o **botão direito** para um menu de contexto rápido. Clicar com o botão direito num trecho **já codificado** (sem selecionar nada novo) abre direto a opção de **remover** aquele código, sem precisar reselecionar o trecho. **Ctrl+Z** desfaz a última codificação aplicada na sessão atual. Os códigos são **hierárquicos** (famílias → subcódigos), com cor por família e tonalidade por profundidade; administradores podem personalizar a cor de uma família (matiz, ou cinza), propagada para os subcódigos.
@@ -93,6 +95,14 @@ O modelo é **BYOK** (*bring your own key*): em **Minha Conta**, cada pesquisado
 
 ### Codificação colaborativa em camadas
 Cada codificação registra o autor. O trabalho de cada pesquisador é independente (`layer = individual`); a equipe consolida uma **camada final** na tela de Reconciliação. O mesmo modelo vale para as respostas de categoria: cada pesquisador preenche a sua; o administrador define o gabarito. Ações **destrutivas ou que afetam todo mundo** — excluir documentos ou códigos, editar o texto de um documento, importar material e mesclar códigos — são restritas ao **administrador** e impostas pelo servidor (não só escondidas na interface).
+
+### Distribuição de documentos e codificação cega
+Em projeto **coletivo na nuvem**, o administrador pode controlar **quem vê o quê** por dois interruptores independentes, ambos desligados por padrão:
+
+- **Distribuição restritiva** — cada pesquisador só **enxerga** os documentos atribuídos a ele. Serve para **dividir o corpus**: cada um cuida da sua parte, ninguém codifica em duplicidade.
+- **Codificação cega (*true blind*)** — cada pesquisador só **enxerga as próprias** codificações e respostas. Atribuindo o **mesmo** documento a duas pessoas, o estudo fica **duplo-cego** — para medir a confiabilidade entre codificadores.
+
+A atribuição é feita numa **matriz documentos × pesquisadores** (com rodízio automático e um selo de quem já codificou cada documento), no hub do projeto. As duas regras são **impostas pelo servidor** (RLS), não só escondidas na interface: um membro não alcança pela API o texto do trecho, o PDF original nem a codificação que estão ocultos. É recurso exclusivo da **nuvem coletiva** (depende de contas de vários pesquisadores) e não viaja no `.qualilab`.
 
 ### Tipos de projeto
 Ao criar um projeto você escolhe:
@@ -291,7 +301,9 @@ O QualiLab é um projeto em desenvolvimento ativo. Vale conhecer as limitações
 - **Sem fila de escritas offline** — escritas feitas sem conexão falham (não são reenviadas automaticamente depois); os dados já salvos não são afetados.
 - **QDPX não carrega categorias por pesquisador** — é uma limitação do próprio formato REFI-QDA, não do QualiLab: o padrão não tem campo de autoria para atributos de documento (só para trechos codificados). Ao importar um `.qdpx`, todos os atributos chegam atribuídos a quem importou.
 - **Tipo dos atributos em `.qdpx` de outras ferramentas é inferido, não declarado** — o REFI-QDA não distingue campo fechado de aberto. Ao importar um `.qdpx` de outro software (QualCoder, ATLAS.ti etc.), o QualiLab tenta adivinhar pelas respostas: poucos valores distintos repetidos entre documentos viram Texto Fechado; valores todos diferentes viram Texto Aberto. O resumo do import avisa quantas categorias foram decididas assim — vale revisar em "Gerenciar esquema de categorias".
-- **Sincronização em tempo real parcial** — apenas codificações e valores de categoria sincronizam ao vivo entre colaboradores. Mudanças no esquema de categorias ou na árvore de códigos exigem recarregar a página para aparecer para outros membros.
+- **Sincronização em tempo real parcial** — apenas codificações e valores de categoria sincronizam ao vivo entre colaboradores. Mudanças no esquema de categorias ou na árvore de códigos exigem recarregar a página para aparecer para outros membros. O mesmo vale para mudanças na **distribuição de documentos / sigilo**.
+- **Distribuição e codificação cega só na nuvem coletiva** — atribuir documentos, restringir a visão por pesquisador e o modo cego dependem de contas de vários pesquisadores; não existem em rascunho, arquivo ou projeto individual, e a distribuição **não** é exportada no `.qualilab` (os identificadores de usuário só existem na nuvem).
+- **PDF original na nuvem é opt-in** — guardar os bytes do PDF original na nuvem (para "ver original"/OCR em outro aparelho) exige **consentimento explícito** no envio, porque quem administra o banco passa a poder abrir o PDF inteiro. Sem consentir, sobe só o texto e a codificação. Para dado sensível, mantenha o PDF no **modo arquivo**.
 - **Governança do livro de códigos** — qualquer membro **cria e renomeia** códigos (necessário para codificação colaborativa em tempo real), mas **excluir** um código, **mesclar/reorganizar** o esquema em lote e marcar/desmarcar **censura** são restritos ao **administrador** — imposto pelo servidor (RLS), não só escondido na interface, porque excluir um código apaga em cascata as codificações de toda a equipe. Ainda **não** há um modo intermediário de aprovação antes de um código novo (criado por um membro) ficar visível a todos.
 - **Desfazer é limitado** — Ctrl+Z desfaz só a última codificação aplicada na sessão atual (sem histórico entre sessões). Não há desfazer para categorias, código em si, documentos, ou qualquer outra ação; exclusões desses são definitivas. Também não há log de auditoria de alterações.
 - **Modo Arquivo local restrito a Chromium** — a File System Access API que sustenta esse modo só existe em Chrome e Edge; Firefox e Safari caem automaticamente para o modo local (`localStorage`).
