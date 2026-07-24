@@ -3155,12 +3155,6 @@ function SupabaseStore(sb){
       if(r.data.session){ user = r.data.session.user; name = nameOf(user, display); return { confirmed:true, user:{ id:user.id, name, email:user.email||null, anon:false } }; }
       return { confirmed:false };
     },
-    async signInAnon(display){
-      let { data:{ session } } = await sb.auth.getSession();
-      if(!session){ const r = await sb.auth.signInAnonymously(); if(r.error) throw r.error; session = r.data.session; }
-      user = session.user; name = display || name;
-      return { id:user.id, name, email:null, anon:true };
-    },
     async signOut(){ try{ await sb.auth.signOut(); }catch(e){} user=null; },
     currentUser(){ return user ? { id:user.id, name, email:user.email||null, anon:!!user.is_anonymous } : null; },
     async changePassword(newPw){ const r = await sb.auth.updateUser({ password:newPw }); if(r.error) throw r.error; },
@@ -5104,7 +5098,7 @@ function App(){
             ${csLabel} · ${project.name}${mode==='cloud'?` · ${project.code}`:''} · ${projectMode==='individual'?'individual':'coletivo'} ▾
           </button>`;
         })()}
-        ${user && html`<button class="btn sm ghost" title=${'Minha conta'+(user.email?' · '+user.email:'')} onClick=${()=>setAccount(true)}>${user.name}${user.anon?' (visitante)':''}</button>`}
+        ${user && html`<button class="btn sm ghost" title=${'Minha conta'+(user.email?' · '+user.email:'')} onClick=${()=>setAccount(true)}>${user.name}</button>`}
         ${projRestrict && !isAdmin && html`<span class="pill" style="background:var(--violet-soft);border-color:var(--violet);color:var(--violet)"
           title=${'Este projeto trabalha com distribuição: o administrador atribuiu '+docs.length+' documento(s) a você, e é só o que aparece aqui. Se faltar algum, peça ao administrador.'}>
           ${docs.length} documento(s) seu(s)</span>`}
@@ -5793,19 +5787,19 @@ function Welcome({ onNewFile, onOpenFile, onCloud, onRascunho, onServer, onReset
       ${supportsFileAPI && html`<button class="wcard" onClick=${onNewFile}>
         <svg class="wicon" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--ok)"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/></svg>
         <span class="wtitle">Novo em arquivo</span>
-        <span class="wdesc">Um arquivo .qualilab no seu computador. Portátil e sem nuvem.</span>
+        <span class="wdesc">Um arquivo .qualilab no seu computador (você escolhe a pasta). Offline, portátil, sem nuvem.</span>
       </button>`}
       <button class="wcard" onClick=${onCloud}>
         <svg class="wicon" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--teal)"><path d="M6.5 19a4.5 4.5 0 0 1 0-9 5 5 0 0 1 9.6-1.3A3.5 3.5 0 0 1 18 19z"/></svg>
         <span class="wtitle">Entrar na nuvem</span>
-        <span class="wdesc">Acessar de outro dispositivo ou colaborar. Login ou código.</span>
+        <span class="wdesc">No servidor (Supabase): sincroniza entre aparelhos e permite colaborar. Precisa de login.</span>
       </button>
     </div>
     <button class="wcard wrow" style="margin-top:12px" onClick=${onRascunho}>
       <svg class="wicon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--ink-faint)"><path d="M9 3h6"/><path d="M14 3v5l4.8 9.6A1.5 1.5 0 0 1 17.5 20H6.5a1.5 1.5 0 0 1-1.3-2.4L10 8V3"/></svg>
       <span style="flex:1">
         <span class="wtitle">Só testar</span> <span class="meta">rascunho</span>
-        <span class="wdesc" style="display:block;margin-top:2px">Sandbox neste navegador. Rápido, mas pode sumir ao limpar os dados.</span>
+        <span class="wdesc" style="display:block;margin-top:2px">Fica só neste navegador (temporário). Rápido pra experimentar — some se você limpar os dados. Dá pra migrar pra arquivo ou nuvem depois.</span>
       </span>
     </button>
     ${supportsFileAPI
@@ -5827,7 +5821,6 @@ function Gate({ onCreate, onJoin, onOpen, onOpenFile, onNewFile, err, user, proj
   const [pmode,setPmode]=useState('individual'); // individual | collective
   const [code,setCode]=useState('');
   const list = projects||[];
-  const isAnon = user?.anon;
   const num = (p)=>{ const bits=[];
     if(p.n_documents!=null) bits.push(`${p.n_documents} documento(s)`);
     if(p.n_codings!=null) bits.push(`${p.n_codings} trecho(s)`);
@@ -5836,14 +5829,9 @@ function Gate({ onCreate, onJoin, onOpen, onOpenFile, onNewFile, err, user, proj
     <div class="row" style="align-items:baseline;gap:10px;margin-bottom:2px">
       <h2 style="margin:0">Meus projetos</h2>
       <div class="grow"></div>
-      ${mode==='cloud' && !isAnon && onAccount && html`<button class="btn sm ghost" onClick=${onAccount}>⏣ Minha conta</button>`}
+      ${mode==='cloud' && onAccount && html`<button class="btn sm ghost" onClick=${onAccount}>⏣ Minha conta</button>`}
     </div>
-    ${isAnon
-      ? html`<div class="banner warn" style="margin:0 0 10px">
-          Você está como <b>visitante</b>. Os seus projetos ficam vinculados a este dispositivo.
-          <span> </span><button class="btn sm ghost" onClick=${onLogin} style="color:var(--teal-deep);font-weight:600">Entrar com conta →</button>
-        </div>`
-      : html`<p class="hint">Abra um projeto que você já criou ou participou, ou comece um novo. Vários pesquisadores no mesmo código codificam juntos.</p>`}
+    <p class="hint">Abra um projeto que você já criou ou participou, ou comece um novo. Vários pesquisadores no mesmo código codificam juntos.</p>
     ${err && html`<div class="banner err" style="margin:0 0 12px">${humanizeError(err)||err}</div>`}
 
     ${list.length>0 ? html`<div style="margin-bottom:14px;max-height:240px;overflow:auto">
@@ -11731,7 +11719,7 @@ function ProjectModal({ mode, user, project, projectMode, isAdmin, members, hasD
 function SendToCloudModal({ defaultName, onBuildDb, onGatherPdfs, onGatherPdfIndexes, hasPdfs, onEnter, onClose }){
   const [step, setStep] = useState('auth'); // auth | project | running | done
   const [includePdfs, setIncludePdfs] = useState(false); // enviar tb os PDFs originais? (opt-in — privacidade)
-  const [authTab, setAuthTab] = useState('in'); // in | up | anon
+  const [authTab, setAuthTab] = useState('in'); // in | up
   const [email, setEmail] = useState(''); const [pw, setPw] = useState(''); const [dispName, setDispName] = useState('');
   const [pname, setPname] = useState(defaultName || 'Projeto');
   const [pmode, setPmode] = useState('collective');
@@ -11749,10 +11737,10 @@ function SendToCloudModal({ defaultName, onBuildDb, onGatherPdfs, onGatherPdfInd
       const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
       const st = SupabaseStore(sb);
       if(authTab==='in') await st.signIn(email, pw);
-      else if(authTab==='up'){
+      else {
         const r = await st.signUp(email, pw, dispName.trim()||'pesquisador');
         if(r && r.confirmed===false){ setErr('Conta criada — confirme seu e-mail e depois entre com "Já tenho conta".'); setBusy(false); return; }
-      } else await st.signInAnon(dispName.trim()||'pesquisador');
+      }
       cloudRef.current = st; sbRef.current = sb;
       setStep('project');
     }catch(e){ setErr(String(e.message||e)); }
@@ -11779,13 +11767,12 @@ function SendToCloudModal({ defaultName, onBuildDb, onGatherPdfs, onGatherPdfInd
     ${err && html`<div class="banner err" style="margin:0 0 12px">${err}</div>`}
 
     ${step==='auth' && html`<div>
-      <p class="hint" style="margin:0 0 10px">Primeiro, entre (ou crie uma conta/visitante) na nuvem — é ali que o projeto novo vai ser criado.</p>
+      <p class="hint" style="margin:0 0 10px">Primeiro, entre (ou crie uma conta) na nuvem — é ali que o projeto novo vai ser criado.</p>
       <div class="seg" style="margin-bottom:10px">
         <button class=${authTab==='in'?'on':''} onClick=${()=>setAuthTab('in')}>Já tenho conta</button>
         <button class=${authTab==='up'?'on':''} onClick=${()=>setAuthTab('up')}>Criar conta</button>
-        <button class=${authTab==='anon'?'on':''} onClick=${()=>setAuthTab('anon')}>Visitante</button>
       </div>
-      ${authTab!=='anon' && html`<div class="field"><div class="field-label">E-mail</div>
+      ${html`<div class="field"><div class="field-label">E-mail</div>
         <input class="txtin" type="email" value=${email} onInput=${e=>setEmail(e.target.value)} placeholder="voce@exemplo.com" /></div>
         <div class="field"><div class="field-label">Senha</div>
         <input class="txtin" type="password" value=${pw} onInput=${e=>setPw(e.target.value)} placeholder="mínimo 6 caracteres" /></div>`}
@@ -11793,7 +11780,7 @@ function SendToCloudModal({ defaultName, onBuildDb, onGatherPdfs, onGatherPdfInd
         <input class="txtin" value=${dispName} onInput=${e=>setDispName(e.target.value)} placeholder="como você aparece nas codificações" /></div>`}
       <div class="row" style="justify-content:flex-end;gap:8px;margin-top:10px">
         <button class="btn ghost" onClick=${onClose}>cancelar</button>
-        <button class="btn primary" disabled=${busy||(authTab!=='anon' && (!email||!pw))} onClick=${doAuth}>${busy?'…':'Continuar'}</button>
+        <button class="btn primary" disabled=${busy||!email||!pw} onClick=${doAuth}>${busy?'…':'Continuar'}</button>
       </div>
     </div>`}
 
@@ -11913,7 +11900,7 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
 
   return html`<div class="modal-bg"><div class="modal" style="max-width:560px">
     <h2>Minha conta</h2>
-    <p class="hint">${user?.email||'sessão de visitante'}${user?.anon?' (visitante — sem senha)':''}</p>
+    <p class="hint">${user?.email||''}</p>
     ${err && html`<div class="banner err" style="margin:0 0 12px">${err} <button class="btn sm ghost" onClick=${()=>setErr(null)}>×</button></div>`}
     ${msg && html`<div class="banner warn" style="margin:0 0 12px">${msg}</div>`}
 
@@ -11927,7 +11914,7 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
     </div>
 
     <!-- senha (só para contas com e-mail) -->
-    ${user && !user.anon && user.email && html`<div class="card" style="margin-bottom:12px">
+    ${user && user.email && html`<div class="card" style="margin-bottom:12px">
       <div class="field-label">Alterar senha</div>
       <div class="field"><input class="txtin" type="password" value=${pw1} onInput=${e=>setPw1(e.target.value)} placeholder="nova senha (mín. 6)" /></div>
       <div class="field" style="margin-bottom:8px"><input class="txtin" type="password" value=${pw2} onInput=${e=>setPw2(e.target.value)} placeholder="repita a nova senha" /></div>

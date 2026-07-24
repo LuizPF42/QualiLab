@@ -224,7 +224,7 @@ Abra o **SQL Editor** do Supabase, cole o conteúdo de [`supabase/schema.sql`](s
 
 Em **Authentication → Providers**:
 - Habilite **Email** para login por e-mail e senha.
-- Habilite **Allow anonymous sign-ins** para o modo visitante.
+- **Não** habilite *Allow anonymous sign-ins* — o QualiLab não usa mais modo visitante. Os três fluxos são **arquivo** (no disco), **nuvem** (com login) e **rascunho** (local, temporário).
 - Opcional: desative **Confirm email** para que o cadastro entre direto (o app trata os dois casos).
 
 ### 4. IA (opcional)
