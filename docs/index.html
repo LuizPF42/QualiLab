@@ -2330,17 +2330,53 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
 
   if(store.beginBatch) store.beginBatch();
   try{
-    for(const d of (db.documents||[])){ await store.addDocument(projectId, { id:docMap[d.id], name:d.name, content:d.content }); await tick(); }
-    // PDF-BLOCK: bytes dos PDFs originais (se o .qualilab de origem era zip), sob os novos docIds
-    if(pdfs && store.setPdfBlob){ for(const d of (db.documents||[])){ const b=pdfs[d.id]; if(b){ try{ await store.setPdfBlob(docMap[d.id], b); }catch(e){ console.warn('PDF não enviado ('+(d.name||d.id)+'):', e); } } } }
-    // PDF-BLOCK/§4: indice reversivel de cada PDF, remapeado pro novo docId (tolerante como o loop acima)
-    if(pdfIdx && store.setPdfIndex){ for(const d of (db.documents||[])){ const s=pdfIdx[d.id]; if(s){ try{ const u=unpackPdfIndex(s); if(u) await store.setPdfIndex(docMap[d.id], u); }catch(e){ console.warn('índice do PDF não enviado ('+(d.name||d.id)+'):', e); } } } }
+    // PERF: import/merge de .qualilab pra destino em NUVEM fazia uma requisicao de rede por
+    // LINHA (documents/doc_values/codings/memos) — um arquivo de stress com milhares de linhas
+    // virava dezenas de minutos. Onde o store suporta lote (bulkWrite em SupabaseStore — ver
+    // addDocumentsBulk/addCodesBulk/addDocValuesIndividualBulk/setFinalValuesBulk/
+    // addCodingsBulk/setMemosBulk), usa. Local/File (sem esses metodos) caem no `else` de cada
+    // fase — codigo IDENTICO ao de antes, ja rapido pois so empurra pra um array em memoria.
+    if(store.addDocumentsBulk){
+      const items = (db.documents||[]).map(d=>({ id:docMap[d.id], name:d.name, content:d.content }));
+      await store.addDocumentsBulk(projectId, items);
+      for(let i=0;i<items.length;i++) await tick();
+    } else {
+      for(const d of (db.documents||[])){ await store.addDocument(projectId, { id:docMap[d.id], name:d.name, content:d.content }); await tick(); }
+    }
+    // PDF-BLOCK: bytes dos PDFs originais (se o .qualilab de origem era zip), sob os novos docIds.
+    // PERF: eram uploads SERIAIS (um Storage upload por doc, cada um com o peso real do PDF —
+    // diferente das fases acima, que so gravam linhas pequenas) — o mesmo gargalo do gotcha #0
+    // (buildQualilabDb/gatherPdfs), so que no sentido inverso (escrita, nao leitura), e nunca
+    // tinha sido corrigido aqui. mapPool (limite 8, mesmo padrao ja usado pras leituras de PDF)
+    // paraleliza; tolerancia a erro por item preservada (PDF que falha nao aborta o lote).
+    if(pdfs && store.setPdfBlob){
+      const withPdf = (db.documents||[]).filter(d=>pdfs[d.id]);
+      await mapPool(withPdf, 8, async (d)=>{
+        try{ await store.setPdfBlob(docMap[d.id], pdfs[d.id]); }
+        catch(e){ console.warn('PDF não enviado ('+(d.name||d.id)+'):', e); }
+      });
+    }
+    // PDF-BLOCK/§4: indice reversivel de cada PDF, remapeado pro novo docId (mesmo padrao acima)
+    if(pdfIdx && store.setPdfIndex){
+      const withIdx = (db.documents||[]).filter(d=>pdfIdx[d.id]);
+      await mapPool(withIdx, 8, async (d)=>{
+        try{ const u=unpackPdfIndex(pdfIdx[d.id]); if(u) await store.setPdfIndex(docMap[d.id], u); }
+        catch(e){ console.warn('índice do PDF não enviado ('+(d.name||d.id)+'):', e); }
+      });
+    }
     const catsSorted = (db.categories||[]).slice().sort((a,b)=>(a.position??0)-(b.position??0));
     for(let i=0;i<catsSorted.length;i++){ const c=catsSorted[i];
       await store.addCategory(projectId, { id:catMap[c.id], name:c.name, kind:c.kind, options:c.options||[], description:c.description||'', color:c.color||0, position:i }); await tick(); }
+    // codes: sem lote automatico se o proprio addCode tiver a logica de fallback de coluna
+    // 'description'... (nao tem — so addCategory tem essa quirk). Bulk seguro aqui.
     const codesSorted = (db.codes||[]).slice().sort((a,b)=>(a.position??0)-(b.position??0));
-    for(let i=0;i<codesSorted.length;i++){ const c=codesSorted[i];
-      await store.addCode(projectId, { id:codeMap[c.id], parent_id:c.parent_id?codeMap[c.parent_id]:null, name:c.name, hue:c.hue||0, depth:c.depth||0, hue_deg:c.hue_deg??null, sat:c.sat??null, is_redaction:!!c.is_redaction, pos_x:c.pos_x??null, pos_y:c.pos_y??null, position:i }); await tick(); }
+    const codeItems = codesSorted.map((c,i)=>({ id:codeMap[c.id], parent_id:c.parent_id?codeMap[c.parent_id]:null, name:c.name, hue:c.hue||0, depth:c.depth||0, hue_deg:c.hue_deg??null, sat:c.sat??null, is_redaction:!!c.is_redaction, pos_x:c.pos_x??null, pos_y:c.pos_y??null, position:i }));
+    if(store.addCodesBulk){
+      await store.addCodesBulk(projectId, codeItems);
+      for(let i=0;i<codeItems.length;i++) await tick();
+    } else {
+      for(const it of codeItems){ await store.addCode(projectId, it); await tick(); }
+    }
 
     // doc_values: em destino COLETIVO, cada resposta individual do arquivo de origem (com seu
     // proprio author_name) vira uma linha independente via addDocValue — igual addCoding ja
@@ -2349,15 +2385,36 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
     // ultimo via setFinalValue. Em destino INDIVIDUAL (sem multi-coder possivel), mantem o
     // comportamento anterior: prefere o gabarito de origem, senao a 1a resposta encontrada.
     if(projectMode==='individual'){
+      // pura/deterministica (sem chamada de store) — compartilhada pelos dois caminhos abaixo
       const pickVal = {};
       (db.doc_values||[]).forEach(v=>{
         const k=v.document_id+':'+v.category_id; const cur=pickVal[k];
         if(!cur || (v.layer==='final' && cur.layer!=='final')) pickVal[k]=v;
       });
-      for(const v of Object.values(pickVal)){
-        if(docMap[v.document_id] && catMap[v.category_id]) await store.setFinalValue(projectId, docMap[v.document_id], catMap[v.category_id], v.value);
-        await tick();
+      const vals = Object.values(pickVal);
+      if(store.setFinalValuesBulk){
+        const finals = vals.filter(v=>docMap[v.document_id] && catMap[v.category_id])
+          .map(v=>({ document_id:docMap[v.document_id], category_id:catMap[v.category_id], value:v.value }));
+        await store.setFinalValuesBulk(projectId, finals);
+        for(let i=0;i<vals.length;i++) await tick();
+      } else {
+        for(const v of vals){
+          if(docMap[v.document_id] && catMap[v.category_id]) await store.setFinalValue(projectId, docMap[v.document_id], catMap[v.category_id], v.value);
+          await tick();
+        }
       }
+    } else if(store.addDocValuesIndividualBulk && store.setFinalValuesBulk){
+      const finalPick = {}; const individualItems = [];
+      for(const v of (db.doc_values||[])){
+        if(docMap[v.document_id] && catMap[v.category_id]){
+          if(v.layer==='final') finalPick[v.document_id+':'+v.category_id]=v;
+          else individualItems.push({ document_id:docMap[v.document_id], category_id:catMap[v.category_id], value:v.value, author_name:v.author_name||'importado' });
+        }
+      }
+      await store.addDocValuesIndividualBulk(projectId, individualItems);
+      for(let i=0;i<(db.doc_values||[]).length;i++) await tick();
+      const finals = Object.values(finalPick).map(v=>({ document_id:docMap[v.document_id], category_id:catMap[v.category_id], value:v.value }));
+      await store.setFinalValuesBulk(projectId, finals);
     } else {
       const finalPick = {};
       for(const v of (db.doc_values||[])){
@@ -2392,14 +2449,39 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
         const cur = keep[k];
         if(!cur || (c.layer==='final' && cur.layer!=='final')) keep[k]=c;
       }
-      for(const k of Object.keys(keep)){
-        const c = keep[k];
-        const co = { created_by:null, layer:codLayer, document_id:docMap[c.document_id], code_id:codeMap[c.code_id], span_start:c.span_start, span_end:c.span_end, quote:c.quote, author_name:c.author_name||'importado' };
-        if(c.pdf_region) co.pdf_region = c.pdf_region;   // PDF-BLOCK: preserva a geometria do retângulo no round-trip
-        const nc = await store.addCoding(projectId, co);
-        if(nc?.id) for(const oldId of groups[k]) if(oldId) codingMap[oldId] = nc.id;
+      const keys = Object.keys(keep);
+      if(store.addCodingsBulk){
+        // id PRE-GERADO (uid()) pra montar o codingMap sem depender do retorno do insert em lote
+        const built = keys.map(k=>{
+          const c = keep[k];
+          const co = { id:uid(), created_by:null, layer:codLayer, document_id:docMap[c.document_id], code_id:codeMap[c.code_id], span_start:c.span_start, span_end:c.span_end, quote:c.quote, author_name:c.author_name||'importado' };
+          if(c.pdf_region) co.pdf_region = c.pdf_region;
+          return { key:k, co };
+        });
+        await store.addCodingsBulk(projectId, built.map(x=>x.co));
+        for(const { key, co } of built) for(const oldId of groups[key]) if(oldId) codingMap[oldId] = co.id;
+      } else {
+        for(const k of keys){
+          const c = keep[k];
+          const co = { created_by:null, layer:codLayer, document_id:docMap[c.document_id], code_id:codeMap[c.code_id], span_start:c.span_start, span_end:c.span_end, quote:c.quote, author_name:c.author_name||'importado' };
+          if(c.pdf_region) co.pdf_region = c.pdf_region;   // PDF-BLOCK: preserva a geometria do retângulo no round-trip
+          const nc = await store.addCoding(projectId, co);
+          if(nc?.id) for(const oldId of groups[k]) if(oldId) codingMap[oldId] = nc.id;
+        }
       }
       for(let i=0;i<(db.codings||[]).length;i++) await tick(); // progresso: 1 por coding de origem
+    } else if(store.addCodingsBulk){
+      const built = [];
+      for(const c of (db.codings||[])){
+        if(docMap[c.document_id] && codeMap[c.code_id]){
+          const co = { id:uid(), created_by:null, layer:(c.layer||codLayer), document_id:docMap[c.document_id], code_id:codeMap[c.code_id], span_start:c.span_start, span_end:c.span_end, quote:c.quote, author_name:c.author_name||'importado' };
+          if(c.pdf_region) co.pdf_region = c.pdf_region;
+          built.push({ oldId:c.id, co });
+        }
+      }
+      await store.addCodingsBulk(projectId, built.map(x=>x.co));
+      for(const { oldId, co } of built) if(oldId) codingMap[oldId] = co.id;
+      for(let i=0;i<(db.codings||[]).length;i++) await tick();
     } else {
       for(const c of (db.codings||[])){
         if(docMap[c.document_id] && codeMap[c.code_id]){
@@ -2412,8 +2494,35 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
       }
     }
 
-    // memos: remapeia o alvo (documento/código/trecho); memo de projeto vira o memo do projeto de destino
-    if(store.setMemo){
+    // memos: remapeia o alvo (documento/código/trecho); memo de projeto vira o memo do projeto de destino.
+    // label: preservado (scope='ai_prompt' usa label como nome do prompt salvo — bug real corrigido
+    // aqui, antes o merge nunca repassava m.label pro setMemo e o nome do prompt sumia ao
+    // importar/mesclar um .qualilab ou "enviar pra nuvem"). Demais escopos nao usam label (fica '').
+    if(store.setMemosBulk){
+      // mesma acumulacao/mescla do caminho serial abaixo, so que em memoria (sem chamada de
+      // rede por item) — rowsByKey dedup por (scope,target_id) e OBRIGATORIO: dois itens com a
+      // MESMA chave de conflito no mesmo upsert em lote quebrariam o insert do Postgres.
+      const rowsByKey = {}, codingMemoAcc = {};
+      for(const m of (db.memos||[])){
+        let targetId = m.target_id;
+        if(m.scope==='document') targetId = docMap[m.target_id];
+        else if(m.scope==='code') targetId = codeMap[m.target_id];
+        else if(m.scope==='coding') targetId = codingMap[m.target_id];
+        else if(m.scope==='project') targetId = projectId;
+        if(!targetId) continue;
+        if(m.scope==='coding'){
+          const prev = codingMemoAcc[targetId];
+          const merged = prev ? (prev + '\n\n———\n\n' + (m.content||'')) : (m.content||'');
+          codingMemoAcc[targetId] = merged;
+          rowsByKey['coding:'+targetId] = { scope:'coding', target_id:targetId, content:merged, author_name:m.author_name, label:m.label||'' };
+        } else {
+          rowsByKey[m.scope+':'+targetId] = { scope:m.scope, target_id:targetId, content:m.content, author_name:m.author_name, label:m.label||'' };
+        }
+      }
+      const rows = Object.values(rowsByKey).filter(r=>(r.content||'').trim());
+      await store.setMemosBulk(projectId, rows);
+      for(let i=0;i<(db.memos||[]).length;i++) await tick();
+    } else if(store.setMemo){
       const codingMemoAcc = {}; // #19: dois memos de trecho colapsados no dedup -> concatena (nao sobrescreve)
       for(const m of (db.memos||[])){
         let targetId = m.target_id;
@@ -2426,9 +2535,9 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
             const prev = codingMemoAcc[targetId];
             const merged = prev ? (prev + '\n\n———\n\n' + (m.content||'')) : (m.content||'');
             codingMemoAcc[targetId] = merged;
-            await store.setMemo(projectId, 'coding', targetId, merged, m.author_name);
+            await store.setMemo(projectId, 'coding', targetId, merged, m.author_name, m.label);
           } else {
-            await store.setMemo(projectId, m.scope, targetId, m.content, m.author_name);
+            await store.setMemo(projectId, m.scope, targetId, m.content, m.author_name, m.label);
           }
         }
         await tick();
@@ -3143,6 +3252,31 @@ function LocalStore(){
 function SupabaseStore(sb){
   let user=null, name='anonimo';
   const must = (r)=>{ if(r.error) throw r.error; return r.data; };
+  /* PERF: insercao em lote — usada pelo merge de .qualilab (importar arquivo / "enviar pra
+     nuvem"), onde mergeQualilabDb fazia ATE ENTAO uma requisicao de rede por LINHA (documents/
+     doc_values/codings/memos). Um arquivo de stress com milhares de codings+doc_values virava
+     dezenas de minutos de import (~14 mil round-trips seriais, cada um com checagem de RLS).
+     Chunks de ate `chunk` linhas via insert()/upsert() de array; concorrencia por chunk via
+     mapPool (chunks independentes entre si — EXCETO codes, que tem parent_id auto-referenciado
+     e usa concurrency:1, ver addCodesBulk). Chunk que falhar cai pra insercao 1-a-1 tolerante a
+     erro por item (mesmo espirito do mapPool ja usado no export/import de PDFs) — uma linha
+     ruim (RLS/constraint) nao aborta o lote inteiro, so e descartada com aviso no console. */
+  async function bulkWrite(table, rows, { upsert, onConflict, chunk=300, concurrency=4 }={}){
+    if(!rows.length) return { ok:0, failed:0 };
+    const chunks=[]; for(let i=0;i<rows.length;i+=chunk) chunks.push(rows.slice(i,i+chunk));
+    let ok=0, failed=0;
+    const write = (payload)=> upsert ? sb.from(table).upsert(payload,{onConflict}) : sb.from(table).insert(payload);
+    await mapPool(chunks, concurrency, async (part)=>{
+      const r = await write(part);
+      if(!r.error){ ok+=part.length; return; }
+      for(const row of part){                       // fallback: isola a linha problematica
+        const r2 = await write(row);
+        if(r2.error){ failed++; console.warn('import: linha descartada em '+table+':', r2.error.message||r2.error); }
+        else ok++;
+      }
+    });
+    return { ok, failed };
+  }
   // nome de exibicao: metadata.name (email/senha, e Google COM 'profile') -> fallback dado ->
   // prefixo do e-mail (Google so com 'email', sem nome no perfil) -> nome atual em memoria.
   const nameOf = (u, fallback)=> (u && u.user_metadata && (u.user_metadata.name || u.user_metadata.full_name)) || fallback || (u && u.email ? u.email.split('@')[0] : '') || name;
@@ -3245,6 +3379,13 @@ function SupabaseStore(sb){
     },
     async listDocuments(pid){ return must(await sb.from('documents').select('*').eq('project_id',pid).order('created_at')); },
     async addDocument(pid,{id,name:dn,content}){ const row={project_id:pid,name:dn,content,created_by:user.id}; if(id) row.id=id; return must(await sb.from('documents').insert(row).select().single()); },
+    // PERF: usado por mergeQualilabDb quando o store suporta lote (ver bulkWrite). items ja
+    // trazem `id` pre-gerado (uid(), igual ao docMap do merge) — nao precisa .select() de volta.
+    // Payload por linha pode ser grande (content de documento inteiro) -> chunk menor que os demais.
+    async addDocumentsBulk(pid, items){
+      const rows = items.map(it=>({ project_id:pid, id:it.id, name:it.name, content:it.content, created_by:user.id }));
+      return bulkWrite('documents', rows, { chunk:40 });
+    },
     async renameDocument(id,dn){ must(await sb.from('documents').update({name:dn}).eq('id',id)); },
     async setDocumentContent(id,content){ must(await sb.from('documents').update({content}).eq('id',id)); },
     /* PDF-BLOCK: bytes no Supabase Storage (bucket 'pdfs') — requer o bucket + coluna
@@ -3298,6 +3439,15 @@ function SupabaseStore(sb){
       if(value===''){ must(await sb.from('doc_values').delete().eq('document_id',docId).eq('category_id',catId).eq('layer','final')); return; }
       must(await sb.from('doc_values').upsert({project_id:pid,document_id:docId,category_id:catId,value,set_by:user.id,author_name:name,layer:'final',updated_at:new Date().toISOString()},{onConflict:'document_id,category_id,set_by,layer'}));
     },
+    // PERF: gabarito em lote — items JA deduplicados (1 por document_id+category_id) pelo
+    // chamador, igual o pickVal/finalPick que mergeQualilabDb ja fazia antes de escrever.
+    // set_by e sempre o usuario atual (mesma semantica de setFinalValue) -> upsert seguro mesmo
+    // com chunks concorrentes, pois nenhum chunk repete a chave de conflito de outro.
+    async setFinalValuesBulk(pid, items){
+      const now = new Date().toISOString();
+      const rows = items.map(v=>({ project_id:pid, document_id:v.document_id, category_id:v.category_id, value:v.value, set_by:user.id, author_name:name, layer:'final', updated_at:now }));
+      return bulkWrite('doc_values', rows, { upsert:true, onConflict:'document_id,category_id,set_by,layer' });
+    },
     // grava uma resposta de categoria com autor arbitrario (set_by:null, author_name livre) —
     // usado pelo import de .qualilab pra preservar cada pesquisador de origem como uma linha
     // independente, igual ja fazia addCoding com created_by:null. set_by null nunca colide
@@ -3306,8 +3456,28 @@ function SupabaseStore(sb){
     async addDocValue(pid,v){
       return must(await sb.from('doc_values').insert({project_id:pid,document_id:v.document_id,category_id:v.category_id,value:v.value,set_by:v.set_by??null,author_name:v.author_name||'anonimo',layer:v.layer||'individual',updated_at:new Date().toISOString()}).select().single());
     },
+    // PERF: camada individual em lote (set_by SEMPRE null aqui — a unique (document_id,
+    // category_id,set_by,layer) nunca colide entre linhas com set_by null, Postgres trata NULL
+    // como distinto de outro NULL — entao e sempre insert puro, nunca upsert, mesmo em chunks
+    // concorrentes). Usado pelo merge de .qualilab pra multi-coder (varios autores por doc+categoria).
+    async addDocValuesIndividualBulk(pid, items){
+      const now = new Date().toISOString();
+      const rows = items.map(v=>({ project_id:pid, document_id:v.document_id, category_id:v.category_id, value:v.value, set_by:null, author_name:v.author_name||'importado', layer:'individual', updated_at:now }));
+      return bulkWrite('doc_values', rows);
+    },
     async listCodes(pid){ return must(await sb.from('codes').select('*').eq('project_id',pid).order('depth').order('position')); },
     async addCode(pid,code){ return must(await sb.from('codes').insert({project_id:pid,...code}).select().single()); },
+    // PERF: codes.parent_id e uma FK auto-referenciada NAO deferravel (schema.sql) — um pai
+    // referenciado por uma linha mais adiante na MESMA instrucao de insert falha se ainda nao
+    // foi inserido. Ordena por depth ascendente (pai sempre depth-1 do filho) e roda os chunks
+    // em SERIE (concurrency:1): a ordem da VALUES list e preservada dentro de um chunk, e o
+    // proximo chunk so comeca apos o anterior COMMITAR — os dois juntos garantem pai-antes-do-
+    // filho pra qualquer tamanho de arvore, mesmo se um chunk cortar no meio de um nivel.
+    async addCodesBulk(pid, items){
+      const sorted = items.slice().sort((a,b)=>(a.depth||0)-(b.depth||0));
+      const rows = sorted.map(c=>({ project_id:pid, ...c }));
+      return bulkWrite('codes', rows, { concurrency:1 });
+    },
     async updateCode(id,patch){ must(await sb.from('codes').update(patch).eq('id',id)); },
     // memos de SUBcodigos e das codings da subarvore (apagados por cascade do Postgres) sao
     // limpos pelo trigger memos_gc no banco — o cliente nao conhece a subarvore daqui.
@@ -3318,6 +3488,20 @@ function SupabaseStore(sb){
       const row = {project_id:pid, created_by:user.id, author_name:name, ...co};
       if(hasCB && co.created_by===null) row.created_by = null;
       return must(await sb.from('codings').insert(row).select().single());
+    },
+    // PERF: codings em lote. items JA vem com `id` pre-gerado pelo chamador (uid()) — igual ao
+    // docMap/catMap/codeMap do merge — pra montar o mapa id-antigo->id-novo (memos de trecho)
+    // sem depender do retorno do insert (que exigiria .select() e, em lote, nao garante a MESMA
+    // ordem de resposta que a de envio). code_id/document_id ja apontam pra linhas de fases
+    // ANTERIORES do merge (documents/codes), sempre ja commitadas -> seguro em chunks concorrentes.
+    async addCodingsBulk(pid, items){
+      const rows = items.map(co=>{
+        const hasCB = Object.prototype.hasOwnProperty.call(co,'created_by');
+        const row = { project_id:pid, created_by:user.id, author_name:name, ...co };
+        if(hasCB && co.created_by===null) row.created_by = null;
+        return row;
+      });
+      return bulkWrite('codings', rows);
     },
     async deleteCoding(id){ must(await sb.from('codings').delete().eq('id',id)); await sb.from('memos').delete().eq('scope','coding').eq('target_id',id); },
     // memos: nota unica compartilhada por alvo (projeto/documento/codigo); ultima edicao vale
@@ -3331,6 +3515,16 @@ function SupabaseStore(sb){
         { project_id:pid, scope, target_id:targetId, content, label:label||'', author_name:authorName||'anonimo', updated_by:user?.id||null, updated_at:new Date().toISOString() },
         { onConflict:'project_id,scope,target_id' }
       ));
+    },
+    // PERF: memos em lote. items JA vem deduplicados por (scope,target_id) pelo chamador
+    // (mergeQualilabDb acumula/mescla ANTES de chamar, mesma logica que setMemo faria chamada
+    // a chamada) — sem isso, dois itens com a MESMA chave de conflito no mesmo upsert em lote
+    // dariam erro no Postgres ("ON CONFLICT DO UPDATE... affect row a second time"). Sem
+    // suporte a apagar por conteudo vazio (o .qualilab exportado nunca contem memo vazio).
+    async setMemosBulk(pid, items){
+      const now = new Date().toISOString();
+      const rows = items.map(m=>({ project_id:pid, scope:m.scope, target_id:m.target_id, content:m.content, label:m.label||'', author_name:m.author_name||'anonimo', updated_by:user?.id||null, updated_at:now }));
+      return bulkWrite('memos', rows, { upsert:true, onConflict:'project_id,scope,target_id' });
     },
     async deleteMemo(id){ must(await sb.from('memos').delete().eq('id',id)); },
     // resultados salvos da aba "Analisar com IA"
