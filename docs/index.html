@@ -1465,6 +1465,14 @@ async function mapPool(items, limit, fn, onProgress){
   return out;
 }
 
+/* Soma as linhas que um lote NAO conseguiu gravar. O bulkWrite (SupabaseStore) e tolerante a
+   erro POR LINHA — nao aborta o lote —, o oposto do addDocument/addCoding/... serial, que
+   LANCAVA e interrompia o import. Sem contabilizar, um import cuja RLS recusa tudo (caso real:
+   membro nao-admin importando codificacoes num projeto coletivo, onde created_by:null exige
+   admin) exibiria "Importado: N trechos" com o banco vazio. Cada importador acumula isto e
+   devolve em `linhasRecusadas`, que a mensagem de import mostra. */
+function bulkFails(r){ return (r && r.failed) || 0; }
+
 const COMBINING_MARK = /\p{M}/u;
 function buildMatchIndex(content){
   const map = []; const parts = []; let lastSpace = false;
@@ -1917,23 +1925,71 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
   // travando a aba por varios segundos. Salva uma unica vez no fim.
   const total = newDocs.length + newCats.length + newCodes.length + newValues.length + newCodings.length;
   const tick = makeProgressTicker(onProgress, total);
+  let linhasRecusadas = 0;   // linhas que o servidor recusou num lote (ver bulkFails)
   if(store.beginBatch) store.beginBatch();
   try{
-    for(const d of newDocs){ await store.addDocument(projectId, { id:docMap[d.id], name:d.name, content:d.content }); await tick(); }
+    // PERF (mesmo gargalo do gotcha #0, aqui no sentido ESCRITA): pra destino em NUVEM cada
+    // linha era uma requisicao de rede — o .qdpx de stress (2332 codings) virava 2332
+    // round-trips seriais, cada um com checagem de RLS. Onde o store expoe lote (bulkWrite em
+    // SupabaseStore), usa; Local/File caem no `else` de cada fase — codigo IDENTICO ao de antes,
+    // ja rapido por so empurrar pra um array em memoria. Ordem entre as fases e mantida (FKs).
+    const docItems = newDocs.map(d=>({ id:docMap[d.id], name:d.name, content:d.content }));
+    if(store.addDocumentsBulk){
+      linhasRecusadas += bulkFails(await store.addDocumentsBulk(projectId, docItems));
+      for(let i=0;i<docItems.length;i++) await tick();
+    } else {
+      for(const it of docItems){ await store.addDocument(projectId, it); await tick(); }
+    }
+    // categorias ficam 1-a-1 de proposito: sao poucas (dezenas no maximo) e addCategory tem o
+    // fallback de coluna 'description' pra bancos antigos, que um insert em lote perderia
     for(let i=0;i<newCats.length;i++){ const c=newCats[i]; await store.addCategory(projectId, { id:catMap[c.id], name:c.name, kind:c.kind, options:c.options, position:i }); await tick(); }
-    for(let i=0;i<newCodes.length;i++){ const c=newCodes[i]; await store.addCode(projectId, { id:codeMap[c.id], parent_id:c.parent_id?codeMap[c.parent_id]:null, name:c.name, hue:c.hue, depth:c.depth, hue_deg:c.hue_deg??null, sat:c.sat??null, position:i }); await tick(); }
+    const codeItems = newCodes.map((c,i)=>({ id:codeMap[c.id], parent_id:c.parent_id?codeMap[c.parent_id]:null, name:c.name, hue:c.hue, depth:c.depth, hue_deg:c.hue_deg??null, sat:c.sat??null, position:i }));
+    if(store.addCodesBulk){
+      linhasRecusadas += bulkFails(await store.addCodesBulk(projectId, codeItems));
+      for(let i=0;i<codeItems.length;i++) await tick();
+    } else {
+      for(const it of codeItems){ await store.addCode(projectId, it); await tick(); }
+    }
     // em projeto individual os valores vao direto para o gabarito (final); em coletivo, como resposta individual
     const setVal = projectMode==='individual' ? store.setFinalValue.bind(store) : store.setDocValue.bind(store);
-    for(const v of newValues){ if(docMap[v.document_id] && catMap[v.category_id]) await setVal(projectId, docMap[v.document_id], catMap[v.category_id], v.value); await tick(); }
+    const valBulk = projectMode==='individual' ? store.setFinalValuesBulk : store.setDocValuesBulk;
+    if(valBulk){
+      // dedup por (documento,categoria) — os dois bulks gravam com set_by fixo (o usuario atual),
+      // entao dois itens do mesmo par repetiriam a chave de conflito no MESMO upsert em lote e o
+      // Postgres recusaria. Mantem o ULTIMO, que e o que o loop serial (upsert a upsert) deixava.
+      // O QDPX so tem 1 valor por documento+categoria, mas a defesa e barata e o formato e externo.
+      const pick = {};
+      for(const v of newValues){ if(docMap[v.document_id] && catMap[v.category_id]) pick[v.document_id+':'+v.category_id] = v; }
+      linhasRecusadas += bulkFails(await valBulk.call(store, projectId, Object.values(pick).map(v=>({ document_id:docMap[v.document_id], category_id:catMap[v.category_id], value:v.value }))));
+      for(let i=0;i<newValues.length;i++) await tick();
+    } else {
+      for(const v of newValues){ if(docMap[v.document_id] && catMap[v.category_id]) await setVal(projectId, docMap[v.document_id], catMap[v.category_id], v.value); await tick(); }
+    }
     // created_by: null => o agrupamento por codificador usa author_name (do QDPX), não o uuid de quem importou
     // layer: em projeto individual tudo vai para a camada final (sem reconciliacao); em coletivo, fica individual
-    for(const c of newCodings){ if(docMap[c.document_id] && codeMap[c.code_id]) await store.addCoding(projectId, { created_by:null, layer:codLayer, document_id:docMap[c.document_id], code_id:codeMap[c.code_id], span_start:c.span_start, span_end:c.span_end, quote:c.quote, author_name:c.author_name }); await tick(); }
+    const codingItems = newCodings.filter(c=>docMap[c.document_id] && codeMap[c.code_id]).map(c=>({
+      created_by:null, layer:codLayer, document_id:docMap[c.document_id], code_id:codeMap[c.code_id],
+      span_start:c.span_start, span_end:c.span_end, quote:c.quote, author_name:c.author_name }));
+    if(store.addCodingsBulk){
+      linhasRecusadas += bulkFails(await store.addCodingsBulk(projectId, codingItems));
+      for(let i=0;i<newCodings.length;i++) await tick();
+    } else {
+      // tick DENTRO do loop (nao depois): no caminho serial a barra tem que andar durante a
+      // escrita, senao ficaria parada e pularia pro fim de uma vez
+      for(const co of codingItems){ await store.addCoding(projectId, co); await tick(); }
+      for(let i=codingItems.length;i<newCodings.length;i++) await tick();   // descartados (doc/codigo ausente)
+    }
     // comentarios do .qdpx (<Description> de documento/codigo) -> memos do QualiLab (um por alvo)
     if(store.setMemo){
+      // dedup por (scope,target_id) obrigatorio no lote (mesma razao do setMemosBulk no merge)
+      const memoRows = {};
       for(const m of newMemos){
         const targetId = m.scope==='document' ? docMap[m.oldId] : codeMap[m.oldId];
-        if(targetId) await store.setMemo(projectId, m.scope, targetId, m.content, m.author);
+        if(targetId) memoRows[m.scope+':'+targetId] = { scope:m.scope, target_id:targetId, content:m.content, author_name:m.author };
       }
+      const rows = Object.values(memoRows).filter(r=>(r.content||'').trim());
+      if(store.setMemosBulk) linhasRecusadas += bulkFails(await store.setMemosBulk(projectId, rows));
+      else for(const r of rows) await store.setMemo(projectId, r.scope, r.target_id, r.content, r.author_name);
       // notas livres -> memo de projeto. Anexa (nao sobrescreve) um memo de projeto ja existente.
       if(projectNote){
         let content = projectNote;
@@ -1953,7 +2009,7 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
     trechos:newCodings.length, trechosAproximados: approxCount, trechosGeometricos: geomCount,
     memos:newMemos.length, notasProjeto: projectNotesCount,
     casos: xml.querySelectorAll('Cases > Case').length,
-    descartados: skipped, categoriasFechadasDetectadas: catsFechadasDetectadas
+    descartados: skipped, categoriasFechadasDetectadas: catsFechadasDetectadas, linhasRecusadas
   };
 }
 
@@ -2112,9 +2168,25 @@ async function resolvePdfIndex(docId, content, bytes, loadPersisted){   // -> { 
 /* PDF-BLOCK/§4: resolve o indice de UM doc SEM bytes (cache de sessao -> persistido com remap).
    Compartilhado pelo App ("p. N") e pelas telas de IA (deteccao de texto vindo de OCR). */
 async function resolveDocIndexNoBytes(store, d){
+  const content = d.content||'';
   const c = PDF_INDEX_CACHE.get(d.id);
-  if(c && c.content === (d.content||'')) return c.index;
-  if(store?.getPdfIndex){ try{ const p = await store.getPdfIndex(d.id); if(p) return remapIndexToContent(p.index, p.content, d.content||''); }catch(e){} }
+  if(c && c.content === content) return c.index;
+  if(store?.getPdfIndex){
+    try{
+      const p = await store.getPdfIndex(d.id);
+      if(p){
+        const idx = remapIndexToContent(p.index, p.content, content);
+        // PERF: POPULA o cache de sessao (antes so LIA dele) — sem isto cada entrada na
+        // Visualizacao/Relatorio e em cada tela de IA re-baixava o .idx.json de TODOS os docs
+        // com PDF, mesmo sem nada ter mudado. So cacheia INDICE ENCONTRADO, nunca o null:
+        // o resolvePdfIndex (caminho COM bytes) consulta o mesmo cache e faz curto-circuito
+        // quando acha a entrada, entao um null cacheado aqui o impediria de reconstruir o
+        // indice a partir dos bytes — "ver original" perderia a pagina certa.
+        if(idx) PDF_INDEX_CACHE.set(d.id, { content, index: idx });
+        return idx;
+      }
+    }catch(e){}
+  }
   return null;
 }
 /* §4: faixas [start,end) do content que vieram de OCR (origem:'ocr' no indice) + estatistica.
@@ -2315,6 +2387,19 @@ async function importQualilab(file, store, projectId, projectMode, onProgress){
    importQualilab pra poder ser chamado tambem sem passar por arquivo (ex.: "enviar pra
    nuvem", que monta o db a partir do projeto local/arquivo aberto e importa direto num
    projeto novo na nuvem, sem download/upload no meio). */
+/* Escopos de memo ANCORADOS NO PROJETO (target_id = project.id, por convencao). TODOS precisam
+   ser remapeados pro id do projeto de DESTINO num import/merge — o que nao acontecia: so
+   'project' era remapeado e os 6 escopos de CONFIGURACAO DE IA viajavam com o target_id da
+   ORIGEM. Dois sintomas, os dois silenciosos ate o contador de linhasRecusadas existir:
+     - origem arquivo/rascunho -> target_id e 'file-project' (nao-uuid) e a NUVEM RECUSA a linha
+       ("invalid input syntax for type uuid: file-project");
+     - origem outra nuvem -> a linha ENTRA, mas com o uuid do projeto ANTIGO: fica orfa, porque
+       a UI le a config por target_id === project.id. A configuracao de IA do projeto (memo para
+       a IA, instrucoes, postura, postura personalizada, categorias como metadados, memos
+       injetados) sumia sem erro nenhum.
+   'ai_prompt' NAO entra aqui de proposito: cada prompt salvo tem uid() proprio (ja e uuid). */
+const MEMO_PROJECT_SCOPES = new Set(['project','ai_context','ai_instructions','ai_stance','ai_stance_text','ai_include_cats','ai_inject']);
+
 async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pdfs, pdfIdx){
   const codLayer = projectMode==='individual' ? 'final' : 'individual';
   if(!db || !Array.isArray(db.documents)) throw new Error('Arquivo .qualilab sem o formato esperado');
@@ -2327,6 +2412,7 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
   const total = (db.documents||[]).length + (db.categories||[]).length + (db.codes||[]).length
     + (db.doc_values||[]).length + (db.codings||[]).length + (db.memos||[]).length;
   const tick = makeProgressTicker(onProgress, total);
+  let linhasRecusadas = 0;   // linhas recusadas pelo servidor num lote (ver bulkFails)
 
   if(store.beginBatch) store.beginBatch();
   try{
@@ -2338,7 +2424,7 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
     // fase — codigo IDENTICO ao de antes, ja rapido pois so empurra pra um array em memoria.
     if(store.addDocumentsBulk){
       const items = (db.documents||[]).map(d=>({ id:docMap[d.id], name:d.name, content:d.content }));
-      await store.addDocumentsBulk(projectId, items);
+      linhasRecusadas += bulkFails(await store.addDocumentsBulk(projectId, items));
       for(let i=0;i<items.length;i++) await tick();
     } else {
       for(const d of (db.documents||[])){ await store.addDocument(projectId, { id:docMap[d.id], name:d.name, content:d.content }); await tick(); }
@@ -2372,7 +2458,7 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
     const codesSorted = (db.codes||[]).slice().sort((a,b)=>(a.position??0)-(b.position??0));
     const codeItems = codesSorted.map((c,i)=>({ id:codeMap[c.id], parent_id:c.parent_id?codeMap[c.parent_id]:null, name:c.name, hue:c.hue||0, depth:c.depth||0, hue_deg:c.hue_deg??null, sat:c.sat??null, is_redaction:!!c.is_redaction, pos_x:c.pos_x??null, pos_y:c.pos_y??null, position:i }));
     if(store.addCodesBulk){
-      await store.addCodesBulk(projectId, codeItems);
+      linhasRecusadas += bulkFails(await store.addCodesBulk(projectId, codeItems));
       for(let i=0;i<codeItems.length;i++) await tick();
     } else {
       for(const it of codeItems){ await store.addCode(projectId, it); await tick(); }
@@ -2395,7 +2481,7 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
       if(store.setFinalValuesBulk){
         const finals = vals.filter(v=>docMap[v.document_id] && catMap[v.category_id])
           .map(v=>({ document_id:docMap[v.document_id], category_id:catMap[v.category_id], value:v.value }));
-        await store.setFinalValuesBulk(projectId, finals);
+        linhasRecusadas += bulkFails(await store.setFinalValuesBulk(projectId, finals));
         for(let i=0;i<vals.length;i++) await tick();
       } else {
         for(const v of vals){
@@ -2411,10 +2497,10 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
           else individualItems.push({ document_id:docMap[v.document_id], category_id:catMap[v.category_id], value:v.value, author_name:v.author_name||'importado' });
         }
       }
-      await store.addDocValuesIndividualBulk(projectId, individualItems);
+      linhasRecusadas += bulkFails(await store.addDocValuesIndividualBulk(projectId, individualItems));
       for(let i=0;i<(db.doc_values||[]).length;i++) await tick();
       const finals = Object.values(finalPick).map(v=>({ document_id:docMap[v.document_id], category_id:catMap[v.category_id], value:v.value }));
-      await store.setFinalValuesBulk(projectId, finals);
+      linhasRecusadas += bulkFails(await store.setFinalValuesBulk(projectId, finals));
     } else {
       const finalPick = {};
       for(const v of (db.doc_values||[])){
@@ -2458,7 +2544,7 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
           if(c.pdf_region) co.pdf_region = c.pdf_region;
           return { key:k, co };
         });
-        await store.addCodingsBulk(projectId, built.map(x=>x.co));
+        linhasRecusadas += bulkFails(await store.addCodingsBulk(projectId, built.map(x=>x.co)));
         for(const { key, co } of built) for(const oldId of groups[key]) if(oldId) codingMap[oldId] = co.id;
       } else {
         for(const k of keys){
@@ -2479,7 +2565,7 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
           built.push({ oldId:c.id, co });
         }
       }
-      await store.addCodingsBulk(projectId, built.map(x=>x.co));
+      linhasRecusadas += bulkFails(await store.addCodingsBulk(projectId, built.map(x=>x.co)));
       for(const { oldId, co } of built) if(oldId) codingMap[oldId] = co.id;
       for(let i=0;i<(db.codings||[]).length;i++) await tick();
     } else {
@@ -2508,7 +2594,7 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
         if(m.scope==='document') targetId = docMap[m.target_id];
         else if(m.scope==='code') targetId = codeMap[m.target_id];
         else if(m.scope==='coding') targetId = codingMap[m.target_id];
-        else if(m.scope==='project') targetId = projectId;
+        else if(MEMO_PROJECT_SCOPES.has(m.scope)) targetId = projectId;   // inclui os escopos ai_* do projeto
         if(!targetId) continue;
         if(m.scope==='coding'){
           const prev = codingMemoAcc[targetId];
@@ -2520,7 +2606,7 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
         }
       }
       const rows = Object.values(rowsByKey).filter(r=>(r.content||'').trim());
-      await store.setMemosBulk(projectId, rows);
+      linhasRecusadas += bulkFails(await store.setMemosBulk(projectId, rows));
       for(let i=0;i<(db.memos||[]).length;i++) await tick();
     } else if(store.setMemo){
       const codingMemoAcc = {}; // #19: dois memos de trecho colapsados no dedup -> concatena (nao sobrescreve)
@@ -2529,7 +2615,7 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
         if(m.scope==='document') targetId = docMap[m.target_id];
         else if(m.scope==='code') targetId = codeMap[m.target_id];
         else if(m.scope==='coding') targetId = codingMap[m.target_id];
-        else if(m.scope==='project') targetId = projectId;
+        else if(MEMO_PROJECT_SCOPES.has(m.scope)) targetId = projectId;   // inclui os escopos ai_* do projeto
         if(targetId){
           if(m.scope==='coding'){
             const prev = codingMemoAcc[targetId];
@@ -2546,20 +2632,30 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
 
     // diário de insights da IA: preserva memórias (conteúdo/origem/modelo/autor) do arquivo
     if(store.addMemory){
-      for(const e of (db.ia_memory||[])){
-        if(!e || !e.content) continue;
-        const row = await store.addMemory(projectId, { content:e.content, reason:e.reason||'', source:e.source||'ai', ai_model:e.ai_model||'', mode_label:e.mode_label||'', author_name:e.author_name });
-        if(row?.id && e.active===false) await store.setMemoryActive?.(row.id, false);
+      // PERF: as duas ultimas fases que ficaram 1-a-1 na conversao pra lote. Aqui era ate
+      // 2 round-trips por memoria (addMemory + setMemoryActive nas desativadas); o
+      // addMemoriesBulk grava `active` direto na linha, entao o segundo some.
+      const memEntries = (db.ia_memory||[]).filter(e=>e && e.content);
+      if(store.addMemoriesBulk){
+        linhasRecusadas += bulkFails(await store.addMemoriesBulk(projectId, memEntries));
+      } else {
+        for(const e of memEntries){
+          const row = await store.addMemory(projectId, { content:e.content, reason:e.reason||'', source:e.source||'ai', ai_model:e.ai_model||'', mode_label:e.mode_label||'', author_name:e.author_name });
+          if(row?.id && e.active===false) await store.setMemoryActive?.(row.id, false);
+        }
       }
     }
 
     // conversas salvas de IA: o buildQualilabDb exporta ia_results, então o merge precisa
     // reimportá-las — sem isto o round-trip .qualilab (e "Enviar para a nuvem") as descartava
     if(store.addIaResult){
-      for(const r of (db.ia_results||[])){
-        if(!r || !r.result) continue;
-        await store.addIaResult(projectId, { scope:r.scope||'docs', mode_label:r.mode_label||'', result:r.result, author_name:r.author_name });
-        await tick();
+      const iaRows = (db.ia_results||[]).filter(r=>r && r.result)
+        .map(r=>({ scope:r.scope||'docs', mode_label:r.mode_label||'', result:r.result, author_name:r.author_name, created_at:r.created_at }));
+      if(store.addIaResultsBulk){
+        linhasRecusadas += bulkFails(await store.addIaResultsBulk(projectId, iaRows));
+        for(let i=0;i<iaRows.length;i++) await tick();
+      } else {
+        for(const r of iaRows){ await store.addIaResult(projectId, r); await tick(); }
       }
     }
   } finally {
@@ -2569,7 +2665,7 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
   return {
     documentos:(db.documents||[]).length, categorias:(db.categories||[]).length, codigos:(db.codes||[]).length,
     trechos:(db.codings||[]).length, memos:(db.memos||[]).length,
-    conversas:(db.ia_results||[]).length, memorias:(db.ia_memory||[]).length
+    conversas:(db.ia_results||[]).length, memorias:(db.ia_memory||[]).length, linhasRecusadas
   };
 }
 
@@ -2711,22 +2807,48 @@ async function importCSV(parsed, mapping, store, projectId, projectMode, onProgr
   const total = docDefs.length + catDefs.length + docDefs.length*catDefs.length;
   const tick = makeProgressTicker(onProgress, total);
   const setVal = projectMode==='individual' ? store.setFinalValue.bind(store) : store.setDocValue.bind(store);
+  let linhasRecusadas = 0;   // linhas recusadas pelo servidor num lote (ver bulkFails)
   if(store.beginBatch) store.beginBatch();
   try{
-    for(const d of docDefs){ await store.addDocument(projectId, { id:d.id, name:d.name, content:d.content }); await tick(); }
+    // PERF: era uma requisicao de rede por LINHA e, pior, o laco de valores e ANINHADO
+    // (documentos x categorias) — uma planilha de 500 linhas com 8 categorias dava ~4.500
+    // round-trips seriais na nuvem. Onde o store expoe lote, usa; Local/File caem no `else`
+    // (codigo identico ao de antes, ja rapido por so empurrar pra um array em memoria).
+    const docItems = docDefs.map(d=>({ id:d.id, name:d.name, content:d.content }));
+    if(store.addDocumentsBulk){
+      linhasRecusadas += bulkFails(await store.addDocumentsBulk(projectId, docItems));
+      for(let i=0;i<docItems.length;i++) await tick();
+    } else {
+      for(const it of docItems){ await store.addDocument(projectId, it); await tick(); }
+    }
+    // categorias 1-a-1 (poucas, e addCategory tem o fallback da coluna 'description')
     for(let i=0;i<catDefs.length;i++){ const c=catDefs[i]; await store.addCategory(projectId, { id:c.id, name:c.name, kind:c.kind, options:c.options, position:i }); await tick(); }
-    for(const d of docDefs){
-      for(const c of catDefs){
-        let val=(d.row[c.col]||'').trim();
-        if(c.kind==='checkbox' && val) val = val.split(/\s*[|;]\s*/).filter(Boolean).join(CAT_MULTI_SEP);
-        if(val) await setVal(projectId, d.id, c.id, val);
-        await tick();
+    // valor da celula: mesma normalizacao dos dois caminhos (checkbox multi-valor -> CAT_MULTI_SEP)
+    const cellVal = (d,c)=>{
+      const raw=(d.row[c.col]||'').trim();
+      return (c.kind==='checkbox' && raw) ? raw.split(/\s*[|;]\s*/).filter(Boolean).join(CAT_MULTI_SEP) : raw;
+    };
+    const valBulk = projectMode==='individual' ? store.setFinalValuesBulk : store.setDocValuesBulk;
+    if(valBulk){
+      // cada par (documento,categoria) aparece UMA vez pela construcao do laco — nao ha chave de
+      // conflito repetida no lote, entao nao precisa do dedup que o importQDPX faz
+      const rows = [];
+      for(const d of docDefs) for(const c of catDefs){ const val = cellVal(d,c); if(val) rows.push({ document_id:d.id, category_id:c.id, value:val }); }
+      linhasRecusadas += bulkFails(await valBulk.call(store, projectId, rows));
+      for(let i=0;i<docDefs.length*catDefs.length;i++) await tick();
+    } else {
+      for(const d of docDefs){
+        for(const c of catDefs){
+          const val = cellVal(d,c);
+          if(val) await setVal(projectId, d.id, c.id, val);
+          await tick();
+        }
       }
     }
   } finally {
     if(store.endBatch) await store.endBatch();
   }
-  return { documentos:docDefs.length, categorias:catDefs.length, ignoradas };
+  return { documentos:docDefs.length, categorias:catDefs.length, ignoradas, linhasRecusadas };
 }
 
 /* ============ IMPORT .sqlite3 do TAGUETTE ============
@@ -2806,19 +2928,39 @@ async function importTaguette(file, store, projectId, projectMode, onProgress){
 
     const total = newDocs.length + newCodes.length + newCodings.length;
     const tick = makeProgressTicker(onProgress, total);
+    let linhasRecusadas = 0;   // linhas recusadas pelo servidor num lote (ver bulkFails)
     if(store.beginBatch) store.beginBatch();
     try{
-      for(const d of newDocs){ await store.addDocument(projectId, d); await tick(); }
+      // PERF: mesmo gargalo de escrita do importQDPX — 1 requisicao de rede por linha na nuvem.
+      // Usa lote onde o store expoe; Local/File caem no `else` (codigo identico ao de antes).
+      if(store.addDocumentsBulk){
+        linhasRecusadas += bulkFails(await store.addDocumentsBulk(projectId, newDocs));
+        for(let i=0;i<newDocs.length;i++) await tick();
+      } else {
+        for(const d of newDocs){ await store.addDocument(projectId, d); await tick(); }
+      }
       // position = indice (nao 0 fixo): a ordenacao entre irmaos e persistida por position
-      for(const [i,c] of newCodes.entries()){ await store.addCode(projectId, { id:c.id, parent_id:c.parent_id, name:c.name, hue:c.hue, depth:c.depth, position:i }); await tick(); }
+      const codeItems = newCodes.map((c,i)=>({ id:c.id, parent_id:c.parent_id, name:c.name, hue:c.hue, depth:c.depth, position:i }));
+      if(store.addCodesBulk){
+        linhasRecusadas += bulkFails(await store.addCodesBulk(projectId, codeItems));
+        for(let i=0;i<codeItems.length;i++) await tick();
+      } else {
+        for(const it of codeItems){ await store.addCode(projectId, it); await tick(); }
+      }
       // Taguette nao registra autor por trecho — sem isso, o agrupamento por codificador
       // (Graficos/Visualizacao) trata tudo como um unico codificador, "Taguette"
-      for(const c of newCodings){ await store.addCoding(projectId, { created_by:null, layer:codLayer, document_id:c.document_id, code_id:c.code_id, span_start:c.span_start, span_end:c.span_end, quote:c.quote, author_name:'Taguette' }); await tick(); }
+      const codingItems = newCodings.map(c=>({ created_by:null, layer:codLayer, document_id:c.document_id, code_id:c.code_id, span_start:c.span_start, span_end:c.span_end, quote:c.quote, author_name:'Taguette' }));
+      if(store.addCodingsBulk){
+        linhasRecusadas += bulkFails(await store.addCodingsBulk(projectId, codingItems));
+        for(let i=0;i<codingItems.length;i++) await tick();
+      } else {
+        for(const co of codingItems){ await store.addCoding(projectId, co); await tick(); }
+      }
     } finally {
       if(store.endBatch) await store.endBatch();
     }
 
-    return { documentos:newDocs.length, codigos:newCodes.length, trechos:newCodings.length, projeto:projects[0].name||'' };
+    return { documentos:newDocs.length, codigos:newCodes.length, trechos:newCodings.length, projeto:projects[0].name||'', linhasRecusadas };
   } finally {
     sdb.close();
   }
@@ -2871,17 +3013,23 @@ async function importQDC(file, store, projectId, onProgress){
   }
 
   const tick = makeProgressTicker(onProgress, newCodes.length);
+  let linhasRecusadas = 0;   // linhas recusadas pelo servidor num lote (ver bulkFails)
   if(store.beginBatch) store.beginBatch();
   try{
-    for(const [i,c] of newCodes.entries()){
-      await store.addCode(projectId, { id:c.id, parent_id:c.parent_id, name:c.name, hue:c.hue, depth:c.depth, hue_deg:c.hue_deg??null, sat:c.sat??null, position:i });
-      await tick();
+    // PERF: um codebook grande (centenas de codigos) era 1 requisicao de rede por codigo;
+    // addCodesBulk ordena por depth e roda os chunks em serie (pai antes do filho, FK)
+    const codeItems = newCodes.map((c,i)=>({ id:c.id, parent_id:c.parent_id, name:c.name, hue:c.hue, depth:c.depth, hue_deg:c.hue_deg??null, sat:c.sat??null, position:i }));
+    if(store.addCodesBulk){
+      linhasRecusadas += bulkFails(await store.addCodesBulk(projectId, codeItems));
+      for(let i=0;i<codeItems.length;i++) await tick();
+    } else {
+      for(const it of codeItems){ await store.addCode(projectId, it); await tick(); }
     }
   } finally {
     if(store.endBatch) await store.endBatch();
   }
 
-  return { codigos: newCodes.length };
+  return { codigos: newCodes.length, linhasRecusadas };
 }
 
 /* ============ IDB HELPER (IndexedDB p/ persistir handles de arquivo entre sessões) ============
@@ -3465,6 +3613,18 @@ function SupabaseStore(sb){
       const rows = items.map(v=>({ project_id:pid, document_id:v.document_id, category_id:v.category_id, value:v.value, set_by:null, author_name:v.author_name||'importado', layer:'individual', updated_at:now }));
       return bulkWrite('doc_values', rows);
     },
+    // PERF: camada individual DO USUARIO ATUAL em lote (mesma semantica do setDocValue, que os
+    // importadores de QDPX/CSV/Taguette usam em projeto coletivo). Diferente do
+    // addDocValuesIndividualBulk acima (set_by null, autor livre, do .qualilab multi-coder):
+    // aqui set_by e sempre user.id, entao (document_id,category_id,set_by,layer) REPETE entre
+    // itens do mesmo doc+categoria -> items JA deduplicados por (document_id,category_id) pelo
+    // chamador, senao o upsert em lote quebra ("ON CONFLICT DO UPDATE ... affect row a second
+    // time"). Com a chave unica por item, chunks concorrentes nunca colidem entre si.
+    async setDocValuesBulk(pid, items){
+      const now = new Date().toISOString();
+      const rows = items.map(v=>({ project_id:pid, document_id:v.document_id, category_id:v.category_id, value:v.value, set_by:user.id, author_name:name, layer:'individual', updated_at:now }));
+      return bulkWrite('doc_values', rows, { upsert:true, onConflict:'document_id,category_id,set_by,layer' });
+    },
     async listCodes(pid){ return must(await sb.from('codes').select('*').eq('project_id',pid).order('depth').order('position')); },
     async addCode(pid,code){ return must(await sb.from('codes').insert({project_id:pid,...code}).select().single()); },
     // PERF: codes.parent_id e uma FK auto-referenciada NAO deferravel (schema.sql) — um pai
@@ -3534,12 +3694,36 @@ function SupabaseStore(sb){
         { project_id:pid, scope, mode_label, result, author_name:author_name||'anonimo', created_by:user?.id||null }
       ).select().single());
     },
+    // PERF: conversas salvas em lote (merge de .qualilab). created_at do arquivo e PRESERVADO
+    // quando existe: em lote todas as linhas nasceriam com o MESMO now(), e listIaResults ordena
+    // por created_at desc — sem isso a ordem original da lista viraria arbitraria (no caminho
+    // serial ela se mantinha so por efeito colateral do relogio avancar entre inserts).
+    async addIaResultsBulk(pid, items){
+      const rows = items.map(r=>{
+        const row = { project_id:pid, scope:r.scope, mode_label:r.mode_label, result:r.result, author_name:r.author_name||'anonimo', created_by:user?.id||null };
+        if(r.created_at) row.created_at = r.created_at;
+        return row;
+      });
+      return bulkWrite('ia_results', rows, { chunk:100 });
+    },
     async deleteIaResult(id){ must(await sb.from('ia_results').delete().eq('id',id)); },
     async listMemory(pid){ try{ return must(await sb.from('ia_memory').select('*').eq('project_id',pid).order('created_at',{ascending:false})); }catch(e){ return []; } },
     async addMemory(pid,{content,reason,source,ai_model,mode_label,author_name}){
       return must(await sb.from('ia_memory').insert(
         { project_id:pid, content, reason:reason||'', source:source||'ai', active:true, ai_model:ai_model||'', mode_label:mode_label||'', author_name:author_name||'anonimo', created_by:user?.id||null }
       ).select().single());
+    },
+    // PERF: diario de insights em lote (merge de .qualilab). `active` entra direto na linha —
+    // o caminho serial precisava de um setMemoryActive DEPOIS do insert (2 round-trips por
+    // memoria desativada) so porque addMemory nao aceita o campo. created_at preservado pelo
+    // mesmo motivo do addIaResultsBulk (listMemory tambem ordena por created_at desc).
+    async addMemoriesBulk(pid, items){
+      const rows = items.map(e=>{
+        const row = { project_id:pid, content:e.content, reason:e.reason||'', source:e.source||'ai', active:e.active!==false, ai_model:e.ai_model||'', mode_label:e.mode_label||'', author_name:e.author_name||'anonimo', created_by:user?.id||null };
+        if(e.created_at) row.created_at = e.created_at;
+        return row;
+      });
+      return bulkWrite('ia_memory', rows, { chunk:100 });
     },
     // via RPC: a policy de update de ia_memory protege o content (autor/admin), mas o
     // toggle de "usar na analise" e aberto a todo membro. Fallback direto pra banco antigo.
@@ -3949,16 +4133,22 @@ function App(){
   useEffect(()=>{
     if((mainView!=='visualizar' && mainView!=='relatorio') || !store) return;
     let alive = true;
-    (async()=>{
-      for(const d of docs){
-        if(!d.has_pdf) continue;
-        const cur = docPdfIdx[d.id];
-        if(cur && cur.content === (d.content||'')) continue;
-        const idx = await docIndexNoBytes(d);
-        if(!alive) return;
-        setDocPdfIdx(m=>({ ...m, [d.id]: { content: d.content||'', index: idx } }));
-      }
-    })();
+    // PERF: era doc-a-doc em SERIE — na nuvem, um download do .idx.json por documento, um
+    // depois do outro (um corpus com 51 PDFs = 51 idas ao Storage enfileiradas antes do
+    // "p. N" aparecer). Leituras independentes e idempotentes -> mapPool. O `alive` e
+    // checado dentro de cada item (o pool nao aborta em voo, mas nada aterrissa em tela
+    // depois que o efeito e desmontado/refeito).
+    const pend = docs.filter(d=>{
+      if(!d.has_pdf) return false;
+      const cur = docPdfIdx[d.id];
+      return !(cur && cur.content === (d.content||''));
+    });
+    if(pend.length) mapPool(pend, 8, async (d)=>{
+      if(!alive) return;
+      const idx = await docIndexNoBytes(d);
+      if(!alive) return;
+      setDocPdfIdx(m=>({ ...m, [d.id]: { content: d.content||'', index: idx } }));
+    });
     return ()=>{ alive = false; };
   }, [mainView, docs]);
   // offset -> página pros cards de trecho (null = sem índice pra esse doc)
@@ -4195,12 +4385,20 @@ function App(){
     if(!store || !project){ setAllCodings([]); setAllValues([]); return; }
     const tok = ++reqSeqRef.current.all;
     // busca os valores+codings de TODOS os documentos em paralelo (antes era doc-a-doc em
-    // serie: N round-trips sequenciais, lento na nuvem com muitos docs). O navegador limita
-    // a concorrencia real por host, entao isso sobrepoe as latencias sem estourar o servidor.
-    const per = await Promise.all(docs.map(async d=>{
+    // serie: N round-trips sequenciais, lento na nuvem com muitos docs).
+    // O pool (8) substituiu um Promise.all ILIMITADO: com HTTP/1.1 o navegador enfileirava
+    // sozinho (6 por host), mas o Supabase e HTTP/2 — 297 docs abriam ~600 streams de uma vez,
+    // cada um com checagem de RLS. Nao muda o resultado (mapPool devolve na ORDEM dos items),
+    // so evita a rajada; a sobreposicao de latencia continua.
+    const per = await mapPool(docs, 8, async d=>{
       const [v,co]=await Promise.all([store.getDocValues(d.id), store.listCodings(project.id, d.id)]);
       return { d, v, co };
-    }));
+    });
+    // mapPool e tolerante a erro por item (devolve null) — util em import/export, ERRADO aqui:
+    // o Promise.all de antes REJEITAVA, e essa rejeicao e o que faz o banner de falha aparecer
+    // (guard global __qlNotify). Sem isto, uma queda de rede no meio pintaria a tela com dados
+    // PARCIAIS como se fossem o projeto inteiro (codificacoes sumindo sem aviso).
+    if(per.some(x=>!x)) throw new Error('Falha ao carregar parte dos documentos (rede?) — tela não atualizada.');
     if(tok !== reqSeqRef.current.all) return; // resposta velha (outro loadAll ja começou)
     const V=[], C=[];
     for(const { d, v, co } of per){
@@ -4620,7 +4818,21 @@ function App(){
       if(titleChanged) await renameDoc(activeDoc.id, newTitle);
       if(contentChanged){
         await store.setDocumentContent(activeDoc.id, newC);
-        for(const u of updates) await store.updateCoding(u.id, { span_start:u.span_start, span_end:u.span_end, quote:u.quote });
+        // PERF: era um updateCoding serial por grifo reancorado — e `updates` traz TODA
+        // codificação cujo span/quote mudou, não só as que o `affected` conta: editar perto do
+        // INÍCIO do documento desloca todas as de baixo. Num doc bem codificado (dezenas a
+        // ~150 codings) isso era a UI travada por segundos pra corrigir um rodapé — e essa
+        // limpeza pós-extração é feita o tempo todo, não uma vez. Updates independentes por
+        // id -> mapPool. (Local/File nem tocam a rede; isso é ganho de nuvem.)
+        const ok = await mapPool(updates, 8, async (u)=>{
+          await store.updateCoding(u.id, { span_start:u.span_start, span_end:u.span_end, quote:u.quote });
+          return true;   // sentinela: updateCoding não devolve nada, e o mapPool usa null pra falha
+        });
+        // mapPool engole erro por item; aqui isso seria pior que no import — o content JÁ foi
+        // gravado, então um grifo que não reancorou fica apontando pro offset ANTIGO. Sem este
+        // guard, a tela seria repintada como se tudo tivesse dado certo (o loop serial de antes
+        // lançava e caía no catch abaixo, que aborta o patch de estado).
+        if(ok.some(x=>!x)) throw new Error('parte dos grifos não pôde ser reancorada');
       }
     }catch(e){ setErr('Falha ao salvar a edição: '+(e?.message||e)); return; }
     if(contentChanged){
@@ -4908,7 +5120,7 @@ function App(){
       setBusy(null);
       const memosMsg = r.memos>0 ? ` ${r.memos} memo(s) (comentários de documento/código).` : '';
       const notasMsg = r.notasProjeto>0 ? ` ${r.notasProjeto} nota(s) livre(s) reunida(s) no memo do projeto.` : '';
-      setImportMsg(`Importado: ${r.documentos} documento(s), ${r.categorias} categoria(s), ${r.codigos} código(s), ${r.trechos} trecho(s) codificado(s)${aproxMsg}.${memosMsg}${notasMsg}${skippedMsg}${fechadasMsg}`);
+      setImportMsg(`Importado: ${r.documentos} documento(s), ${r.categorias} categoria(s), ${r.codigos} código(s), ${r.trechos} trecho(s) codificado(s)${aproxMsg}.${memosMsg}${notasMsg}${skippedMsg}${fechadasMsg}${r.linhasRecusadas?` ATENÇÃO: ${r.linhasRecusadas} linha(s) foram recusadas pelo servidor (permissão/RLS ou dado inválido) e NÃO foram gravadas — detalhes no console do navegador.`:''}`);
     }catch(e){ setBusy(null); setProgress(null); setErr('Falha ao importar: '+(e.message||e)); }
   }
 
@@ -4930,7 +5142,7 @@ function App(){
       await loadMemos();
       setErr(null);
       setBusy(null);
-      setImportMsg(`Importado: ${r.documentos} documento(s), ${r.categorias} categoria(s), ${r.codigos} código(s), ${r.trechos} trecho(s) codificado(s), ${r.memos} memo(s)${r.conversas?`, ${r.conversas} conversa(s) de IA`:''}${r.memorias?`, ${r.memorias} memória(s) de IA`:''}.`);
+      setImportMsg(`Importado: ${r.documentos} documento(s), ${r.categorias} categoria(s), ${r.codigos} código(s), ${r.trechos} trecho(s) codificado(s), ${r.memos} memo(s)${r.conversas?`, ${r.conversas} conversa(s) de IA`:''}${r.memorias?`, ${r.memorias} memória(s) de IA`:''}.${r.linhasRecusadas?` ATENÇÃO: ${r.linhasRecusadas} linha(s) foram recusadas pelo servidor (permissão/RLS ou dado inválido) e NÃO foram gravadas — detalhes no console do navegador.`:''}`);
     }catch(e){ setBusy(null); setProgress(null); setErr('Falha ao importar .qualilab: '+(e.message||e)); }
   }
 
@@ -4951,7 +5163,7 @@ function App(){
       }
       setErr(null);
       setBusy(null);
-      setImportMsg(`Importado de "${r.projeto}" (Taguette): ${r.documentos} documento(s), ${r.codigos} código(s), ${r.trechos} trecho(s) codificado(s). Sem atributos de documento ou autor por trecho — o Taguette não tem esses conceitos.`);
+      setImportMsg(`Importado de "${r.projeto}" (Taguette): ${r.documentos} documento(s), ${r.codigos} código(s), ${r.trechos} trecho(s) codificado(s). Sem atributos de documento ou autor por trecho — o Taguette não tem esses conceitos.${r.linhasRecusadas?` ATENÇÃO: ${r.linhasRecusadas} linha(s) foram recusadas pelo servidor (permissão/RLS ou dado inválido) e NÃO foram gravadas — detalhes no console do navegador.`:''}`);
     }catch(e){ setBusy(null); setProgress(null); setErr('Falha ao importar .sqlite3: '+(e.message||e)); }
   }
 
@@ -4965,7 +5177,7 @@ function App(){
       setCodes(codes2);
       setErr(null);
       setBusy(null);
-      setImportMsg(`Importado: ${r.codigos} código(s) do livro de códigos (.qdc). Sem documentos nem codificações — o formato não tem isso.`);
+      setImportMsg(`Importado: ${r.codigos} código(s) do livro de códigos (.qdc). Sem documentos nem codificações — o formato não tem isso.${r.linhasRecusadas?` ATENÇÃO: ${r.linhasRecusadas} linha(s) foram recusadas pelo servidor (permissão/RLS ou dado inválido) e NÃO foram gravadas — detalhes no console do navegador.`:''}`);
     }catch(e){ setBusy(null); setProgress(null); setErr('Falha ao importar .qdc: '+(e.message||e)); }
   }
 
@@ -4999,7 +5211,7 @@ function App(){
       setErr(null);
       setBusy(null);
       const ignMsg = r.ignoradas>0 ? ` ${r.ignoradas} linha(s) ignorada(s) por estarem sem texto.` : '';
-      setImportMsg(`Importado da planilha: ${r.documentos} documento(s), ${r.categorias} categoria(s).${ignMsg}`);
+      setImportMsg(`Importado da planilha: ${r.documentos} documento(s), ${r.categorias} categoria(s).${ignMsg}${r.linhasRecusadas?` ATENÇÃO: ${r.linhasRecusadas} linha(s) foram recusadas pelo servidor (permissão/RLS ou dado inválido) e NÃO foram gravadas — detalhes no console do navegador.`:''}`);
     }catch(e){ setBusy(null); setProgress(null); setErr('Falha ao importar planilha: '+(e.message||e)); }
   }
 
@@ -8705,18 +8917,21 @@ function useOcrToggle(store, docs, docIds){
   const idsKey = (docIds||[]).slice().sort().join('|');
   useEffect(()=>{
     let alive = true;
-    (async()=>{
-      for(const id of (docIds||[])){
-        const d = (docs||[]).find(x=>x.id===id);
-        if(!d || !d.has_pdf) continue;
-        const cur = ocrByDoc[id];
-        if(cur && cur.content === (d.content||'')) continue;
-        let info = null;
-        try{ const idx = await resolveDocIndexNoBytes(store, d); info = idx ? ocrRangesOfIndex(idx) : null; }catch(e){}
-        if(!alive) return;
-        setOcrByDoc(m=>({ ...m, [id]: { content: d.content||'', info } }));
-      }
-    })();
+    // PERF: mesmo laço serial do "p. N" no App (um download de índice por documento, um após
+    // o outro) — aqui doía mais, porque roda nas QUATRO telas de IA e refaz a cada mudança da
+    // seleção de documentos. mapPool + `alive` por item (ver a nota no efeito de docPdfIdx).
+    const pend = (docIds||[]).map(id=>(docs||[]).find(x=>x.id===id)).filter(d=>{
+      if(!d || !d.has_pdf) return false;
+      const cur = ocrByDoc[d.id];
+      return !(cur && cur.content === (d.content||''));
+    });
+    if(pend.length) mapPool(pend, 8, async (d)=>{
+      if(!alive) return;
+      let info = null;
+      try{ const idx = await resolveDocIndexNoBytes(store, d); info = idx ? ocrRangesOfIndex(idx) : null; }catch(e){}
+      if(!alive) return;
+      setOcrByDoc(m=>({ ...m, [d.id]: { content: d.content||'', info } }));
+    });
     return ()=>{ alive = false; };
   }, [idsKey, docs]); // eslint-disable-line
   const info = useMemo(()=>{
@@ -10189,11 +10404,17 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
   const [taskOpen, setTaskOpen] = useState(!(cachedConv.history||[]).length); // colapsa a Tarefa quando ja ha conversa (ganha espaco)
   const [convSystem, setConvSystem] = useState(cachedConv.convSystem||''); // system travado enquanto a conversa esta ativa
   const [convLabel, setConvLabel] = useState(cachedConv.convLabel||'');   // rotulo do modo com que a conversa comecou (pra salvar)
+  // PROVENIENCIA: snapshot da configuracao que PRODUZIU esta conversa. Travado junto com o
+  // convSystem, NAO lido na hora de salvar — trocar postura/instrucoes no meio nao afeta a
+  // conversa em andamento, entao ler o estado VIVO no save() registraria uma config que nunca
+  // rodou. Sem isto o transcript guardava so perguntas/respostas: quem recebesse o .qualilab
+  // veria a resposta da IA sem o prompt que a gerou, justo o que ATI/W3C tentam evitar.
+  const [convProv, setConvProv] = useState(cachedConv.convProv||'');
   const [followup, setFollowup] = useState(cachedConv.followup||'');      // texto do proximo turno do pesquisador
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [saved, setSaved] = useState(!!cachedConv.saved);
-  useEffect(()=>{ IA_CONV_CACHE[convCacheKey] = { history, convSystem, convLabel, followup, saved }; }, [convCacheKey, history, convSystem, convLabel, followup, saved]);
+  useEffect(()=>{ IA_CONV_CACHE[convCacheKey] = { history, convSystem, convLabel, followup, saved, convProv }; }, [convCacheKey, history, convSystem, convLabel, followup, saved, convProv]);
   const [aiPrices, setAiPrices] = useState(AI_PRICES); // referencia de preco p/ estimativa de custo (re-render quando chega)
   useEffect(()=>{ if(!AI_PRICES) loadAiPrices().then(setAiPrices); }, []); // carrega a referencia de preco (calculadora de custo)
   const [memProps, setMemProps] = useState([]);     // memorias sugeridas pela IA (a revisar)
@@ -10561,6 +10782,24 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
     };
   };
 
+  // bloco de proveniência em markdown, montado das MESMAS fontes que alimentam o prompt enviado
+  // (buildProv + as seções de Papel/Memos), pra não haver duas versões da verdade
+  const buildProvBlock = ()=>{
+    const pv = buildProv();
+    const st = IA_STANCES.find(x=>x.id===stance) || IA_STANCES[0];
+    const linhas = [
+      `- **Modelo:** ${pv.model}`,
+      `- **Material:** ${pv.scope} · ${pv.material} · ${pv.chars.toLocaleString('pt-BR')} chars`,
+      `- **Postura:** ${st.label.toLowerCase()}${stance==='personalizado' && stanceText.trim() ? ' — '+stanceText.trim() : ''}`,
+      `- **Instruções do projeto:** ${aiInstr.trim() || '—'}`,
+      `- **Memos injetados:** ${injectedMemos.length ? injectedMemos.map(memoName).join(', ') : 'nenhum'}`,
+      `- **Memória do projeto:** ${pv.mem}`,
+      `- **Censura:** ${pv.censura}`,
+    ];
+    if(pv.ocr) linhas.push(`- **OCR:** ${pv.ocr}`);
+    return `**Configuração usada** (registrada quando esta análise começou)\n\n${linhas.join('\n')}`;
+  };
+
   const canRun = hasSelection && !!customInstr.trim();
 
   // aborto: uma chamada pendurada (modelo lento) podia ficar viva depois de trocar de tela,
@@ -10582,7 +10821,7 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
     if(unsavedConv && !confirm('Começar uma nova análise descarta a conversa atual, que não foi salva. Continuar?')) return;
     const system = buildSystem();
     const h = [{ role:'user', content: buildTask() }];
-    setConvSystem(system); setConvLabel((suggestions.find(s=>s.instr===customInstr.trim())?.label) || customInstr.trim().slice(0,40) || 'Análise'); setTaskOpen(false);
+    setConvSystem(system); setConvProv(buildProvBlock()); setConvLabel((suggestions.find(s=>s.instr===customInstr.trim())?.label) || customInstr.trim().slice(0,40) || 'Análise'); setTaskOpen(false);
     setHistory(h); setFollowup(''); setSaved(false); setErr(''); setBusy(true);
     const ac = newAbort();
     try{
@@ -10612,7 +10851,7 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
   const resetConv = ()=>{
     if(unsavedConv && !confirm('Limpar a conversa descarta as perguntas e respostas atuais, que não foram salvas. Continuar?')) return;
     abortRef.current?.abort();
-    setHistory([]); setConvSystem(''); setConvLabel(''); setFollowup(''); setErr(''); setSaved(false); setMemProps([]); setTaskOpen(true);
+    setHistory([]); setConvSystem(''); setConvProv(''); setConvLabel(''); setFollowup(''); setErr(''); setSaved(false); setMemProps([]); setTaskOpen(true);
   };
 
   // "Sugerir memórias desta conversa": turno EXTRA, à parte da conversa em prosa, pedindo só um
@@ -10636,7 +10875,10 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
   // salva a conversa INTEIRA (todas as perguntas e respostas) como um resultado unico.
   const save = async ()=>{
     if(!history.length || saved) return;
-    const transcript = history.map(t=> (t.role==='user' ? '**Pergunta:** ' : `**IA${t.model?' ('+t.model+')':''}:** `) + t.content).join('\n\n');
+    const turnos = history.map(t=> (t.role==='user' ? '**Pergunta:** ' : `**IA${t.model?' ('+t.model+')':''}:** `) + t.content).join('\n\n');
+    // a proveniência vai DENTRO do próprio texto salvo (não numa coluna nova): viaja de graça
+    // no round-trip do .qualilab e nos exports, e fica legível pra quem abrir a conversa
+    const transcript = convProv ? `${convProv}\n\n---\n\n${turnos}` : turnos;
     await onSave(scope, convLabel || 'Análise', transcript);
     setSaved(true);
   };
