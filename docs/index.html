@@ -118,6 +118,14 @@
   [data-theme="dark"] .btn.accent:hover{background:#002B5C;}
   .btn.ghost{background:transparent;}
   .btn.sm{font-size:12px;padding:5px 9px;border-radius:7px;}
+  /* dois botoes colados num controle so (usado por "pesquisar" + o "+" da busca global): a
+     emenda diz que sao a MESMA acao em escopo maior, e economiza a largura de um botao inteiro.
+     :first/:last-child cobrem o caso de um filho so (leva os dois cantos, vira botao normal). */
+  .btn-join{display:inline-flex;flex:none;}
+  .btn-join>.btn{border-radius:0;margin-left:-1px;}
+  .btn-join>.btn:first-child{border-radius:7px 0 0 7px;margin-left:0;}
+  .btn-join>.btn:last-child{border-radius:0 7px 7px 0;}
+  .btn-join>.btn:hover{position:relative;z-index:1;}
   .icon-btn{background:transparent;border:none;color:var(--ink-soft);padding:4px;border-radius:6px;display:inline-flex;}
   .icon-btn:hover{background:var(--line-soft);color:var(--ink);}
 
@@ -154,6 +162,12 @@
   .reader-toolbar .icon-btn{font-size:13px;}
   .search-bar{display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid var(--line-soft);background:var(--paper);}
   .search-bar input{flex:1;max-width:320px;}
+  /* resultado da busca global ("pesquisar +") — serifada como o leitor, pra o trecho ser lido
+     como texto do documento e nao como item de interface */
+  .gs-hit{padding:6px 10px;border-radius:8px;border:1px solid transparent;cursor:pointer;font-family:var(--serif);font-size:13.5px;line-height:1.55;}
+  .gs-hit:hover{background:var(--surface);border-color:var(--line);}
+  .gs-hit mark{background:var(--amber-soft);color:var(--ink);border-radius:3px;padding:0 1px;font-weight:600;}
+  .gs-ctx{color:var(--ink-soft);}
 
   .toolbar{position:sticky;top:0;z-index:5;background:var(--teal-soft);border-bottom:1px solid rgba(0,66,122,.3);padding:8px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
   .toolbar .q{font-family:var(--mono);font-size:12px;color:var(--ink);max-width:50%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -835,6 +849,38 @@ function buildRuns(text, codings, extraPoints){
     runs.push({ start:a, end:z, text:text.slice(a,z), codings:cods });
   }
   return runs;
+}
+
+/* MOTOR UNICO de busca textual — serve a busca do documento aberto (a search-bar do leitor) E a
+   busca global ("pesquisar +"). Ser o mesmo motor nao e economia de codigo: e o que garante que
+   os offsets dos dois batam, pra clicar num resultado global abrir o leitor no match exato (o
+   pendingJump ancora por `start`, que so vira fronteira de run se o leitor achar o MESMO match).
+   opts: { re: o padrao e regex do usuario, cs: diferencia maiusculas, whole: palavra inteira }.
+   Devolve { spans:[[start,end],...], error } — `error` so em regex invalida, pra UI avisar em vez
+   de fingir "nenhuma ocorrencia". `cap` herda o teto da busca do leitor: buscar "a" num documento
+   grande gerava dezenas de milhares de spans no DOM -> congelamento. */
+const WORD_CH = /[\p{L}\p{N}_]/u;
+function findMatches(text, query, opts, cap){
+  const o = opts||{};
+  const q = o.re ? (query||'') : (query||'').trim();
+  if(!q || !text) return { spans:[] };
+  // minimo de 2 chars so no modo literal (com regex o usuario sabe o que esta pedindo)
+  if(!o.re && q.length<2) return { spans:[] };
+  let rx;
+  try{
+    rx = new RegExp(o.re ? q : q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'), 'g' + (o.cs?'':'i'));
+  }catch(e){ return { spans:[], error:String(e.message||e) }; }
+  const out=[]; const max=cap||2000; let m;
+  while(out.length<max && (m = rx.exec(text))!==null){
+    const s=m.index, e=s+m[0].length;
+    if(e===s){ rx.lastIndex++; continue; }   // padrao de largura zero ("a*") -> laco infinito
+    // "palavra inteira" e checado nas BORDAS do match, nunca embutido no padrao: \b erra em
+    // portugues (no regex do JS "ç"/"ã" nao sao word chars, entao \bção casaria no meio de
+    // "acao"), e mexer no padrao do usuario quebraria o modo regex.
+    if(!o.whole || ((s===0 || !WORD_CH.test(text[s-1])) && (e===text.length || !WORD_CH.test(text[e]))))
+      out.push([s,e]);
+  }
+  return { spans:out };
 }
 
 /* mascara trechos marcados como censura (code.is_redaction) antes de mandar pra IA — so
@@ -4041,19 +4087,17 @@ function App(){
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchIdx, setSearchIdx] = useState(0);
+  // opcoes COMPARTILHADAS com a busca global ("pesquisar +") — clicar num resultado de la abre o
+  // leitor com o mesmo padrao E as mesmas opcoes, senao os offsets divergiriam e o salto erraria.
+  const [searchOpts, setSearchOpts] = useState({ re:false, cs:false, whole:false });
+  const [gsOpen, setGsOpen] = useState(false);   // "pesquisar +": busca em todos os documentos
+  const [docMenu, setDocMenu] = useState(false); // menu "⋯" do cabecalho do leitor (OCR/editar/excluir)
   const readerRef = useRef(null);
-  const searchMatches = useMemo(()=>{
-    const text = activeDoc?.content||'';
-    const q = searchQuery.trim().toLowerCase();
-    // minimo de 2 chars + teto de matches: buscar "a" num documento grande gerava dezenas
-    // de milhares de matches -> dezenas de milhares de spans no DOM -> congelamento
-    if(!q || q.length<2 || !text) return [];
-    const lower = text.toLowerCase();
-    const out = []; let from = 0;
-    while(out.length<2000){ const found = lower.indexOf(q, from); if(found<0) break; out.push([found, found+q.length]); from = found+q.length; }
-    return out;
-  }, [searchQuery, activeDoc]);
-  useEffect(()=>{ setSearchIdx(0); }, [searchQuery, activeId]);
+  const searchRes = useMemo(()=>
+    findMatches(activeDoc?.content||'', searchQuery, searchOpts, 2000)
+  , [searchQuery, searchOpts, activeDoc]);
+  const searchMatches = searchRes.spans;
+  useEffect(()=>{ setSearchIdx(0); }, [searchQuery, searchOpts, activeId]);
   useEffect(()=>{
     if(!searchOpen || !searchMatches.length) return;
     const i = ((searchIdx % searchMatches.length) + searchMatches.length) % searchMatches.length;
@@ -4117,6 +4161,10 @@ function App(){
     if(!el) return; // runs ainda nao montaram (ex.: conteudo carregando na nuvem) — espera o proximo tick
     el.scrollIntoView({ block:'center' });
     setReaderFlash(pendingJump.start);
+    // vindo da busca global: posiciona o contador "N de M" da search-bar no match clicado. Tem que
+    // ser AQUI, nao no clique: o efeito que zera o searchIdx dispara depois (searchQuery/activeId
+    // acabaram de mudar) e sobrescreveria. Este efeito e declarado depois daquele -> vence.
+    if(pendingJump.matchIdx!=null) setSearchIdx(pendingJump.matchIdx);
     setPendingJump(null);
   }, [pendingJump, mainView, activeDoc, readerRuns]);
   useEffect(()=>{ if(readerFlash==null) return; const t=setTimeout(()=>setReaderFlash(null), 1600); return ()=>clearTimeout(t); }, [readerFlash]);
@@ -4911,7 +4959,8 @@ function App(){
       // — nada respondia a Esc antes; um handler global cobre tudo de uma vez
       if(e.key==='Escape'){
         if(ctxMenu){ closeCtxMenu(); e.preventDefault(); return; }
-        if(expOpen || impOpen || addOpen){ setExpOpen(false); setImpOpen(false); setAddOpen(false); e.preventDefault(); return; }
+        if(expOpen || impOpen || addOpen || docMenu){ setExpOpen(false); setImpOpen(false); setAddOpen(false); setDocMenu(false); e.preventDefault(); return; }
+        if(gsOpen){ setGsOpen(false); e.preventDefault(); return; }
         if(searchOpen){ setSearchOpen(false); e.preventDefault(); return; }
         if(sendCloudOpen){ setSendCloudOpen(false); e.preventDefault(); return; }
         if(account){ setAccount(false); e.preventDefault(); return; }
@@ -4933,7 +4982,7 @@ function App(){
     };
     window.addEventListener('keydown', onKeyDown);
     return ()=>window.removeEventListener('keydown', onKeyDown);
-  }, [mainView, undoLastCoding, deleteFocusedCoding, focusedCoding, editingText, ctxMenu, expOpen, impOpen, addOpen, searchOpen, sendCloudOpen, account, projEdit]);
+  }, [mainView, undoLastCoding, deleteFocusedCoding, focusedCoding, editingText, ctxMenu, expOpen, impOpen, addOpen, docMenu, searchOpen, gsOpen, sendCloudOpen, account, projEdit]);
 
   // monta o objeto db no mesmo formato de um .qualilab a partir do projeto ATIVO (qualquer
   // modo) — extraido pra ser reaproveitado tanto por saveQualilab (baixa como arquivo) quanto
@@ -5667,11 +5716,30 @@ function App(){
           </div>
           <input ref=${uploadInputRef} type="file" multiple accept=".txt,.md,.markdown,.pdf,.docx" style="display:none" onChange=${e=>{onUpload(e.target.files); e.target.value='';}} />
           <${AddPaste} open=${pasteOpen} onClose=${()=>setPasteOpen(false)} onAdd=${addPasted} />
-          ${activeDoc && !editingText && html`<button class="btn sm ghost" title="Buscar no documento" onClick=${()=>setSearchOpen(o=>!o)}>🔍︎ pesquisar</button>`}
+          ${docs.length>0 && !editingText && html`<div class="btn-join">
+            ${activeDoc && html`<button class="btn sm ghost" title="Buscar no documento aberto" onClick=${()=>setSearchOpen(o=>!o)}>🔍︎ pesquisar</button>`}
+            <button class="btn sm ghost" title="Buscar em TODOS os documentos do projeto" onClick=${()=>setGsOpen(true)}>${activeDoc?'+':'🔍︎ pesquisar +'}</button>
+          </div>`}
           ${activeDoc?.has_pdf && !editingText && html`<button class="btn sm ghost" title=${showPdf?'Voltar ao texto codificável':'Ver o PDF original renderizado'} onClick=${togglePdf}>${showPdf?'≡ texto':'🗎 original'}</button>`}
-          ${activeDoc?.has_pdf && !editingText && html`<button class="btn sm ghost" title="Ler o texto das páginas escaneadas com OCR (tesseract) e reconstruir o texto do documento" disabled=${!!ocr} onClick=${runOcr}>◎ OCR</button>`}
-          ${canEditText && !editingText && html`<button class="btn sm ghost" title="Editar documento (título e texto)" onClick=${()=>{ setEditDraft(activeDoc.content); setEditTitleDraft(activeDoc.name); setSearchOpen(false); setSel(null); setEditingText(true); }}>✏ editar</button>`}
-          ${activeDoc && !editingText && html`<button class="btn sm ghost" title="Remover documento" onClick=${()=>delDoc(activeDoc.id)}>🗑 deletar</button>`}
+          ${/* acoes do documento (OCR/editar/excluir) recolhidas num menu: raras, pesadas ou
+                destrutivas, e a barra so cabe numa linha (flex-wrap:nowrap) sem comer o leitor */''}
+          ${activeDoc && !editingText && html`<div style="position:relative;flex:none">
+            <button class="btn sm ghost" title="Mais ações para este documento" onClick=${()=>setDocMenu(o=>!o)}>⋯</button>
+            ${docMenu && html`<div>
+              <div onClick=${()=>setDocMenu(false)} style="position:fixed;inset:0;z-index:40"></div>
+              ${/* SEM left:0 aqui (ao contrario do menu do "＋ enviar", que fica na borda ESQUERDA):
+                    o ⋯ fica no meio/direita da barra, entao o menu tem que crescer pra ESQUERDA —
+                    o right:0 padrao do .exmenu faz isso. Com left:0 ele vazava pra fora da tela. */''}
+              <div class="exmenu" style="min-width:240px">
+                ${activeDoc?.has_pdf && html`<button title="Ler o texto das páginas escaneadas com OCR (tesseract) e reconstruir o texto do documento"
+                  disabled=${!!ocr} onClick=${()=>{ setDocMenu(false); runOcr(); }}>◎ OCR — ler páginas escaneadas</button>`}
+                ${canEditText && html`<button title="Editar documento (título e texto)"
+                  onClick=${()=>{ setDocMenu(false); setEditDraft(activeDoc.content); setEditTitleDraft(activeDoc.name); setSearchOpen(false); setSel(null); setEditingText(true); }}>✏ editar título e texto</button>`}
+                <button title="Remover documento" style="color:var(--danger)"
+                  onClick=${()=>{ setDocMenu(false); delDoc(activeDoc.id); }}>🗑 excluir documento</button>
+              </div>
+            </div>`}
+          </div>`}
           ${activeHealth && !activeHealth.ok && !editingText && html`<span class="pill mode-offline" style="cursor:help;flex:none"
             title=${'Qualidade da extração deste documento:\n• '+activeHealth.flags.join('\n• ')}>⚠︎ extração</span>`}
           <div class="grow"></div>
@@ -5691,13 +5759,17 @@ function App(){
         </div>
 
         ${searchOpen && activeDoc && !editingText && html`<div class="search-bar">
-          <input class="txtin" autoFocus value=${searchQuery} placeholder="buscar no documento…"
+          <input class="txtin" autoFocus value=${searchQuery} placeholder=${searchOpts.re?'buscar no documento (expressão regular)…':'buscar no documento…'}
             onInput=${e=>setSearchQuery(e.target.value)}
             onKeyDown=${e=>{
               if(e.key==='Enter') setSearchIdx(i=>e.shiftKey ? i-1 : i+1);
               else if(e.key==='Escape') setSearchOpen(false);
             }} />
-          <span class="meta">${searchMatches.length ? `${(searchIdx%searchMatches.length+searchMatches.length)%searchMatches.length+1} de ${searchMatches.length}` : (searchQuery.trim() ? 'nenhuma ocorrência' : '')}</span>
+          <${SearchOptChips} opts=${searchOpts} setOpts=${setSearchOpts} />
+          <span class="meta" style=${searchRes.error?'color:var(--danger)':''}>${
+            searchRes.error ? 'expressão regular inválida'
+            : searchMatches.length ? `${(searchIdx%searchMatches.length+searchMatches.length)%searchMatches.length+1} de ${searchMatches.length}`
+            : (searchQuery.trim() ? 'nenhuma ocorrência' : '')}</span>
           <button class="btn sm ghost" disabled=${!searchMatches.length} onClick=${()=>setSearchIdx(i=>i-1)}>‹ anterior</button>
           <button class="btn sm ghost" disabled=${!searchMatches.length} onClick=${()=>setSearchIdx(i=>i+1)}>próxima ›</button>
           <div class="grow"></div>
@@ -6050,6 +6122,17 @@ function App(){
     <${RenameCode} code=${codeById[ctxEditCodeId]} onUpd=${updCode} onSetColor=${setCodeColor} onSetSat=${setCodeSat} onSetRedaction=${setCodeRedaction} isAdmin=${adminUI} />
     <div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn sm" onClick=${()=>setCtxEditCodeId(null)}>fechar</button></div>
   </div></div>`}
+
+  ${gsOpen && html`<${GlobalSearchModal} docs=${docs} initialQuery=${searchQuery} opts=${searchOpts} setOpts=${setSearchOpts}
+    onClose=${()=>setGsOpen(false)}
+    onJump=${(docId, start, matchIdx, q)=>{
+      // abre o leitor no match: a search-bar herda o padrao E as opcoes (searchOpts ja e
+      // compartilhado), entao o findMatches do leitor produz a MESMA lista -> `start` vira
+      // fronteira de run e o pendingJump acha o elemento por [data-start].
+      setGsOpen(false); setMainView('codificar'); setActiveId(docId);
+      setSearchQuery(q); setSearchOpen(true);
+      setPendingJump({ docId, start, matchIdx });
+    }} />`}
 
   ${ocrReview && html`<${OcrReviewModal} text=${ocrReview.text} img=${ocrReview.img} onApply=${applyOcrText} onCancel=${()=>{ pendingRegionRef.current=null; setOcrReview(null); }} />`}
 
@@ -11698,6 +11781,104 @@ function RenameCode({ code, onUpd, onSetColor, onSetSat, onSetRedaction, isAdmin
 }
 
 /* inputs com debounce / colar */
+/* chips das opcoes de busca — os MESMOS nas duas telas (search-bar do leitor e "pesquisar +"),
+   editando o mesmo estado searchOpts do App. Ligar "regex" na busca global e voltar pro leitor
+   mantem o modo ligado de proposito: e uma preferencia de busca, nao estado de uma tela. */
+function SearchOptChips({ opts, setOpts }){
+  const t = k => () => setOpts(o=>({ ...o, [k]:!o[k] }));
+  const st = 'padding:4px 8px;font-size:12px;flex:none';
+  return html`<div class="row" style="gap:4px;flex:none">
+    <button class=${'opt'+(opts.cs?' on':'')} style=${st} title="Diferenciar maiúsculas de minúsculas" onClick=${t('cs')}>Aa</button>
+    <button class=${'opt'+(opts.whole?' on':'')} style=${st} title="Somente palavras inteiras" onClick=${t('whole')}>ab⃒</button>
+    <button class=${'opt'+(opts.re?' on':'')} style=${st} title="Interpretar o texto digitado como expressão regular (regex)" onClick=${t('re')}>.*</button>
+  </div>`;
+}
+
+/* "pesquisar +" — busca em TODOS os documentos do projeto. O `content` de todos ja esta em
+   memoria (listDocuments faz select('*'); os stores locais guardam o array inteiro), entao a
+   varredura e local: sem rede, sem metodo novo de store. Usa o MESMO findMatches da search-bar
+   do leitor — ver la o porque de os offsets precisarem bater.
+   E aqui que a busca semantica (embeddings) entra depois: mesma janela, mesmos resultados,
+   ranqueados junto com estes — nao uma segunda tela. */
+const GS_PER_DOC = 400;   // teto por documento (o contador mostra "400+" quando bate)
+const GS_TOTAL   = 3000;  // teto global: varrer o corpus e barato, RENDERIZAR e que nao e
+const GS_SHOW    = 5;     // ocorrencias exibidas por documento antes do "ver mais"
+function gsSnippet(text, s, e){
+  const CTX = 80;
+  const a = Math.max(0, s-CTX), z = Math.min(text.length, e+CTX);
+  const sp = t => t.replace(/\s+/g,' ');   // so na EXIBICAO; o salto usa o offset cru
+  return { pre:(a>0?'…':'')+sp(text.slice(a,s)), hit:sp(text.slice(s,e)), post:sp(text.slice(e,z))+(z<text.length?'…':'') };
+}
+function GlobalSearchModal({ docs, initialQuery, opts, setOpts, onJump, onClose }){
+  const [q, setQ] = useState(initialQuery||'');
+  const [deb, setDeb] = useState(initialQuery||'');
+  const [openDocs, setOpenDocs] = useState(()=>new Set());
+  // debounce: cada tecla varre o corpus inteiro (dezenas de MB em projeto grande)
+  useEffect(()=>{ const t=setTimeout(()=>setDeb(q), 220); return ()=>clearTimeout(t); }, [q]);
+
+  const res = useMemo(()=>{
+    const groups=[]; let total=0, error=null, capped=false;
+    for(const d of docs){
+      const r = findMatches(d.content||'', deb, opts, GS_PER_DOC);
+      if(r.error){ error=r.error; break; }   // regex invalida: avisa em vez de dizer "nenhuma"
+      if(!r.spans.length) continue;
+      total += r.spans.length;
+      groups.push({ doc:d, spans:r.spans, over:r.spans.length>=GS_PER_DOC });
+      if(total>=GS_TOTAL){ capped=true; break; }
+    }
+    return { groups, total, error, capped };
+  }, [deb, opts, docs]);
+
+  const busca = deb.trim();
+  return html`<div class="modal-bg" onClick=${onClose}>
+    <div class="modal" style="max-width:min(880px, 96vw)" onClick=${e=>e.stopPropagation()}>
+      <div class="row" style="align-items:baseline">
+        <h2 style="margin:0">Pesquisar em todos os documentos</h2>
+        <div class="grow"></div>
+        <button class="icon-btn" title="Fechar (Esc)" onClick=${onClose}>×</button>
+      </div>
+      <p class="hint" style="margin:4px 0 12px">${docs.length} documento(s) no projeto. Clique numa ocorrência para abrir o documento nela.</p>
+
+      <div class="row" style="margin-bottom:8px">
+        <input class="txtin" autoFocus value=${q} placeholder=${opts.re?'expressão regular…':'buscar em todo o projeto…'}
+          onInput=${e=>setQ(e.target.value)}
+          onKeyDown=${e=>{
+            if(e.key==='Enter'){ const g=res.groups[0]; if(g) onJump(g.doc.id, g.spans[0][0], 0, deb); }
+            else if(e.key==='Escape') onClose();
+          }} />
+        <${SearchOptChips} opts=${opts} setOpts=${setOpts} />
+      </div>
+
+      <div class="meta" style=${'min-height:18px;margin-bottom:6px'+(res.error?';color:var(--danger)':'')}>${
+        res.error ? 'expressão regular inválida: '+res.error
+        : !busca ? ''
+        : res.total ? `${res.total}${res.capped?'+':''} ocorrência(s) em ${res.groups.length} de ${docs.length} documento(s)`+(res.capped?' — mostrando as primeiras':'')
+        : 'nenhuma ocorrência no projeto'
+      }</div>
+
+      <div style="max-height:56vh;overflow:auto;margin:0 -4px;padding:0 4px">
+        ${res.groups.map(g=>{
+          const aberto = openDocs.has(g.doc.id);
+          const shown = aberto ? g.spans : g.spans.slice(0, GS_SHOW);
+          return html`<div key=${g.doc.id} style="margin-bottom:16px">
+            <div class="row" style="gap:8px;margin-bottom:2px">
+              <span style="font-weight:600;font-size:13px;color:var(--teal-deep)">${g.doc.name}</span>
+              <span class="count">${g.spans.length}${g.over?'+':''}</span>
+            </div>
+            ${shown.map((sp,i)=>{ const s = gsSnippet(g.doc.content||'', sp[0], sp[1]);
+              return html`<div key=${i} class="gs-hit" title="Abrir no documento" onClick=${()=>onJump(g.doc.id, sp[0], i, deb)}>
+                <span class="gs-ctx">${s.pre}</span><mark>${s.hit}</mark><span class="gs-ctx">${s.post}</span>
+              </div>`; })}
+            ${g.spans.length>GS_SHOW && html`<button class="btn sm ghost" style="margin-top:2px"
+              onClick=${()=>setOpenDocs(prev=>{ const n=new Set(prev); n.has(g.doc.id)?n.delete(g.doc.id):n.add(g.doc.id); return n; })}>
+              ${aberto ? 'mostrar menos' : `+ ${g.spans.length-GS_SHOW} neste documento`}</button>`}
+          </div>`;
+        })}
+      </div>
+    </div>
+  </div>`;
+}
+
 function DebInput({ value, onCommit, placeholder, disabled }){
   const [v,setV]=useState(value||''); const t=useRef(null); const vRef=useRef(value||''); // #29: vRef = ultimo valor digitado (o blur nao pode ler o v do closure de render)
   useEffect(()=>{ vRef.current=value||''; setV(value||''); },[value]);

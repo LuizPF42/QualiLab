@@ -252,8 +252,9 @@ Use o botão de **colar** (ao lado de ＋ enviar) para criar um documento a part
 
 ### Trocar de documento, renomear e editar o texto
 - O **seletor** no topo do leitor alterna entre os documentos do projeto.
-- O botão **🗑 deletar** (ao lado) remove o documento aberto e todas as suas codificações. Não há desfazer, então confirme com cuidado.
-- O botão **✏ editar** (ao lado do seletor) abre o modo de edição do documento aberto: nele você corrige o **título** e o **texto extraído**, útil quando um PDF vem com sujeira (um trecho grudado, um rodapé que sobrou, uma linha quebrada). **Salvar** grava as duas coisas; **Cancelar** descarta.
+- As ações sobre o documento aberto ficam no menu **⋯** (à direita da busca): **OCR**, **editar título e texto** e **excluir documento**.
+- **🗑 excluir documento** remove o documento aberto e todas as suas codificações. Não há desfazer, então confirme com cuidado.
+- **✏ editar título e texto** abre o modo de edição do documento aberto: nele você corrige o **título** e o **texto extraído**, útil quando um PDF vem com sujeira (um trecho grudado, um rodapé que sobrou, uma linha quebrada). **Salvar** grava as duas coisas; **Cancelar** descarta.
 - Ao salvar uma edição do texto, **os grifos já feitos são reancorados automaticamente** às novas posições. Se alguma codificação cair exatamente sobre o trecho que você mexeu, o app avisa antes de salvar (esses grifos podem precisar de conferência).
 - Editar serve para **limpeza local**; corrupção do documento inteiro (por exemplo, um PDF antigo que sai inteiro sem espaços) é caso de OCR, não de correção à mão.
 - Em projeto **coletivo na nuvem**, editar o texto é restrito ao **administrador** (o texto é compartilhado, então a edição desloca os grifos de todos os codificadores).
@@ -261,7 +262,7 @@ Use o botão de **colar** (ao lado de ＋ enviar) para criar um documento a part
 ### Ver o PDF original e OCR (documentos digitalizados)
 Quando o documento veio de um **PDF**, o leitor ganha um botão **▤ original** (que alterna com **≡ texto**): ele mostra a **página do PDF de verdade**, com zoom e navegação de páginas. Sobre a página, os seus grifos aparecem desenhados na cor do código; selecionar um trecho na página do PDF codifica igual ao leitor de texto (botão direito → menu de códigos).
 
-Para **PDF digitalizado** (escaneado, só imagem), use o **◫ OCR**: o app reconstrói o texto página a página — aproveitando o texto nativo onde existe e lendo por OCR (offline, no seu navegador) onde é imagem —, com barra de progresso e opção de cancelar. Também dá para fazer **OCR de uma área**: no modo original, o botão **▭ OCR de área** deixa você arrastar um retângulo sobre um pedaço da página; o texto lido abre num quadro **editável** para você corrigir antes de aplicar e codificar. A primeira vez baixa o modelo de OCR (~15 MB) e o processo é lento (alguns segundos por página).
+Para **PDF digitalizado** (escaneado, só imagem), use o **◫ OCR** (no menu **⋯**): o app reconstrói o texto página a página — aproveitando o texto nativo onde existe e lendo por OCR (offline, no seu navegador) onde é imagem —, com barra de progresso e opção de cancelar. Também dá para fazer **OCR de uma área**: no modo original, o botão **▭ OCR de área** deixa você arrastar um retângulo sobre um pedaço da página; o texto lido abre num quadro **editável** para você corrigir antes de aplicar e codificar. A primeira vez baixa o modelo de OCR (~15 MB) e o processo é lento (alguns segundos por página).
 
 > **Sinal de qualidade da extração.** Documentos com extração provavelmente ruim (vazios, PDF sem espaços entre palavras, glifos quebrados `�■□` ou OCR de baixa confiança) ganham um **⚠︎** antes do nome no seletor e uma pílula âmbar **⚠︎ extração** no leitor. É um aviso para **conferir e limpar** (pelo **✏ editar**) ou rodar **OCR** antes de codificar aquele documento.
 
@@ -311,8 +312,17 @@ A barra no topo do leitor ajusta **só a leitura** (preferência salva no navega
 - **⬍ / ⬌**: alterna a largura da coluna (padrão ↔ coluna estreita de leitura).
 - **◔ / ◗ / ◕**: tema do leitor: claro / sépia / escuro (independente do tema da interface).
 
-### 5.7. Buscar no documento
+### 5.7. Buscar (no documento e no projeto inteiro)
 Clique em **🔍︎ pesquisar** (a lupa). Digite o termo: as ocorrências são destacadas por cima dos grifos, com navegação **‹ anterior / próxima ›** (e **Enter** / **Shift+Enter**), com volta ao início ao chegar no fim.
+
+O botão **+** colado na lupa abre o **pesquisar +**: a mesma busca, mas em **todos os documentos do projeto**. Os resultados vêm agrupados por documento, cada um com o trecho em volta para você reconhecer o contexto; **clicar numa ocorrência abre aquele documento exatamente nela**, já com a busca ativa no leitor.
+
+As duas buscas compartilham três opções (os botõezinhos ao lado do campo):
+- **Aa** — diferencia maiúsculas de minúsculas. Desligado, `réu` e `RÉU` são a mesma coisa (acento, porém, conta: `reu` não encontra `réu`).
+- **ab⃒** — só **palavras inteiras**: procurando `reu`, ignora `reunião` e `ocorreu`.
+- **`.*`** — trata o que você digitou como **expressão regular**, para padrões em vez de texto fixo. Ex.: `\d+/\d{4}` acha números de processo como `123/2020`; `réu|ré` acha as duas formas. Com a opção desligada, caracteres como `.` e `(` são procurados literalmente. Padrão inválido é avisado na hora.
+
+> As opções valem para as duas buscas ao mesmo tempo: se você liga **regex** no **pesquisar +** e clica num resultado, o leitor abre com o mesmo padrão e as mesmas opções.
 
 ### 5.8. Filtro "Ver:" (de quem é o que aparece)
 O seletor **Ver:** controla **de quem** são os grifos e as respostas de categoria exibidos. Aparece em projeto coletivo e também quando há mais de um codificador (ex.: dados importados com vários autores). Em projeto coletivo, as opções são:
