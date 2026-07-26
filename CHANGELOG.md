@@ -9,6 +9,20 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION` no `index.html`, acrescente a seção aqui e
 > regenere o estável (`scripts/gen-estavel.sh`).
 
+## 1.1.1 (26/07/2026)
+
+### Corrigido (leia se você usa código de censura)
+- **Subcódigo criado dentro de uma família de censura agora nasce censurado.** Antes ele nascia
+  **fora** da censura, e ainda por cima já **pintado de preto**, herdado da família: parecia
+  protegido e não estava, então aquele trecho ia em claro para a IA e para o Relatório
+  Interativo e a Web Annotation. A caixa "Código de censura" só alcançava os subcódigos que
+  **já existiam** no momento em que você a marcou. Se você criou subcódigos assim antes desta
+  versão, o remédio é desmarcar e marcar de novo a caixa da família: a marcação desce para
+  todos os subcódigos. A herança vale só para **proteger**: mover um código para fora nunca
+  desmarca a censura sozinho, isso continua sendo uma decisão explícita de quem administra.
+- Falta ainda o caso vizinho: **agrupar** um código que já existe sob uma família de censura
+  também não o marca. Enquanto isso, marque a censura depois de agrupar.
+
 ## 1.1.0 (26/07/2026)
 
 ### Mudou (leia se você exporta QDPX)

@@ -747,7 +747,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.1.0';
+const QUALILAB_VERSION = '1.1.1';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -5307,12 +5307,17 @@ function App(){
     setCats(ordered.map((c,i)=>({...c,position:i})));
   }
 
+  // subcodigo HERDA a censura do pai. O setCodeRedaction cascateia so no instante em que a
+  // caixa e marcada; sem herdar aqui, um subcodigo criado DEPOIS nasce fora da censura — e
+  // pior, com o preto do pai (hue_deg:-2), parecendo censurado sem estar. Herda so pra CIMA
+  // (false nunca desmarca nada): desmarcar e ato explicito de admin, e o codes_color_guard
+  // permite is_redaction:true no INSERT justamente porque marcar nao reexpoe nada.
   async function addCode(parent, customName){
-    let hue, depth, hueDeg, sat;
-    if(parent){ hue = parent.hue; depth = parent.depth+1; hueDeg = parent.hue_deg ?? null; sat = parent.sat ?? null; }
+    let hue, depth, hueDeg, sat, redact=false;
+    if(parent){ hue = parent.hue; depth = parent.depth+1; hueDeg = parent.hue_deg ?? null; sat = parent.sat ?? null; redact = !!parent.is_redaction; }
     else { const tops = codes.filter(c=>!c.parent_id); hue = tops.length % HUES.length; depth = 0; hueDeg = null; sat = null; }
     const name = customName?.trim() || (parent?'subcódigo':'nova família');
-    const c = await store.addCode(project.id,{ parent_id: parent?parent.id:null, name, hue, depth, hue_deg:hueDeg, sat, position: codes.length });
+    const c = await store.addCode(project.id,{ parent_id: parent?parent.id:null, name, hue, depth, hue_deg:hueDeg, sat, is_redaction:redact, position: codes.length });
     setCodes(x=>[...x,c]); setSelCode(c.id);
     return c;
   }
