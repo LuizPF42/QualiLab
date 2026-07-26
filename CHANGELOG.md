@@ -9,6 +9,46 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION` no `index.html`, acrescente a seção aqui e
 > regenere o estável (`scripts/gen-estavel.sh`).
 
+## 1.1.0 (26/07/2026)
+
+### Mudou (leia se você exporta QDPX)
+- **A exportação QDPX voltou a sair completa, com os trechos censurados em claro.** Na versão
+  anterior ela mascarava a censura, e isso estava errado por dois motivos. O QDPX é o formato
+  pelo qual você leva o **seu próprio** material para o ATLAS.ti, o MAXQDA ou o NVivo e traz de
+  volta: mascarar ali apagava o texto original de forma **irreversível** naquele caminho. Pior,
+  a exportação **descartava as codificações de censura**, então quem migrava chegava na outra
+  ferramenta com o código de censura vazio, justamente onde precisava continuar protegendo o
+  material. A regra agora é clara: os formatos de **trabalho e migração** (`.qualilab`, QDPX,
+  QDC, CSV, JSON) saem **completos**; as saídas de **transparência** (Relatório Interativo e
+  Web Annotation) e o que vai para a **IA** continuam mascarando. O menu **exportar** passou a
+  dizer isso na hora, com um aviso em destaque quando o projeto usa código de censura.
+
+### Adicionado
+- **Repetir Codificação: uma aba nova que não usa IA.** Ela pega os trechos que um código **já
+  tem** e mostra as outras ocorrências **idênticas** deles no projeto inteiro, com o texto em
+  volta, para você aprovar uma a uma. Serve a qualquer código, e resolve um problema concreto da
+  censura: marcar um nome num parágrafo não protege as outras cinco menções, e nada na tela
+  mostrava isso. Não precisa de chave de IA, não manda nada para fora e funciona offline. Ela
+  encontra texto **idêntico**, não variante: "Banca Exemplo" não acha "a banca", e para essas o
+  caminho continua sendo **pesquisar +**, onde o julgamento é seu.
+- Por causa dessa aba, a tela **Codificar com IA** passou a se chamar **Codificar
+  Automaticamente**: das quatro abas, três usam IA e uma não. Em uma instalação com a IA
+  desligada, a tela continua existindo, só com a aba que funciona sem ela.
+- **Manual: como publicar sem vazar o que a censura não alcança** (seção 12.4). A censura protege
+  o que você marcou **dentro do texto**, e não toca em **título do documento**, **valores de
+  categoria** e **memos**, que viajam em toda saída. O manual agora explica o fluxo recomendado:
+  trabalhe no projeto de laboratório e publique de uma **cópia limpa**. Inclui o conselho mais
+  barato de todos, que é nomear os documentos sem identificação (`ENT-01`) desde o começo.
+
+### Corrigido
+- **Depois de aplicar codificações sugeridas, o leitor mostrava os grifos antigos.** A mensagem
+  dizia "confira no leitor" e o leitor exibia o estado anterior até você trocar de documento ou
+  recarregar a página, o que fazia parecer que nada havia sido gravado (estava, sim). Valia para
+  as sugestões de IA, para a mesclagem de códigos no Esquema e para o preenchimento de
+  categorias.
+- Nos resultados da nova aba, o texto em volta do trecho não é mais cortado no meio de uma
+  palavra.
+
 ## 1.0.1 (26/07/2026)
 
 ### Corrigido

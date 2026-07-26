@@ -747,7 +747,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.0.1';
+const QUALILAB_VERSION = '1.1.0';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -1540,7 +1540,9 @@ function indexMemos(memos){
 }
 /* CENSURA nos exports de transparência: por padrão NADA marcado com código is_redaction pode
    vazar num apêndice público. Como esses exports são artefatos para terceiros, mascaramos sempre
-   (sem o toggle por-código que o Relatório tem). Duas frentes: (1) excluir as próprias codings
+   (sem o toggle por-código que o Relatório tem). QUEM MASCARA: só o leitor ATI, o JSON W3C e o
+   prompt da IA. Formato de TRABALHO (.qualilab, QDPX, QDC, CSV, JSON) sai cru — ver a nota de
+   desenho no topo do exportQDPX. Duas frentes: (1) excluir as próprias codings
    de censura das anotações/legenda; (2) substituir por "[trecho censurado]" qualquer pedaço de
    texto (do documento OU do excerto de outra coding) que caia sobre uma faixa censurada.
    maskRedactedContent muda o tamanho do texto (desalinha offsets), então aqui trabalhamos por
@@ -1560,17 +1562,10 @@ function maskSlice(content, start, end, ranges){
   if(pos<end) out+=content.slice(pos,end);
   return out;
 }
-/* #10: como maskSlice, mas para o TEXTO INTEGRAL de um export QDPX — preserva a CONTAGEM DE CODE
-   POINTS (1 bloco █ por code point censurado). Os offsets do .qdpx sao code points, entao trocar por
-   "[trecho censurado]" (comprimento diferente) desalinharia toda selecao seguinte; o █ por code point
-   mantem a contagem, entao os offsets (u16ToCp sobre o texto ORIGINAL) seguem validos no arquivo. */
-function maskContentForExport(content, ranges){
-  if(!ranges || !ranges.length) return content;
-  let out='', pos=0;
-  for(const [s,e] of ranges){ if(s>pos) out += content.slice(pos,s); for(const ch of content.slice(s,e)) out += '█'; pos=e; }
-  if(pos<content.length) out += content.slice(pos);
-  return out;
-}
+/* NAO ha (mais) mascarador de censura para o texto integral do QDPX. Existiu um
+   (maskContentForExport, #10, trocava cada code point censurado por um █ pra nao desalinhar
+   offset) e foi REMOVIDO de proposito: QDPX e formato de TRABALHO, carrega tudo. O porque
+   completo esta na nota de desenho no topo do exportQDPX. */
 /* mascara PARCIAL de uma citacao trabalhando sobre o PROPRIO quote (sem precisar do conteudo do
    documento): troca por "[censurado]" so as porcoes do quote cobertas por codings de censura
    (code_id em maskedIds) que sobrepoem o span; se o proprio code_id estiver em maskedIds, a
@@ -1819,14 +1814,30 @@ function exportTransparencyReader(docs, codes, allC, memos, project, anonymize, 
   download((project?.name||'projeto').replace(/[^\w\-]+/g,'_')+(anonymize?'_anon':'')+'_transparencia.html', htmlStr, 'text/html;charset=utf-8');
 }
 
-async function exportQDPX(docs, cats, allV, codes, allC, project, memos, allCodingsArg, pdfBytes){
+/* CENSURA NAO SE APLICA AQUI, E ISSO E DELIBERADO (decisao do autor, jul/2026 — reverte o #10).
+   QDPX e formato de TRABALHO: e por ele que o pesquisador leva o PROPRIO material pro ATLAS.ti/
+   MAXQDA/NVivo/QualCoder e traz de volta. Mascarar ali:
+     (1) e perda IRREVERSIVEL num formato de ida e volta (o █ nao tem volta; quem exporta, trabalha
+         no ATLAS.ti e reimporta, perde o texto original naquele ramo);
+     (2) era INCOERENTE com o .qualilab, que e igualmente formato de trabalho e nunca mascarou;
+     (3) fazia o pesquisador PERDER O TRABALHO DE CENSURA na migracao — as codings de censura eram
+         descartadas das selecoes, entao o codigo chegava vazio no destino, justamente onde ele
+         precisava continuar protegendo o material;
+     (4) dava falsa seguranca: o span era mascarado, mas titulo do documento, valor de categoria e
+         memo saiam crus do mesmo pacote (num corpus real o titulo reconstruia sozinho o que a
+         mascara escondia).
+   A regra do app: formato de trabalho carrega tudo; artefato para TERCEIRO mascara (leitor ATI,
+   JSON W3C) — e o prompt da IA tambem. Censura protege contra publicacao e contra modelo de
+   terceiro, nao contra o proprio pesquisador. A premissa da issue #10 ("exportacao destinada a
+   terceiros") e que estava errada, nao o mecanismo dela.
+   Resíduo conhecido: o QDPX nao tem onde guardar a flag is_redaction, entao na volta os trechos
+   retornam como codigo normal (o .qualilab e o unico caminho sem perda). */
+async function exportQDPX(docs, cats, allV, codes, allC, project, memos, pdfBytes){
   const JSZip = await getJSZip();
   const zip = new JSZip();
   const srcFolder = zip.folder('sources');
   memos = memos || [];
-  const allCodings = allCodingsArg || allC;   // #10: conjunto COMPLETO (todas as camadas) p/ detectar censura
   const { codeMemo, docMemo, codingMemo, projectMemo } = indexMemos(memos); // #18: memos por escopo
-  const redactionCodeIds = new Set((codes||[]).filter(c=>c.is_redaction).map(c=>c.id)); // #10: codigos de censura
 
   // usuarios (autores distintos -> guid)
   const authorGuid = {};
@@ -1852,15 +1863,12 @@ async function exportQDPX(docs, cats, allV, codes, allC, project, memos, allCodi
   // sources (um TextSource por documento, conteudo gravado em sources/<guid>.txt)
   let sourcesXml = '';
   for(const d of docs){
-    // #10: mascara a censura no texto integral preservando a CONTAGEM de code points (offsets validos)
-    const ranges = redactionRanges(allCodings, redactionCodeIds, d.id);
-    srcFolder.file(`${stripGuid(d.id)}.txt`, maskContentForExport(d.content, ranges));
-    const docAll = allCodings.filter(c=>c.document_id===d.id); // p/ mascarar citacao sobreposta por censura de outro codificador
-    // #10: exclui as proprias codings de censura das selecoes (nao viram anotacao nem vazam o quote)
-    const selXml = allC.filter(c=>c.document_id===d.id && !redactionCodeIds.has(c.code_id)).map(c=>{
+    srcFolder.file(`${stripGuid(d.id)}.txt`, d.content);   // cru: ver a nota de censura no topo
+    // codings de censura entram como qualquer outra (o pesquisador leva a censura pra ferramenta destino)
+    const selXml = allC.filter(c=>c.document_id===d.id).map(c=>{
       const codingGuid = uid();
       const au = ensureAuthor(c.author_name);
-      const name = maskQuoteSpans(c, docAll, redactionCodeIds).slice(0,80); // #10: mascara sobreposicao de censura no preview
+      const name = (c.quote||'').slice(0,80);
       // posicoes em code points (REFI-QDA/QualCoder), convertidas do offset UTF-16 interno
       const cs = u16ToCp(d.content, c.span_start), ce = u16ToCp(d.content, c.span_end);
       const cmemo = codingMemo[c.id]; // #18: memo de trecho
@@ -4913,6 +4921,20 @@ function App(){
   }, [store, project, activeId]);
   useEffect(()=>{ loadDoc(); setSel(null); setCtxMenu(null); }, [loadDoc]);
 
+  /* Recarga depois de uma ESCRITA feita por um painel (aplicar codificações da IA ou da aba
+     "Repetir Codificação", mesclar/agrupar/excluir código, preencher categorias). O `reload` que
+     os painéis recebiam era só o loadProject, que atualiza documentos/categorias/códigos e NÃO
+     atualiza `codings`/`values`: esses são estado POR DOCUMENTO, carregados pelo loadDoc, e é
+     deles que o leitor pinta os grifos. Resultado: o leitor ficava com os grifos ANTIGOS até
+     trocar de documento ou dar F5, e a mensagem "confira no leitor" mandava o pesquisador olhar
+     um estado velho (parecia que nada tinha sido aplicado). Verificado ao vivo: aplicar 3
+     ocorrências mostrava 1 grifo; o mesmo projeto recarregado do disco mostrava os 3. */
+  const reloadWrite = useCallback(async ()=>{
+    if(!store || !project) return;
+    await loadProject(store, project.id);
+    await loadDoc();
+  }, [store, project, loadProject, loadDoc]);
+
   /* carregar trechos e valores de TODOS os documentos (aba de visualizacao) */
   const loadAll = useCallback(async ()=>{
     if(!store || !project){ setAllCodings([]); setAllValues([]); return; }
@@ -5705,7 +5727,7 @@ function App(){
             (done,total)=>setProgress({ done, total, label:'baixando PDFs' }));
           setProgress(null); setBusy('Compactando .qdpx...');
         }
-        await exportQDPX(docs, cats, Object.values(pick), codes, codForQdpx, project, memosForQdpx, allC, qdpxPdfs); // #18 memos + #10 allC (censura) + bytes do PDF
+        await exportQDPX(docs, cats, Object.values(pick), codes, codForQdpx, project, memosForQdpx, qdpxPdfs); // #18 memos + bytes do PDF
         setBusy(null);
       } else if(kind==='ati' || kind==='leitor'){
         let memosForExport=[]; try{ memosForExport=(await store.listMemos?.(project.id))||[]; }catch(e){}
@@ -6206,7 +6228,8 @@ function App(){
           <button class=${mainView==='graficos'?'on':''} onClick=${()=>setMainView('graficos')}>Gráficos</button>
           <button class=${mainView==='memos'?'on':''} onClick=${()=>setMainView('memos')}>Memos</button>
           ${!focusMode && html`<button class=${mainView==='esquema'?'on':''} onClick=${()=>setMainView('esquema')}>Esquema</button>`}
-          ${AI_ENABLED && html`<button class=${mainView==='ia_codificar'?'on':''} onClick=${()=>setMainView('ia_codificar')}>Codificar com IA</button>`}
+          <!-- SEM gate de AI_ENABLED: este painel tem a aba "Repetir Codificação", que nao usa IA -->
+          <button class=${mainView==='ia_codificar'?'on':''} onClick=${()=>setMainView('ia_codificar')}>Codificar Automaticamente</button>
           ${AI_ENABLED && html`<button class=${mainView==='ia_analisar'?'on':''} onClick=${()=>setMainView('ia_analisar')}>Analisar com IA</button>`}
           <button class=${mainView==='relatorio'?'on':''} onClick=${()=>setMainView('relatorio')}>Relatório</button>
         </div>`}
@@ -6250,7 +6273,14 @@ function App(){
               <button onClick=${()=>doExport('documentos')}>CSV (atributos por documento)</button>
               <button onClick=${()=>doExport('qdpx')}>QDPX (ATLAS.ti / MAXQDA / NVivo)</button>
               <button title="Exporta só o livro de códigos, sem documentos nem codificações" onClick=${()=>{ setExpOpen(false); exportQDC(codes, project); }}>QDC (codebook REFI-QDA)</button>
-              <div style="padding:6px 12px;font-size:11px;color:var(--ink-faint);border-top:1px solid var(--line-soft)">Transparência (W3C / Leitor) agora na aba <b>Relatório</b>.</div>
+              <div style="padding:6px 12px;font-size:11px;color:var(--ink-faint);border-top:1px solid var(--line-soft)">
+                Todos os formatos acima são de trabalho e migração: saem <b>completos, sem mascarar nada</b>.
+                Transparência (W3C / Leitor) fica na aba <b>Relatório</b>, que mascara a censura.
+              </div>
+              ${codes.some(c=>c.is_redaction) && html`<div style="padding:6px 12px;font-size:11px;background:var(--amber-soft);color:var(--amber);border-top:1px solid var(--line-soft)">
+                Este projeto usa código de censura: os trechos censurados vão nestes arquivos <b>em claro</b>.
+                Para material que sai da equipe (avaliador, repositório), exporte pela aba <b>Relatório</b>.
+              </div>`}
             </div>
           </div>`}
         </div>`}
@@ -6475,7 +6505,7 @@ function App(){
                  selCode=${selCode} setSelCode=${setSelCode} codePath=${codePath}
                  onAdd=${addCode} onDel=${delCode} onApply=${applyCode} onUpd=${updCode} onSetColor=${setCodeColor} onSetSat=${setCodeSat} onSetRedaction=${setCodeRedaction} isAdmin=${adminUI}
                  onCodeContext=${(code,x,y)=>setCodeCtx({code,x,y})}
-                 store=${store} project=${project} reload=${()=>loadProject(store,project.id)} />`}
+                 store=${store} project=${project} reload=${reloadWrite} />`}
           ${rtab==='memos' && html`<${CodingMemosPanel} project=${project} activeDoc=${activeDoc} focusedCoding=${focusedCoding} selCode=${selCode}
                  codings=${codings} codeById=${codeById} codePath=${codePath} docs=${docs} memos=${memos} onSave=${saveMemo} />`}
         </div>
@@ -6598,7 +6628,7 @@ function App(){
         </div>
       </div>
       ${esquemaTab==='codigos' && html`<${SchemaCodesView} codes=${codes} codeById=${codeById} codePath=${codePath} count=${schemaCodingCount}
-             isAdmin=${isAdmin} store=${store} project=${project} reload=${()=>loadProject(store,project.id)} loadAll=${loadAll}
+             isAdmin=${isAdmin} store=${store} project=${project} reload=${reloadWrite} loadAll=${loadAll}
              allCodings=${allCodings} selCode=${selCode} setSelCode=${setSelCode} onUpd=${updCode} onSetColor=${setCodeColor} onSetSat=${setCodeSat} onSetRedaction=${setCodeRedaction}
              onAdd=${addCode} onDel=${delCode} />`}
       ${esquemaTab==='categorias' && html`<section class="pane left" style="flex:1 1 100%;border-right:none;max-width:none">
@@ -6626,11 +6656,12 @@ function App(){
         view=${viewCoder} onView=${setViewCoder} coders=${coders} userId=${user?.id} mode=${mode}
         allCodings=${allCodings} allValues=${allValues} store=${store} memos=${memos} pdfIdx=${docPdfIdx} />`
     : mainView==='ia_codificar' ? html`<div class="split">
-      <!-- CODIFICAR COM IA: tela inteira (config | chat), operações inline no turno da IA -->
+      <!-- CODIFICAR AUTOMATICAMENTE: tela inteira (config | resultado). 3 abas de IA (operações
+           inline no turno da IA) + a aba "Repetir Codificação", que é mecânica e roda sem IA -->
       <${IACodificarPanel} project=${project} docs=${docs} codes=${codes} codeById=${codeById} codePath=${codePath}
         store=${store} allCodings=${allCodings} count=${schemaCodingCount} isAdmin=${isAdmin}
         cats=${cats} allValues=${allValues} projectMode=${projectMode} user=${user}
-        reload=${()=>loadProject(store,project.id)} loadAll=${loadAll} onAdd=${addCode} memos=${memos} onSetMemo=${saveMemo}
+        reload=${reloadWrite} loadAll=${loadAll} onAdd=${addCode} memos=${memos} onSetMemo=${saveMemo}
         memory=${aiMemory} onAddMemory=${addMemory} onToggleMemory=${toggleMemoryActive} onDeleteMemory=${deleteMemory} />
     </div>`
     : mainView==='ia_analisar' ? html`<div class="split">
@@ -10328,16 +10359,254 @@ function IAOrganizarPanel({ project, docs, codes, codeById, codePath, store, all
    - Sugerir Codificacao: propoe trechos a codificar com codigos EXISTENTES (segundo codificador).
    O wrapper so mantem a aba ativa e o cabecalho com o seletor; cada sub-painel renderiza o
    conteudo interno (duas telas: config | chat), sem a <section> externa (essa fica aqui). */
+/* ============ REPETIR CODIFICACAO — a aba SEM IA do painel "Codificar Automaticamente".
+   Pega os trechos que um codigo JA TEM e acha as outras ocorrencias EXATAS deles no corpus,
+   pra aprovar uma a uma. Mecanico, deterministico, sem chave de API.
+
+   POR QUE ISSO EXISTE, e por que nao e um "aviso" (decisao do autor, jul/2026): a censura e por
+   SPAN, entao ela e tao completa quanto a codificacao — marcar "Banca Exemplo Advogados" num
+   lugar nao protege as outras 3 mencoes, e NADA na tela mostra isso. A primeira ideia foi um
+   escaner que avisasse ("N ocorrencias nao cobertas"); foi DESCARTADA porque o falso negativo
+   ("nenhuma ocorrencia") le-se como liberacao, e reidentificacao acontece por COMBINACAO
+   (cargo + cidade + data), nao por string: a ferramenta entregaria absolvicao que nao pode dar.
+   Aqui a MESMA informacao vira ACAO: uma lista de codificacoes pra aprovar item a item. Nao
+   promete completude porque quem escolhe e o pesquisador. E o limite esta escrito na tela:
+   acha texto IDENTICO, nao variante ("a banca" continua sendo caso de busca com julgamento).
+
+   NAO e so pra censura, de proposito: repeticao exata serve a qualquer codigo (termo recorrente,
+   expressao padrao, nome de parte). Censura e so onde mais doi.
+
+   Reusa o trajeto que a IACodificacaoPanel ja tinha (dedup por sobreposicao com o MESMO codigo,
+   revisao item a item com default aprovar, addCoding na camada por projectMode); a unica coisa
+   nova e a FONTE das propostas: findMatches (o mesmo motor da busca do leitor e da global) em
+   vez de JSON da IA. Sobreposicao com codigo DIFERENTE e permitida (dois codigos no mesmo trecho
+   e legitimo, e o leitor ja sinaliza isso com a borda inferior). */
+const REP_TERM_MIN = 3;    // trecho com menos de 3 chars nao e termo (evita varrer "de", "a")
+const REP_PER_DOC  = 200;  // teto por (termo, documento)
+const REP_TOTAL    = 500;  // teto de propostas: varrer e barato, REVISAR e que nao e
+const REP_SHOW     = 8;    // ocorrencias exibidas por grupo antes do "ver mais"
+const REP_CTX      = 56;   // chars de contexto em volta, pra decidir sem sair da tela
+
+function IARepetirPanel({ project, docs, codes, codeById, codePath, store, allCodings, projectMode, reload, loadAll, tab, setTab, TABS }){
+  const [selCodes, setSelCodes] = useState([]);
+  // palavra inteira LIGADA por padrao (decisao do autor): e a unica opcao cujo default difere da
+  // busca global. Sem isso "Tal" casa dentro de "Total" e a lista enche de ruido.
+  const [opts, setOpts] = useState({ cs:false, whole:true, re:false });
+  const [res, setRes] = useState(null);
+  const [decided, setDecided] = useState({});
+  const [openG, setOpenG] = useState({});
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const [applyMsg, setApplyMsg] = useState('');
+
+  const docById = useMemo(()=>Object.fromEntries(docs.map(d=>[d.id,d])), [docs]);
+  const overlap = (aS,aE,bS,bE)=> aS>=0 && aE>aS && bS>=0 && bE>bS && aS<bE && bS<aE;
+  const hk = (h)=> h.codeId+'|'+h.docId+'|'+h.start+'|'+h.end;
+
+  // termos por codigo = os trechos DISTINTOS que ele ja tem (o proprio trabalho do pesquisador)
+  const termsByCode = useMemo(()=>{
+    const m = {};
+    (allCodings||[]).forEach(c=>{
+      const t = String(c.quote||'').trim();
+      if(t.length < REP_TERM_MIN) return;
+      (m[c.code_id] = m[c.code_id] || new Set()).add(t);
+    });
+    return m;
+  }, [allCodings]);
+  // indice (documento|codigo) -> spans ja codificados, pra nao propor o que ja existe
+  const existing = useMemo(()=>{
+    const m = {};
+    (allCodings||[]).forEach(c=>{ const k=c.document_id+'|'+c.code_id; (m[k]=m[k]||[]).push([c.span_start,c.span_end]); });
+    return m;
+  }, [allCodings]);
+
+  const codesWithTerms = useMemo(()=> codes.filter(c=>(termsByCode[c.id]||new Set()).size>0), [codes, termsByCode]);
+  const nTermsSel = selCodes.reduce((n,id)=> n + (termsByCode[id]||new Set()).size, 0);
+  const toggle = (id)=> setSelCodes(a=> a.includes(id) ? a.filter(x=>x!==id) : [...a,id]);
+
+  function scan(){
+    setErr(''); setApplyMsg(''); setDecided({}); setOpenG({});
+    if(!selCodes.length){ setErr('Selecione ao menos um código.'); return; }
+    const groups=[]; let total=0, dup=0, capped=false, error='';
+    const seen = {};   // documento -> spans ja propostos POR CODIGO (evita termo sobrepondo termo)
+    outer:
+    for(const codeId of selCodes){
+      for(const term of [...(termsByCode[codeId]||new Set())]){
+        const hits=[];
+        for(const d of docs){
+          const r = findMatches(d.content||'', term, opts, REP_PER_DOC);
+          if(r.error){ error=r.error; break outer; }
+          for(const [s,e] of r.spans){
+            const k = d.id+'|'+codeId;
+            const clash = (existing[k]||[]).some(([a,b])=>overlap(a,b,s,e))
+                       || (seen[k]||[]).some(([a,b])=>overlap(a,b,s,e));
+            if(clash){ dup++; continue; }
+            if(total>=REP_TOTAL){ capped=true; break outer; }
+            (seen[k]=seen[k]||[]).push([s,e]);
+            hits.push({ docId:d.id, codeId, start:s, end:e, quote:(d.content||'').slice(s,e) });
+            total++;
+          }
+        }
+        if(hits.length) groups.push({ codeId, term, hits });
+      }
+    }
+    if(error){ setRes(null); setErr('Expressão regular inválida: '+error); return; }
+    setRes({ groups, total, dup, capped });
+    const dec={}; groups.forEach(g=>g.hits.forEach(h=>{ dec[hk(h)]=true; }));  // default aprovar
+    setDecided(dec);
+  }
+
+  const allHits = (res?.groups||[]).flatMap(g=>g.hits);
+  const pending = allHits.filter(h=>decided[hk(h)] && !h.done);
+
+  async function applyApproved(){
+    if(busy || !pending.length) return;
+    setBusy(true); setErr(''); setApplyMsg('');
+    const layer = projectMode==='individual' ? 'final' : 'individual';
+    const rows = pending.map(h=>({ document_id:h.docId, code_id:h.codeId, span_start:h.start, span_end:h.end, quote:h.quote, layer }));
+    let ok=0, fail=0;
+    try{
+      // N aqui pode ser centenas por construcao (diferente das abas de IA, limitadas pelo modelo),
+      // entao usa o caminho em LOTE quando o store tem (gotcha #0: escrita 1-a-1 em nuvem = N
+      // round-trips). bulkWrite e tolerante por linha, entao a falha vem no `failed`, nao no throw.
+      if(store.addCodingsBulk){
+        fail = bulkFails(await store.addCodingsBulk(project.id, rows));
+        ok = rows.length - fail;
+      } else {
+        if(store.beginBatch) store.beginBatch();
+        try{
+          for(const r of rows){ try{ await store.addCoding(project.id, r); ok++; }catch(e){ fail++; } }
+        } finally { if(store.endBatch) await store.endBatch(); }
+      }
+    }catch(e){ setErr(String(e?.message||e)); setBusy(false); return; }
+    await reload(); await loadAll();
+    const done = new Set(pending.map(hk));
+    setRes(r=> r && ({ ...r, groups:r.groups.map(g=>({ ...g, hits:g.hits.map(h=> done.has(hk(h)) ? {...h, done:true} : h) })) }));
+    setApplyMsg(`${ok} codificação(ões) aplicada(s)${fail?`. ATENÇÃO: ${fail} recusada(s) pelo servidor (em projeto coletivo, verifique se você tem permissão)`:''}. Confira no leitor (aba Codificação).`);
+    setBusy(false);
+  }
+
+  const ctxOf = (h)=>{
+    const t = (docById[h.docId]?.content)||'';
+    let a = Math.max(0, h.start-REP_CTX), b = Math.min(t.length, h.end+REP_CTX);
+    // nao cortar no meio de palavra (a janela e por contagem de chars, entao "Entrevistado"
+    // saia como "...stado"): encosta nos espacos mais proximos, quando ha um dentro da janela
+    if(a>0){ const sp=t.indexOf(' ', a); if(sp>=0 && sp<h.start) a=sp+1; }
+    if(b<t.length){ const sp=t.lastIndexOf(' ', b); if(sp>h.end) b=sp; }
+    return { pre:(a>0?'…':'')+t.slice(a,h.start).replace(/\s+/g,' '), hit:t.slice(h.start,h.end), post:t.slice(h.end,b).replace(/\s+/g,' ')+(b<t.length?'…':'') };
+  };
+
+  return html`<section class="pane" style="flex:1 1 100%">
+    <div class="pane-head" style="gap:12px">
+      <div class="seg" style="flex-wrap:wrap">
+        ${TABS.map(t=>html`<button key=${t.id} class=${tab===t.id?'on':''} onClick=${()=>setTab(t.id)}>${t.label}</button>`)}
+      </div>
+    </div>
+    <div style="flex:1;min-height:0;display:flex">
+      <div class="pane-body scroll" style="flex:0 0 var(--pane-config)">
+        <div class="section">
+          <p class="hint" style="margin:0 0 10px">Sem IA. Pega os trechos que um código <b>já tem</b> e acha as outras ocorrências <b>idênticas</b> no corpus inteiro, para você aprovar uma a uma. Útil quando o mesmo termo reaparece e passou sem código: é o caso da <b>censura</b>, que protege só o que foi marcado.</p>
+          <p class="hint" style="margin:0 0 12px">Acha texto idêntico, <b>não variante</b>: "Banca Exemplo" não encontra "a banca". Para essas, use <b>pesquisar +</b> na aba Codificação.</p>
+          ${codesWithTerms.length===0 && html`<div class="banner warn" style="margin-bottom:10px">Nenhum código tem trecho codificado ainda. Codifique um trecho primeiro; é dele que sai o termo a repetir.</div>`}
+          <div class="field">
+            <div class="field-label">Códigos${selCodes.length?` (${selCodes.length}, ${nTermsSel} termo(s))`:''}</div>
+            <div class="row" style="margin:6px 0;gap:8px">
+              <button class="btn sm ghost" onClick=${()=>setSelCodes(codesWithTerms.map(c=>c.id))}>todos</button>
+              <button class="btn sm ghost" onClick=${()=>setSelCodes([])}>limpar seleção</button>
+            </div>
+            <div class="card" style="margin-bottom:10px;max-height:280px;overflow:auto">
+              ${codesWithTerms.map(c=>html`<button key=${c.id} class="opt ${selCodes.includes(c.id)?'on':''}" style="display:flex;gap:6px;align-items:center;width:100%;margin-bottom:4px;font-size:11px"
+                onClick=${()=>toggle(c.id)}>${selCodes.includes(c.id)?'☑':'☐'}
+                <span class="swatch" style=${`background:${codeColor(c.hue,c.depth,c.hue_deg,false,c.sat).solid};display:inline-block;flex-shrink:0`}></span>
+                <span style="flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.is_redaction?'⦸ ':''}${codePath(c.id).join(' ▸ ')}</span>
+                <span class="count">${(termsByCode[c.id]||new Set()).size}</span></button>`)}
+            </div>
+          </div>
+          <div class="field">
+            <div class="field-label">Como comparar</div>
+            <${SearchOptChips} opts=${opts} setOpts=${setOpts} />
+            <p class="hint" style="margin:6px 0 0">"Palavra inteira" vem ligada: sem ela, um termo curto casa dentro de outra palavra.</p>
+          </div>
+          <button class="btn primary" style="width:100%;margin-top:12px" disabled=${busy || !selCodes.length} onClick=${scan}>Procurar ocorrências</button>
+        </div>
+      </div>
+      <${PaneResizer} which="config" />
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;background:var(--paper)">
+        <div class="pane-head"><span class="field-label" style="margin:0">Ocorrências idênticas ainda sem este código</span></div>
+        <div class="pane-body scroll" style="padding:16px">
+          ${err && html`<div class="banner err" style="margin-bottom:10px">${err}</div>`}
+          ${applyMsg && html`<div class="banner warn" style="margin-bottom:10px">${applyMsg}</div>`}
+          ${!res && !err && html`<div style="text-align:center;max-width:400px;margin:56px auto 0">
+            <p class="meta" style="font-size:13px;line-height:1.7;margin:0">Escolha os códigos à esquerda e clique em <b>Procurar ocorrências</b>. Nada é gravado sem a sua confirmação.</p>
+          </div>`}
+          ${res && html`<div>
+            <div class="row" style="align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+              <b>${res.total} ocorrência(s) em ${res.groups.length} termo(s)</b>
+              ${res.dup>0 && html`<span class="meta">(${res.dup} já codificada(s) com este código)</span>`}
+              ${res.capped && html`<span class="pill mode-offline" style="font-size:11px">parei em ${REP_TOTAL}: aplique estas e procure de novo</span>`}
+              ${res.total>0 && html`<div style="flex:1"></div>
+                <button class="btn sm ghost" onClick=${()=>{ const d={}; allHits.forEach(h=>{d[hk(h)]=true;}); setDecided(d); }}>Aprovar todas</button>
+                <button class="btn sm ghost" onClick=${()=>setDecided({})}>Recusar todas</button>`}
+            </div>
+            ${res.total===0 && html`<span class="meta">Nenhuma ocorrência nova. Os termos deste código já estão codificados em todo lugar onde aparecem <b>identicamente</b>.</span>`}
+            ${res.groups.map(g=>{
+              const col = codeColor(codeById[g.codeId]?.hue, codeById[g.codeId]?.depth, codeById[g.codeId]?.hue_deg, false, codeById[g.codeId]?.sat).solid;
+              const gid = g.codeId+'|'+g.term;
+              const shown = openG[gid] ? g.hits : g.hits.slice(0, REP_SHOW);
+              return html`<div key=${gid} class="card" style="margin-bottom:10px">
+                <div style="font-size:13px;margin-bottom:8px">
+                  <span class="swatch" style=${`background:${col};display:inline-block;margin-right:7px;vertical-align:middle;flex-shrink:0`}></span>
+                  <b>${codePath(g.codeId).join(' ▸ ')}</b>
+                  <span class="meta"> · ${g.hits.length} ocorrência(s) de</span>
+                  <span style="font-family:var(--mono);font-size:12px"> "${g.term}"</span>
+                </div>
+                ${shown.map(h=>{ const k=hk(h); const on=!!decided[k]; const c=ctxOf(h);
+                  return html`<div key=${k} class="card" style=${`margin-bottom:6px;opacity:${h.done||on?1:0.55}`}>
+                    <div class="row" style="gap:10px;align-items:flex-start">
+                      <div style="flex:1;min-width:0">
+                        <div class="meta" style="margin-bottom:2px">${docById[h.docId]?.name||'(documento)'}</div>
+                        <div style=${`font-family:var(--serif);font-size:13px;padding-left:10px;border-left:3px solid ${col}`}>${c.pre}<mark>${c.hit}</mark>${c.post}</div>
+                      </div>
+                      ${h.done
+                        ? html`<span class="pill" style="flex-shrink:0;background:var(--ok-soft);border-color:var(--ok-soft);color:var(--ok)">✓ aplicada</span>`
+                        : html`<div class="row" style="gap:6px;flex-shrink:0">
+                            <button class=${`btn sm ${on?'primary':'ghost'}`} onClick=${()=>setDecided(d=>({...d,[k]:true}))}>${on?'✓ Aprovada':'Aprovar'}</button>
+                            <button class=${`btn sm ${on?'ghost':''}`} onClick=${()=>setDecided(d=>({...d,[k]:false}))} style=${on?'':'background:var(--danger);color:#fff;border-color:var(--danger)'}>${on?'Recusar':'✕ Recusada'}</button>
+                          </div>`}
+                    </div>
+                  </div>`; })}
+                ${g.hits.length>REP_SHOW && html`<button class="btn sm ghost" onClick=${()=>setOpenG(o=>({...o,[gid]:!o[gid]}))}>
+                  ${openG[gid] ? 'mostrar menos' : `+ ${g.hits.length-REP_SHOW} neste termo`}</button>`}
+              </div>`;
+            })}
+          </div>`}
+        </div>
+        ${res && res.total>0 && html`<div class="pane-head" style="border-top:1px solid var(--line-soft);border-bottom:none">
+          <button class="btn primary" disabled=${busy || !pending.length} onClick=${applyApproved}>
+            ${busy ? 'Aplicando...' : `Aplicar ${pending.length} codificação(ões)`}</button>
+          <span class="meta">nada é gravado sem este clique</span>
+        </div>`}
+      </div>
+    </div>
+  </section>`;
+}
+
 function IACodificarPanel(props){
-  const [tab, setTab] = useState('codificar');
+  // A aba "Repetir Codificação" NAO usa IA, entao ela existe mesmo com AI_ENABLED=false — e o
+  // motivo de o painel ter deixado de se chamar "Codificar com IA". Numa build sem IA, o painel
+  // fica so com ela (e o gate saiu da view, no seg do cabecalho, pra ca).
   const TABS = [
-    { id:'codificar',   label:'Sugerir Codificação' },
-    { id:'categorizar', label:'Sugerir Categorização' },
-    { id:'organizar',   label:'Organizar Códigos' },
+    ...(AI_ENABLED ? [{ id:'codificar', label:'Sugerir Codificação' }] : []),
+    { id:'repetir', label:'Repetir Codificação' },
+    ...(AI_ENABLED ? [{ id:'categorizar', label:'Sugerir Categorização' },
+                      { id:'organizar',   label:'Organizar Códigos' }] : []),
   ];
+  const [tab, setTab] = useState(AI_ENABLED ? 'codificar' : 'repetir');
   // Cada sub-painel renderiza a propria barra do topo [⚙ configurar prompt][seg de abas],
   // espelhando o IAAnalisarPanel — por isso o wrapper so segura o estado das abas e repassa
-  // tab/setTab/TABS; o botao ⚙ vive dentro de cada sub-painel (junto do showPrompt local).
+  // tab/setTab/TABS; o botao ⚙ vive dentro de cada sub-painel (junto do showPrompt local) e a
+  // aba Repetir simplesmente nao o renderiza, porque nao ha prompt nenhum.
+  if(tab==='repetir')     return html`<${IARepetirPanel} ...${props} tab=${tab} setTab=${setTab} TABS=${TABS} />`;
   if(tab==='organizar')   return html`<${IAOrganizarPanel} ...${props} tab=${tab} setTab=${setTab} TABS=${TABS} />`;
   if(tab==='categorizar') return html`<${IACategorizarPanel} ...${props} tab=${tab} setTab=${setTab} TABS=${TABS} />`;
   return html`<${IACodificacaoPanel} ...${props} tab=${tab} setTab=${setTab} TABS=${TABS} />`;

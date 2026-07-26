@@ -222,7 +222,7 @@ Depois de abrir um projeto, o **cabeçalho** tem duas linhas:
 | **Gráficos** | Frequências, nuvem, co-ocorrência etc. |
 | **Memos** | Notas analíticas |
 | **Esquema** | Organizar códigos e categorias em lote |
-| **Codificar com IA** | *(opcional, BYOK)* IA propõe codificação/categorização/organização, você aprova |
+| **Codificar Automaticamente** | Repetir codificação (sem IA) e, *(opcional, BYOK)*, IA propondo codificação/categorização/organização; você aprova |
 | **Analisar com IA** | *(opcional, BYOK)* conversa analítica sobre o material selecionado |
 | **Relatório** | Exportar relatórios e pacotes de transparência |
 
@@ -339,7 +339,11 @@ Você **não precisa selecionar de novo**:
 **Ctrl+Z** desfaz a **última codificação aplicada** na sessão atual (até as últimas 50). Funciona só na aba Codificação e fora de campos de texto. Não há desfazer para outras ações (excluir documento, categoria, código etc.). Essas são definitivas.
 
 ### 5.5. Censura (mascarar trechos sensíveis)
-Um código pode ser marcado como **censura** (no [Esquema](#7-esquema), por um admin). Trechos com esse código aparecem como uma caixa preta e, nas saídas de transparência ([Relatório](#12-relatório)), saem mascarados como `[trecho censurado]` por padrão, útil para publicar mantendo nomes/dados sensíveis ocultos.
+Um código pode ser marcado como **censura** (no [Esquema](#7-esquema), por um admin). Trechos com esse código aparecem como uma caixa preta e saem mascarados como `[trecho censurado]` nas **saídas de transparência** ([Relatório](#12-relatório)) e no que vai para a **IA** ([seção 17](#17-codificar-e-analisar-com-ia)), útil para publicar mantendo nomes/dados sensíveis ocultos.
+
+**Onde a censura NÃO se aplica, e por quê.** Os formatos de **trabalho e migração** (`.qualilab`, QDPX, QDC, CSV, JSON) saem **completos**, com os trechos censurados em claro. Não é esquecimento: é por esses arquivos que você leva o **seu próprio** material para o ATLAS.ti, o MAXQDA ou o NVivo e traz de volta, e mascarar ali destruiria o texto original de forma irreversível, além de fazer você **perder o próprio trabalho de censura** na migração. O menu **exportar ▾** avisa isso na hora, em âmbar, quando o projeto usa código de censura. Para material que sai da equipe, use a aba **Relatório**.
+
+**A censura protege o que você marcou, não o termo.** Marcar "Banca Exemplo Advogados" num parágrafo não protege as outras cinco menções ao mesmo escritório. Para isso existe a aba **Repetir Codificação** (em [Codificar Automaticamente](#172-codificar-automaticamente-quatro-assistentes-em-abas)): ela pega os trechos que o código já tem e mostra as demais ocorrências **idênticas** no corpus, para você aprovar uma a uma. Ela não acha **variantes**: "Banca Exemplo" sozinha, ou "a banca", continuam sendo caso de [pesquisar +](#57-buscar-no-documento-e-no-projeto-inteiro), onde o julgamento é seu. Antes de publicar, veja [12.4](#124-antes-de-publicar-trabalhe-no-laboratório-publique-de-uma-cópia).
 
 ### 5.6. Controles de leitura
 A barra no topo do leitor ajusta **só a leitura** (preferência salva no navegador):
@@ -553,6 +557,38 @@ Um **montador**: marque as seções na coluna esquerda e o texto se monta ao viv
 ### 12.3. Web Annotation (W3C)
 Exporta as anotações no padrão aberto **[W3C Web Annotation Data Model](https://www.w3.org/TR/annotation-model/)** (JSON-LD): cada trecho vira uma anotação com seletor de posição/citação + nota analítica. É a "língua de dados" comum ao ATI, ao [hypothes.is](https://web.hypothes.is/), ao Anno-REP e ao Dataverse, interoperável sem casar com nenhuma ferramenta.
 
+### 12.4. Antes de publicar: trabalhe no laboratório, publique de uma cópia
+
+Este é o fluxo recomendado, e ele resolve um problema que nenhuma ferramenta resolve sozinha.
+
+**O problema.** A censura protege **o que você marcou dentro do texto**. Ela não toca em três coisas que viajam em toda saída, inclusive no Relatório Interativo e no W3C:
+
+- o **título do documento** (é ele que aparece como cabeçalho de cada documento no relatório interativo);
+- os **valores de categoria** (cargo, cidade, escritório, órgão);
+- os **memos** (é comum anotar "o entrevistado da Tal & Qual disse que...").
+
+Num caso real de teste, o corpo do documento saía com o nome do escritório mascarado e o título dizia, em letras garrafais, *"ENT-01 — Dra. Fulana de Tal, sócia fundadora (Tal, Qual & Associados, São Paulo)"*. A máscara estava perfeita e inútil.
+
+**O fluxo.** Mantenha **dois projetos**:
+
+1. o **laboratório**, onde você trabalha com o material como ele é (nomes reais nos títulos, tudo à mão para você se orientar);
+2. a **cópia de publicação**, que é o que sai para fora.
+
+Para criar a cópia: **exportar ▾ → .qualilab**, depois crie um projeto novo (**trocar projeto → novo**) e **importar ▾ → .qualilab** nele. Agora limpe a cópia:
+
+- **renomeie os documentos** para rótulos sem identificação (`ENT-01`, `GF-02`): a chave que liga rótulo a pessoa fica **fora** do QualiLab, com você;
+- revise os **valores de categoria**: troque "Tal, Qual & Associados" por "escritório de grande porte", ou o que o seu desenho de pesquisa exigir;
+- releia os **memos**, que é onde nome próprio aparece sem ninguém perceber;
+- confira a **censura** no corpo (veja abaixo por que ela costuma estar incompleta).
+
+Depois exporte pela aba **Relatório**. As prévias de ATI e W3C são **ao vivo**: o que você vê ali é exatamente o que sai, então use-as como conferência final.
+
+**Por que uma cópia e não um "modo publicação" dentro do app.** Foi uma decisão deliberada. Um modo desses guardaria, para cada título, valor e memo, uma versão real e uma versão publicável, e você exportaria uma **transformação que não consegue ver**. Pior: o próprio mapeamento entre as duas versões se tornaria o dado mais sensível do projeto. Com a cópia, **o que está na tela é o que sai**. É mais confiável justamente porque é mais manual.
+
+> **O jeito mais barato é prevenir.** Nomear os documentos como `ENT-01` **desde o início** economiza toda essa limpeza, porque não há renomeação em lote: na cópia, os títulos se corrigem um por um. Nove documentos são dois minutos; trezentos, não.
+
+**Uma frase para levar:** o QualiLab **não anonimiza**. Ele mascara o que você marcou, nas saídas de transparência e no que vai para a IA. O resto é decisão metodológica sua, tomada na cópia de publicação.
+
 ---
 
 ## 13. Colaboração
@@ -612,7 +648,7 @@ Os menus **exportar ▾** e **importar ▾** ficam no cabeçalho (aparecem quand
 | **QDPX (ATLAS.ti / MAXQDA / NVivo)** | Padrão REFI-QDA; prefere a camada final quando consolidada |
 | **QDC (codebook REFI-QDA)** | Só o livro de códigos |
 
-> As saídas de **transparência** (Relatório Interativo / W3C) ficam na aba **Relatório**, não neste menu.
+> **Todos os itens acima saem completos, sem mascarar nada**, inclusive os trechos marcados como **censura**. São formatos de trabalho e migração: quem exporta está levando o próprio material para outra ferramenta, e mascarar ali seria perda irreversível. As saídas de **transparência** (Relatório Interativo / W3C) ficam na aba **Relatório**, não neste menu, e essas sim mascaram. Antes de mandar qualquer coisa para fora da equipe, veja [12.4](#124-antes-de-publicar-trabalhe-no-laboratório-publique-de-uma-cópia).
 
 ### Importar (menu "importar ▾")
 | Item | O que traz |
@@ -666,7 +702,7 @@ Use a matriz para decidir (regra **safe-by-default**: na dúvida, trate como mai
 
 > Há um limite honesto: **privacidade total e o conjunto completo de recursos não coexistem** numa ferramenta que roda no navegador. Dado vedado empurra você para o canto **offline/arquivo**, e é nesse mesmo canto que mora a **IA local** (Ollama na sua máquina). É uma restrição real, não um detalhe.
 
-**O que a censura e a anonimização _não_ fazem.** O QualiLab **não identifica nem mascara dados pessoais no conteúdo** dos documentos (nomes, CPF, dados de saúde). Duas coisas parecem "anonimização" mas **não são**: a **censura** mascara só os trechos que **você** marcou (não varre o texto atrás do que é sensível); a opção **anonimizar** das exportações de transparência apenas **omite a autoria**. Ou seja, confiar na censura é confiar que **você** marcou, à mão, cada detalhe identificável **antes de cada envio**, e disciplina perfeita não é um controle de segurança. Anonimizar, obter consentimento e escolher o modo adequado é **responsabilidade sua**.
+**O que a censura e a anonimização _não_ fazem.** O QualiLab **não identifica nem mascara dados pessoais no conteúdo** dos documentos (nomes, CPF, dados de saúde). Duas coisas parecem "anonimização" mas **não são**: a **censura** mascara só os trechos que **você** marcou (não varre o texto atrás do que é sensível); a opção **anonimizar** das exportações de transparência apenas **omite a autoria**. Ou seja, confiar na censura é confiar que **você** marcou, à mão, cada detalhe identificável **antes de cada envio**, e disciplina perfeita não é um controle de segurança. Anonimizar, obter consentimento e escolher o modo adequado é **responsabilidade sua**. Duas ajudas concretas: a aba **Repetir Codificação** ([5.5](#55-censura-mascarar-trechos-sensíveis)) acha as outras ocorrências idênticas de um termo que você já censurou, e o fluxo de **projeto de publicação** ([12.4](#124-antes-de-publicar-trabalhe-no-laboratório-publique-de-uma-cópia)) cuida de título, valores de categoria e memos, que a censura não alcança.
 
 ### Modo arquivo (Chrome/Edge)
 O projeto é um arquivo `.qualilab` **visível no sistema de arquivos** (qualquer pasta, HD externo, volume criptografado). Zero rede, zero `localStorage`, 100% offline. Comece em **"Meus projetos" → Novo arquivo… / Abrir arquivo…**. O app reabre o último arquivo na sessão seguinte (com permissão do navegador).
@@ -710,7 +746,7 @@ O cabeçalho mostra `offline` (âmbar) quando a conexão cai. Escritas (codifica
 
 > As telas de IA são **opt-in** e ficam no cabeçalho (numa build sem IA, `AI_ENABLED=false`, elas são ocultadas). Os princípios da [seção 0](#0-a-ideia-do-qualilab) valem aqui como **regras**: opt-in, transparência, e a IA nunca decide por você.
 
-A IA do QualiLab não "codifica sozinha" nem escreve no seu projeto sem permissão. Ela aparece em duas telas: *Codificar com IA* (assistentes que **propõem** mudanças ao seu projeto, você revisa item a item) e *Analisar com IA* (leitura e interpretação do material). Em todas, o resultado é uma **proposta** ou um **texto** que você revisa. Aplicar qualquer mudança é sempre um ato seu.
+A IA do QualiLab não "codifica sozinha" nem escreve no seu projeto sem permissão. Ela aparece em duas telas: *Codificar Automaticamente* (assistentes que **propõem** mudanças ao seu projeto, você revisa item a item) e *Analisar com IA* (leitura e interpretação do material). Em todas, o resultado é uma **proposta** ou um **texto** que você revisa. Aplicar qualquer mudança é sempre um ato seu.
 
 ### 17.1 Como a IA funciona aqui
 
@@ -725,11 +761,13 @@ A IA do QualiLab não "codifica sozinha" nem escreve no seu projeto sem permiss�
 
 > ⚠️ **A IA pode errar e inventar.** Trate toda saída como hipótese a conferir contra o trecho citado. É exatamente por isso que a regra é "a IA propõe, você decide".
 
-### 17.2 Codificar com IA: três assistentes em abas
+### 17.2 Codificar Automaticamente: quatro assistentes em abas
 
-![Codificar com IA: os três assistentes em abas (Sugerir Codificação, Sugerir Categorização, Organizar Códigos). À esquerda, a seleção de documentos e códigos; no topo, o botão "Configurar Prompt" com a estimativa de tokens e de custo (≈ R$) do envio.](manual-img/09-ia-codificar.png)
+![Codificar Automaticamente: os assistentes em abas (Sugerir Codificação, Repetir Codificação, Sugerir Categorização, Organizar Códigos). À esquerda, a seleção de documentos e códigos; no topo, o botão "Configurar Prompt" com a estimativa de tokens e de custo (≈ R$) do envio.](manual-img/09-ia-codificar.png)
 
-A tela **Codificar com IA** reúne **três assistentes** em abas, no topo: **Sugerir Codificação** (que abre por padrão), **Sugerir Categorização** e **Organizar Códigos**. Os três seguem o mesmo padrão: a IA **propõe**, você **aprova ou recusa item a item**, e **nada é gravado sem a sua confirmação**. O **Memo para a IA** e a memória do projeto entram como contexto ([seção 11](#11-memos)), a censura é mascarada, e o botão **⚙ Configurar Prompt** mostra o prompt inteiro e deixa ajustar as *instruções próprias à IA*, os *memos injetados* e a *memória do projeto* (veja [17.1](#171-como-a-ia-funciona-aqui)). Se a resposta for muito longa e vier cortada, o QualiLab aproveita os itens completos e descarta só o último (incompleto).
+A tela **Codificar Automaticamente** reúne **quatro assistentes** em abas, no topo: **Sugerir Codificação** (que abre por padrão), **Repetir Codificação**, **Sugerir Categorização** e **Organizar Códigos**. Todos seguem o mesmo padrão: o assistente **propõe**, você **aprova ou recusa item a item**, e **nada é gravado sem a sua confirmação**.
+
+> **Uma das quatro não usa IA.** A **Repetir Codificação** ([17.2.4](#1724-repetir-codificação-sem-ia)) é mecânica: não precisa de chave, não manda nada para fora e funciona offline. É por isso que a tela se chama "Codificar Automaticamente" e não "Codificar com IA". As outras três são as que conversam com o provedor, e o que segue abaixo (prompt, custo, censura) vale para elas. O **Memo para a IA** e a memória do projeto entram como contexto ([seção 11](#11-memos)), a censura é mascarada, e o botão **⚙ Configurar Prompt** mostra o prompt inteiro e deixa ajustar as *instruções próprias à IA*, os *memos injetados* e a *memória do projeto* (veja [17.1](#171-como-a-ia-funciona-aqui)). Se a resposta for muito longa e vier cortada, o QualiLab aproveita os itens completos e descarta só o último (incompleto).
 
 O botão **⚙ Configurar Prompt** (no topo de cada assistente) abre a janela abaixo. Em cima ficam os **controles**: **Instruções próprias à IA** (guias que entram em todo prompt, compartilhadas com o Analisar com IA), **Memos injetados** (por padrão o *Memo para a IA*; dá para incluir outros) e a **Memória do projeto** (liga/desliga quais insights entram no contexto). Embaixo, a **prévia exata do que será enviado**: o modelo ativo, a contagem de material (em **páginas**), **quantos códigos de censura foram mascarados**, a **estimativa de tokens e de custo (≈ R$)** (avisando quando o material será truncado) e o prompt **seção por seção** (papel e princípios, memos, memória do projeto, material). Um botão **copiar prompt** leva tudo para a área de transferência. **Nada sai do navegador sem passar por aqui**: é a face concreta da regra de transparência.
 
@@ -760,6 +798,23 @@ Ajuda quem terminou uma codificação aberta com **dezenas ou centenas de códig
 | **Promover** | Eleva um subcódigo a Hierarquia 0 |
 
 As operações aparecem **dentro da resposta da IA** (no chat), cada uma com aprovar/recusar; aplique as aprovadas para mudar o esquema. Refine pedindo ajustes num follow-up. Códigos de **censura** ficam de fora desta reorganização (não são categoria analítica).
+
+#### 17.2.4 Repetir Codificação (sem IA)
+
+![A aba Repetir Codificação: à esquerda, os códigos do projeto com quantos termos cada um tem, os botões de comparação (com "palavra inteira" ligada) e o botão Procurar ocorrências; à direita, três ocorrências idênticas do termo censurado, cada uma com o documento, o texto em volta e os botões aprovar/recusar, e no rodapé "Aplicar 3 codificação(ões)" com o aviso de que nada é gravado sem esse clique.](manual-img/17-ia-repetir.png)
+
+Esta aba **não usa IA**: não precisa de chave, não manda nada para fora, funciona offline e o resultado é sempre o mesmo. Ela pega os trechos que um código **já tem** e mostra as outras ocorrências **idênticas** deles no projeto inteiro, para você aprovar uma a uma.
+
+Como usar: selecione um ou mais **códigos** à esquerda e clique em **Procurar ocorrências**. Cada resultado mostra o documento e o trecho **com o texto em volta**, que é o que permite decidir se aquela ocorrência merece o código. Aprove ou recuse item a item e clique em **Aplicar**. Ocorrências que você já aplicou ficam marcadas e saem da conta, então clicar de novo não duplica nada.
+
+Detalhes que importam:
+
+- **"Palavra inteira" já vem ligada.** Sem ela, um termo curto casa dentro de outra palavra ("Tal" dentro de "Total"). Os três botões (`Aa` diferencia maiúsculas, `ab⃒` palavra inteira, `.*` interpreta como expressão regular) são os mesmos da busca.
+- **Ocorrências que já têm aquele código são ignoradas** e aparecem só na contagem ("N já codificada(s) com este código"). Se outro código diferente já cobre o trecho, a proposta continua valendo: dois códigos no mesmo trecho é legítimo.
+- **Acha texto idêntico, não variante.** Se você marcou "Banca Exemplo Advogados", esta aba **não** encontra "Banca Exemplo" nem "a banca". Para essas, use [pesquisar +](#57-buscar-no-documento-e-no-projeto-inteiro) e decida caso a caso: só você sabe se "a banca" é o mesmo escritório.
+- Serve a **qualquer código**, não só censura. É especialmente útil com termos recorrentes (nome de parte, órgão, expressão padrão). Com códigos cujos trechos são frases longas, o normal é não achar nada, porque frase longa raramente se repete igual.
+
+**Por que ela existe.** A censura protege **o que você marcou**, e é fácil marcar um nome numa página e deixar passar as outras cinco menções. A alternativa seria o QualiLab avisar "há N ocorrências não protegidas", e isso foi **descartado de propósito**: um aviso desses, quando não encontra nada, é lido como "está tudo limpo", o que a ferramenta não tem como garantir (identificação também acontece por combinação de pistas, não só por nome). Uma lista de propostas para você aprovar não promete nada disso, porque quem decide é você.
 
 ### 17.3 Analisar com IA: leitura assistida do material
 
@@ -896,7 +951,7 @@ PDFs muito visuais (colunas, tabelas, digitalizações) podem extrair mal. Tabel
 - **Gabarito**: a camada final consolidada da equipe.
 - **Reconciliação**: tela onde a equipe consolida o gabarito (projeto coletivo).
 - **Memo**: nota analítica por projeto/documento/código/trecho.
-- **Censura**: código que mascara trechos sensíveis nas exportações.
+- **Censura**: código que mascara trechos sensíveis nas saídas de transparência e no que vai para a IA. Os formatos de trabalho (`.qualilab`, QDPX, QDC, CSV, JSON) saem completos, ver [5.5](#55-censura-mascarar-trechos-sensíveis).
 - **Co-ocorrência**: dois códigos aplicados ao mesmo trecho (ou sobrepostos).
 - **Modo (armazenamento)**: onde os dados ficam (arquivo, rascunho ou nuvem).
 - **Tipo de projeto**: individual (sem reconciliação) ou coletivo.
