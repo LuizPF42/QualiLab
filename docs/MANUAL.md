@@ -856,6 +856,11 @@ Não há desfazer para isso (Ctrl+Z só cobre a última *codificação de trecho
 **Esqueci minha senha.**
 Na tela de acesso à nuvem, clique em **Esqueci minha senha**, informe o e-mail da conta e envie. Chega um link por e-mail que abre o QualiLab já na tela de **criar uma senha nova**. Feito isso, você entra direto. O link vale por pouco tempo e só pode ser usado uma vez; se der "Link expirado", peça outro na mesma tela. Confira o **spam**. Por segurança, a mensagem na tela é a mesma exista ou não uma conta com aquele e-mail (o app não confirma quem está cadastrado).
 
+Se aparecer **"O servidor atingiu o limite de e-mails desta hora"**, não é problema com a sua conta:
+o servidor tem uma cota de envio por hora, compartilhada entre confirmações de cadastro e
+recuperações de senha, e ela se esgotou. Espere alguns minutos e tente outra vez; se insistir, avise
+quem administra o servidor (a cota sobe configurando um SMTP próprio).
+
 **O PDF importou com o texto bagunçado.**
 PDFs muito visuais (colunas, tabelas, digitalizações) podem extrair mal. Tabelas não são reconstruídas. Quando possível, prefira `.docx`/`.txt`, ou cole o texto limpo.
 

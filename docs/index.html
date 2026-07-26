@@ -1452,7 +1452,18 @@ function humanizeError(raw){
   // em que o updateUser nao tem sessao valida pra autorizar a troca (o erro cru fala de JWT).
   if(t.includes('invalid jwt') || t.includes('auth session missing') || t.includes('session_not_found')) return 'Sessão inválida ou expirada. Se você veio de um link de redefinição de senha, peça um novo.';
   if(t.includes('same password') || t.includes('should be different from the old')) return 'A nova senha precisa ser diferente da anterior.';
-  if(t.includes('for security purposes') || t.includes('rate limit') || t.includes('too many requests')) return 'Muitas tentativas em pouco tempo. Aguarde alguns minutos e tente de novo.';
+  // TRES coisas diferentes que o Supabase devolve como "limite", e que estavam na mesma frase
+  // ("Muitas tentativas em pouco tempo") — o que jogava no usuario uma culpa que muitas vezes nao
+  // e dele. Medido no log de auth em 26/jul: o SMTP EMBUTIDO do Supabase manda so ~2 e-mails POR
+  // HORA, e a cota e do PROJETO, compartilhada entre confirmacao de cadastro e recuperacao de
+  // senha. Ou seja, quem pede recuperacao pode levar 429 porque OUTRA pessoa se cadastrou minutos
+  // antes: dizer "muitas tentativas" ali e enganoso. Ver regra de ouro #10.
+  if(t.includes('email rate limit') || t.includes('over_email_send_rate_limit'))
+    return 'O servidor atingiu o limite de e-mails desta hora (não é problema seu). Tente de novo em alguns minutos, ou peça ajuda a quem administra o servidor.';
+  if(t.includes('for security purposes'))
+    return 'Aguarde alguns segundos antes de pedir de novo (medida de segurança contra pedidos repetidos).';
+  if(t.includes('rate limit') || t.includes('too many requests'))
+    return 'Limite de pedidos atingido. Aguarde alguns minutos e tente de novo.';
   return null;
 }
 
