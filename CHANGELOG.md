@@ -1,0 +1,54 @@
+# Changelog
+
+Mudanças relevantes para quem **usa** o QualiLab. O histórico completo (incluindo refatorações
+e decisões internas) está nos commits e no `CLAUDE.md`.
+
+A versão aparece no canto direito do cabeçalho e no rodapé da tela de entrada. **Cite esse
+número ao relatar um problema**: sem ele não há como saber qual build o seu navegador carregou.
+
+> Ao publicar uma versão: suba o `QUALILAB_VERSION` no `index.html`, acrescente a seção aqui e
+> regenere o estável (`scripts/gen-estavel.sh`).
+
+## 1.0.0 (26/07/2026)
+
+Primeira versão marcada. O app já era usado antes disto; a numeração começa agora para que
+pesquisador e autor consigam falar da mesma versão.
+
+### Adicionado
+- **Recuperação de senha.** "Esqueci minha senha" no acesso pela nuvem: link por e-mail, tela
+  para criar a senha nova, tratamento de link vencido. Antes, quem esquecesse a senha ficava
+  **sem acesso ao próprio projeto**, sem saída.
+- **Aviso de tela pequena.** Em telas estreitas o app diz com franqueza que dá para ler e
+  consultar, mas não para codificar (aplicar código depende do menu de botão direito, que não
+  existe no toque).
+- **Versão visível** no cabeçalho e na tela de entrada.
+- **Pré-visualização de link** (`description`/Open Graph): compartilhar o endereço no WhatsApp
+  ou por e-mail agora mostra um cartão com nome e descrição, em vez de vir vazio.
+
+### Melhorado
+- Mensagens de erro de conta mais claras: sessão inválida/expirada agora explica o que fazer
+  ("peça um novo link"), em vez de mostrar o erro técnico de JWT; senha repetida e excesso de
+  tentativas também ganharam texto próprio.
+- Título da página corrigido.
+
+### Interno (não muda o uso)
+- **CI nos dois repositórios**: a cada mudança, verificação automática das invariantes do
+  arquivo (aspas curvas em atributo, `</script>` literal, BOM), da sintaxe do JavaScript, dos
+  testes de funções puras e do boot real num navegador. O app é um arquivo único sem etapa de
+  compilação. Antes disto, nada impedia que um erro de digitação virasse tela branca para
+  todos os usuários do site publicado.
+
+### Polimento de texto e de superfície (26/07/2026)
+- **Travessões fora do texto que você lê.** Toda a interface, o README e o manual foram reescritos
+  sem travessão (em-dash), frase por frase.
+- **Painéis laterais padronizados.** Eram sete larguras diferentes e só uma tela permitia
+  redimensionar. Agora são três medidas (navegação, painel de trabalho, configuração de IA) e
+  **todas as divisas podem ser arrastadas**, com duplo clique para voltar ao padrão e setas do
+  teclado. A largura que você escolher vale em todas as telas do mesmo tipo e sobrevive ao
+  recarregamento.
+- **Botões consistentes.** Ações de diálogo e de confirmação agora começam com maiúscula
+  (`Salvar`, `Cancelar`, `Excluir projeto`); o cabeçalho e os controles inline seguem discretos, em
+  minúscula. As faixas de aviso passaram a ser dispensadas pelo `✕`, como as demais.
+- **Vocabulário uniforme para ações destrutivas:** *Remover* tira algo de onde está (um código de um
+  trecho, uma pessoa do projeto), *Excluir* faz o item deixar de existir, *Limpar* esvazia sem
+  destruir. "Apagar" e "deletar" saíram dos botões.

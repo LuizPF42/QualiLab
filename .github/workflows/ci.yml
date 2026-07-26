@@ -1,0 +1,52 @@
+name: CI
+
+# Este repo e o PUBLICO (GitHub Pages serve docs/). O docs/index.html nao e editado a mao:
+# e GERADO a partir do QualiLab-ai-lab por scripts/gen-estavel.sh, que troca apenas as
+# credenciais Supabase. Logo, o risco especifico aqui e uma regeneracao malfeita ou uma
+# edicao manual acidental — e um arquivo unico sem build: o sintoma seria TELA BRANCA no
+# site publicado, sem nada avisando antes.
+#
+# O smoke de boot no Chromium e a suite de funcoes puras vivem no ai-lab (fonte unica),
+# onde o codigo e escrito. Aqui ficam as checagens que valem sobre o arquivo GERADO.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  estatico:
+    name: Invariantes + sintaxe do docs/index.html
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # BOM, aspa curva em atributo e </script> literal dentro de template literal.
+      # Extrai o modulo com as linhas alinhadas ao docs/index.html.
+      - name: Invariantes do docs/index.html
+        run: python scripts/check_index.py --index docs/index.html --emit-module build/_module.mjs
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Sintaxe do modulo (node --check)
+        run: node --check build/_module.mjs
+
+      # A regeneracao troca DUAS linhas: url e anon key do projeto publico. Se o arquivo
+      # publicado apontar pro Supabase do ai-lab (experimental), os dados dos pesquisadores
+      # iriam pro projeto errado — falha silenciosa e cara. Barato conferir.
+      - name: Credenciais sao as do projeto publico
+        run: |
+          if grep -q 'ptjlthkcdxvdzghjpftr' docs/index.html; then
+            echo "::error title=Credenciais erradas::docs/index.html aponta pro Supabase do ai-lab (experimental). Rode scripts/gen-estavel.sh a partir do ai-lab."
+            exit 1
+          fi
+          grep -q 'lpfwnzotmltztfxacahb' docs/index.html \
+            || { echo "::error title=Credenciais ausentes::nao achei a URL do projeto publico em docs/index.html."; exit 1; }
+          echo "ok — credenciais do projeto publico presentes."

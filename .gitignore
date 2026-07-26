@@ -19,3 +19,6 @@ desktop.ini
 
 # Notas de desenvolvimento (guia do Claude Code) — mantidas fora do repo público
 /CLAUDE.md
+
+# saida do CI (modulo extraido pra checagem de sintaxe)
+build/

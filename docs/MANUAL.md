@@ -19,7 +19,7 @@ Este manual ensina a *usar* o QualiLab passo a passo. Para a lista de recursos e
 0. [A ideia do QualiLab](#0-a-ideia-do-qualilab): para que serve, que problemas ataca, como planejar o uso
 1. [Conceitos fundamentais](#1-conceitos-fundamentais): o modelo mental antes de tudo
 2. [Começando](#2-começando): acessar, escolher onde salvar, criar projeto
-3. [A interface](#3-a-interface): cabeçalho e as telas principais
+3. [A interface](#3-a-interface): cabeçalho, redimensionar painéis, teclado e acessibilidade
 4. [Documentos](#4-documentos): enviar, colar, renomear, editar o texto, ver o PDF original e OCR
 5. [Codificação de trechos](#5-codificação-de-trechos): o coração da ferramenta
 6. [Categorias (atributos do documento)](#6-categorias-atributos-do-documento)
@@ -137,10 +137,10 @@ Toda codificação e toda resposta de categoria registra **quem** fez. Há duas 
 Em **projeto individual**, tudo já vai direto para o gabarito. Em **projeto coletivo**, cada um trabalha na sua camada individual e a equipe consolida o gabarito na tela de **Reconciliação**.
 
 ### Papéis (projeto coletivo)
-- **Admin**: define o esquema de categorias, edita o gabarito, gerencia membros, define as cores de família e a **censura**, edita o **texto** dos documentos, **importa** material e faz as operações **estruturais e destrutivas** — **excluir** documentos ou códigos e **mesclar** códigos (que afetam o trabalho de toda a equipe).
+- **Admin**: define o esquema de categorias, edita o gabarito, gerencia membros, define as cores de família e a **censura**, edita o **texto** dos documentos, **importa** material e faz as operações **estruturais e destrutivas**: **excluir** documentos ou códigos e **mesclar** códigos (que afetam o trabalho de toda a equipe).
 - **Membro**: codifica na sua camada, preenche as próprias respostas de categoria, **cria e renomeia** códigos, e escreve memos.
 
-> Essas restrições são impostas pelo **servidor**, não apenas escondidas na interface: um membro não consegue — nem por chamada direta à API — escrever no gabarito, excluir documentos/códigos, editar o texto compartilhado, remover a censura de um código ou importar. Essas ações exigem o papel de admin.
+> Essas restrições são impostas pelo **servidor**, não apenas escondidas na interface: um membro não consegue (nem por chamada direta à API) escrever no gabarito, excluir documentos/códigos, editar o texto compartilhado, remover a censura de um código ou importar. Essas ações exigem o papel de admin.
 
 > Onde os dados ficam (nuvem, navegador ou arquivo no disco) é uma escolha **separada** do tipo de projeto. Veja a [seção 16](#16-salvamento-backup-e-modos-de-armazenamento).
 
@@ -180,7 +180,7 @@ Ao baixar, o arquivo abre direto no navegador (`file://`) sem precisar de servid
 A primeira tela oferece três caminhos (com o logo no topo):
 
 1. **Novo em arquivo**: cria um projeto salvo como arquivo `.qualilab` no seu disco (Chrome/Edge): portátil, offline, sem nuvem. Ideal para dados sensíveis.
-2. **Entrar na nuvem**: leva ao **login** (e-mail e senha; ou **Criar conta** na mesma tela, informe um **nome de exibição**, e-mail e senha de no mínimo 6 caracteres), para trabalho colaborativo e sincronizado entre dispositivos. **← Voltar** retorna à tela de entrada.
+2. **Entrar na nuvem**: leva ao **login** (**Continuar com Google**, ou e-mail e senha; ou **Criar conta** na mesma tela, informe um **nome de exibição**, e-mail e senha de no mínimo 6 caracteres), para trabalho colaborativo e sincronizado entre dispositivos. Há **Esqueci minha senha** para redefinir por e-mail. **← Voltar** retorna à tela de entrada.
 3. **Só testar (rascunho)**: abre na hora um projeto de **rascunho** neste navegador, sem configurar nada. É efêmero (some se você limpar os dados do site), bom para experimentar; migre para arquivo ou nuvem quando quiser (um clique no hub do projeto).
 
 Um botão violeta **"Conectar ao meu Supabase"** (na tela de entrada e no login) aponta o app para o **seu próprio servidor Supabase** antes de logar: é onde ficam os seus projetos coletivos.
@@ -234,8 +234,36 @@ Depois de abrir um projeto, o **cabeçalho** tem duas linhas:
 - **trocar projeto** / **sair** (modo nuvem).
 - **exportar ▾** e **importar ▾** (aparecem quando há documentos).
 - Indicadores `offline` / `sincronizando…` (modo nuvem).
+- No canto direito, a **versão** em uso (ex.: `v1.0.0`). **Cite esse número ao relatar um problema:** sem ele não há como saber qual versão o seu navegador carregou, já que o app se atualiza sozinho ao recarregar. O que mudou em cada versão está no [`CHANGELOG.md`](../CHANGELOG.md).
 
 Logo abaixo do cabeçalho podem aparecer **faixas de aviso**: erro (vermelho), importação em andamento (com barra de progresso) e o aviso de falha de salvamento (veja a [seção 16](#16-salvamento-backup-e-modos-de-armazenamento)).
+
+### Redimensionar os painéis
+
+Toda tela com um painel lateral tem uma **divisa** entre o painel e o conteúdo: **arraste** para
+mudar a largura. **Duplo clique** volta ao padrão. Pelo teclado, a divisa recebe foco pelo **Tab** e
+as **setas ← →** ajustam de 16 em 16 pixels.
+
+A largura escolhida vale para **todas as telas do mesmo tipo** de painel (você ajusta uma vez, não
+uma por tela) e **sobrevive ao recarregamento**, por navegador. São três grupos:
+
+| Painel | Onde |
+|---|---|
+| Navegação e filtros (à esquerda) | Visualização, Gráficos, Memos, Reconciliação, Relatório |
+| Painel de trabalho (à direita) | Codificação, Esquema |
+| Configuração de IA (à esquerda) | as quatro telas de IA |
+
+### Teclado e acessibilidade
+
+- **Árvores de códigos** (painel da Codificação, Esquema e Memos): **↑ ↓** percorrem, **← →** fecham
+  e abrem um nó, **Home/End** vão às pontas e **Enter** ativa a linha (seleciona o código ou, se você
+  tem um trecho selecionado, aplica o código nele). O item em foco ganha um anel azul.
+- **Janelas de diálogo**: ao abrir, o foco entra na janela; **Tab** e **Shift+Tab** circulam **dentro
+  dela**, sem vazar para a página atrás; **Esc** fecha; e ao fechar o foco volta para o botão que a
+  abriu.
+- **Telas estreitas** (celular): aparece um aviso dizendo que dá para **ler e consultar**, mas não
+  para codificar. Não é limitação de layout: aplicar um código depende de selecionar texto e abrir o
+  **menu do botão direito**, que não existe no toque. Para trabalhar, use um computador.
 
 ---
 
@@ -245,7 +273,7 @@ Logo abaixo do cabeçalho podem aparecer **faixas de aviso**: erro (vermelho), i
 Na aba **Codificação**, no topo do leitor, clique em **＋ enviar** e escolha um ou mais arquivos `.txt`, `.md`, `.docx` ou `.pdf`. O texto é extraído e exibido para leitura.
 
 - **PDF**: o texto passa por um *reflow* geométrico que **detecta colunas** (artigos em duas colunas deixam de sair embaralhados), **remove cabeçalhos, rodapés e números de página** repetidos, remonta parágrafos e corrige a hifenização de fim de linha. Tabelas **não** são reconstruídas, e PDF **digitalizado** (imagem, sem camada de texto) precisa de **OCR** (veja abaixo).
-- **DOCX**: a estrutura vira texto limpo — títulos, parágrafos, listas (com o aninhamento por indentação) e tabelas (linhas/colunas) —, sem sujar o conteúdo com marcadores artificiais. A formatação rica (negrito, cor) não vira estilo no leitor: o foco é o conteúdo a codificar.
+- **DOCX**: a estrutura vira texto limpo (títulos, parágrafos, listas com o aninhamento por indentação, e tabelas em linhas/colunas), sem sujar o conteúdo com marcadores artificiais. A formatação rica (negrito, cor) não vira estilo no leitor: o foco é o conteúdo a codificar.
 
 ### Colar texto
 Use o botão de **colar** (ao lado de ＋ enviar) para criar um documento a partir de texto copiado, sem arquivo.
@@ -262,11 +290,13 @@ Use o botão de **colar** (ao lado de ＋ enviar) para criar um documento a part
 ### Ver o PDF original e OCR (documentos digitalizados)
 Quando o documento veio de um **PDF**, o leitor ganha um botão **▤ original** (que alterna com **≡ texto**): ele mostra a **página do PDF de verdade**, com zoom e navegação de páginas. Sobre a página, os seus grifos aparecem desenhados na cor do código; selecionar um trecho na página do PDF codifica igual ao leitor de texto (botão direito → menu de códigos).
 
-Para **PDF digitalizado** (escaneado, só imagem), use o **◫ OCR** (no menu **⋯**): o app reconstrói o texto página a página — aproveitando o texto nativo onde existe e lendo por OCR (offline, no seu navegador) onde é imagem —, com barra de progresso e opção de cancelar. Também dá para fazer **OCR de uma área**: no modo original, o botão **▭ OCR de área** deixa você arrastar um retângulo sobre um pedaço da página; o texto lido abre num quadro **editável** para você corrigir antes de aplicar e codificar. A primeira vez baixa o modelo de OCR (~15 MB) e o processo é lento (alguns segundos por página).
+
+Para **PDF digitalizado** (escaneado, só imagem), use o **◫ OCR** (no menu **⋯**): o app reconstrói o texto página a página, aproveitando o texto nativo onde existe e lendo por OCR (offline, no seu navegador) onde é imagem, com barra de progresso e opção de cancelar. Também dá para fazer **OCR de uma área**: no modo original, o botão **▭ OCR de área** deixa você arrastar um retângulo sobre um pedaço da página; o texto lido abre num quadro **editável** para você corrigir antes de aplicar e codificar. A primeira vez baixa o modelo de OCR (~15 MB) e o processo é lento (alguns segundos por página).
+
 
 > **Sinal de qualidade da extração.** Documentos com extração provavelmente ruim (vazios, PDF sem espaços entre palavras, glifos quebrados `�■□` ou OCR de baixa confiança) ganham um **⚠︎** antes do nome no seletor e uma pílula âmbar **⚠︎ extração** no leitor. É um aviso para **conferir e limpar** (pelo **✏ editar**) ou rodar **OCR** antes de codificar aquele documento.
 
-> **Números de página.** Como o QualiLab guarda a correspondência trecho ↔ página do PDF, o número da página (**p. N**) do original acompanha o trecho na **Visualização**, no **Relatório**, nos exports **CSV/JSON** e nas anotações **W3C** — e o **▤ original** abre já na página do trecho selecionado.
+> **Números de página.** Como o QualiLab guarda a correspondência trecho ↔ página do PDF, o número da página (**p. N**) do original acompanha o trecho na **Visualização**, no **Relatório**, nos exports **CSV/JSON** e nas anotações **W3C**, e o **▤ original** abre já na página do trecho selecionado.
 
 ### Importar muitos documentos de uma vez
 Uma planilha (`.csv`/`.xlsx`) vira **um documento por linha**. Veja [Importar e exportar](#15-importar-e-exportar).
@@ -279,6 +309,11 @@ Esta é a tela **Codificação**: leitor à esquerda, painéis de **Categorias**
 
 ### 5.1. Criar códigos
 No painel **Códigos** (direita) você cria e organiza os rótulos. Um código novo nasce como família (Hierarquia 0). Você pode criar subcódigos, renomear e excluir. Também dá para criar um código **na hora de aplicar** (veja abaixo).
+
+**Botão direito num código** (no painel da Codificação) abre um menu com **✎ Editar código** (nome,
+cor, saturação, censura) e **＋ Subcódigo aqui**. É o caminho para mexer num código **sem sair da
+codificação**: com um trecho selecionado, o clique esquerdo *aplica* o código, então esse menu é a
+única forma de chegar ao editor sem antes desfazer a seleção.
 
 > **Dica de pesquisa.** Deixe os códigos *emergirem* do material (a abordagem **indutiva**, em que os temas nascem da leitura) ou aplique um esquema teórico prévio (a abordagem **dedutiva**). As duas são válidas; o que importa é ter consciência de qual você está usando. Evite criar um código para cada frase: se um rótulo aparece uma única vez, pergunte se é mesmo um tema ou só um detalhe. E, ao criar um código, anote num **[memo](#11-memos)** o que ele *inclui e exclui*: esse é, na prática, o seu **livro de códigos** (*codebook*), o que mantém a codificação consistente ao longo do tempo e entre pessoas.
 
@@ -318,11 +353,27 @@ Clique em **🔍︎ pesquisar** (a lupa). Digite o termo: as ocorrências são d
 O botão **+** colado na lupa abre o **pesquisar +**: a mesma busca, mas em **todos os documentos do projeto**. Os resultados vêm agrupados por documento, cada um com o trecho em volta para você reconhecer o contexto; **clicar numa ocorrência abre aquele documento exatamente nela**, já com a busca ativa no leitor.
 
 As duas buscas compartilham três opções (os botõezinhos ao lado do campo):
-- **Aa** — diferencia maiúsculas de minúsculas. Desligado, `réu` e `RÉU` são a mesma coisa (acento, porém, conta: `reu` não encontra `réu`).
-- **ab⃒** — só **palavras inteiras**: procurando `reu`, ignora `reunião` e `ocorreu`.
-- **`.*`** — trata o que você digitou como **expressão regular**, para padrões em vez de texto fixo. Ex.: `\d+/\d{4}` acha números de processo como `123/2020`; `réu|ré` acha as duas formas. Com a opção desligada, caracteres como `.` e `(` são procurados literalmente. Padrão inválido é avisado na hora.
+- **Aa**: diferencia maiúsculas de minúsculas. Desligado, `réu` e `RÉU` são a mesma coisa (acento, porém, conta: `reu` não encontra `réu`).
+- **ab⃒**: só **palavras inteiras**: procurando `reu`, ignora `reunião` e `ocorreu`.
+- **`.*`**: trata o que você digitou como **expressão regular**, para padrões em vez de texto fixo. Ex.: `\d+/\d{4}` acha números de processo como `123/2020`; `réu|ré` acha as duas formas. Com a opção desligada, caracteres como `.` e `(` são procurados literalmente. Padrão inválido é avisado na hora.
 
 > As opções valem para as duas buscas ao mesmo tempo: se você liga **regex** no **pesquisar +** e clica num resultado, o leitor abre com o mesmo padrão e as mesmas opções.
+
+#### Termos parecidos (≈ termos)
+
+O quarto botão, **≈ termos**, resolve o problema de *não saber com que palavra o material fala do assunto*. Você digita a ideia que procura (uma ou duas palavras bastam) e ele mostra **as palavras do seu próprio corpus** que estão no mesmo campo de sentido, com quantas vezes cada uma aparece.
+
+Procurando *"medo de perder o emprego"*, ele sugere **receio**, **demissão**, **insegurança**, palavras que a busca normal jamais encontraria a partir do que você digitou, porque não têm letra em comum com a sua pergunta.
+
+As sugestões incluem **expressões de até cinco palavras**, não só palavras soltas: *"crise do Estado"* traz **crise da democracia**, **crise fiscal**, **Estado Regulador**. São expressões tiradas do seu próprio material: só entram as que se repetem, porque uma sequência de palavras que aparece uma vez só costuma ser acaso da escrita, não um termo do campo.
+
+**Clique nas sugestões que servirem.** Os termos aceitos entram na busca junto com o que você digitou, e cada ocorrência que veio de um deles aparece marcada com `≈ palavra`, para você nunca perder de vista por que aquele resultado está ali. Clicar leva ao documento, com a palavra grifada, como em qualquer busca.
+
+> **Por que sugerir palavras em vez de mostrar trechos direto?** Porque o programa erra, e é melhor que ele erre à vista. Palavras raras ou muito abstratas às vezes produzem vizinhas sem sentido; vendo "perícia" na lista você simplesmente não clica, e perdeu um segundo. Se o erro viesse embutido numa lista de trechos, você perderia minutos lendo material que não tinha nada a ver, sem saber por quê.
+
+**Na primeira vez é preciso ler o vocabulário** do projeto: o botão aparece assim que você liga a opção. Isso baixa um modelo de linguagem (~220 MB, uma vez só, depois fica guardado no navegador) e percorre as palavras do corpus, com barra de progresso e opção de interromper. Quando você acrescenta ou edita documentos, o programa avisa que o corpus mudou e oferece ler de novo.
+
+> **Nada sai do seu computador.** Diferente das telas de IA, isto não conversa com nenhum servidor: o modelo roda dentro do navegador e o vocabulário fica na sua máquina. Funciona offline depois do primeiro download e não precisa de chave de API.
 
 ### 5.8. Filtro "Ver:" (de quem é o que aparece)
 O seletor **Ver:** controla **de quem** são os grifos e as respostas de categoria exibidos. Aparece em projeto coletivo e também quando há mais de um codificador (ex.: dados importados com vários autores). Em projeto coletivo, as opções são:
@@ -385,7 +436,7 @@ Pensado para quem terminou uma codificação aberta com **centenas de códigos s
 
 No alto do painel de códigos, o seletor **⛼ Árvore / ⊞ Mapa** troca a lista hierárquica por um **quadro branco espacial**: cada código vira uma **bolha** (o tamanho reflete o número de trechos; a cor é a da família) e linhas ligam pai e filho. É outra forma de enxergar e reorganizar o mesmo esquema, útil quando há muitos códigos.
 
-- **Arraste** as bolhas para posicioná-las como quiser — o layout **fica salvo** com o projeto. **⤢ ajustar** enquadra tudo na tela; **↻ reembaralhar** recalcula as posições (sobrescreve o layout); **☑ linhas** mostra/esconde as ligações de hierarquia.
+- **Arraste** as bolhas para posicioná-las como quiser; o layout **fica salvo** com o projeto. **⤢ ajustar** enquadra tudo na tela; **↻ reembaralhar** recalcula as posições (sobrescreve o layout); **☑ linhas** mostra/esconde as ligações de hierarquia.
 - **Selecionar**: clique numa bolha; **Ctrl+clique** ou o **laço** (ferramenta **▚**, arrastando no vazio) marcam várias. A ferramenta **✜** move a tela; a **roda do mouse** dá zoom.
 - **Botão direito** sobre uma bolha abre um menu cujo alvo é o **destino**: criar subcódigo, **mover** a seleção para dentro dele, **mesclar** a seleção ali (o alvo sobrevive), **promover** ao topo, **agrupar** sob um novo pai, ou **excluir**. São as mesmas operações da Árvore, com as mesmas proteções.
 
@@ -402,13 +453,13 @@ Ao editar um código, o admin pode:
 
 ![Reconciliação, aba Códigos, documento ENT-01: cada grupo reúne as codificações que se sobrepõem num mesmo código (o caminho do código, quem codificou e o trecho). Aqui já estão todas "na camada final", com a opção de removê-las; quando ainda não estão, aparece "Consolidar no final".](manual-img/14-reconciliacao.png)
 
-*Só em projeto coletivo.* É onde a equipe consolida o **gabarito** a partir do trabalho individual de cada pesquisador. A coluna da esquerda escolhe entre **Categorias** e **Códigos**, e navega por documento — incluindo a opção **(Todos os documentos)**, que reconcilia o projeto inteiro de uma vez.
+*Só em projeto coletivo.* É onde a equipe consolida o **gabarito** a partir do trabalho individual de cada pesquisador. A coluna da esquerda escolhe entre **Categorias** e **Códigos**, e navega por documento, incluindo a opção **(Todos os documentos)**, que reconcilia o projeto inteiro de uma vez.
 
 **Categorias.** Para cada documento e categoria, você vê o **Gabarito** (que o admin define) e, abaixo, a resposta de cada pesquisador com **✓** (igual ao gabarito) ou **✗** (diferente). No modo (Todos os documentos), escolhe-se uma categoria e ela é consolidada documento a documento.
 
-**Códigos.** Cada **grupo** reúne as codificações que se **sobrepõem** no mesmo código, com o trecho e quem codificou. O selo **"N de M · consenso"** mostra quantos codificadores marcaram aquele trecho — quando todos concordam, o card ganha destaque. Você **consolida** cada grupo na camada final (**Consolidar no final →**) ou, se já estiver lá, pode **remover do final**.
+**Códigos.** Cada **grupo** reúne as codificações que se **sobrepõem** no mesmo código, com o trecho e quem codificou. O selo **"N de M · consenso"** mostra quantos codificadores marcaram aquele trecho; quando todos concordam, o card ganha destaque. Você **consolida** cada grupo na camada final (**Consolidar no final →**) ou, se já estiver lá, pode **remover do final**.
 
-- **Consolidar em massa**: havendo grupos pendentes, aparecem **Consolidar tudo feito por mim (N)** e **Consolidar tudo (N)** — do documento aberto ou, em (Todos os documentos), do projeto inteiro (respeitando o filtro de código). É irreversível; o app confirma antes.
+- **Consolidar em massa**: havendo grupos pendentes, aparecem **Consolidar tudo feito por mim (N)** e **Consolidar tudo (N)**, do documento aberto ou, em (Todos os documentos), do projeto inteiro (respeitando o filtro de código). É irreversível; o app confirma antes.
 - **Atalho pelo leitor**: na aba Codificação, o admin pode aceitar um grifo direto no gabarito pelo **botão direito → "Aceitar no gabarito"**, sem passar por esta tela.
 
 O resultado vira a camada **Final**, usada nos relatórios e gráficos quando você escolhe "gabarito".
@@ -425,9 +476,9 @@ Tela mestre-detalhe para **ler todos os trechos de um código**:
 - **Direita**: todos os trechos do código selecionado, em tipografia de leitura, **agrupados por documento**.
 
 Recursos:
-- **Trechos idênticos, um card só**: quando **mais de um pesquisador** marca o **mesmo trecho com o mesmo código**, ele aparece **uma vez**, com um **balão de nome por pesquisador** embaixo — em vez de cards repetidos. Cada balão traz um **×** para remover aquela marcação específica.
+- **Trechos idênticos, um card só**: quando **mais de um pesquisador** marca o **mesmo trecho com o mesmo código**, ele aparece **uma vez**, com um **balão de nome por pesquisador** embaixo, em vez de cards repetidos. Cada balão traz um **×** para remover aquela marcação específica.
 - **Nota analítica (●)**: um balão com **●** avisa que aquele trecho tem uma nota analítica; clique no **●** para **ler a nota ali mesmo**. (A nota se escreve pelo menu de contexto do leitor, em "Anotar trecho".)
-- **Abrir no leitor**: clique no **texto do trecho** para pular até ele na aba Codificação, **no lugar exato do grifo** — ele pisca por um instante para você achar.
+- **Abrir no leitor**: clique no **texto do trecho** para pular até ele na aba Codificação, **no lugar exato do grifo**: ele pisca por um instante para você achar.
 - **Filtro por categoria**: restringe aos documentos que atendem certos atributos.
 - **Co-ocorrência**: mostra trechos onde dois códigos aparecem juntos.
 - **Aceitar no gabarito** *(admin, projeto coletivo)*: consolida um trecho individual direto na camada final, sem ir à Reconciliação.
@@ -458,7 +509,7 @@ A aba **Gráficos** é um explorador: filtros à esquerda, um gráfico por vez �
 - **Co-ocorrência**: dois seletores escolhem os eixos **X** (colunas) e **Y** (linhas); vazio = os 12 mais frequentes.
 - **Ver:** e **Top:** (10/25/50/Todos) refinam o recorte.
 
-> **Do gráfico para os trechos.** Clique numa **barra** (Frequência, Cobertura, Concordância) ou numa **célula** (Co-ocorrência, Código × atributo) para abrir a **Visualização** já naquele código — o filtro de categorias e o recorte "Ver:" viajam junto, então os trechos exibidos batem com o número do gráfico.
+> **Do gráfico para os trechos.** Clique numa **barra** (Frequência, Cobertura, Concordância) ou numa **célula** (Co-ocorrência, Código × atributo) para abrir a **Visualização** já naquele código: o filtro de categorias e o recorte "Ver:" viajam junto, então os trechos exibidos batem com o número do gráfico.
 
 ---
 
@@ -473,14 +524,14 @@ A aba **Memos** guarda **notas analíticas**, texto livre que você anexa a um a
 - **Códigos**: uma nota por código (sua definição, regra de aplicação etc.).
 - **Trechos anotados**: a nota ancorada num **grifo** específico (a seção aparece quando há alguma). Escreve-se pelo **botão direito sobre o grifo → "Anotar trecho (nota analítica)"**, ou aqui nos Memos. *(Por enquanto o grifo anotado não ganha marca no leitor de codificação; você reencontra a nota nesta seção ou no [Relatório Interativo](#121-relatório-interativo-ati).)*
 
-No [Relatório Interativo (ATI)](#121-relatório-interativo-ati), a **nota de trecho** é o que aparece ao clicar num grifo, e a **nota de código** aparece na legenda (em árvore) — é assim que as duas alimentam a transparência ativa.
+No [Relatório Interativo (ATI)](#121-relatório-interativo-ati), a **nota de trecho** é o que aparece ao clicar num grifo, e a **nota de código** aparece na legenda (em árvore): é assim que as duas alimentam a transparência ativa.
 
 **Seções de IA** (aparecem com a IA ligada, abaixo das anteriores):
 
 - **Memo para a IA**: o contexto do projeto escrito **para a IA**, injetado nos prompts por padrão. É **diferente** do *Memo do projeto* comum, que **deixou de ser enviado automaticamente** à IA (virou rascunho livre): se você quer que a IA leve o objetivo da pesquisa em conta, escreva-o aqui.
 - **Prompts salvos**: a sua **biblioteca de prompts** (os que você salva na tela [Analisar com IA](#173-analisar-com-ia-leitura-assistida-do-material)): abra, renomeie ou apague cada um.
 - **Conversas salvas**: cada conversa do [Analisar com IA](#173-analisar-com-ia-leitura-assistida-do-material) que você guardou, aberta por inteiro ao clicar.
-- **Memória do projeto**: o **diário de insights da IA**: memórias curtas (fatos/decisões) que entram no contexto entre sessões; você adiciona à mão ou aprova as que a IA sugere, e liga/desliga quais usar.
+- **Memória do projeto**, o **diário de insights da IA**: memórias curtas (fatos/decisões) que entram no contexto entre sessões; você adiciona à mão ou aprova as que a IA sugere, e liga/desliga quais usar.
 
 ---
 
@@ -515,10 +566,10 @@ Abra a **pílula do projeto** (cabeçalho) → ali está o **código de acesso**
 Ainda na pílula do projeto, o admin pode: ver a **lista de membros** e mudar papéis (**admin/membro**), **renomear**, **limpar conteúdo**, **excluir** o projeto, mudar o **tipo** e ajustar a **conexão** (credenciais Supabase).
 
 ### Distribuir documentos e codificação cega
-*(Só admin, projeto coletivo na nuvem.)* No hub do projeto, o card **Distribuição e sigilo → Distribuir documentos…** abre uma **matriz de documentos × pesquisadores**, onde você marca quem codifica o quê. Um selo **C** mostra quem **já codificou** cada documento; o botão de **rodízio automático** distribui tudo de uma vez (1 ou mais pessoas por documento). Sozinha, a matriz é só um **plano de trabalho** — ela vira regra quando você liga um dos dois interruptores (**independentes**):
+*(Só admin, projeto coletivo na nuvem.)* No hub do projeto, o card **Distribuição e sigilo → Distribuir documentos…** abre uma **matriz de documentos × pesquisadores**, onde você marca quem codifica o quê. Um selo **C** mostra quem **já codificou** cada documento; o botão de **rodízio automático** distribui tudo de uma vez (1 ou mais pessoas por documento). Sozinha, a matriz é só um **plano de trabalho**: ela vira regra quando você liga um dos dois interruptores (**independentes**):
 
-- **Distribuição restritiva** — cada pesquisador só **enxerga** os documentos atribuídos a ele. Serve para **dividir o corpus** (cada um cuida da sua parte, ninguém codifica em duplicidade). Documento sem ninguém atribuído fica só com os administradores; desligada, todos veem o corpus inteiro.
-- **Codificação cega (*true blind*)** — cada pesquisador só **enxerga as próprias** codificações e respostas. Para **confiabilidade entre codificadores**, atribua o **mesmo** documento a duas pessoas (fica duplo-cego). Enquanto está ligada, o gabarito também fica oculto para os membros (revelá-lo no meio contamina); desligue para reconciliar em conjunto. Administradores continuam vendo tudo.
+- **Distribuição restritiva**: cada pesquisador só **enxerga** os documentos atribuídos a ele. Serve para **dividir o corpus** (cada um cuida da sua parte, ninguém codifica em duplicidade). Documento sem ninguém atribuído fica só com os administradores; desligada, todos veem o corpus inteiro.
+- **Codificação cega (*true blind*)**: cada pesquisador só **enxerga as próprias** codificações e respostas. Para **confiabilidade entre codificadores**, atribua o **mesmo** documento a duas pessoas (fica duplo-cego). Enquanto está ligada, o gabarito também fica oculto para os membros (revelá-lo no meio contamina); desligue para reconciliar em conjunto. Administradores continuam vendo tudo.
 
 > As duas regras são impostas pelo **servidor**, não só escondidas na tela: o membro não alcança pela API o que está oculto (nem o texto do trecho, nem o PDF). Para o membro em projeto cego somem o filtro **"Ver:"** e a aba **Reconciliação**. Mudanças na distribuição aparecem ao **recarregar** (não em tempo real). É recurso **só da nuvem coletiva** (depende de contas de vários pesquisadores) e **não** viaja no `.qualilab`.
 
@@ -532,7 +583,7 @@ Se o projeto ativo for **rascunho** ou **arquivo**, a pílula mostra **"Enviar p
 
 ## 14. Minha conta
 
-![Minha conta: o nome de exibição e o card "IA — sua chave e modelo" (BYOK), com a escolha de provedor, o campo da chave de API e o modelo.](manual-img/11-conta.png)
+![Minha conta: o nome de exibição e o card "IA: sua chave e modelo" (BYOK), com a escolha de provedor, o campo da chave de API e o modelo.](manual-img/11-conta.png)
 
 Clique no **seu nome** no cabeçalho para abrir **Minha conta** (funciona **em todos os modos**: nuvem, rascunho e arquivo):
 - Trocar o **nome de exibição** (usado nas codificações).
@@ -543,7 +594,7 @@ Clique no **seu nome** no cabeçalho para abrir **Minha conta** (funciona **em t
 
 > É por Minha conta que você chega à configuração de IA em **qualquer modo**, inclusive offline, para apontar o **Ollama local**.
 
-> Não há "esqueci minha senha": a troca de senha exige estar logado.
+> Esqueceu a senha? Não precisa estar logado: use **Esqueci minha senha** na tela de acesso (ver [seção 18](#18-solução-de-problemas)). Já o **e-mail** da conta não pode ser trocado no app.
 
 ---
 
@@ -587,7 +638,7 @@ Os menus **exportar ▾** e **importar ▾** ficam no cabeçalho (aparecem quand
 
 ## 16. Salvamento, backup e modos de armazenamento
 
-![O hub do projeto, aberto pela pílula do cabeçalho: o tipo (individual/coletivo), a gestão (renomear, limpar, excluir) e as opções de armazenamento — backup automático em pasta, salvar como arquivo .qualilab e enviar para a nuvem.](manual-img/12-projeto.png)
+![O hub do projeto, aberto pela pílula do cabeçalho: o tipo (individual/coletivo), a gestão (renomear, limpar, excluir) e as opções de armazenamento: backup automático em pasta, salvar como arquivo .qualilab e enviar para a nuvem.](manual-img/12-projeto.png)
 
 O QualiLab **salva sozinho** a cada ação. *Onde* ele salva depende do modo:
 
@@ -635,11 +686,11 @@ A pergunta que mais importa é **de quem é esse Supabase**:
 
 **O que a nuvem NÃO faz:**
 - **Não é criptografia ponta a ponta.** Os dados ficam **legíveis** para quem administra o banco: no servidor padrão, isso inclui o **autor**; no seu Supabase, inclui **você**; e, nos dois casos, a empresa **Supabase** como hospedeira. O isolamento acima protege você dos *outros usuários*, não do *dono do banco*.
-- **Não há recuperação de senha** por e-mail (a troca exige estar logado).
+- **Não guarda cópia do que você apaga** no servidor: excluir projeto ou documento é definitivo (baixe um `.qualilab` antes).
 
 Vale, então, a mesma lógica de confiança da [seção 17.5](#175-para-onde-vão-os-seus-dados-provedores-e-configuração): a nuvem é ótima para colaborar e sincronizar, mas usá-la é **confiar o conteúdo a quem administra o banco**. Para dado **sensível**, prefira o **seu próprio Supabase**, o **modo arquivo** ou o **rascunho local**, onde o conteúdo não passa pelo servidor de outra pessoa.
 
-> **PDF original na nuvem.** Guardar os *bytes* do PDF original na nuvem (para "ver original"/OCR em outro aparelho) é **opcional** e pede um **consentimento explícito** no envio — porque, aí, quem administra o banco passa a poder abrir o **PDF inteiro**, não só o texto que você codificou. Sem marcar, sobe só o texto e a codificação. Para dado sensível, mantenha o PDF no **modo arquivo**.
+> **PDF original na nuvem.** Guardar os *bytes* do PDF original na nuvem (para "ver original"/OCR em outro aparelho) é **opcional** e pede um **consentimento explícito** no envio, porque aí quem administra o banco passa a poder abrir o **PDF inteiro**, não só o texto que você codificou. Sem marcar, sobe só o texto e a codificação. Para dado sensível, mantenha o PDF no **modo arquivo**.
 
 ### Backup automático em pasta (modo rascunho, Chrome/Edge)
 Mantém um `backup-automatico.qualilab` sempre atualizado numa pasta sua, como espelho do `localStorage`. Ative em **pílula do projeto → Backup automático em pasta → Escolher pasta…**.
@@ -669,8 +720,8 @@ A IA do QualiLab não "codifica sozinha" nem escreve no seu projeto sem permiss�
 - **Provedores suportados** (com chave própria): **Gemini**, **OpenAI**, **Anthropic**, **Azure OpenAI**, **Personalizado** (qualquer API compatível com o formato OpenAI `/chat/completions`: DeepSeek, Mistral, Qwen hospedado, ou um servidor próprio Ollama/vLLM exposto numa URL pública) e **Ollama local** (modelo na sua própria máquina, chamado **direto pelo navegador**, sem passar pelo servidor, veja [17.5](#175-para-onde-vão-os-seus-dados-provedores-e-configuração)).
 - **Censura sempre antes do envio.** Trechos de códigos marcados como **censura** ([5.5](#55-censura-mascarar-trechos-sensíveis)) são substituídos por `[trecho censurado]` **antes** de o material sair do navegador. Em *Analisar com IA*, você pode optar por incluir um código de censura específico naquela análise (opt-in explícito, por código).
 - **Ajuste das respostas.** A IA vem calibrada para respostas focadas e consistentes (não "criativas"), adequadas à análise. Você não precisa configurar nada.
-- **Limites de tamanho.** Há um teto por envio: cerca de **30.000 caracteres (~10 páginas) por documento** e **100.000 no total (~33 páginas)** — cabe uma seleção generosa (algumas entrevistas, ou os trechos de um código inteiro), mas não o corpus todo de uma vez. Seleções maiores são **cortadas para caber** (a lista de códigos fica sempre inteira; a amostra de trechos é reduzida primeiro); a prévia do **⚙ Configurar Prompt** mostra o tamanho em páginas e avisa quando vai truncar. Para uma análise completa, selecione menos material de cada vez.
-- **Estimativa de custo.** Com a **sua própria** chave paga, o **⚙ Configurar Prompt** mostra, **antes de enviar**, o custo aproximado do envio (**≈ R$**, ao lado da estimativa de tokens) — assim você sabe o preço estimado *antes* de rodar. E, no *Analisar com IA*, **cada resposta** traz o **custo estimado** (em R$, com o total acumulado da conversa). As duas são **estimativas de teto** (não descontam cache); a de antes do envio ainda **presume um tamanho de resposta** (a saída real varia). O câmbio e, para provedores sem tabela de preços, a sua tarifa se ajustam em **Minha conta**. Com o **Ollama local** o custo é zero.
+- **Limites de tamanho.** Há um teto por envio: cerca de **30.000 caracteres (~10 páginas) por documento** e **100.000 no total (~33 páginas)**: cabe uma seleção generosa (algumas entrevistas, ou os trechos de um código inteiro), mas não o corpus todo de uma vez. Seleções maiores são **cortadas para caber** (a lista de códigos fica sempre inteira; a amostra de trechos é reduzida primeiro); a prévia do **⚙ Configurar Prompt** mostra o tamanho em páginas e avisa quando vai truncar. Para uma análise completa, selecione menos material de cada vez.
+- **Estimativa de custo.** Com a **sua própria** chave paga, o **⚙ Configurar Prompt** mostra, **antes de enviar**, o custo aproximado do envio (**≈ R$**, ao lado da estimativa de tokens), e assim você sabe o preço estimado *antes* de rodar. E, no *Analisar com IA*, **cada resposta** traz o **custo estimado** (em R$, com o total acumulado da conversa). As duas são **estimativas de teto** (não descontam cache); a de antes do envio ainda **presume um tamanho de resposta** (a saída real varia). O câmbio e, para provedores sem tabela de preços, a sua tarifa se ajustam em **Minha conta**. Com o **Ollama local** o custo é zero.
 
 > ⚠️ **A IA pode errar e inventar.** Trate toda saída como hipótese a conferir contra o trecho citado. É exatamente por isso que a regra é "a IA propõe, você decide".
 
@@ -680,9 +731,9 @@ A IA do QualiLab não "codifica sozinha" nem escreve no seu projeto sem permiss�
 
 A tela **Codificar com IA** reúne **três assistentes** em abas, no topo: **Sugerir Codificação** (que abre por padrão), **Sugerir Categorização** e **Organizar Códigos**. Os três seguem o mesmo padrão: a IA **propõe**, você **aprova ou recusa item a item**, e **nada é gravado sem a sua confirmação**. O **Memo para a IA** e a memória do projeto entram como contexto ([seção 11](#11-memos)), a censura é mascarada, e o botão **⚙ Configurar Prompt** mostra o prompt inteiro e deixa ajustar as *instruções próprias à IA*, os *memos injetados* e a *memória do projeto* (veja [17.1](#171-como-a-ia-funciona-aqui)). Se a resposta for muito longa e vier cortada, o QualiLab aproveita os itens completos e descarta só o último (incompleto).
 
-O botão **⚙ Configurar Prompt** (no topo de cada assistente) abre a janela abaixo. Em cima ficam os **controles**: **Instruções próprias à IA** (guias que entram em todo prompt, compartilhadas com o Analisar com IA), **Memos injetados** (por padrão o *Memo para a IA*; dá para incluir outros) e a **Memória do projeto** (liga/desliga quais insights entram no contexto). Embaixo, a **prévia exata do que será enviado** — o modelo ativo, a contagem de material (em **páginas**), **quantos códigos de censura foram mascarados**, a **estimativa de tokens e de custo (≈ R$)** (avisando quando o material será truncado) e o prompt **seção por seção** (papel e princípios, memos, memória do projeto, material). Um botão **copiar prompt** leva tudo para a área de transferência. **Nada sai do navegador sem passar por aqui** — é a face concreta da regra de transparência.
+O botão **⚙ Configurar Prompt** (no topo de cada assistente) abre a janela abaixo. Em cima ficam os **controles**: **Instruções próprias à IA** (guias que entram em todo prompt, compartilhadas com o Analisar com IA), **Memos injetados** (por padrão o *Memo para a IA*; dá para incluir outros) e a **Memória do projeto** (liga/desliga quais insights entram no contexto). Embaixo, a **prévia exata do que será enviado**: o modelo ativo, a contagem de material (em **páginas**), **quantos códigos de censura foram mascarados**, a **estimativa de tokens e de custo (≈ R$)** (avisando quando o material será truncado) e o prompt **seção por seção** (papel e princípios, memos, memória do projeto, material). Um botão **copiar prompt** leva tudo para a área de transferência. **Nada sai do navegador sem passar por aqui**: é a face concreta da regra de transparência.
 
-![Configurar Prompt, aberto na tela Codificar com IA: em cima, os controles (instruções próprias à IA, memos injetados e a memória do projeto, agora dentro do modal); embaixo, a prévia do que será enviado — modelo, material em páginas, censura mascarada e estimativa de tokens e de custo (≈ R$) — e o prompt seção por seção, com "Papel e princípios" mostrando as regras invioláveis da IA (a IA propõe, não inventa, cita a fonte).](manual-img/15-ia-configurar-prompt.png)
+![Configurar Prompt, aberto na tela Codificar com IA: em cima, os controles (instruções próprias à IA, memos injetados e a memória do projeto, agora dentro do modal); embaixo, a prévia do que será enviado (modelo, material em páginas, censura mascarada e estimativa de tokens e de custo (≈ R$)) e o prompt seção por seção, com "Papel e princípios" mostrando as regras invioláveis da IA (a IA propõe, não inventa, cita a fonte).](manual-img/15-ia-configurar-prompt.png)
 
 #### 17.2.1 Sugerir Codificação: a segunda codificadora
 
@@ -718,9 +769,9 @@ Ajuda a **interpretar** o material, sempre **citando as fontes**, numa **convers
 
 A tela é um **chat**. Na **barra do topo** ficam o botão **⚙ Configurar Prompt** (à esquerda, veja abaixo) e o seletor de **Material** (o escopo). À **esquerda** você seleciona o material (documentos em lista, ou uma **árvore de códigos** com cores e contagem) e marca/desmarca a censura. À **direita** ficam a **Tarefa** (no cabeçalho, recolhível), a **conversa** e a **caixa de mensagem fixa embaixo**. As respostas saem formatadas (títulos, listas) e, enquanto a IA pensa, aparece um indicador animado. *(Na primeira vez, um aviso convida a abrir o "Configurar Prompt" antes de analisar.)*
 
-**A Tarefa (o que você quer que a IA faça).** O campo da tarefa é **texto livre**, e é aqui que mora o essencial: **os melhores resultados vêm da tarefa que _você_ escreve**, com as suas palavras e a sua pergunta de pesquisa. Não há uma tarefa "certa" pré-pronta — a análise é sua, e a IA responde ao que você pedir.
+**A Tarefa (o que você quer que a IA faça).** O campo da tarefa é **texto livre**, e é aqui que mora o essencial: **os melhores resultados vêm da tarefa que _você_ escreve**, com as suas palavras e a sua pergunta de pesquisa. Não há uma tarefa "certa" pré-pronta: a análise é sua, e a IA responde ao que você pedir.
 
-Para não partir do zero (ou para se inspirar), o botão **biblioteca de prompts ▾** oferece duas coisas: **prompts de exemplo** do QualiLab e os **prompts que você mesmo salvou**. Qualquer item se **insere** no campo como um **ponto de partida editável** — ajuste-o antes de enviar. Quando montar um pedido que funcione bem, clique em **✦ salvar** para guardá-lo (ele passa a aparecer aqui e na aba **Memos → "Prompts salvos"**, onde dá para renomear ou apagar): assim você vai construindo a **sua própria biblioteca**, que é o objetivo. Os **prompts de exemplo** (só um ponto de partida, não um menu fechado) variam conforme o escopo:
+Para não partir do zero (ou para se inspirar), o botão **biblioteca de prompts ▾** oferece duas coisas: **prompts de exemplo** do QualiLab e os **prompts que você mesmo salvou**. Qualquer item se **insere** no campo como um **ponto de partida editável**: ajuste-o antes de enviar. Quando montar um pedido que funcione bem, clique em **✦ salvar** para guardá-lo (ele passa a aparecer aqui e na aba **Memos → "Prompts salvos"**, onde dá para renomear ou apagar): assim você vai construindo a **sua própria biblioteca**, que é o objetivo. Os **prompts de exemplo** (só um ponto de partida, não um menu fechado) variam conforme o escopo:
 
 - **Documentos** (texto integral dos documentos escolhidos): *Temas emergentes* · *Síntese analítica* · *O inesperado* · *Diferenças entre casos*.
 - **Trechos + Código** (os trechos de cada código, tratado como categoria analítica): *O que há no código* · *Coerência & saturação* · *Código vs. definição* · *Diferenças entre casos*.
@@ -732,7 +783,7 @@ Para não partir do zero (ou para se inspirar), o botão **biblioteca de prompts
 
 - **Postura** (Papel e princípios): a **lente metodológica** da análise, num único clique. *Padrão* (sem privilegiar uma abordagem), *Indutivo* (constrói categorias a partir do próprio material), *Dedutivo* (avalia o material à luz do esquema de códigos já existente), *Abdutivo* (busca a explicação que melhor dê conta dos dados, inclusive do inesperado) ou *Personalizado* (abre um campo para você descrever a postura com as suas palavras). O texto de cada postura aparece logo abaixo dos botões, e entra no prompt como parte do papel da IA.
 - **Instruções próprias à IA**: guias que entram em **todo** prompt (ex.: "priorize a linguagem dos entrevistados"). *(Compartilhadas com o Codificar com IA.)*
-- **Memos injetados**: quais memos a IA recebe: por padrão, o **Memo para a IA** ([seção 11](#11-memos)); você pode incluir outros (de projeto, documento, código ou trecho).
+- **Memos injetados**: quais memos a IA recebe. Por padrão, o **Memo para a IA** ([seção 11](#11-memos)); você pode incluir outros (de projeto, documento, código ou trecho).
 - **Memória do projeto**: liga/desliga quais entradas do **diário de insights** ([seção 11](#11-memos)) entram no contexto desta análise.
 - **Categorias como metadados**: opcionalmente, anexa a cada documento as suas categorias preenchidas (atributos do caso), para a IA situar cada fala. Desligado por padrão.
 - **Prévia e proveniência**: abaixo dos controles, o prompt aparece **seção por seção**, com o **modelo** ativo, as contagens (material em **páginas**) e a **estimativa de tokens e de custo (≈ R$)** (com aviso se o material for truncado), e um botão **copiar prompt**.
@@ -744,7 +795,7 @@ Para não partir do zero (ou para se inspirar), o botão **biblioteca de prompts
 4. Clique em **Iniciar Análise**; depois **refine por follow-up** quantas vezes quiser, pela caixa de mensagem embaixo. "Analisar de novo" recomeça com a seleção atual; "Limpar conversa" zera.
 5. **Salve** as conversas que valerem (botão *Salvar Conversa (Memos)*). Elas passam a aparecer na aba **Memos → Conversas salvas**, onde abrem por inteiro.
 
-A IA recebe, junto, o **memo de cada código** e — se você ligar o toggle *Categorias como metadados* no Configurar Prompt — as **categorias preenchidas** de cada documento, para ancorar cada observação na sua **fonte** (documento, autor, camada), coerente com a ideia, lá da [seção 0](#0-a-ideia-do-qualilab), de manter a evidência ao lado da interpretação.
+A IA recebe, junto, o **memo de cada código** e (se você ligar o toggle *Categorias como metadados* no Configurar Prompt) as **categorias preenchidas** de cada documento, para ancorar cada observação na sua **fonte** (documento, autor, camada), coerente com a ideia, lá da [seção 0](#0-a-ideia-do-qualilab), de manter a evidência ao lado da interpretação.
 
 > **Botão "Sugerir memórias".** Ao fim de uma conversa, ele pede à IA que proponha entradas curtas para a **Memória do projeto** ([seção 11](#11-memos)): fatos ou decisões que valem lembrar entre sessões. Você aprova, edita ou recusa cada uma antes de gravar.
 
@@ -757,7 +808,7 @@ Em **Minha conta → IA (sua chave e modelo)**:
 4. Escolha o **modelo** (ou o nome do *deployment*, no Azure; no Ollama, digite o nome do modelo baixado, ex.: `qwen2.5:14b`). Em geral, modelos maiores são mais capazes, porém mais lentos e caros.
 5. **salvar**, ou **limpar** para remover a sua chave.
 
-O mesmo card traz ainda o **câmbio US$→R$** e, para provedores sem tabela de preços (*Personalizado*/*Azure*), a **sua tarifa** por milhão de tokens — usados na estimativa de custo ([17.1](#171-como-a-ia-funciona-aqui)).
+O mesmo card traz ainda o **câmbio US$→R$** e, para provedores sem tabela de preços (*Personalizado*/*Azure*), a **sua tarifa** por milhão de tokens, usados na estimativa de custo ([17.1](#171-como-a-ia-funciona-aqui)).
 
 > A sua chave fica **só neste navegador** (não é gravada no servidor); ela só acompanha cada requisição até a função que chama o provedor.
 
@@ -803,7 +854,7 @@ Limitação do formato REFI-QDA, que não guarda autoria de atributos (só de tr
 Não há desfazer para isso (Ctrl+Z só cobre a última *codificação de trecho*). Recupere de um backup `.qualilab`, se tiver.
 
 **Esqueci minha senha.**
-Não há recuperação por e-mail. Sem acesso, será preciso criar outra conta.
+Na tela de acesso à nuvem, clique em **Esqueci minha senha**, informe o e-mail da conta e envie. Chega um link por e-mail que abre o QualiLab já na tela de **criar uma senha nova**. Feito isso, você entra direto. O link vale por pouco tempo e só pode ser usado uma vez; se der "Link expirado", peça outro na mesma tela. Confira o **spam**. Por segurança, a mensagem na tela é a mesma exista ou não uma conta com aquele e-mail (o app não confirma quem está cadastrado).
 
 **O PDF importou com o texto bagunçado.**
 PDFs muito visuais (colunas, tabelas, digitalizações) podem extrair mal. Tabelas não são reconstruídas. Quando possível, prefira `.docx`/`.txt`, ou cole o texto limpo.
@@ -819,6 +870,15 @@ PDFs muito visuais (colunas, tabelas, digitalizações) podem extrair mal. Tabel
 | **Ctrl+Z** | Codificação | Desfazer a última codificação aplicada |
 | **Enter** / **Shift+Enter** | Busca (🔎) | Próxima / anterior ocorrência |
 | **Enter** / **Esc** | Renomear documento | Confirmar / cancelar |
+| **Delete** / **Backspace** | Codificação | Excluir o grifo em foco (clique num grifo para focá-lo) |
+| **↑ ↓** | Árvore de códigos | Percorrer os códigos |
+| **← →** | Árvore de códigos | Fechar / abrir o nó |
+| **Home** / **End** | Árvore de códigos | Primeiro / último código visível |
+| **Enter** / **Espaço** | Árvore de códigos | Selecionar o código (ou aplicá-lo, se há trecho selecionado) |
+| **Tab** / **Shift+Tab** | Janela de diálogo | Circular pelos controles, sem sair da janela |
+| **Esc** | Janela de diálogo | Fechar (o foco volta ao botão que a abriu) |
+| **← →** | Divisa de painel | Ajustar a largura (16 px por toque) |
+| **Duplo clique** | Divisa de painel | Voltar à largura padrão |
 
 ---
 
@@ -833,7 +893,7 @@ PDFs muito visuais (colunas, tabelas, digitalizações) podem extrair mal. Tabel
 - **Memo**: nota analítica por projeto/documento/código/trecho.
 - **Censura**: código que mascara trechos sensíveis nas exportações.
 - **Co-ocorrência**: dois códigos aplicados ao mesmo trecho (ou sobrepostos).
-- **Modo (armazenamento)**: onde os dados ficam: arquivo, rascunho ou nuvem.
+- **Modo (armazenamento)**: onde os dados ficam (arquivo, rascunho ou nuvem).
 - **Tipo de projeto**: individual (sem reconciliação) ou coletivo.
 - **Papel**: admin (define esquema/gabarito/membros) ou membro.
 - **REFI-QDA / QDPX / QDC**: padrão aberto de intercâmbio entre ferramentas de QDA.
