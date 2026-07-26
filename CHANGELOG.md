@@ -9,6 +9,21 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION` no `index.html`, acrescente a seção aqui e
 > regenere o estável (`scripts/gen-estavel.sh`).
 
+## 1.0.1 (26/07/2026)
+
+### Corrigido
+- **Importar um projeto grande na nuvem enchia a tela de erros de conexão.** Ao importar um
+  pacote com milhares de trechos codificados, a sincronização ao vivo tentava recarregar o
+  projeto **a cada linha gravada**: centenas de recargas ao mesmo tempo, até o navegador
+  recusar novas conexões. A tela se enchia de "Falha de conexão" e o import parecia ter
+  quebrado (embora os dados estivessem entrando). Agora as atualizações são agrupadas: uma
+  recarga de cada vez, e nenhuma enquanto uma importação está em andamento. Quem importa
+  sozinho não vê diferença; quem trabalha em equipe continua recebendo as alterações dos
+  colegas, com um pequeno atraso de segundos.
+- **Aviso de falha de conexão dizia que "a alteração NÃO foi salva" mesmo quando não havia
+  alteração nenhuma** (por exemplo ao entrar na conta ou ao abrir uma tela). A frase agora
+  diz apenas que a ação não foi concluída.
+
 ## 1.0.0 (26/07/2026)
 
 Primeira versão marcada. O app já era usado antes disto; a numeração começa agora para que

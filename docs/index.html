@@ -747,7 +747,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.0.0';
+const QUALILAB_VERSION = '1.0.1';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -1444,7 +1444,11 @@ function humanizeError(raw){
   if(t.includes('invalid login credentials')) return 'E-mail ou senha incorretos.';
   if(t.includes('email not confirmed')) return 'E-mail ainda não confirmado. Verifique sua caixa de entrada (e o spam).';
   if(t.includes('already registered') || t.includes('already been registered')) return 'Este e-mail já tem cadastro. Use "Entrar".';
-  if(t.includes('failed to fetch') || t.includes('networkerror') || t.includes('load failed') || t.includes('fetch failed')) return 'Falha de conexão. Verifique sua internet e tente de novo (a alteração NÃO foi salva).';
+  // "a alteracao NAO foi salva" (frase antiga) so vale pra ESCRITA: a mesma mensagem aparecia
+  // ao falhar um login ou uma LEITURA de fundo, onde nao havia alteracao nenhuma pra salvar.
+  // "a ação não foi concluída" e verdadeiro nos tres casos; quem escreve ja tem a pilula
+  // "offline: alterações não salvas" no cabeçalho e o banner do onSaveError.
+  if(t.includes('failed to fetch') || t.includes('networkerror') || t.includes('load failed') || t.includes('fetch failed')) return 'Falha de conexão com o servidor. Verifique sua internet e tente de novo (a ação não foi concluída).';
   if(t.includes('row-level security')) return 'Sem permissão para esta operação neste projeto (regra de acesso do servidor).';
   if(t.includes('exceeded the quota') || t.includes('quotaexceeded')) return 'Espaço de armazenamento do navegador esgotado. Baixe um .qualilab do projeto antes de continuar.';
   if(t.includes('jwt expired') || t.includes('token is expired') || t.includes('invalid claim')) return 'Sessão expirada. Entre novamente.';
@@ -4997,21 +5001,70 @@ function App(){
 
   /* recarrega a visao atual — usado pelo realtime e pelo poll de reserva.
      full=true recarrega tambem o agregado (loadAll) quando uma tela agregada esta aberta;
-     full=false so o doc ativo (barato: 2 requests). */
+     full=false so o doc ativo (barato: 2 requests).
+     Devolve 'busy' quando PULOU por haver operacao em lote local em curso — quem importa
+     recarrega no fim, e recarregar no meio e caro (o agregado sao 2 requests POR DOCUMENTO)
+     e inutil (o estado ainda esta mudando). O agendador abaixo tenta de novo depois. */
   const reloadRef = useRef(()=>{});
-  reloadRef.current = (full)=>{ loadDoc(); if(full && AGG_VIEWS.includes(mainView)) loadAll(); };
+  reloadRef.current = async (full)=>{
+    if(busy) return 'busy';
+    await loadDoc();
+    if(full && AGG_VIEWS.includes(mainView)) await loadAll();
+  };
+
+  /* AGENDADOR DE RECARGA — coalescente, no maximo UMA em voo.
+     O Postgres changes entrega UM EVENTO POR LINHA: um import de stress (2332 codings +
+     doc_values) disparava MILHARES de recargas completas concorrentes, cada uma com seu
+     proprio pool de 8 requests. O Chrome estourava o limite de sockets e recusava tudo
+     (net::ERR_INSUFFICIENT_RESOURCES), os fetch rejeitados viravam unhandledrejection e
+     caiam no guard global — a tela pintava de banner vermelho enquanto o import corria.
+     Aqui: eventos que chegam durante a janela de debounce (ou com uma recarga em voo) sao
+     ABSORVIDOS num unico pedido; depois de cada recarga ha um intervalo minimo antes da
+     proxima, pra um projeto muito ativo nao viver em loop de recarga agregada. */
+  const RELOAD_DEBOUNCE_MS = 1200, RELOAD_COOLDOWN_MS = 3000;
+  const reloadJobRef = useRef({ timer:null, running:false, pending:false, full:false });
+  function runReload(){
+    const j = reloadJobRef.current;
+    j.timer = null; j.running = true;
+    const full = j.full; j.full = false;
+    Promise.resolve(reloadRef.current(full)).then(r=>{
+      if(r==='busy'){ j.pending = true; if(full) j.full = true; }   // em lote: refaz quando terminar
+    }, e=>{
+      // recarga de FUNDO: falha nao e acao do usuario — nao vira banner (o guard global diria
+      // "a alteracao NAO foi salva", o que aqui e mentira: isto e leitura). O proximo evento
+      // ou o poll de reserva refaz; a pilula offline ja cobre o estado da conexao.
+      console.warn('[QualiLab] recarga automática falhou (será refeita no próximo evento/poll):', e);
+      if(full) j.full = true;
+    }).then(()=>{
+      j.running = false;
+      if(j.pending){ j.pending = false; j.timer = setTimeout(runReload, RELOAD_COOLDOWN_MS); }
+    });
+  }
+  function scheduleReload(full){
+    const j = reloadJobRef.current;
+    if(full) j.full = true;
+    if(j.running){ j.pending = true; return; }   // absorvido: refaz uma unica vez ao terminar
+    if(j.timer) return;                          // absorvido: ja ha uma recarga agendada
+    j.timer = setTimeout(runReload, RELOAD_DEBOUNCE_MS);
+  }
 
   /* sincronizacao ao vivo no modo nuvem (codings/doc_values), com poll lento de reserva.
      Evento realtime = mudanca real -> recarga completa. O poll cego de reserva e dividido:
      doc ativo a cada 20s (leve) e agregado a cada 60s — o formato antigo (tudo a cada 20s)
-     custava 2 requests POR DOCUMENTO a cada 20s nas telas agregadas. */
+     custava 2 requests POR DOCUMENTO a cada 20s nas telas agregadas.
+     Tudo passa pelo scheduleReload: e ele que garante uma recarga em voo por vez. */
   useEffect(()=>{
     if(mode!=='cloud' || phase!=='work' || !project || !store || !store.realtime) return;
-    const onChange = ()=>reloadRef.current(true);
+    const onChange = ()=>scheduleReload(true);
     const unsub = store.realtime(project.id, onChange);
-    const t  = setInterval(()=>reloadRef.current(false), 20000);
-    const t2 = setInterval(()=>reloadRef.current(true), 60000);
-    return ()=>{ if(unsub) unsub(); clearInterval(t); clearInterval(t2); };
+    const t  = setInterval(()=>scheduleReload(false), 20000);
+    const t2 = setInterval(()=>scheduleReload(true), 60000);
+    return ()=>{
+      if(unsub) unsub(); clearInterval(t); clearInterval(t2);
+      const j = reloadJobRef.current;
+      if(j.timer){ clearTimeout(j.timer); j.timer = null; }
+      j.pending = false; j.full = false;
+    };
   }, [mode, phase, project, store]);
 
   /* ----- acoes ----- */
