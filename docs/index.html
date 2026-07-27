@@ -370,6 +370,24 @@ async function tesseractWorkerOpts(){
   }catch(e){}
   _tessOpts=null; return _tessOpts;   // null -> createWorker usa os defaults (CDN)
 }
+/* PDF-BLOCK: worker do tesseract usado pelo OCR DE AREA (recorte). E um SINGLETON DE PROCESSO —
+   um worker so, criado sob demanda e reusado entre recortes (o 2o em diante fica quase
+   instantaneo, sem re-baixar/re-inicializar o modelo de ~15MB). Vivia como dois useRef dentro do
+   App ate jul/2026, o que era erro de modelagem: nao ha um worker POR componente, ha um por aba.
+   Como modulo, o dono do ciclo de vida fica explicito e da pra encerrar de fora.
+   O logger repassa o progresso pro handler ativo, que ocrRegion aponta pro seu (setOcrProgress). */
+let _ocrWorker = null, _ocrProg = null;
+function ocrWorkerLoaded(){ return !!_ocrWorker; }            // 1a vez baixa o modelo -> a UI avisa
+function setOcrProgress(fn){ _ocrProg = fn || null; }
+async function getOcrWorker(){
+  if(!_ocrWorker){
+    const T = await getTesseract();
+    _ocrWorker = await T.createWorker(['por','eng'], 1,
+      { ...((await tesseractWorkerOpts())||{}), logger:(m)=>{ if(_ocrProg) _ocrProg(m); } });
+  }
+  return _ocrWorker;
+}
+function terminateOcrWorker(){ const w=_ocrWorker; _ocrWorker=null; _ocrProg=null; if(w){ try{ w.terminate(); }catch(e){} } }
 async function getMammoth(){ if(!_mammoth){ const m=await importRetry('https://esm.sh/mammoth@1.8.0'); _mammoth=m.default||m; } return _mammoth; }
 async function getJSZip(){ if(!_JSZip){ const m=await importRetry(['https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm','https://esm.sh/jszip@3.10.1']); _JSZip=m.default||m; } return _JSZip; }  // caminho de DADO (le/escreve o .qualilab-zip): jsdelivr (bundle unico, 1 salto = robusto) 1o; esm.sh (shim de 2 saltos, fragil) como fallback
 async function getCreateClient(){ if(!_createClient){ const m=await importRetry('https://esm.sh/@supabase/supabase-js@2.110.0'); _createClient=m.createClient; } return _createClient; }
@@ -775,7 +793,9 @@ function clearRecoveryUrl(){
 // AI_ENABLED — liga/desliga as telas de IA ("Codificar/Analisar com IA", o card de IA em
 // "Minha Conta" e os caminhos de IA). Ligado por padrao (jul/2026), em modo BYOK: cada
 // pesquisador traz a propria chave. false esconde tudo de IA (o codigo segue presente, dormente; pra uma
-// versao com ZERO codigo de IA, remova o bloco entre os marcadores "AI-BLOCK START/END").
+// versao com ZERO codigo de IA nao ha caminho pronto: os marcadores "AI-BLOCK START/END" que
+// esta doc prometia nunca existiram, e o requisito morreu em jul/2026, quando o estavel passou
+// a rodar com IA tambem. Nao reconstrua sem um consumidor real.
 // Censura (is_redaction) NAO e gateada aqui: e feature geral de codificacao, nao tela de IA.
 const AI_ENABLED = true;
 
@@ -4431,6 +4451,67 @@ function NavGroup({ title, children, defaultOpen=true }){
   </div>`;
 }
 
+/* PDF-BLOCK/§4: indice reversivel de CADA documento com PDF, carregado sob demanda nas telas que
+   mostram "p. N" (Visualizacao e Relatorio). NUNCA baixa os bytes do PDF — so o .idx.json
+   persistido (cache de sessao -> persistido com remap); doc sem indice fica sem pagina, e certo.
+   Extraido do App em jul/2026: o setter e o efeito ficam escondidos aqui e so saem os dois
+   valores que as telas consomem. CUIDADO ao mexer: `docPdfIdx` e lido DENTRO do efeito mas fica
+   FORA do array de dependencias de proposito — inclui-lo faria o efeito se reagendar a cada
+   pagina resolvida, em laco. */
+function useDocPdfIndexes(store, docs, mainView){
+  const [docPdfIdx, setDocPdfIdx] = useState({});   // docId -> { content, index|null }
+  useEffect(()=>{
+    if((mainView!=='visualizar' && mainView!=='relatorio') || !store) return;
+    let alive = true;
+    // PERF: era doc-a-doc em SERIE — na nuvem, um download do .idx.json por documento, um
+    // depois do outro (um corpus com 51 PDFs = 51 idas ao Storage enfileiradas antes do
+    // "p. N" aparecer). Leituras independentes e idempotentes -> mapPool. O `alive` e
+    // checado dentro de cada item (o pool nao aborta em voo, mas nada aterrissa em tela
+    // depois que o efeito e desmontado/refeito).
+    const pend = docs.filter(d=>{
+      if(!d.has_pdf) return false;
+      const cur = docPdfIdx[d.id];
+      return !(cur && cur.content === (d.content||''));
+    });
+    if(pend.length) mapPool(pend, 8, async (d)=>{
+      if(!alive) return;
+      const idx = await resolveDocIndexNoBytes(store, d);
+      if(!alive) return;
+      setDocPdfIdx(m=>({ ...m, [d.id]: { content: d.content||'', index: idx } }));
+    });
+    return ()=>{ alive = false; };
+  }, [mainView, docs]);
+  // offset -> pagina pros cards de trecho (null = sem indice pra esse doc)
+  const docPageOf = (docId, off)=>{ const e = docPdfIdx[docId]; return (e && e.index) ? pageOfOffset(e.index, off) : null; };
+  return { docPdfIdx, docPageOf };
+}
+
+/* Status de conexao e de gravacao do store: pilula "offline", "✓ salvo HH:MM", % de quota do
+   rascunho e estado do backup em pasta. Vive FORA do App porque nao depende de mais nada dele —
+   entra um store, saem os cinco valores que o cabecalho le, e nenhum setter escapa (todos sao
+   usados so dentro do efeito aqui). Extraido do App em jul/2026; ver a nota sobre o tamanho do
+   App na secao "Limitacoes conhecidas" do CLAUDE.md. */
+function useStoreStatus(store){
+  const [online, setOnline] = useState(navigator.onLine);
+  const [saveError, setSaveError] = useState(null); // ultima falha de gravacao local/arquivo (null = ok)
+  const [lastSaved, setLastSaved] = useState(null); // hora do ultimo save ok (local/arquivo) — "✓ salvo HH:MM"
+  const [localUsage, setLocalUsage] = useState(0);  // chars do JSON no localStorage (indicador de quota, so modo local)
+  const [backupStatus, setBackupStatus] = useState({ active:false, name:null, lastOk:null, lastError:null, warnLarge:false }); // backup automatico em pasta (so LocalStore)
+
+  useEffect(()=>{
+    const goOnline = ()=>setOnline(true);
+    const goOffline = ()=>setOnline(false);
+    window.addEventListener('online', goOnline);
+    window.addEventListener('offline', goOffline);
+    if(store?.onSaveError) store.onSaveError(e=>{ setSaveError(e); if(!e) setLastSaved(new Date()); });
+    if(store?.onUsage) store.onUsage(setLocalUsage);
+    if(store?.onBackupStatus) store.onBackupStatus(setBackupStatus);
+    return ()=>{ window.removeEventListener('online',goOnline); window.removeEventListener('offline',goOffline); };
+  }, [store]);
+
+  return { online, saveError, lastSaved, localUsage, backupStatus };
+}
+
 /* ============================== APP ============================== */
 function App(){
   const wantCloud = !!(SUPABASE_URL && SUPABASE_ANON_KEY) && !FORCE_LOCAL;
@@ -4463,14 +4544,12 @@ function App(){
   const [pdfBytes, setPdfBytes] = useState(null);          // PDF-BLOCK: bytes carregados do store pro PdfView
   const pdfPageRef = useRef(1);                            // PDF-BLOCK: página atual do PdfView, preservada entre idas/voltas ao PDF (o PdfView desmonta ao voltar pro texto)
   const [pdfIndex, setPdfIndexState] = useState(null);     // PDF-BLOCK/§4: índice reversível do doc ativo { docId, content, index } (estado: os grifos sobre o PDF derivam dele)
-  const [docPdfIdx, setDocPdfIdx] = useState({});          // PDF-BLOCK/§4: docId -> { content, index|null } pro "p. N" (Visualização/Relatório; cache de sessão -> persistido; NUNCA baixa bytes)
   const pendingRegionRef = useRef(null);                   // PDF-BLOCK: geometria do retângulo do OCR de área, aguardando um código ser aplicado à seleção (vira overlay colorido)
   const [regionModal, setRegionModal] = useState(null);    // PDF-BLOCK: modal do bloco (ao clicar num retângulo) — { id, codeId, name, quote, solid }
   const [ocr, setOcr] = useState(null);                    // PDF-BLOCK: { page, total, mode } enquanto o OCR roda; null fora
   const ocrStopRef = useRef(false);
   const [ocrReview, setOcrReview] = useState(null);        // PDF-BLOCK: { text, img } — revisar/editar o OCR do recorte antes de aplicar
-  const ocrWorkerRef = useRef(null);                       // PDF-BLOCK: worker tesseract vivo, reusado entre recortes (OCR de área)
-  const ocrProgRef = useRef(null);                         // PDF-BLOCK: handler de progresso do recorte ativo (o logger do worker chama este ref)
+  // (o worker do tesseract e singleton de MODULO — ver getOcrWorker/terminateOcrWorker la em cima)
   const [editDraft, setEditDraft] = useState('');
   useEffect(()=>{ setEditingText(false); setShowPdf(false); setFocusedCoding(null); }, [activeId]);    // sai da edicao/PDF e limpa o foco ao trocar de documento
   const [allValues, setAllValues] = useState([]);
@@ -4555,11 +4634,8 @@ function App(){
     window.addEventListener('beforeunload', h);
     return ()=> window.removeEventListener('beforeunload', h);
   }, [project]);
-  const [online, setOnline] = useState(navigator.onLine);
-  const [saveError, setSaveError] = useState(null); // ultima falha de gravacao local/arquivo (null = ok)
-  const [lastSaved, setLastSaved] = useState(null); // hora do ultimo save ok (local/arquivo) — "✓ salvo HH:MM"
-  const [localUsage, setLocalUsage] = useState(0);  // chars do JSON no localStorage (indicador de quota, so modo local)
-  const [backupStatus, setBackupStatus] = useState({ active:false, name:null, lastOk:null, lastError:null, warnLarge:false }); // backup automatico em pasta (so LocalStore)
+  /* conexao + status de gravacao (offline, "✓ salvo", quota, backup em pasta) — ver useStoreStatus */
+  const { online, saveError, lastSaved, localUsage, backupStatus } = useStoreStatus(store);
   const [sendCloudOpen, setSendCloudOpen] = useState(false); // modal "Enviar para a nuvem" (projeto local/arquivo -> projeto novo na nuvem)
   const [nudgeHidden, setNudgeHidden] = useState(false); // oculta o nudge do rascunho ATE recarregar (colapsavel por sessao)
   // aviso de tela pequena (.small-warn, so aparece <=720px por CSS — aqui so guardamos o "fechei")
@@ -4732,37 +4808,13 @@ function App(){
   useEffect(()=>{ if(readerFlash==null) return; const t=setTimeout(()=>setReaderFlash(null), 1600); return ()=>clearTimeout(t); }, [readerFlash]);
   // PDF-BLOCK: encerra o worker do OCR de área ao desmontar (o worker fica vivo entre recortes
   // pra reuso; libera o web worker + wasm ao sair da sessão)
-  useEffect(()=>()=>{ const w=ocrWorkerRef.current; ocrWorkerRef.current=null; if(w){ try{ w.terminate(); }catch(e){} } }, []);
+  useEffect(()=>()=>terminateOcrWorker(), []);
   // PDF-BLOCK: ao trocar de documento, reseta a página lembrada do PDF (cada doc começa na 1ª) e
   // descarta a região pendente (não amarra um retângulo de um doc à codificação de outro)
   useEffect(()=>{ pdfPageRef.current=1; pendingRegionRef.current=null; setPdfIndexState(null); }, [activeId]);
-  // PDF-BLOCK/§4: resolve o índice de UM doc SEM bytes (cache de sessão -> persistido com remap).
-  // null = sem índice (doc antigo sem persistência; abrir o original uma vez popula o cache).
-  async function docIndexNoBytes(d){ return resolveDocIndexNoBytes(store, d); }
-  // carrega (sob demanda, na Visualização e no Relatório) o índice de cada doc com PDF pro "p. N"
-  useEffect(()=>{
-    if((mainView!=='visualizar' && mainView!=='relatorio') || !store) return;
-    let alive = true;
-    // PERF: era doc-a-doc em SERIE — na nuvem, um download do .idx.json por documento, um
-    // depois do outro (um corpus com 51 PDFs = 51 idas ao Storage enfileiradas antes do
-    // "p. N" aparecer). Leituras independentes e idempotentes -> mapPool. O `alive` e
-    // checado dentro de cada item (o pool nao aborta em voo, mas nada aterrissa em tela
-    // depois que o efeito e desmontado/refeito).
-    const pend = docs.filter(d=>{
-      if(!d.has_pdf) return false;
-      const cur = docPdfIdx[d.id];
-      return !(cur && cur.content === (d.content||''));
-    });
-    if(pend.length) mapPool(pend, 8, async (d)=>{
-      if(!alive) return;
-      const idx = await docIndexNoBytes(d);
-      if(!alive) return;
-      setDocPdfIdx(m=>({ ...m, [d.id]: { content: d.content||'', index: idx } }));
-    });
-    return ()=>{ alive = false; };
-  }, [mainView, docs]);
-  // offset -> página pros cards de trecho (null = sem índice pra esse doc)
-  function docPageOf(docId, off){ const e = docPdfIdx[docId]; return (e && e.index) ? pageOfOffset(e.index, off) : null; }
+  // PDF-BLOCK/§4: "p. N" na Visualização e no Relatório — ver useDocPdfIndexes (o efeito de carga
+  // e o setter vivem la; aqui so chegam o mapa e o resolvedor de pagina)
+  const { docPdfIdx, docPageOf } = useDocPdfIndexes(store, docs, mainView);
   // SINAL DE QUALIDADE da extração (triagem do batch): sinais de content pra TODOS os docs
   // (barato, memoizado) — alimenta o ⚠︎ no seletor de documentos.
   const docHealth = useMemo(()=>{
@@ -4799,18 +4851,6 @@ function App(){
     // recorte "Ver:" volta ao padrão (individuais de todos) ao entrar num projeto
     setViewCoder('all');
   };
-
-  /* online / offline (indicador no cabeçalho) */
-  useEffect(()=>{
-    const goOnline = ()=>setOnline(true);
-    const goOffline = ()=>setOnline(false);
-    window.addEventListener('online', goOnline);
-    window.addEventListener('offline', goOffline);
-    if(store?.onSaveError) store.onSaveError(e=>{ setSaveError(e); if(!e) setLastSaved(new Date()); });
-    if(store?.onUsage) store.onUsage(setLocalUsage);
-    if(store?.onBackupStatus) store.onBackupStatus(setBackupStatus);
-    return ()=>{ window.removeEventListener('online',goOnline); window.removeEventListener('offline',goOffline); };
-  }, [store]);
 
   /* erros globais nao tratados pos-boot viram banner (o listener do <head> chama isto em
      vez de derrubar a tela — ver handleGlobal/showFatal) */
@@ -5288,38 +5328,27 @@ function App(){
       setOcr(null);
     }catch(e){ setOcr(null); setErr('Falha no OCR: '+(e.message||e)); }
   }
-  // PDF-BLOCK: worker do OCR de área — criado sob demanda e REUSADO entre recortes (o 2º em
-  // diante fica quase instantâneo, sem re-baixar/re-inicializar o modelo). O logger repassa o
-  // progresso pro ref ativo (ocrProgRef), que ocrRegion aponta pro seu handler de progresso.
-  async function getOcrWorker(){
-    if(!ocrWorkerRef.current){
-      const T = await getTesseract();
-      ocrWorkerRef.current = await T.createWorker(['por','eng'], 1,
-        { ...((await tesseractWorkerOpts())||{}), logger:(m)=>{ if(ocrProgRef.current) ocrProgRef.current(m); } });
-    }
-    return ocrWorkerRef.current;
-  }
   // PDF-BLOCK: OCR de um recorte (retângulo do PDF) -> revisa -> anexa o texto ao content -> codifica
   // rectInfo = { page, x, y, w, h } (0..1, normalizado à página) -> guardado pra virar retângulo colorido
   async function ocrRegion(cropCanvas, rectInfo){
     if(!activeDoc) return;
     pendingRegionRef.current = rectInfo ? { ...rectInfo, docId: activeDoc.id } : null;   // amarrado à seleção no applyOcrText
     const img = cropCanvas.toDataURL('image/png');   // guarda o recorte pra mostrar no review (pixel + texto)
-    const firstRun = !ocrWorkerRef.current;          // 1ª vez baixa/carrega o modelo (~15MB) -> avisa
+    const firstRun = !ocrWorkerLoaded();             // 1ª vez baixa/carrega o modelo (~15MB) -> avisa
     setBusy('OCR do recorte'); setProgress({ done:0, total:100, label: firstRun ? 'carregando o modelo (1ª vez)…' : 'lendo' });
-    ocrProgRef.current = (m)=>{
+    setOcrProgress((m)=>{
       const pct = Math.max(0, Math.min(100, Math.round((m.progress||0)*100)));
       const label = m.status==='recognizing text' ? 'lendo o recorte' : 'carregando o modelo (1ª vez)…';
       setProgress({ done:pct, total:100, label });
-    };
+    });
     try{
       const worker = await getOcrWorker();
       const res = await worker.recognize(cropCanvas);
-      ocrProgRef.current = null; setProgress(null); setBusy(null);
+      setOcrProgress(null); setProgress(null); setBusy(null);
       const text = reflowOcrText((res && res.data && res.data.text)||'');   // reflow conservador do OCR cru
       if(!text){ setErr('Nada reconhecido nesse recorte. Tente um retângulo maior, ou dê zoom antes.'); return; }
       setOcrReview({ text, img });   // revisar/editar o texto do OCR (ao lado do recorte) antes de anexar + codificar
-    }catch(e){ ocrProgRef.current=null; setProgress(null); setBusy(null); setErr('Falha no OCR do recorte: '+(e.message||e)); }
+    }catch(e){ setOcrProgress(null); setProgress(null); setBusy(null); setErr('Falha no OCR do recorte: '+(e.message||e)); }
   }
   // PDF-BLOCK: aplica o texto (revisado) do OCR de recorte — anexa ao content + abre pra codificar
   async function applyOcrText(edited){
@@ -5805,7 +5834,7 @@ function App(){
   // §4: monta um pageOf sob demanda pros exports (índices persistidos/cacheados; nunca baixa bytes)
   async function gatherPageOf(){
     const m = {};
-    await mapPool(docs.filter(d=>d.has_pdf), 8, async (d)=>{ m[d.id] = await docIndexNoBytes(d); });   // em paralelo (era 1 a 1)
+    await mapPool(docs.filter(d=>d.has_pdf), 8, async (d)=>{ m[d.id] = await resolveDocIndexNoBytes(store, d); });   // em paralelo (era 1 a 1)
     return (docId, off)=>{ const ix=m[docId]; return ix ? pageOfOffset(ix, off) : null; };
   }
   async function doExport(kind){
