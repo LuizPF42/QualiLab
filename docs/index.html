@@ -103,7 +103,6 @@
   .wcard{display:flex;flex-direction:column;align-items:flex-start;gap:5px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:15px 16px;cursor:pointer;width:100%;color:var(--ink);}
   .wcard:hover{border-color:var(--teal);background:var(--paper);}
   .wcard.wrow{flex-direction:row;align-items:center;gap:12px;}
-  .wdot{width:11px;height:11px;border-radius:99px;flex:none;}
   .wicon{flex:none;}
   .wtitle{font-size:15px;font-weight:600;}
   .wdesc{font-size:12.5px;color:var(--ink-soft);line-height:1.45;}
@@ -244,11 +243,6 @@
   .collap>summary::before{content:'▸';color:var(--ink-faint);font-size:10px;flex:none;}
   .collap[open]>summary::before{content:'▾';}
   /* dica clicavel em negrito dentro do summary; alterna "ver"/"ocultar" conforme [open] */
-  .collap>summary .clickhint{margin-top:4px;font-weight:700;color:var(--teal);font-size:11.5px;}
-  .collap>summary .clickhint.on-closed{display:block;}
-  .collap>summary .clickhint.on-open{display:none;}
-  .collap[open]>summary .clickhint.on-closed{display:none;}
-  .collap[open]>summary .clickhint.on-open{display:block;}
   /* indicador "pensando" (tres bolinhas) enquanto a IA processa */
   .typing{display:inline-flex;gap:5px;align-items:center;}
   .typing span{width:7px;height:7px;border-radius:50%;background:var(--teal);animation:typingDot 1s infinite ease-in-out;}
@@ -1188,6 +1182,53 @@ function _parasToIndexed(paras, origem){          // [{text,frags}] -> { text (j
   }
   return { text: chunks.join('\n\n'), index };
 }
+/* PDF-BLOCK: UMA pagina do pdf.js -> { page, w, h, items } no formato que o reflowPdfPages come.
+   FONTE UNICA desde jul/2026: o mesmo laco existia COPIADO em quatro lugares (extractText,
+   extractPdfTextAndGeometry, buildPdfIndexFromBytes e ocrPdfToText) e ja tinha DIVERGIDO — so a
+   copia do extractPdfTextAndGeometry tinha o fallback `transform[3]` na altura. Isso importa
+   porque a altura e load-bearing no reflow (avgH manda no agrupamento de linhas, no espacamento
+   e no fallback do gap), entao o MESMO pdf reflowava diferente conforme quem o leu. E o
+   extractText e o buildPdfIndexFromBytes PRECISAM devolver content identico — e a premissa do
+   indice reversivel (§4); divergindo, o remapIndexToContent degrada e "ver original" perde a
+   pagina. Era invariante sustentada na mao; agora e por construcao.
+   ALTURA: it.height vem 0 em alguns PDFs; `transform[3]` (a escala vertical, ~= corpo da fonte)
+   e a melhor aproximacao seguinte, e o 10 fica so como ultimo recurso. Decisao do autor
+   (jul/2026): vale para TODOS os caminhos, nao so para o de geometria. */
+async function pdfPageItems(page, pageNum){
+  const vp = page.getViewport({ scale:1 });
+  const tc = await page.getTextContent({ includeMarkedContent:false });
+  const items = tc.items.filter(it=>'str' in it && it.str.trim().length>0).map(it=>({
+    str: it.str, x: it.transform[4], y: it.transform[5],
+    w: it.width||0, h: Math.abs(it.height) || Math.abs(it.transform[3]) || 10,
+  }));
+  return { page: pageNum, w: vp.width, h: vp.height, items };
+}
+
+/* PDF-BLOCK: o CORPO da pagina tem texto nativo, ou e escaneada (imagem)? Detecta por CORPO e
+   nao por total (brief §8): pagina escaneada do e-SAJ/PJe tem texto NATIVO no cabecalho
+   ("fls. N"), no rodape (autenticacao) e no carimbo lateral, mas o corpo e imagem. Conta so o
+   texto fora dessas faixas.
+   FONTE UNICA desde jul/2026: os mesmos quatro numeros magicos viviam copiados no ocrPdfToText
+   (que decide OCR vs nativo) e no PdfView (que decide se oferece o retangulo de OCR de area) —
+   o comentario de la ate admitia "mesmo heuristico do OCR". Estavam identicos; divergindo, o
+   visualizador diria "escaneada" onde o OCR diz "nativa", e vice-versa.
+   ACEITA AS DUAS FORMAS de item de proposito: o ocrPdfToText ja tem os itens mapeados pelo
+   pdfPageItems ({x,y}), enquanto o PdfView tem os CRUS do pdf.js ({transform}) porque acabou de
+   montar a camada de texto com eles — mapear no call site reintroduziria os transform[4]/[5]
+   que esta consolidacao existe pra eliminar, e refazer o getTextContent() custaria um fetch por
+   render de pagina. */
+const PDF_BODY_TOPO = 0.88, PDF_BODY_BASE = 0.14, PDF_BODY_DIR = 0.85, PDF_BODY_MIN_CHARS = 100;
+function pdfBodyIsNative(items, W, H){
+  let n = 0;
+  for(const it of items){
+    if(!('str' in it) || !it.str.trim()) continue;
+    const x = it.x !== undefined ? it.x : it.transform[4];
+    const y = it.y !== undefined ? it.y : it.transform[5];
+    if(y < H*PDF_BODY_TOPO && y > H*PDF_BODY_BASE && x < W*PDF_BODY_DIR) n += it.str.replace(/\s/g,'').length;
+  }
+  return n >= PDF_BODY_MIN_CHARS;
+}
+
 function reflowPdfPages(pages){                  // pages: [{items:[{str,x,y,w,h}], w?, h?, page?}] -> {content, removedRunning, index}
   const perPage = pages.map((pg,i)=> _reflowPageParas(_reflowTagPage(pg, i+1)));
   const n = perPage.length, topC=new Map(), botC=new Map();
@@ -1235,14 +1276,7 @@ async function extractText(file){
     const pdfjsLib = await getPdfjs();
     const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
     const pages = [];
-    for(let p=1;p<=pdf.numPages;p++){
-      const page = await pdf.getPage(p);
-      const vp = page.getViewport({ scale: 1 });
-      const tc = await page.getTextContent({ includeMarkedContent: false });
-      pages.push({ page: p, w: vp.width, h: vp.height, items: tc.items.filter(it => 'str' in it && it.str.trim().length > 0).map(it => ({
-        str: it.str, x: it.transform[4], y: it.transform[5], w: it.width, h: Math.abs(it.height) || 10,
-      })) });
-    }
+    for(let p=1;p<=pdf.numPages;p++) pages.push(await pdfPageItems(await pdf.getPage(p), p));
     return reflowPdfPages(pages).content;
   }
   return await file.text();
@@ -2173,15 +2207,9 @@ async function extractPdfTextAndGeometry(bytes){
   const pages = {}; const pageList = []; // pages[pageNum 1-indexado] = { items, height } (geometria)
   try{
     for(let p=1; p<=doc.numPages; p++){
-      const page = await doc.getPage(p);
-      const vp = page.getViewport({ scale:1 });
-      const tc = await page.getTextContent();
-      const raw = tc.items.filter(it=>'str' in it && it.str.trim().length>0).map(it=>({
-        str: it.str, x: it.transform[4], y: it.transform[5],
-        w: it.width||0, h: Math.abs(it.height) || Math.abs(it.transform[3]) || 10
-      }));
-      pages[p] = { items: raw, height: vp.height };
-      pageList.push({ items: raw, w: vp.width, h: vp.height, page: p });
+      const pg = await pdfPageItems(await doc.getPage(p), p);
+      pages[p] = { items: pg.items, height: pg.h };   // mapa por numero de pagina (OCR de area)
+      pageList.push(pg);                              // lista ordenada (reflow)
     }
   } finally { try{ doc.destroy(); }catch(e){} }
   // texto reflowado pela MESMA logica do extractText (colunas + cabecalho/rodape)
@@ -2709,13 +2737,7 @@ async function buildPdfIndexFromBytes(bytes){    // caminho NATIVO: mesma extrac
   const pdf = await pdfjs.getDocument({ data: bytes.slice() }).promise;
   try{
     const pages=[];
-    for(let p=1;p<=pdf.numPages;p++){
-      const page = await pdf.getPage(p);
-      const vp = page.getViewport({ scale:1 });
-      const tc = await page.getTextContent({ includeMarkedContent:false });
-      pages.push({ page:p, w:vp.width, h:vp.height, items: tc.items.filter(it=>'str' in it && it.str.trim().length>0).map(it=>({
-        str:it.str, x:it.transform[4], y:it.transform[5], w:it.width, h:Math.abs(it.height)||10 })) });
-    }
+    for(let p=1;p<=pdf.numPages;p++) pages.push(await pdfPageItems(await pdf.getPage(p), p));
     const r = reflowPdfPages(pages);
     return { content:r.content, index:r.index };
   } finally { try{ pdf.destroy(); }catch(e){} }
@@ -2926,19 +2948,11 @@ async function ocrPdfToText(bytes, opts){
     for(let p=1; p<=N; p++){
       if(opts.shouldStop && opts.shouldStop()) break;
       const page = await doc.getPage(p);
-      const tc = await page.getTextContent();
-      const items = tc.items.filter(it=>'str' in it && it.str.trim());
-      // Detecção por CORPO, não por total (brief §8): página escaneada do e-SAJ/PJe tem texto
-      // NATIVO no cabeçalho ("fls. N"), rodapé (autenticação) e carimbo lateral, mas o CORPO é
-      // imagem. Conta só o texto nativo fora dessas faixas — se o corpo está vazio -> OCR.
-      const vp1 = page.getViewport({ scale: 1 }); const W = vp1.width, H = vp1.height;
-      let bodyLen = 0;
-      for(const it of items){ const x=it.transform[4], y=it.transform[5];
-        if(y < H*0.88 && y > H*0.14 && x < W*0.85) bodyLen += it.str.replace(/\s/g,'').length; }
+      const pg = await pdfPageItems(page, p);     // mesmo mapeamento dos outros 3 caminhos
+      const W = pg.w, H = pg.h;
       let mode;
-      if(bodyLen >= 100){                        // corpo com texto nativo: usa o nativo
-        const its = items.map(it=>({ str:it.str, x:it.transform[4], y:it.transform[5], w:it.width, h:Math.abs(it.height)||10 }));
-        const r = reflowPdfPages([{ items: its, w: W, h: H, page: p }]);
+      if(pdfBodyIsNative(pg.items, W, H)){       // corpo com texto nativo: usa o nativo
+        const r = reflowPdfPages([pg]);
         addPart(r.content, r.index); mode='nativo';
       } else {                                    // pagina escaneada (imagem): OCR
         if(!worker){ const T = await getTesseract(); worker = await T.createWorker(['por','eng'], 1, (await tesseractWorkerOpts())||{}); }
@@ -9764,12 +9778,6 @@ function iaMoney(v, cur){
 }
 // rotulo curto de custo pra exibir num balao/turno: "~R$ 0,04" (+ "US$ 0,007" no title) ou
 // "grátis (local)" ou null (sem preco configurado). tokens sempre disponiveis a parte.
-function aiCostLabel(usage, provider, model){
-  const est = aiCostEstimate(usage, provider, model);
-  if(!est) return null;
-  if(est.src==='local') return 'grátis (local)';
-  return `~${iaMoney(est.brl,'BRL')}`;
-}
 // tokens ESTIMADOS de entrada de um prompt de IA: material capado no limite + escala fixa do prompt
 // (~1200 chars de andaime), a ~4 chars/token. FONTE UNICA (buildProv das 4 telas de IA + os botoes).
 function iaPromptTokens(chars){ return Math.round((Math.min(chars, IA_TOTAL_CHAR_LIMIT) + 1200) / 4); }
@@ -11892,9 +11900,6 @@ const IA_STANCES = [
 // icone de olho (contorno, no espirito dos .wicon) — glyph do botao "ver o prompt". SVG inline
 // em vez de emoji/glyph unicode (sem risco de virar emoji colorido nem tofu na Inter). Nuvem foi
 // descartada de proposito: "nuvem" neste app ja e o armazenamento (pilulas mode-cloud/custom).
-function PromptEyeIcon(){
-  return html`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex:none" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" /></svg>`;
-}
 // icone de engrenagem (contorno) — glyph do botao "configurar prompt" (o painel virou configurador).
 function PromptGearIcon(){
   return html`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex:none" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>`;
@@ -13631,10 +13636,9 @@ function PdfView({ bytes, onPickText, onOcrRegion, initialPage, onPageChange, re
             const kids=[...layer.children], ws=kids.map(sp=>sp.offsetWidth);
             kids.forEach((sp,i)=>{ const tw=+sp.dataset.w; if(tw>0 && ws[i]>0) sp.style.transform=`scaleX(${tw/ws[i]})`; });
             setHasText(kids.length>0);
-            // corpo escaneado? mesmo heurístico do OCR (texto nativo fora de cabeçalho/rodapé/carimbo)
-            const vp1 = pg.getViewport({ scale:1 }); const W=vp1.width, H=vp1.height; let bodyLen=0;
-            for(const it of tc.items){ if(!('str' in it)||!it.str.trim()) continue; const x=it.transform[4], y=it.transform[5]; if(y<H*0.88 && y>H*0.14 && x<W*0.85) bodyLen += it.str.replace(/\s/g,'').length; }
-            setBodyNative(bodyLen>=100);
+            // corpo escaneado? MESMO heuristico do OCR, agora literalmente a mesma funcao
+            const vp1 = pg.getViewport({ scale:1 });
+            setBodyNative(pdfBodyIsNative(tc.items, vp1.width, vp1.height));
           }catch(e){ setHasText(false); setBodyNative(false); }
         }
         if(!cancelled) setRendering(false);
