@@ -750,7 +750,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.2.0';
+const QUALILAB_VERSION = '1.2.1';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -7680,7 +7680,7 @@ function CodesPanel({ codes, codeById, count, sel, selCode, setSelCode, codePath
   const selected = selCode ? codeById[selCode] : null;
   return html`<div class="section">
     <p class="h">✎ Códigos hierárquicos</p>
-    <p class="hint">Estrutura importa: família no topo (cor mais escura), descendo até o subcódigo (mais claro). O código novo entra como filho do código selecionado, então a organização é o caminho mais fácil.</p>
+    <p class="hint">Crie códigos à vontade enquanto lê. Um código com subcódigos vira <b>família</b> (quadradinho vazado): ela agrupa e não recebe trechos, e o número dela soma os subcódigos. Ao criar o primeiro subcódigo dentro de um código que já tem trechos, você decide para onde eles vão.</p>
 
     <div class="row" style="gap:6px;margin-bottom:10px;flex-wrap:wrap">
       <button class="btn sm" onClick=${()=>onAdd(selected)} disabled=${!selected} title=${selected?`filho de ${selected.name}`:'selecione um código'}>＋ subcódigo${selected?` de "${selected.name}"`:''}</button>
@@ -8007,7 +8007,7 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
   }
   // agrupa a selecao sob um NOVO pai (Hierarquia 0), pedindo o nome — reusa handleGroup(null,...)
   async function handleGroupNew(ids){
-    const name = prompt('Nome do novo agrupamento (nova família no topo):', 'Novo agrupamento');
+    const name = prompt('Nome da nova família (agrupa os marcados, no topo):', 'Novo agrupamento');
     if(name===null) return;
     await handleGroup(null, name||'Novo agrupamento', ids);
   }
@@ -13188,7 +13188,7 @@ function RenameCode({ code, onUpd, onSetColor, onSetSat, onSetRedaction, isAdmin
   const nameRef=useRef(null);
   // ao trocar de codigo, sincroniza o campo; se o codigo e RECEM-CRIADO (nome ainda no padrao),
   // foca e SELECIONA o nome pra o usuario ja digitar — o "criar" cai direto em "nomear"
-  useEffect(()=>{ setV(code.name); if(code.name==='nova família'||code.name==='subcódigo'){ const el=nameRef.current; if(el){ el.focus(); el.select(); } } },[code.id]);
+  useEffect(()=>{ setV(code.name); if(code.name==='novo código'||code.name==='nova família'||code.name==='subcódigo'){ const el=nameRef.current; if(el){ el.focus(); el.select(); } } },[code.id]);
   // salva o nome (o botao "salvar", Enter e clicar-fora chamam isto). Vazio -> reverte (nao apaga o nome)
   const commit=()=>{ const n=v.trim(); if(n && n!==code.name) onUpd(code.id,{name:n}); else if(!n) setV(code.name); };
   const col = codeColor(code.hue, code.depth, code.hue_deg, false, code.sat);

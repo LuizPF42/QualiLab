@@ -9,6 +9,14 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION` no `index.html`, acrescente a seção aqui e
 > regenere o estável (`scripts/gen-estavel.sh`).
 
+## 1.2.1 (27/07/2026)
+
+- A dica do painel de Códigos ainda descrevia o modelo antigo ("família no topo... o código novo
+  entra como filho do código selecionado"). Agora explica a regra em vigor: código com subcódigos
+  vira família, ela não recebe trechos e o número dela soma os filhos.
+- **Capturas do manual regeradas** — as telas mudaram bastante na 1.2.0 e as imagens ainda
+  mostravam a versão anterior.
+
 ## 1.2.0 (27/07/2026)
 
 ### Uma regra nova para códigos: ou agrupa, ou recebe trechos
