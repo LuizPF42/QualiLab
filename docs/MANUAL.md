@@ -792,7 +792,7 @@ O cabeçalho mostra `offline` (âmbar) quando a conexão cai. Escritas (codifica
 
 ## 17. Codificar e Analisar com IA
 
-> As telas de IA são **opt-in** e ficam no cabeçalho (numa build sem IA, `AI_ENABLED=false`, elas são ocultadas). Os princípios da [seção 0](#0-a-ideia-do-qualilab) valem aqui como **regras**: opt-in, transparência, e a IA nunca decide por você.
+> As telas de IA são **opt-in** e ficam no cabeçalho. Os princípios da [seção 0](#0-a-ideia-do-qualilab) valem aqui como **regras**: opt-in, transparência, e a IA nunca decide por você. Nada é enviado a um provedor de IA sem que você configure uma chave e peça a análise.
 
 A IA do QualiLab não "codifica sozinha" nem escreve no seu projeto sem permissão. Ela aparece em duas telas: *Codificar Automaticamente* (assistentes que **propõem** mudanças ao seu projeto, você revisa item a item) e *Analisar com IA* (leitura e interpretação do material). Em todas, o resultado é uma **proposta** ou um **texto** que você revisa. Aplicar qualquer mudança é sempre um ato seu.
 

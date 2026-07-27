@@ -784,15 +784,6 @@ function clearRecoveryUrl(){
   try{ history.replaceState(null, '', location.origin + location.pathname); }catch(e){}
 }
 
-// AI_ENABLED — liga/desliga as telas de IA ("Codificar/Analisar com IA", o card de IA em
-// "Minha Conta" e os caminhos de IA). Ligado por padrao (jul/2026), em modo BYOK: cada
-// pesquisador traz a propria chave. false esconde tudo de IA (o codigo segue presente, dormente; pra uma
-// versao com ZERO codigo de IA nao ha caminho pronto: os marcadores "AI-BLOCK START/END" que
-// esta doc prometia nunca existiram, e o requisito morreu em jul/2026, quando o estavel passou
-// a rodar com IA tambem. Nao reconstrua sem um consumidor real.
-// Censura (is_redaction) NAO e gateada aqui: e feature geral de codificacao, nao tela de IA.
-const AI_ENABLED = true;
-
 // AI_SHARED_KEY — o app OFERECE uma chave de IA do servidor? false = NAO: modo BYOK puro, a
 // UI nao promete chave nenhuma do servidor e pede que cada pesquisador configure a sua em
 // "Minha Conta". Enquanto nao houver chave de servidor de fato (secret GEMINI_API_KEY etc. +
@@ -6402,9 +6393,8 @@ function App(){
           <button class=${mainView==='graficos'?'on':''} onClick=${()=>setMainView('graficos')}>Gráficos</button>
           <button class=${mainView==='memos'?'on':''} onClick=${()=>setMainView('memos')}>Memos</button>
           ${!focusMode && html`<button class=${mainView==='esquema'?'on':''} onClick=${()=>setMainView('esquema')}>Esquema</button>`}
-          <!-- SEM gate de AI_ENABLED: este painel tem a aba "Repetir Codificação", que nao usa IA -->
           <button class=${mainView==='ia_codificar'?'on':''} onClick=${()=>setMainView('ia_codificar')}>Codificar Automaticamente</button>
-          ${AI_ENABLED && html`<button class=${mainView==='ia_analisar'?'on':''} onClick=${()=>setMainView('ia_analisar')}>Analisar com IA</button>`}
+          <button class=${mainView==='ia_analisar'?'on':''} onClick=${()=>setMainView('ia_analisar')}>Analisar com IA</button>
           <button class=${mainView==='relatorio'?'on':''} onClick=${()=>setMainView('relatorio')}>Relatório</button>
         </div>`}
       </div>
@@ -9272,7 +9262,7 @@ function MemoNav({ project, docs, codes, codings, memos, sel, onSel, onRenameDoc
     </div>
 
     <!-- IA: conversas salvas + memória do projeto (abaixo de Documentos e Códigos, mesmo formato) -->
-    ${AI_ENABLED && html`<div style="border-bottom:1px solid var(--line-soft)">
+    <div style="border-bottom:1px solid var(--line-soft)">
       <div class="node-row" style="padding:6px 14px;cursor:pointer;border-radius:0"
         onClick=${()=>setConvsOpen(o=>!o)}>
         <span class="caret">${convsOpen?'▾':'▸'}</span>
@@ -9284,16 +9274,16 @@ function MemoNav({ project, docs, codes, codings, memos, sel, onSel, onRenameDoc
         <span class="node-name" style="font-size:12.5px" title=${r.mode_label}>${r.mode_label}</span>
       </div>`)}
       ${convsOpen && (iaResults||[]).length===0 && html`<div class="meta" style="padding:6px 28px">Nenhuma conversa salva.</div>`}
-    </div>`}
+    </div>
     <!-- Memo para a IA (contexto do projeto dedicado à IA, injetado por padrão) -->
-    ${AI_ENABLED && html`<div class="node-row ${sel.scope==='ai_context'?'sel':''}" style="padding:8px 14px;cursor:pointer;border-bottom:1px solid var(--line-soft)"
+    <div class="node-row ${sel.scope==='ai_context'?'sel':''}" style="padding:8px 14px;cursor:pointer;border-bottom:1px solid var(--line-soft)"
       onClick=${()=>onSel({scope:'ai_context', targetId:project.id})}>
       <span style="margin-right:4px">✦</span>
       <span class="node-name" style="font-weight:600">Memo para a IA</span>
       ${hasMemo('ai_context', project.id) && html`<span class="count">●</span>`}
-    </div>`}
+    </div>
     <!-- Prompts salvos (biblioteca de prompts, escopo ai_prompt) -->
-    ${AI_ENABLED && html`<div style="border-bottom:1px solid var(--line-soft)">
+    <div style="border-bottom:1px solid var(--line-soft)">
       <div class="node-row" style="padding:6px 14px;cursor:pointer;border-radius:0" onClick=${()=>setPromptsOpen(o=>!o)}>
         <span class="caret">${promptsOpen?'▾':'▸'}</span>
         <span style="margin-right:4px">✦</span>
@@ -9306,8 +9296,8 @@ function MemoNav({ project, docs, codes, codings, memos, sel, onSel, onRenameDoc
         <span class="node-name" style="font-size:12.5px" title=${m.label||m.content}>${m.label||m.content.slice(0,40)}</span>
       </div>`)}
       ${promptsOpen && promptMemos.length===0 && html`<div class="meta" style="padding:6px 28px">Nenhum prompt salvo. Salve na aba Analisar com IA.</div>`}
-    </div>`}
-    ${AI_ENABLED && html`<div style="border-bottom:1px solid var(--line-soft)">
+    </div>
+    <div style="border-bottom:1px solid var(--line-soft)">
       <div class="node-row" style="padding:6px 14px;cursor:pointer;border-radius:0"
         onClick=${()=>{ setMemOpen(o=>!o); onSel({scope:'ai_memory'}); }}>
         <span class="caret">${memOpen?'▾':'▸'}</span>
@@ -9320,7 +9310,7 @@ function MemoNav({ project, docs, codes, codings, memos, sel, onSel, onRenameDoc
         <span class="node-name" style="font-size:12.5px" title=${m.content}>${m.content}</span>
       </div>`)}
       ${memOpen && (aiMemory||[]).length===0 && html`<div class="meta" style="padding:6px 28px">Nenhuma memória ainda.</div>`}
-    </div>`}
+    </div>
   </div>`;
 }
 function MemoCodeNode({ code, childrenOf, sel, onSel, hasMemo, depthPad }){
@@ -11038,16 +11028,15 @@ function IARepetirPanel({ project, docs, codes, codeById, codePath, store, allCo
 }
 
 function IACodificarPanel(props){
-  // A aba "Repetir Codificação" NAO usa IA, entao ela existe mesmo com AI_ENABLED=false — e o
-  // motivo de o painel ter deixado de se chamar "Codificar com IA". Numa build sem IA, o painel
-  // fica so com ela (e o gate saiu da view, no seg do cabecalho, pra ca).
+  // A aba "Repetir Codificação" NAO usa IA (dai o painel ter deixado de se chamar "Codificar
+  // com IA"): ela e mecanica, so procura texto identico ao dos trechos que o codigo ja tem.
   const TABS = [
-    ...(AI_ENABLED ? [{ id:'codificar', label:'Sugerir Codificação' }] : []),
-    { id:'repetir', label:'Repetir Codificação' },
-    ...(AI_ENABLED ? [{ id:'categorizar', label:'Sugerir Categorização' },
-                      { id:'organizar',   label:'Organizar Códigos' }] : []),
+    { id:'codificar',   label:'Sugerir Codificação' },
+    { id:'repetir',     label:'Repetir Codificação' },
+    { id:'categorizar', label:'Sugerir Categorização' },
+    { id:'organizar',   label:'Organizar Códigos' },
   ];
-  const [tab, setTab] = useState(AI_ENABLED ? 'codificar' : 'repetir');
+  const [tab, setTab] = useState('codificar');
   // Cada sub-painel renderiza a propria barra do topo [⚙ configurar prompt][seg de abas],
   // espelhando o IAAnalisarPanel — por isso o wrapper so segura o estado das abas e repassa
   // tab/setTab/TABS; o botao ⚙ vive dentro de cada sub-painel (junto do showPrompt local) e a
@@ -14259,8 +14248,8 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
       <button class="btn sm primary" disabled=${busy||!pw1||!pw2} onClick=${savePw}>${busy?'…':'Alterar senha'}</button>
     </div>`}
 
-    <!-- IA: chave e modelo pessoais (opcional, BYOK) — gateado por AI_ENABLED -->
-    ${AI_ENABLED && html`<div class="card" style="margin-bottom:12px">
+    <!-- IA: chave e modelo pessoais (BYOK) -->
+    <div class="card" style="margin-bottom:12px">
       <div class="field-label">IA: ${AI_SHARED_KEY?'chave e modelo pessoais (opcional)':'sua chave e modelo'}</div>
       <p class="hint" style="margin:0 0 8px">${AI_SHARED_KEY
         ? html`Por padrão, as telas de IA usam a chave e o modelo <b>do servidor</b> deste projeto (para contas autorizadas). Preenchendo aqui, suas análises passam a usar a <b>sua</b> chave (funciona em qualquer modo, inclusive local/arquivo): ela viaja só na requisição até a função do servidor que chama o provedor escolhido; não fica guardada lá, só neste navegador.`
@@ -14317,7 +14306,7 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
         <button class="btn sm primary" onClick=${saveAI}>Salvar</button>
         <button class="btn sm ghost" onClick=${clearAI}>${AI_SHARED_KEY?'Usar chave do servidor':'Limpar'}</button>
       </div>
-    </div>`}
+    </div>
 
     <!-- projetos -->
     <div class="field-label" style="margin-bottom:6px">Meus projetos</div>
