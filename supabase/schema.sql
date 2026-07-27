@@ -615,6 +615,13 @@ alter table public.codes add column if not exists hue_deg int;
 -- subcodigos igual ao hue_deg; NAO afeta luminosidade (profundidade). Mesmo gate de admin.
 alter table public.codes add column if not exists sat int;
 
+-- ---------- familia x codigo: DERIVADO, sem coluna ----------
+-- Quem tem filhos e familia (agrupa, nao recebe trechos); quem nao tem recebe trechos. Chegou a
+-- existir uma coluna is_family declarada na criacao; foi removida porque, com a conversao forcando
+-- a decisao no momento em que um codigo ganha o primeiro filho, toda familia tem filhos por
+-- construcao — o campo nunca poderia divergir da estrutura, so duplica-la (e divergir em silencio).
+-- A regra vive no cliente: codigo com filhos some da lista de aplicar.
+
 create or replace function public.codes_color_guard()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin

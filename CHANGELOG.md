@@ -9,6 +9,63 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION` no `index.html`, acrescente a seção aqui e
 > regenere o estável (`scripts/gen-estavel.sh`).
 
+## 1.2.0 (27/07/2026)
+
+### Uma regra nova para códigos: ou agrupa, ou recebe trechos
+
+Um código que tem subcódigos passa a ser uma **família**: ele organiza e **não recebe trechos**.
+Quem não tem subcódigos recebe trechos, esteja no topo (Hierarquia 0) ou dentro de uma família.
+
+Antes era possível ter as duas coisas no mesmo código, e isso tornava toda contagem ambígua —
+quando a família mostrava um número, não dava para saber se eram os trechos dela, os dos filhos,
+ou a soma. É a mesma separação que o ATLAS.ti e o QualCoder fazem, por argumento metodológico.
+A explicação completa está no manual, em **Conceitos ▸ Código e família**.
+
+**Você não precisa decidir nada na frente.** Crie códigos à vontade; a família aparece quando
+você decide subdividir. No instante em que um código ganha o primeiro subcódigo:
+
+- se ele **não tinha trechos**, nada acontece além de virar família;
+- se **tinha**, o QualiLab pergunta ali mesmo para onde eles vão. Você marca trecho a trecho, ou
+  manda todos para um subcódigo de pendência (`«Nome» (geral)`) e resolve depois. Nada é movido
+  sem você ver, e a nota de cada trecho é preservada.
+
+**Seus projetos existentes não mudam de comportamento** ao abrir esta versão. Um código que já
+tinha subcódigos e trechos ao mesmo tempo continua com tudo no lugar; ele só aparece como família
+(quadradinho vazado) e deixa de aceitar trechos novos até você resolver a divisão.
+
+### Novo: dividir um código em subcódigos
+
+Em **Esquema ▸ Códigos**, selecione um código com trechos e clique em **⑃ Dividir em subcódigos**.
+Abre uma tela com os subcódigos novos e uma tabela de trecho por linha: marque para onde vai cada
+um. Um trecho pode ir para mais de um subcódigo. As **teclas 1 a 9** marcam a coluna na linha em
+foco e as setas percorrem as linhas, o que torna viável distribuir dezenas de trechos. Há a opção
+**mutuamente exclusivo**, para quem calcula concordância entre codificadores. É ação de
+administrador, porque move codificação de todos.
+
+### Aplicar código ficou mais rápido
+
+O menu do botão direito no leitor ganhou:
+
+- **campo de busca** com foco automático, que filtra pelo caminho inteiro ("riscos" acha
+  "Riscos ▸ Confidencialidade do cliente") e **ignora acento** (digite "alucinacao");
+- **teclado**: as setas movem e **Enter aplica**;
+- **Recentes**: os três últimos códigos usados na sessão, no topo — codificação é repetitiva;
+- um **✓** nos códigos que já estão naquele trecho, para não duplicar sem perceber.
+
+### Contagem da família
+
+O número ao lado de uma família passa a incluir os subcódigos (o tooltip avisa). Sem isso ela
+mostraria sempre zero, já que família não tem trechos próprios.
+
+### Corrigido
+- No **Mapa**, o código criado pelo menu do botão direito nasce **onde você clicou**. Antes ia
+  para uma vaga fixa da grade, que num projeto com muitos códigos caía fora da área visível — e
+  parecia que o código não tinha sido criado.
+- Um botão azul dentro de menu suspenso **sumia ao passar o mouse** (texto branco sobre fundo
+  claro).
+- Mesclar códigos preserva o **id** de cada codificação. Na prática: a nota do trecho sobrevive
+  sempre, e a data em que o trecho foi codificado deixa de ser trocada pela data da mesclagem.
+
 ## 1.1.1 (26/07/2026)
 
 ### Corrigido (leia se você usa código de censura)

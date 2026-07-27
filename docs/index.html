@@ -280,9 +280,12 @@
   .progress-track{height:6px;border-radius:4px;background:rgba(138,109,31,.18);margin-top:7px;overflow:hidden;}
   .progress-fill{height:100%;background:var(--amber);border-radius:4px;transition:width .15s linear;}
   .exmenu{position:absolute;right:0;top:112%;z-index:41;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.14);overflow:hidden;min-width:212px;}
-  .exmenu button{display:block;width:100%;text-align:left;border:none;background:var(--surface);padding:9px 12px;font-size:13px;color:var(--ink);cursor:pointer;font-family:var(--sans);}
-  .exmenu button:hover{background:var(--paper);}
-  .exmenu button:disabled:hover{background:var(--surface);}
+  /* :not(.btn) é obrigatório, não estilo. Sem ele, ".exmenu button:hover" (0,2,1) vence
+     ".btn.primary" (0,2,0) e, no hover, o fundo do botão primário vira claro enquanto o texto
+     segue branco — o botão literalmente some. Vale para qualquer .btn dentro de um menu. */
+  .exmenu button:not(.btn){display:block;width:100%;text-align:left;border:none;background:var(--surface);padding:9px 12px;font-size:13px;color:var(--ink);cursor:pointer;font-family:var(--sans);}
+  .exmenu button:not(.btn):hover{background:var(--paper);}
+  .exmenu button:not(.btn):disabled:hover{background:var(--surface);}
   .drag-handle{cursor:grab;color:var(--ink-faint);padding:0 4px;user-select:none;flex-shrink:0}
 
   /* Quadro branco espacial dos codigos (Esquema -> Mapa) */
@@ -747,7 +750,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.1.1';
+const QUALILAB_VERSION = '1.2.0';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -1979,6 +1982,69 @@ async function mapPool(items, limit, fn, onProgress){
    admin) exibiria "Importado: N trechos" com o banco vazio. Cada importador acumula isto e
    devolve em `linhasRecusadas`, que a mensagem de import mostra. */
 function bulkFails(r){ return (r && r.failed) || 0; }
+
+/* S1 da cirurgia de esquema (SPEC em to-do/to-do.md): move codificacoes de um codigo para outro
+   PRESERVANDO o id de cada linha. E a peca comum aos DOIS sentidos — dividir um codigo largo em
+   subcodigos e mesclar codigos redundantes num so —, e e ela que torna "codigo de hierarquia 0
+   com trechos" e "familia com subcodigos" formas INTERCAMBIAVEIS: o que separa uma da outra passa
+   a ser so para onde as codificacoes apontam. Mora aqui em cima porque quem chama sao dois
+   componentes distantes (o Esquema e o painel "Organizar Codigos" da IA).
+   POR QUE updateCoding, e nao o addCoding+deleteCoding que o merge usava:
+     - o id da coding SOBREVIVE, entao a nota de trecho (memo scope='coding') sobrevive por
+       construcao. deleteCoding apaga esse memo nos tres stores E por trigger (memos_gc) no banco,
+       entao o caminho antigo precisava ler os memos antes e recolocá-los no id novo;
+     - metade das escritas (um update no lugar de insert+delete);
+     - nao existe instante em que a coding esteja duplicada (ou ausente) se falhar no meio;
+     - created_at/created_by/author_name/layer ficam como estao, sem repassar nada. Inclusive o
+       created_at, que no caminho antigo virava "agora" e passava a mentir sobre quando aquele
+       trecho foi codificado.
+   Nao precisou de metodo novo de store nem de SQL: updateCoding ja e generico nos tres stores.
+   O `return true` do fn NAO e estilo: updateCoding nao devolve nada e o mapPool usa null pra
+   marcar falha — sem a sentinela, todo sucesso contaria como erro (mesma armadilha ja documentada
+   no remap do saveEditedText).
+   Devolve { moved, failed }. QUEM CHAMA TEM DE OLHAR O `failed`: o mapPool e tolerante por item, e
+   seguir adiante depois de uma falha e perigoso — no merge, o deleteCode seguinte apagaria EM
+   CASCATA justamente as codificacoes que nao migraram. */
+async function moveCodings(store, items, newCodeId, onProgress){
+  const ids = (items||[]).map(x=> (x && typeof x === 'object') ? x.id : x).filter(Boolean);
+  if(!ids.length) return { moved:0, failed:0 };
+  const out = await mapPool(ids, 8, async (id)=>{
+    await store.updateCoding(id, { code_id:newCodeId });
+    return true;   // sentinela — ver a nota acima
+  }, onProgress);
+  const failed = out.filter(x=>!x).length;
+  return { moved: ids.length - failed, failed };
+}
+
+/* comparacao de texto sem acento e sem caixa — busca de codigo no menu de aplicar. Digitar
+   "codigo" tem de achar "código": num campo em que se digita rapido e o tempo todo, exigir o
+   acento e atrito puro. NB: o filtro da tela Esquema NAO faz isso (compara name.toLowerCase()
+   cru); vale uniformizar quando alguem mexer la. */
+const foldText = (s)=> (s||'').normalize('NFD').replace(/\p{M}/gu,'').toLowerCase();
+
+/* quadradinho de cor da árvore de códigos: FAMÍLIA (tipo declarado na criação) sai VAZADA, só
+   contorno. Comunica "não guarda trechos" sem gastar outra cor (a cor é da família de matiz) nem
+   outro ícone (o ⦸ já é da censura), e mantém o matiz visível. Independente segue cheia. */
+/* contagem por código AGREGADA na família: cada codificação conta no próprio código e sobe a
+   cadeia de pais. Virou obrigatório quando família passou a NÃO receber trechos — a contagem direta
+   dela é sempre zero, e a árvore ficaria dizendo que a família não é usada quando todo o uso está
+   nos filhos.
+   NÃO DEDUPLICA, e isso é escolha: um trecho codificado com DOIS subcódigos da mesma família conta
+   2 nela. É a conta do NVivo; o ATLAS.ti faz o contrário (conta 1, e explica a diferença no manual
+   com um caso de 44 vs 41). Somamos porque a unidade que o painel conta em todo lugar é a
+   CODIFICAÇÃO, não o pedaço de texto — deduplicar aqui e somar ali seria pior que qualquer das
+   duas. A UI diz "inclui os subcódigos" no title, porque contagem agregada sem aviso é armadilha. */
+function aggCounts(codings, codes){
+  const direct={}; (codings||[]).forEach(c=>{ direct[c.code_id]=(direct[c.code_id]||0)+1; });
+  const parentOf={}; (codes||[]).forEach(c=>{ parentOf[c.id]=c.parent_id; });
+  const agg={...direct};
+  Object.entries(direct).forEach(([codeId,n])=>{ let p=parentOf[codeId]; while(p){ agg[p]=(agg[p]||0)+n; p=parentOf[p]; } });
+  return agg;
+}
+
+const swatchStyle = (col, isFamily)=> isFamily
+  ? `background:transparent;box-shadow:inset 0 0 0 2px ${col.solid}`
+  : `background:${col.solid}`;
 
 const COMBINING_MARK = /\p{M}/u;
 function buildMatchIndex(content){
@@ -3691,6 +3757,7 @@ async function createFileStore(fileHandle, isNew){
     async addDocValue(pid,v){ const row={id:uid(),document_id:v.document_id,category_id:v.category_id,value:v.value,set_by:v.set_by??null,author_name:v.author_name||'anonimo',layer:v.layer||'individual'}; db.doc_values.push(row); await save(); return row; },
     listCodes(){ return P(db.codes.slice().sort((a,b)=>a.depth-b.depth||a.position-b.position)); },
     async addCode(pid,code){ const c={id:uid(),position:db.codes.length,...code}; db.codes.push(c); await save(); return c; },
+    listCodingsByCode(pid,codeId){ return P(db.codings.filter(c=>c.code_id===codeId)); },
     async updateCode(id,patch){ db.codes=db.codes.map(c=>c.id===id?{...c,...patch}:c); await save(); },
     async deleteCode(id){ const kill=new Set([id]); let added=true; while(added){added=false; db.codes.forEach(c=>{if(c.parent_id&&kill.has(c.parent_id)&&!kill.has(c.id)){kill.add(c.id);added=true;}});} const cids=new Set(db.codings.filter(c=>kill.has(c.code_id)).map(c=>c.id)); db.codes=db.codes.filter(c=>!kill.has(c.id)); db.codings=db.codings.filter(c=>!kill.has(c.code_id)); db.memos=db.memos.filter(m=>!(m.scope==='code'&&kill.has(m.target_id)) && !(m.scope==='coding'&&cids.has(m.target_id))); await save(); },
     async listCodings(pid,docId){ return db.codings.filter(c=>c.document_id===docId); },
@@ -3905,6 +3972,7 @@ function LocalStore(){
     addDocValue(pid,v){ const row={id:uid(),document_id:v.document_id,category_id:v.category_id,value:v.value,set_by:v.set_by??null,author_name:v.author_name||'anonimo',layer:v.layer||'individual'}; db.doc_values.push(row); save(); return P(row); },
     listCodes(){ return P(db.codes.slice().sort((a,b)=>a.depth-b.depth||a.position-b.position)); },
     addCode(pid,code){ const c={id:uid(),position:db.codes.length,...code}; db.codes.push(c); save(); return P(c); },
+    listCodingsByCode(pid,codeId){ return P(db.codings.filter(c=>c.code_id===codeId)); },
     updateCode(id,patch){ db.codes=db.codes.map(c=>c.id===id?{...c,...patch}:c); save(); return P(); },
     deleteCode(id){ const kill=new Set([id]); let added=true; while(added){added=false; db.codes.forEach(c=>{if(c.parent_id&&kill.has(c.parent_id)&&!kill.has(c.id)){kill.add(c.id);added=true;}});} const cids=new Set(db.codings.filter(c=>kill.has(c.code_id)).map(c=>c.id)); db.codes=db.codes.filter(c=>!kill.has(c.id)); db.codings=db.codings.filter(c=>!kill.has(c.code_id)); db.memos=db.memos.filter(m=>!(m.scope==='code'&&kill.has(m.target_id)) && !(m.scope==='coding'&&cids.has(m.target_id))); save(); return P(); },
     listCodings(pid,docId){ return P(db.codings.filter(c=>c.document_id===docId)); },
@@ -4155,6 +4223,10 @@ function SupabaseStore(sb){
     },
     async listCodes(pid){ return must(await sb.from('codes').select('*').eq('project_id',pid).order('depth').order('position')); },
     async addCode(pid,code){ return must(await sb.from('codes').insert({project_id:pid,...code}).select().single()); },
+    // trechos de UM codigo, em todos os documentos. A tela de Codificacao nao carrega o agregado
+    // (nao esta em AGG_VIEWS, e nao deve estar: sao 2 requests por documento), mas a conversao em
+    // familia precisa saber se o pai tem trechos proprios — e quais.
+    async listCodingsByCode(pid,codeId){ return must(await sb.from('codings').select('*').eq('project_id',pid).eq('code_id',codeId)); },
     // PERF: codes.parent_id e uma FK auto-referenciada NAO deferravel (schema.sql) — um pai
     // referenciado por uma linha mais adiante na MESMA instrucao de insert falha se ainda nao
     // foi inserido. Ordena por depth ascendente (pai sempre depth-1 do filho) e roda os chunks
@@ -4418,7 +4490,19 @@ function App(){
   const [ctxMenu, setCtxMenu] = useState(null); // menu de contexto (botão direito) p/ aplicar/remover código
   const [ctxCreating, setCtxCreating] = useState(false); // mini-formulário "criar novo código" dentro do menu
   const [ctxNewName, setCtxNewName] = useState('');
-  const [ctxNewParent, setCtxNewParent] = useState(''); // id do código-pai, ou '' para nova família
+  const [ctxNewParent, setCtxNewParent] = useState(''); // id do código-pai, ou '' para nível 0
+  // conversão em família: alvo do diálogo "este código vai virar família; e os trechos dele?".
+  // { parent, sel } — sel é a seleção do leitor, para aplicar o subcódigo novo logo depois.
+  const [convertTo, setConvertTo] = useState(null);
+  // busca dentro do menu de aplicar: com dezenas/centenas de códigos, rolar a lista inteira é o
+  // gargalo real da codificação. Digitar + Enter é o gesto que MAXQDA (Quick Coding) e NVivo
+  // (Ctrl+Q, caixa "Code At") oferecem há anos e que aqui não existia em nenhum dos dois caminhos.
+  const [ctxQuery, setCtxQuery] = useState('');
+  const [ctxHi, setCtxHi] = useState(0);   // item destacado pelo teclado, índice na lista filtrada
+  // últimos códigos aplicados nesta sessão. Codificação temática é repetitiva (o mesmo código cai
+  // em vários trechos seguidos); MAXQDA mostra os 3 mais recentes no menu e NVivo tem a seção
+  // "Recent". Fica em ref, não em estado: só é lido na hora de desenhar o menu.
+  const recentCodesRef = useRef([]);
   const [ctxEditCodeId, setCtxEditCodeId] = useState(null); // FR-03: código sendo editado (RenameCode em modal), aberto pelo ✎ do menu de contexto
   // FR-03 (2a metade): menu de contexto no PROPRIO codigo, no painel da tela de Codificacao.
   // Por que existe, se clicar num codigo ja abre o RenameCode no card abaixo: com um trecho
@@ -5316,7 +5400,7 @@ function App(){
     let hue, depth, hueDeg, sat, redact=false;
     if(parent){ hue = parent.hue; depth = parent.depth+1; hueDeg = parent.hue_deg ?? null; sat = parent.sat ?? null; redact = !!parent.is_redaction; }
     else { const tops = codes.filter(c=>!c.parent_id); hue = tops.length % HUES.length; depth = 0; hueDeg = null; sat = null; }
-    const name = customName?.trim() || (parent?'subcódigo':'nova família');
+    const name = customName?.trim() || (parent?'subcódigo':'novo código');
     const c = await store.addCode(project.id,{ parent_id: parent?parent.id:null, name, hue, depth, hue_deg:hueDeg, sat, is_redaction:redact, position: codes.length });
     setCodes(x=>[...x,c]); setSelCode(c.id);
     return c;
@@ -5369,20 +5453,63 @@ function App(){
     setCodes(x=>x.map(c=>ids.has(c.id) ? {...c, is_redaction:value, ...huePatch} : c));
   }
   async function delCode(id){ await store.deleteCode(id); loadProject(store,project.id); loadDoc(); }
-  function closeCtxMenu(){ setCtxMenu(null); setCtxCreating(false); setCtxNewName(''); setCtxNewParent(''); }
+  function closeCtxMenu(){ setCtxMenu(null); setCtxCreating(false); setCtxNewName(''); setCtxNewParent(''); setCtxQuery(''); setCtxHi(0); }
   async function ctxCreateAndApply(){
     const name = ctxNewName.trim();
     if(!name || !ctxMenu?.sel) return;
     const parentObj = ctxNewParent ? codeById[ctxNewParent] : null;
-    const c = await addCode(parentObj, name);
-    await applyCode(c.id, ctxMenu.sel);
-    setCtxCreating(false); setCtxNewName(''); setCtxNewParent('');
+    const selecao = ctxMenu.sel;
+    // fecha o menu ANTES: a conversão abre um modal, e deixar a lista de códigos por baixo dele
+    // (era o que acontecia) dá a impressão de que as duas coisas estão ativas ao mesmo tempo.
+    closeCtxMenu();
+    await subcodeUnder(parentObj, name, selecao);
+  }
+  /* Cria um código dentro de `parent` — e é AQUI que a família nasce. Se o pai já tem trechos
+     próprios, pô-lo a conter faria dele "família e trecho ao mesmo tempo"; em vez de permitir (ou
+     de proibir), abre o diálogo que obriga a decidir o destino desses trechos, com eles à vista.
+     Busca os trechos do pai pelo store: a tela de Codificação não carrega o agregado do projeto. */
+  async function subcodeUnder(parent, name, sel){
+    if(!parent){ const c = await addCode(null, name); if(sel) await applyCode(c.id, sel); return c; }
+    let proprios = [];
+    try{ proprios = (await store.listCodingsByCode(project.id, parent.id)) || []; }
+    catch(e){ setErr('Não foi possível ler os trechos de "'+parent.name+'": '+(e.message||e)); return null; }
+    if(proprios.length){ setConvertTo({ parent, sel, childName:name, codings:proprios }); return null; }
+    const c = await addCode(parent, name);
+    if(sel) await applyCode(c.id, sel);
+    return c;
+  }
+  // executa a conversão decidida no diálogo: cria o subcódigo novo, move para ele os trechos
+  // marcados, e o que sobrar vai para um subcódigo "(geral)" — o balde que registra pendência em
+  // vez de fingir classificação. No fim o pai tem filhos e nenhum trecho: virou família.
+  async function doConvertToFamily({ parent, childName, keepName, forChild, sel, proprios }){
+    if(store.beginBatch) store.beginBatch();
+    try{
+      const filho = await addCode(parent, childName);
+      const vaoParaFilho = proprios.filter(c=>forChild.has(c.id));
+      const sobra = proprios.filter(c=>!forChild.has(c.id));
+      if(vaoParaFilho.length){ const r = await moveCodings(store, vaoParaFilho, filho.id); if(r.failed) throw new Error(`${r.failed} trecho(s) não puderam ser movidos.`); }
+      if(sobra.length){
+        const geral = await addCode(parent, (keepName||'').trim() || `${parent.name} (geral)`);
+        const r = await moveCodings(store, sobra, geral.id); if(r.failed) throw new Error(`${r.failed} trecho(s) não puderam ser movidos.`);
+      }
+      if(sel) await applyCode(filho.id, sel);
+    } finally { if(store.endBatch) await store.endBatch(); }
+    setConvertTo(null);
+    // loadProject exige (store, projectId); loadDoc recarrega os grifos do documento aberto, que é
+    // o que mostra os trechos já sob os códigos novos. loadAll só nas telas agregadas (a de
+    // Codificação não carrega o agregado do projeto de propósito).
+    await loadProject(store, project.id); await loadDoc();
+    if(AGG_VIEWS.includes(mainView)) await loadAll();
   }
   // FR-03: ações por-código no menu de contexto do leitor.
   // ✎ editar -> fecha o menu e abre o RenameCode (nome/cor/censura) daquele código num modal.
   const openEditCode = (c)=>{ closeCtxMenu(); setCtxEditCodeId(c.id); };
   // ＋ subcódigo dentro -> abre o form de criar já com o PAI pré-selecionado (reusa ctxCreateAndApply,
   // que lê ctxNewParent). Não fecha o menu: o form aparece no lugar do "+ Criar novo código".
+  // ＋ ao lado de um código na lista: abre o form já em "Subcódigo" com ele como pai. Se o alvo
+  // ainda não é família e não tem trecho próprio, vira família aqui mesmo — ganhar um filho É o que
+  // define uma família, e sem trechos a conversão não move nada. Com trechos, isso vira a divisão
+  // de código (ainda não construída), então por ora só o pai é pré-selecionado.
   const startSubcodeOf = (c)=>{ setCtxNewName(''); setCtxNewParent(c.id); setCtxCreating(true); };
   // FR-03: subcodigo criado pelo menu de contexto do PAINEL — diferente do startSubcodeOf acima,
   // que nasce ligado a selecao ("criar e aplicar"). Aqui e so estrutura: addCode ja seleciona o
@@ -5390,7 +5517,12 @@ function App(){
   // entao o usuario cai direto em "nomear".
   const addSubcodeFromCtx = async (c)=>{
     setCodeCtx(null);
-    try{ await addCode(c); }catch(e){ setErr('Não foi possível criar o subcódigo: '+(e.message||e)); }
+    try{ await subcodeUnder(c, 'subcódigo', null); }catch(e){ setErr('Não foi possível criar o subcódigo: '+(e.message||e)); }
+  };
+  // usado pelos botões "＋ subcódigo" dos painéis: passa pela checagem de conversão em família
+  const addCodeUI = async (parent, name)=>{
+    try{ return await subcodeUnder(parent, name || (parent?'subcódigo':'novo código'), null); }
+    catch(e){ setErr('Não foi possível criar o código: '+(e.message||e)); return null; }
   };
   async function applyCode(codeId, selection){
     const s = selection || sel;
@@ -5407,6 +5539,8 @@ function App(){
       undoStackRef.current.push({ type:'addCoding', id:c.id });
       if(undoStackRef.current.length>50) undoStackRef.current.shift();
       if(region) pendingRegionRef.current = null;
+      // "recentes": o código recém-aplicado vai pro topo da lista, sem repetir, capado em 5
+      recentCodesRef.current = [codeId, ...recentCodesRef.current.filter(id=>id!==codeId)].slice(0,5);
       setCodings(x=>[...x,c]); setSel(null); closeCtxMenu(); window.getSelection()?.removeAllRanges();
     }catch(e){ setErr('Não foi possível salvar a codificação: '+String(e.message||e)); }
   }
@@ -6057,21 +6191,13 @@ function App(){
     const seen = new Set();
     return matches.filter(c=>{ if(seen.has(c.id)) return false; seen.add(c.id); return true; });
   }
-  const codingCount = useMemo(()=>{ const m={}; codings.forEach(c=>{m[c.code_id]=(m[c.code_id]||0)+1;}); return m; }, [codings]);
+  // do DOCUMENTO ABERTO (o painel da Codificação é sobre o documento em tela), agregada na família
+  const codingCount = useMemo(()=>aggCounts(codings, codes), [codings, codes]);
   // frequencia GLOBAL (todo o projeto, nao so o documento aberto) — usada na aba Esquema,
   // que nao tem documento ativo; ajuda a ver o que esta sendo usado de fato ao reorganizar
   // agregada (familia soma os subcodigos), igual o countByCode do VizNav — sem isso, uma
   // familia (Hierarquia 0) sempre aparece com 0 quando o uso real esta nos subcodigos
-  const schemaCodingCount = useMemo(()=>{
-    const direct={}; allCodings.forEach(c=>{direct[c.code_id]=(direct[c.code_id]||0)+1;});
-    const parentOf={}; codes.forEach(c=>{parentOf[c.id]=c.parent_id;});
-    const agg={...direct};
-    Object.entries(direct).forEach(([codeId,n])=>{
-      let p=parentOf[codeId];
-      while(p){ agg[p]=(agg[p]||0)+n; p=parentOf[p]; }
-    });
-    return agg;
-  }, [allCodings, codes]);
+  const schemaCodingCount = useMemo(()=>aggCounts(allCodings, codes), [allCodings, codes]);
 
   /* =================== RENDER =================== */
   // conectar/desconectar do Supabase PESSOAL direto das telas de entrada (Welcome/Auth), sem
@@ -6508,7 +6634,7 @@ function App(){
                  dragCatId=${dragCatId} setDragCatId=${setDragCatId} onReorder=${reorderCategories} />`}
           ${rtab==='codigos' && html`<${CodesPanel} codes=${codes} codeById=${codeById} count=${codingCount} sel=${sel}
                  selCode=${selCode} setSelCode=${setSelCode} codePath=${codePath}
-                 onAdd=${addCode} onDel=${delCode} onApply=${applyCode} onUpd=${updCode} onSetColor=${setCodeColor} onSetSat=${setCodeSat} onSetRedaction=${setCodeRedaction} isAdmin=${adminUI}
+                 onAdd=${addCodeUI} onDel=${delCode} onApply=${applyCode} onUpd=${updCode} onSetColor=${setCodeColor} onSetSat=${setCodeSat} onSetRedaction=${setCodeRedaction} isAdmin=${adminUI}
                  onCodeContext=${(code,x,y)=>setCodeCtx({code,x,y})}
                  store=${store} project=${project} reload=${reloadWrite} />`}
           ${rtab==='memos' && html`<${CodingMemosPanel} project=${project} activeDoc=${activeDoc} focusedCoding=${focusedCoding} selCode=${selCode}
@@ -6705,6 +6831,10 @@ function App(){
     </div>`}
   </div>
 
+  ${convertTo && html`<${ConvertToFamilyModal} parent=${convertTo.parent} childName=${convertTo.childName}
+      codings=${convertTo.codings} onCancel=${()=>setConvertTo(null)}
+      onConfirm=${({childName,keepName,forChild})=>doConvertToFamily({ parent:convertTo.parent, childName, keepName, forChild, sel:convertTo.sel, proprios:convertTo.codings })} />`}
+
   ${ctxMenu && (()=>{
     const menuW = 280, maxMenuH = Math.round(window.innerHeight*0.6);
     const rightLimit = (ctxMenu.boundRight||window.innerWidth) - 8;
@@ -6712,6 +6842,43 @@ function App(){
     const top = Math.max(8, Math.min(ctxMenu.y, window.innerHeight - maxMenuH - 8));
     const removable = codingsForCtxMenu(ctxMenu);
     const quote = ctxMenu.quote || ctxMenu.sel?.quote || '';
+    // --- lista de aplicar: filtrada pela busca e navegável pelo teclado ---
+    const ctxQ = foldText(ctxQuery);
+    // filtra pelo CAMINHO inteiro, não só pelo nome do código: quem lembra da família chega ao
+    // filho sem lembrar o nome exato dele ("riscos" acha "Riscos ▸ Confidencialidade do cliente")
+    // FAMÍLIA não recebe trecho: some da lista de aplicar. É aqui que a regra do tipo declarado
+    // pega de fato — este menu era justamente por onde o "família com trechos" nascia.
+    // FAMÍLIA é derivada: quem tem filhos agrupa e não recebe trechos, então some da lista de
+    // aplicar. Era por este menu que o "família e trecho ao mesmo tempo" nascia.
+    const aplicaveis = orderedCodes.filter(c=>!orderedCodes.some(k=>k.parent_id===c.id));
+    const ctxList = ctxQ ? aplicaveis.filter(c=>foldText(codePath(c.id).join(' ')).includes(ctxQ)) : aplicaveis;
+    const ctxIdx = Math.max(0, Math.min(ctxHi, ctxList.length-1));
+    const appliedIds = new Set(removable.map(c=>c.code_id));   // já sobre este trecho -> marca ✓
+    const recentes = (!ctxQ && ctxMenu.sel && !ctxMenu.changeCoding)
+      ? recentCodesRef.current.map(id=>codeById[id]).filter(Boolean).slice(0,3) : [];
+    const applyOrChange = (id)=> ctxMenu.changeCoding ? changeCodingCode(ctxMenu.changeCoding.id, id) : applyCode(id, ctxMenu.sel);
+    const onCtxSearchKey = (e)=>{
+      if(e.key==='ArrowDown'){ e.preventDefault(); setCtxHi(Math.min(ctxIdx+1, ctxList.length-1)); }
+      else if(e.key==='ArrowUp'){ e.preventDefault(); setCtxHi(Math.max(ctxIdx-1, 0)); }
+      else if(e.key==='Enter'){ e.preventDefault(); const c=ctxList[ctxIdx]; if(c) applyOrChange(c.id); }
+    };
+    // uma linha da lista. `flat` (recentes) e a busca mostram o CAMINHO em vez do nome solto —
+    // fora da árvore, "Confidencialidade" sozinho não diz de qual família veio.
+    const ctxCodeRow = (c, flat, hilite)=>{
+      const col = codeColor(c.hue,c.depth,c.hue_deg,false,c.sat);
+      const isCur = ctxMenu.changeCoding?.codeId===c.id;
+      const showActions = ctxMenu.sel && !ctxMenu.changeCoding;
+      const full = codePath(c.id).join(' ▸ ');
+      const label = (flat || ctxQ) ? full : c.name;
+      const pad = (flat || ctxQ) ? 12 : 12 + c.depth*14;
+      return html`<div key=${(flat?'r':'l')+c.id} style=${`display:flex;align-items:stretch;width:100%${hilite?';background:var(--teal-soft)':''}`}>
+        <button onClick=${()=>applyOrChange(c.id)} style=${`flex:1;min-width:0;width:auto;padding-left:${pad}px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-sizing:border-box${isCur?';font-weight:700':''}`} title=${full}>
+          <span class="swatch" style=${`background:${col.solid};display:inline-block;margin-right:7px;vertical-align:middle;flex-shrink:0`}></span><span style="display:inline-block;width:11px;color:var(--teal);flex-shrink:0">${appliedIds.has(c.id)?'✓':''}</span>${c.is_redaction?'⦸ ':''}${label}${isCur?' ✓':''}
+        </button>
+        ${showActions && html`<button onClick=${e=>{ e.stopPropagation(); openEditCode(c); }} style="flex:none;width:30px;padding:9px 0;text-align:center;color:var(--ink-faint)" title=${`Editar "${c.name}" (nome, cor, censura)`}>✎</button>`}
+        ${showActions && html`<button onClick=${e=>{ e.stopPropagation(); startSubcodeOf(c); }} style="flex:none;width:30px;padding:9px 0;text-align:center;color:var(--teal);font-weight:700" title=${`Criar subcódigo dentro de "${c.name}" e aplicar à seleção`}>＋</button>`}
+      </div>`;
+    };
     return html`<div>
     <div onClick=${closeCtxMenu} onContextMenu=${e=>{e.preventDefault();closeCtxMenu();}} style="position:fixed;inset:0;z-index:60"></div>
     <div class="exmenu" style=${`position:fixed;left:${left}px;top:${top}px;z-index:61;max-height:${maxMenuH}px;overflow:auto;width:${menuW}px`}>
@@ -6738,15 +6905,19 @@ function App(){
         </button>`; })}
       </${CtxSection}>`}
       ${ctxMenu.changeCoding && html`<div style="padding:7px 12px 3px;font-size:11px;color:var(--ink-faint);font-weight:600;text-transform:uppercase;letter-spacing:.04em">Trocar código</div>`}
-      ${(ctxMenu.sel || ctxMenu.changeCoding) && (orderedCodes.length===0 && !ctxCreating
-        ? html`<div style="padding:9px 12px;color:var(--ink-faint);font-size:12.5px">Nenhum código criado ainda.</div>`
-        : orderedCodes.map(c=>{ const col=codeColor(c.hue,c.depth,c.hue_deg,false,c.sat); const isCur=ctxMenu.changeCoding?.codeId===c.id; const showActions=ctxMenu.sel && !ctxMenu.changeCoding; return html`<div key=${c.id} style="display:flex;align-items:stretch;width:100%">
-            <button onClick=${()=> ctxMenu.changeCoding ? changeCodingCode(ctxMenu.changeCoding.id, c.id) : applyCode(c.id, ctxMenu.sel)} style=${`flex:1;min-width:0;width:auto;padding-left:${12+c.depth*14}px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-sizing:border-box${isCur?';font-weight:700':''}`} title=${c.name}>
-              <span class="swatch" style=${`background:${col.solid};display:inline-block;margin-right:7px;vertical-align:middle;flex-shrink:0`}></span>${c.is_redaction?'⦸ ':''}${c.name}${isCur?' ✓':''}
-            </button>
-            ${showActions && html`<button onClick=${e=>{ e.stopPropagation(); openEditCode(c); }} style="flex:none;width:30px;padding:9px 0;text-align:center;color:var(--ink-faint)" title=${`Editar "${c.name}" (nome, cor, censura)`}>✎</button>`}
-            ${showActions && html`<button onClick=${e=>{ e.stopPropagation(); startSubcodeOf(c); }} style="flex:none;width:30px;padding:9px 0;text-align:center;color:var(--teal);font-weight:700" title=${`Criar subcódigo dentro de "${c.name}" e aplicar à seleção`}>＋</button>`}
-          </div>`; }))}
+      ${(ctxMenu.sel || ctxMenu.changeCoding) && !ctxCreating && orderedCodes.length>0 && html`<div style="padding:6px 8px;border-bottom:1px solid var(--line-soft)">
+        <input class="txtin" autofocus placeholder="buscar código..." value=${ctxQuery}
+          onInput=${e=>{ setCtxQuery(e.target.value); setCtxHi(0); }} onKeyDown=${onCtxSearchKey}
+          style="width:100%;box-sizing:border-box;font-size:12.5px" />
+        ${ctxQ && html`<div style="font-size:10.5px;color:var(--ink-faint);padding:3px 2px 0">${ctxList.length} código(s) · ↑↓ move, Enter aplica</div>`}
+      </div>`}
+      ${recentes.length>0 && html`<div style="border-bottom:1px solid var(--line-soft)">
+        <div style="padding:6px 12px 2px;font-size:10.5px;color:var(--ink-faint);font-weight:600;text-transform:uppercase;letter-spacing:.04em">Recentes</div>
+        ${recentes.map(c=>ctxCodeRow(c, true, false))}
+      </div>`}
+      ${(ctxMenu.sel || ctxMenu.changeCoding) && (ctxList.length===0 && !ctxCreating
+        ? html`<div style="padding:9px 12px;color:var(--ink-faint);font-size:12.5px">${orderedCodes.length===0?'Nenhum código criado ainda.':'Nenhum código com esse texto.'}</div>`
+        : ctxList.map((c,i)=>ctxCodeRow(c, false, !!ctxQ && i===ctxIdx)))}
       ${ctxMenu.sel && !ctxMenu.changeCoding && html`<div style="border-top:1px solid var(--line-soft)">
         ${!ctxCreating
           ? html`<button onClick=${e=>{e.stopPropagation();setCtxCreating(true);}} style="color:var(--teal);font-weight:600">+ Criar novo código</button>`
@@ -6755,9 +6926,10 @@ function App(){
                 onInput=${e=>setCtxNewName(e.target.value)}
                 onKeyDown=${e=>{ if(e.key==='Enter') ctxCreateAndApply(); if(e.key==='Escape') setCtxCreating(false); }} />
               <select class="opt" style="width:100%;font-size:12.5px" value=${ctxNewParent} onChange=${e=>setCtxNewParent(e.target.value)}>
-                <option value="">(nova família, nível 0)</option>
-                ${orderedCodes.map(c=>html`<option key=${c.id} value=${c.id}>subcódigo de "${c.name}"</option>`)}
+                <option value="">(no topo)</option>
+                ${orderedCodes.map(c=>html`<option key=${c.id} value=${c.id}>dentro de "${c.name}"</option>`)}
               </select>
+              ${ctxNewParent && html`<div style="font-size:11px;color:var(--ink-faint);line-height:1.35">Se "${codeById[ctxNewParent]?.name}" já tiver trechos próprios, ele vira <b>família</b> ao ganhar este subcódigo, e você decide para onde vão esses trechos.</div>`}
               <div class="row" style="gap:6px;justify-content:flex-end">
                 <button class="btn sm ghost" onClick=${()=>setCtxCreating(false)}>Cancelar</button>
                 <button class="btn sm primary" disabled=${!ctxNewName.trim()} onClick=${ctxCreateAndApply}>Criar e aplicar</button>
@@ -7460,6 +7632,47 @@ function useTreeKeys(){
   return { ref, onKeyDown };
 }
 
+/* ============ CONVERSAO EM FAMILIA (o "split" no momento em que ele importa) ============
+   Dispara quando um codigo que TEM trechos proprios vai ganhar o primeiro filho. Familia agrupa e
+   nao recebe trechos, entao os trechos dele precisam de destino — e a decisao acontece aqui, com as
+   citacoes a vista, e nao depois (quando ninguem mais lembra) nem antes (quando ainda nao se sabe).
+   O ponto de desenho: obriga a DECIDIR, nao a TRIAR. Quem quiser classificar trecho a trecho marca
+   os que vao pro subcodigo novo; quem so quer seguir codificando deixa tudo desmarcado e os trechos
+   caem num "(geral)" — o balde que REGISTRA a pendencia em vez de fingir classificacao (e o
+   "Undecided" do ATLAS.ti, com nome que diz o que e). Sem essa saida, acrescentar um subcodigo a um
+   codigo com 80 trechos viraria uma parede no meio da leitura. */
+function ConvertToFamilyModal({ parent, childName, codings, onCancel, onConfirm }){
+  const [name,setName] = useState(childName||'');
+  const [keep,setKeep] = useState(`${parent.name} (geral)`);
+  const [forChild,setForChild] = useState(()=>new Set());
+  const [busy,setBusy] = useState(false);
+  const toggle=(id)=>setForChild(s=>{ const n=new Set(s); n.has(id)?n.delete(id):n.add(id); return n; });
+  const sobra = codings.filter(c=>!forChild.has(c.id));
+  return html`<div class="modal-bg" onClick=${onCancel}><div class="modal" style="max-width:620px" onClick=${e=>e.stopPropagation()}>
+    <h3 style="margin:0 0 6px">"${parent.name}" vai virar família</h3>
+    <p class="hint" style="margin:0 0 12px">Uma família agrupa subcódigos e <b>não recebe trechos</b>. Este código tem <b>${codings.length} trecho(s)</b> próprios: diga para onde eles vão.</p>
+    <div class="field"><div class="field-label">Nome do subcódigo que você está criando</div>
+      <input class="txtin" autofocus style="width:100%;box-sizing:border-box" value=${name} onInput=${e=>setName(e.target.value)} /></div>
+    <div class="field-label" style="margin-top:12px">Marque os trechos que pertencem a "${name||'(sem nome)'}"</div>
+    <div style="max-height:250px;overflow:auto;border:1px solid var(--line-soft);border-radius:8px;padding:4px">
+      ${codings.map(c=>html`<label key=${c.id} class="node-row" style="display:flex;gap:8px;align-items:flex-start;padding:6px 8px;cursor:pointer">
+        <input type="checkbox" checked=${forChild.has(c.id)} onChange=${()=>toggle(c.id)} style="margin-top:3px;flex-shrink:0" />
+        <span style="font-family:var(--serif);font-size:12.5px;line-height:1.4">${(c.quote||'').slice(0,180)}${(c.quote||'').length>180?'…':''}</span>
+      </label>`)}
+    </div>
+    ${sobra.length>0 && html`<div class="field" style="margin-top:12px"><div class="field-label">Os ${sobra.length} não marcados vão para</div>
+      <input class="txtin" style="width:100%;box-sizing:border-box" value=${keep} onInput=${e=>setKeep(e.target.value)} />
+      <p class="hint" style="margin:4px 0 0">Fica como pendência: dá para redistribuir depois, no Esquema.</p></div>`}
+    ${sobra.length===0 && html`<p class="hint" style="margin:12px 0 0">Todos os trechos vão para o subcódigo novo; nenhum "(geral)" será criado.</p>`}
+    <div class="row" style="gap:8px;justify-content:flex-end;margin-top:16px">
+      <button class="btn sm ghost" onClick=${onCancel}>Cancelar</button>
+      <button class="btn sm primary" disabled=${!name.trim() || busy || (sobra.length>0 && !keep.trim())}
+        onClick=${async()=>{ setBusy(true); try{ await onConfirm({ childName:name.trim(), keepName:keep.trim(), forChild }); } finally { setBusy(false); } }}>
+        ${busy?'Convertendo...':'Converter'}</button>
+    </div>
+  </div></div>`;
+}
+
 function CodesPanel({ codes, codeById, count, sel, selCode, setSelCode, codePath, onAdd, onDel, onApply, onUpd, onSetColor, onSetSat, onSetRedaction, isAdmin, store, project, reload, onCodeContext }){
   const treeKeys = useTreeKeys();
   const tops = codes.filter(c=>!c.parent_id);
@@ -7469,9 +7682,9 @@ function CodesPanel({ codes, codeById, count, sel, selCode, setSelCode, codePath
     <p class="h">✎ Códigos hierárquicos</p>
     <p class="hint">Estrutura importa: família no topo (cor mais escura), descendo até o subcódigo (mais claro). O código novo entra como filho do código selecionado, então a organização é o caminho mais fácil.</p>
 
-    <div class="row" style="gap:6px;margin-bottom:10px">
+    <div class="row" style="gap:6px;margin-bottom:10px;flex-wrap:wrap">
       <button class="btn sm" onClick=${()=>onAdd(selected)} disabled=${!selected} title=${selected?`filho de ${selected.name}`:'selecione um código'}>＋ subcódigo${selected?` de "${selected.name}"`:''}</button>
-      <button class="btn sm ghost" onClick=${()=>onAdd(null)}>＋ nova família (topo)</button>
+      <button class="btn sm ghost" onClick=${()=>onAdd(null)} title="Código de topo que recebe trechos">＋ código (topo)</button>
     </div>
 
     ${sel && html`<div class="banner warn" style="margin:0 0 10px">Trecho selecionado. Clique em um código abaixo para aplicar.</div>`}
@@ -7492,6 +7705,140 @@ function CodesPanel({ codes, codeById, count, sel, selCode, setSelCode, codePath
   </div>`;
 }
 
+/* ============ ESQUEMA > CODIGOS > DIVIDIR — a tela do split ============
+   Inverso do Mesclar. Pega um codigo largo demais e distribui os trechos dele entre VARIOS
+   subcodigos novos, de uma vez. E a versao completa do que o ConvertToFamilyModal faz no meio da
+   leitura: la a pressa manda (um subcodigo, um balde), aqui manda a analise.
+   Copiado do ATLAS.ti onde o desenho deles e melhor que o obvio:
+   - varios codigos novos de uma vez, nao um por vez;
+   - MATRIZ trecho x codigo com marcacao por celula, entao um trecho pode ir para MAIS DE UM
+     subcodigo (o "copiar" deles) em vez de so mudar de dono;
+   - teclas numericas 1..9 marcam a coluna na linha em foco, que e o que torna 200 trechos viavel;
+   - "mutuamente exclusivo", que nao e enfeite: e pre-requisito de concordancia entre codificadores
+     (dentro de um dominio semantico, so um subcodigo por trecho).
+   O que NAO copiamos: "manter codificado com o codigo original". Aqui o codigo que ganha filhos
+   vira familia e nao recebe trechos — deixar a opcao seria oferecer o no misto de volta. O lugar
+   do que nao se quis classificar e o "(geral)", que REGISTRA a pendencia. */
+function SplitCodeView({ code, codings, store, project, onAdd, isAdmin, onCancel, onDone }){
+  const [names,setNames] = useState(['','']);
+  const [grid,setGrid] = useState({});           // codingId -> Set de indices de coluna
+  const [exclusive,setExclusive] = useState(false);
+  const [restName,setRestName] = useState(`${code.name} (geral)`);
+  const [busy,setBusy] = useState(false);
+  const [err,setErr] = useState('');
+  const [focusRow,setFocusRow] = useState(0);
+  const cols = names.map(s=>s.trim());
+  const validCols = cols.map((s,i)=>({s,i})).filter(x=>x.s);
+  const marks = (id)=> grid[id] || new Set();
+  const toggle = (id, i)=> setGrid(g=>{
+    const cur = new Set(g[id]||[]);
+    if(cur.has(i)) cur.delete(i); else { if(exclusive) cur.clear(); cur.add(i); }
+    return { ...g, [id]: cur };
+  });
+  const semDestino = codings.filter(c=>!marks(c.id).size);
+  const porColuna = validCols.map(({s,i})=>({ nome:s, n: codings.filter(c=>marks(c.id).has(i)).length }));
+
+  async function apply(){
+    setErr(''); setBusy(true);
+    try{
+      if(store.beginBatch) store.beginBatch();
+      try{
+        const criados = [];
+        for(const {s} of validCols) criados.push({ col:null, code: await onAdd(code, s) });
+        validCols.forEach((v,k)=>{ criados[k].col = v.i; });
+        const balde = semDestino.length ? await onAdd(code, restName.trim() || `${code.name} (geral)`) : null;
+        for(const c of codings){
+          const idxs = [...marks(c.id)];
+          if(!idxs.length){
+            const r = await moveCodings(store, [c], balde.id);
+            if(r.failed) throw new Error('não foi possível mover um trecho para "'+balde.name+'".');
+            continue;
+          }
+          // 1º alvo MOVE (preserva o id e, com ele, a nota do trecho); os demais são CÓPIAS novas
+          const alvo = criados.find(x=>x.col===idxs[0]).code;
+          const r = await moveCodings(store, [c], alvo.id);
+          if(r.failed) throw new Error('não foi possível mover um trecho para "'+alvo.name+'".');
+          for(const extra of idxs.slice(1)){
+            const outro = criados.find(x=>x.col===extra).code;
+            await store.addCoding(project.id, { document_id:c.document_id, code_id:outro.id,
+              span_start:c.span_start, span_end:c.span_end, quote:c.quote, layer:c.layer,
+              created_by:c.created_by??null, author_name:c.author_name });
+          }
+        }
+      } finally { if(store.endBatch) await store.endBatch(); }
+      await onDone();
+    }catch(e){ setErr(String(e.message||e)); }
+    finally{ setBusy(false); }
+  }
+
+  const rowKey = (e, c, ri)=>{
+    if(e.key>='1' && e.key<='9'){ const i=parseInt(e.key,10)-1; if(i<validCols.length){ e.preventDefault(); toggle(c.id, validCols[i].i); } }
+    else if(e.key==='ArrowDown'){ e.preventDefault(); setFocusRow(Math.min(ri+1, codings.length-1)); }
+    else if(e.key==='ArrowUp'){ e.preventDefault(); setFocusRow(Math.max(ri-1, 0)); }
+  };
+
+  return html`<section class="pane">
+    <div class="pane-head">
+      <button class="btn sm ghost" onClick=${onCancel}>‹ voltar</button>
+      <span style="font-weight:600;margin-left:8px">Dividir "${code.name}" em subcódigos</span>
+      <span class="meta" style="margin-left:auto">${codings.length} trecho(s)</span>
+    </div>
+    <div class="pane-body scroll" style="padding:16px">
+      ${!isAdmin && html`<div class="banner warn" style="margin-bottom:12px">A divisão move codificações de todos os pesquisadores, então é ação de administrador.</div>`}
+      <p class="hint" style="margin:0 0 12px">"${code.name}" vira <b>família</b> ao ganhar subcódigos, e família não recebe trechos. Distribua os trechos abaixo; o que não for marcado vai para um subcódigo de pendência.</p>
+
+      <div class="field-label">Subcódigos novos</div>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px">
+        ${names.map((n,i)=>html`<div key=${'n'+i} class="row" style="gap:6px">
+          <span class="count" style="flex:none;width:20px;text-align:center">${i+1}</span>
+          <input class="txtin" style="flex:1" placeholder="nome do subcódigo..." value=${n}
+            onInput=${e=>setNames(a=>a.map((x,k)=>k===i?e.target.value:x))}
+            onKeyDown=${e=>{ if(e.key==='Enter'||e.key==='ArrowDown'){ e.preventDefault(); if(i===names.length-1) setNames(a=>[...a,'']); } }} />
+          <button class="btn sm ghost" style="flex:none" title="remover esta linha"
+            onClick=${()=>{ setNames(a=>a.filter((_,k)=>k!==i)); setGrid({}); }}>✕</button>
+        </div>`)}
+        <button class="btn sm ghost" style="align-self:flex-start" onClick=${()=>setNames(a=>[...a,''])}>＋ adicionar subcódigo</button>
+      </div>
+
+      ${validCols.length===0
+        ? html`<p class="hint">Dê nome a pelo menos um subcódigo para distribuir os trechos.</p>`
+        : html`<div>
+          <div class="field-label">Marque o destino de cada trecho <span class="meta">— teclas 1..${validCols.length} na linha em foco, ↑↓ percorre</span></div>
+          <div style="border:1px solid var(--line-soft);border-radius:8px;overflow:auto;max-height:46vh">
+            <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+              <thead><tr>
+                <th style="text-align:left;padding:7px 10px;position:sticky;top:0;background:var(--surface);border-bottom:1px solid var(--line-soft)">Trecho</th>
+                ${validCols.map(({s,i},k)=>html`<th key=${'h'+i} style="padding:7px 8px;position:sticky;top:0;background:var(--surface);border-bottom:1px solid var(--line-soft);white-space:nowrap">${k+1}. ${chTrunc(s,18)}</th>`)}
+              </tr></thead>
+              <tbody>
+                ${codings.map((c,ri)=>html`<tr key=${c.id} tabIndex=${0} onFocus=${()=>setFocusRow(ri)} onKeyDown=${e=>rowKey(e,c,ri)}
+                    style=${`border-bottom:1px solid var(--line-soft);outline:none${ri===focusRow?';background:var(--teal-soft)':''}`}>
+                  <td style="padding:6px 10px;font-family:var(--serif);line-height:1.35">${(c.quote||'').slice(0,150)}${(c.quote||'').length>150?'…':''}
+                    ${!marks(c.id).size && html`<span class="meta"> → ${restName||'(geral)'}</span>`}</td>
+                  ${validCols.map(({i})=>html`<td key=${'c'+i} style="text-align:center;padding:6px 8px">
+                    <input type="checkbox" checked=${marks(c.id).has(i)} onChange=${()=>toggle(c.id,i)} /></td>`)}
+                </tr>`)}
+              </tbody>
+            </table>
+          </div>
+          <label class="row" style="gap:7px;margin-top:10px;cursor:pointer">
+            <input type="checkbox" checked=${exclusive} onChange=${e=>{ setExclusive(e.target.checked); if(e.target.checked) setGrid(g=>{ const o={}; Object.entries(g).forEach(([k,v])=>{ o[k]=new Set([...v].slice(0,1)); }); return o; }); }} />
+            <span>Mutuamente exclusivo <span class="meta">— um subcódigo por trecho; requisito de concordância entre codificadores</span></span>
+          </label>
+          ${semDestino.length>0 && html`<div class="field" style="margin-top:10px"><div class="field-label">Os ${semDestino.length} sem destino vão para</div>
+            <input class="txtin" style="width:100%;box-sizing:border-box;max-width:420px" value=${restName} onInput=${e=>setRestName(e.target.value)} /></div>`}
+          <p class="hint" style="margin:10px 0 0">${porColuna.map(p=>`${p.n} → ${p.nome}`).join(' · ')}${semDestino.length?` · ${semDestino.length} → ${restName||'(geral)'}`:''}</p>
+        </div>`}
+
+      ${err && html`<div class="banner err" style="margin-top:12px">${err}</div>`}
+      <div class="row" style="gap:8px;margin-top:16px">
+        <button class="btn primary" disabled=${busy || !isAdmin || validCols.length===0 || (semDestino.length>0 && !restName.trim())} onClick=${apply}>${busy?'Dividindo...':'Dividir código'}</button>
+        <button class="btn ghost" onClick=${onCancel}>Cancelar</button>
+      </div>
+    </div>
+  </section>`;
+}
+
 /* ============ ESQUEMA > CODIGOS — reorganizacao em lote ============
    Tela cheia dedicada (sem documento aberto), pensada pra quem fez codificacao aberta
    (grounded theory) e termina com centenas de codigos soltos, todos no mesmo nivel.
@@ -7506,6 +7853,8 @@ function CodesPanel({ codes, codeById, count, sel, selCode, setSelCode, codePath
 function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, project, reload, loadAll,
                             allCodings, selCode, setSelCode, onUpd, onSetColor, onSetSat, onSetRedaction, onAdd, onDel }){
   const [query, setQuery] = useState('');
+  const [splitCode, setSplitCode] = useState(null);   // id do código aberto na tela de divisão
+  const [groupConfirm, setGroupConfirm] = useState(null); // agrupar num alvo que tem trechos próprios
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [busy, setBusy] = useState(false);
   const treeKeys = useTreeKeys();   // a11y: ↑↓ ←→ Home/End Enter na arvore (ver useTreeKeys)
@@ -7579,19 +7928,41 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
     await reload();
   }
 
+  /* Agrupar num código que JÁ TEM trechos próprios é a outra porta pela qual o nó misto nascia:
+     o alvo ganha filhos e continua com codificações. Aqui a decisão não é adiada nem tomada por
+     conta própria — pergunta para onde vão os trechos do alvo, com a mesma saída de um clique do
+     resto do app. Alvo NOVO não pergunta nada: nasce vazio, é família por construção. */
   async function handleGroup(targetId, newName, ids){
+    const alvo = targetId ? codeById[targetId] : null;
+    const proprios = alvo ? allCodings.filter(c=>c.code_id===alvo.id) : [];
+    if(proprios.length){ setGroupConfirm({ targetId, newName, ids, n:proprios.length, keepName:`${alvo.name} (geral)` }); return; }
+    await doGroup(targetId, newName, ids, null);
+  }
+  async function doGroup(targetId, newName, ids, keepName){
     setBusy(true);
     // batch: reparentSubtree grava um updateCode POR nó da subárvore — agrupar famílias
     // grandes sem isso re-serializava o banco local/arquivo inteiro a cada nó
     if(store.beginBatch) store.beginBatch();
     try{
+      // pai criado pelo "Agrupar" nasce FAMÍLIA: ele existe para conter os marcados, nunca para
+      // receber trechos. É o caso em que o tipo é dedutível da intenção, sem precisar perguntar.
       const target = targetId ? codeById[targetId] : await onAdd(null, newName||'Novo agrupamento');
+      // esvazia o alvo ANTES de reparentar: assim ele nunca chega a existir como família-com-trechos
+      if(keepName){
+        const proprios = allCodings.filter(c=>c.code_id===target.id);
+        if(proprios.length){
+          const balde = await onAdd(target, keepName.trim() || `${target.name} (geral)`);
+          const r = await moveCodings(store, proprios, balde.id);
+          if(r.failed) throw new Error(`${r.failed} trecho(s) não puderam ser movidos; o agrupamento foi interrompido.`);
+        }
+      }
       for(const id of ids){
         if(id===target.id || isDescendantOf(target.id, id)) continue;
         await reparentSubtree(id, target.id, target.depth+1, { hue:target.hue, hue_deg:target.hue_deg, sat:target.sat });
       }
     } finally { if(store.endBatch) await store.endBatch(); setBusy(false); }
-    await reload();
+    setGroupConfirm(null);
+    await reload(); await loadAll();
     clearSelection();
   }
 
@@ -7599,29 +7970,15 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
     setBusy(true);
     try{
       const survivor = codeById[survivorId];
-      // notas-por-trecho (scope='coding') dos codings que serao recriados: como o merge
-      // recria cada coding com id NOVO (addCoding) e apaga o antigo (deleteCoding faz GC do
-      // memo do trecho), a nota se perderia. Busca fresco e migra pro id novo antes do delete.
-      let memoByCoding = {};
-      try{ (await store.listMemos(project.id)).forEach(m=>{ if(m.scope==='coding' && m.content) memoByCoding[m.target_id]=m; }); }catch(e){}
-      // 1) reatribui as codificacoes dos mesclados pro sobrevivente (recria + apaga a
-      // original, ja que os stores nao tem updateCoding — so addCoding/deleteCoding).
-      // Batch (local/arquivo) + Promise.all (nuvem): mesclar um codigo com centenas de
-      // trechos fazia um write serial POR coding — minutos na nuvem, e cada save
-      // re-serializava o banco local inteiro. O par add->delete continua ordenado DENTRO
-      // de cada coding (se falhar no meio, sobra duplicata — nunca perda).
       if(store.beginBatch) store.beginBatch();
       try{
-        for(const mid of mergedIds){
-          await Promise.all(allCodings.filter(c=>c.code_id===mid).map(async cod=>{
-            const nc = await store.addCoding(project.id, { document_id:cod.document_id, code_id:survivorId,
-              span_start:cod.span_start, span_end:cod.span_end, quote:cod.quote, layer:cod.layer,
-              created_by:cod.created_by??null, author_name:cod.author_name });
-            const mem = memoByCoding[cod.id];
-            if(mem && nc && nc.id) await store.setMemo(project.id, 'coding', nc.id, mem.content, mem.author_name);
-            await store.deleteCoding(cod.id);
-          }));
-        }
+        // 1) reatribui as codificacoes dos mesclados pro sobrevivente. moveCodings preserva o id
+        // de cada linha — e com ele a nota de trecho —, entao a migracao manual de memos que
+        // existia aqui saiu junto com o addCoding+deleteCoding. Ver a nota na propria funcao.
+        const { failed } = await moveCodings(store, allCodings.filter(c=>mergedIds.includes(c.code_id)), survivorId);
+        // ABORTA antes do passo 3: deleteCode apaga as codificacoes do codigo EM CASCATA, entao
+        // seguir adiante depois de uma falha destruiria justamente as que nao migraram.
+        if(failed) throw new Error(`${failed} codificação(ões) não puderam ser movidas — a mesclagem foi interrompida e nenhum código foi excluído.`);
         // 2) reparenta os filhos diretos dos mesclados pro sobrevivente — senao deleteCode
         // (que apaga em cascata) destruiria esses filhos junto
         for(const mid of mergedIds){
@@ -7668,7 +8025,7 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
         <div class="row" style="gap:6px;margin-bottom:10px;flex-wrap:wrap">
           <button class="btn sm" onClick=${()=>onAdd(selCode?codeById[selCode]:null)} disabled=${!selCode}
             title=${selCode?`filho de ${codeById[selCode]?.name}`:'selecione um código'}>＋ subcódigo</button>
-          <button class="btn sm ghost" onClick=${()=>onAdd(null)}>＋ nova família (topo)</button>
+          <button class="btn sm ghost" onClick=${()=>onAdd(null)} title="Código de topo que recebe trechos">＋ código (topo)</button>
           <div style="flex:1"></div>
           <input class="txtin" style="max-width:220px" placeholder="buscar código…" value=${query} onInput=${e=>setQuery(e.target.value)} />
         </div>
@@ -7689,7 +8046,29 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
         </div>
       </div>`;
 
+  // a divisão é drill-in: ocupa a área inteira e volta, em vez de virar mais uma coluna espremida
+  if(splitCode && codeById[splitCode]) return html`<${SplitCodeView}
+    code=${codeById[splitCode]} codings=${allCodings.filter(c=>c.code_id===splitCode)}
+    store=${store} project=${project} onAdd=${onAdd} isAdmin=${isAdmin}
+    onCancel=${()=>setSplitCode(null)}
+    onDone=${async()=>{ setSplitCode(null); clearSelection(); await reload(); await loadAll(); }} />`;
+
+  const groupModal = groupConfirm && (()=>{ const alvo = codeById[groupConfirm.targetId];
+    return html`<div class="modal-bg" onClick=${()=>setGroupConfirm(null)}><div class="modal" style="max-width:520px" onClick=${e=>e.stopPropagation()}>
+      <h3 style="margin:0 0 6px">"${alvo?.name}" vai virar família</h3>
+      <p class="hint" style="margin:0 0 12px">Ele tem <b>${groupConfirm.n} trecho(s)</b> próprios, e família não recebe trechos. Eles vão para um subcódigo dentro dele:</p>
+      <input class="txtin" autofocus style="width:100%;box-sizing:border-box" value=${groupConfirm.keepName}
+        onInput=${e=>setGroupConfirm(g=>({...g, keepName:e.target.value}))} />
+      <p class="hint" style="margin:6px 0 0">Fica como pendência: para distribuí-los entre os subcódigos, use <b>Dividir em subcódigos</b> depois.</p>
+      <div class="row" style="gap:8px;justify-content:flex-end;margin-top:16px">
+        <button class="btn sm ghost" onClick=${()=>setGroupConfirm(null)}>Cancelar</button>
+        <button class="btn sm primary" disabled=${busy || !groupConfirm.keepName.trim()}
+          onClick=${()=>doGroup(groupConfirm.targetId, groupConfirm.newName, groupConfirm.ids, groupConfirm.keepName)}>${busy?'Agrupando...':'Agrupar'}</button>
+      </div>
+    </div></div>`; })();
+
   return html`<div class="split">
+    ${groupModal}
     <section class="pane" style="flex:1;min-width:0;border-right:1px solid var(--line)">
       <div class="pane-head" style="flex:none">
         <p class="h" style="margin:0">✎ Esquema de códigos</p>
@@ -7731,6 +8110,11 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
                 <${RenameCode} code=${codeById[selCode]} onUpd=${onUpd} onSetColor=${onSetColor} onSetSat=${onSetSat} onSetRedaction=${onSetRedaction} isAdmin=${isAdmin} />
                 ${codeById[selCode].parent_id && html`<button class="btn sm ghost" style="margin-top:10px;width:100%"
                   onClick=${()=>promoteToRoot(codeById[selCode])}>Promover a Hierarquia 0</button>`}
+                ${(()=>{ const proprios = allCodings.filter(c=>c.code_id===selCode);
+                  if(!proprios.length) return null;
+                  return html`<button class="btn sm ghost" style="margin-top:8px;width:100%" disabled=${!isAdmin}
+                    title=${isAdmin?`Distribuir os ${proprios.length} trechos deste código entre subcódigos novos`:'Ação de administrador: move codificações de todos os pesquisadores'}
+                    onClick=${()=>setSplitCode(selCode)}>⑃ Dividir em subcódigos (${proprios.length})</button>`; })()}
               </div>`
             : html`<div class="section"><p class="hint">Marque dois ou mais códigos (☑) para agrupar ou mesclar, ou clique em um para renomear/colorir.</p></div>`}
       </div>
@@ -7759,9 +8143,9 @@ function SchemaTreeNode({ code, childrenOf, count, selCode, setSelCode, selected
         onDragEnd=${endDrag}>⠿</span>
       ${kids.length>0 ? html`<span class="caret" onClick=${e=>{e.stopPropagation();setOpen(!open);}}>${open?'▾':'▸'}</span>` : html`<span class="caret"></span>`}
       <input type="checkbox" checked=${selectedIds.has(code.id)} onClick=${e=>e.stopPropagation()} onChange=${()=>onToggleSelect(code.id)} style="margin-right:2px" />
-      <span class="swatch" style=${`background:${col.solid}`}></span>
+      <span class="swatch" style=${swatchStyle(col, kids.length>0)}></span>
       <span class="node-name" title=${code.name}>${code.is_redaction?'⦸ ':''}${code.name}</span>
-      ${count[code.id]?html`<span class="count">${count[code.id]}</span>`:''}
+      ${count[code.id]?html`<span class="count" title=${kids.length?'Inclui os subcódigos desta família':'Trechos deste código'}>${count[code.id]}</span>`:''}
       <button class="icon-btn" onClick=${e=>{e.stopPropagation(); if(confirm('Excluir o código e seus subcódigos e codificações?')) onDel(code.id);}} title="excluir">✕</button>
     </div>
     ${open && kids.map(k=>html`<${SchemaTreeNode} key=${k.id} code=${k} childrenOf=${childrenOf} count=${count}
@@ -8003,11 +8387,15 @@ function SchemaMapView({ codes, codeById, count, selCode, setSelCode, selectedId
               return html`<path key=${'e'+c.id} d=${`M${pp.x.toFixed(1)},${pp.y.toFixed(1)} Q${cxp.toFixed(1)},${cyp.toFixed(1)} ${p.x.toFixed(1)},${p.y.toFixed(1)}`} fill="none" stroke=${col} stroke-width=${w.toFixed(2)} stroke-opacity=${op} stroke-linecap="round"></path>`;
             }); })()}
           ${codes.map(c=>{ const p=positions[c.id]; if(!p) return null; const r=radiusOf(c.id), col=codeColor(c.hue,c.depth,c.hue_deg,false,c.sat), isSel=(selCode===c.id||selectedIds.has(c.id));
+            // MESMA linguagem visual do swatch da árvore: família (tem filhos) sai VAZADA, só
+            // contorno; quem recebe trechos sai preenchida. Sem isso o Mapa contradiz a árvore,
+            // que é onde o pesquisador aprendeu a regra.
+            const isFam = codes.some(k=>k.parent_id===c.id);
             return html`<g key=${c.id} transform=${`translate(${p.x.toFixed(1)} ${p.y.toFixed(1)})`}>
-              <circle r=${r} fill=${col.solid} stroke=${isSel?'var(--sky)':'rgba(0,0,0,.20)'} stroke-width=${isSel?3.5:1} opacity=${busy?0.55:1}></circle>
+              <circle r=${r} fill=${isFam?'var(--surface)':col.solid} stroke=${isSel?'var(--sky)':(isFam?col.solid:'rgba(0,0,0,.20)')} stroke-width=${isSel?3.5:(isFam?3:1)} opacity=${busy?0.55:1}></circle>
               ${c.is_redaction
                 ? html`<text y="5" text-anchor="middle" font-size="14" style="pointer-events:none">⦸</text>`
-                : (count[c.id]? html`<text y="4" text-anchor="middle" font-size=${Math.min(15, r*0.72).toFixed(0)} font-family="var(--mono)" fill=${col.isBlack?'rgba(255,255,255,.9)':'rgba(255,255,255,.94)'} style="pointer-events:none">${count[c.id]}</text>`:null)}
+                : (count[c.id]? html`<text y="4" text-anchor="middle" font-size=${Math.min(15, r*0.72).toFixed(0)} font-family="var(--mono)" fill=${isFam?col.solid:(col.isBlack?'rgba(255,255,255,.9)':'rgba(255,255,255,.94)')} style="pointer-events:none">${count[c.id]}</text>`:null)}
               <text class="map-node-label" y=${(r+13).toFixed(0)} text-anchor="middle">${chTrunc(c.name,16)}</text>
             </g>`;
           })}
@@ -8050,7 +8438,19 @@ function SchemaMapView({ codes, codeById, count, selCode, setSelCode, selectedId
         items.push({ label:`↑ promover ${sel.length} ao topo`, on:()=>onPromote(sel) });
         items.push({ label:`⌗ agrupar ${sel.length} sob novo pai`, on:()=>onGroupNew(sel) });
       } else {
-        items.push({ label:'＋ nova família (topo)', on:()=>onAdd(null) });
+        // nasce ONDE SE CLICOU. Sem isso o código novo ia para a próxima vaga da grade de raízes,
+        // que num projeto com muitos códigos cai longe da área visível — e o autor relatou
+        // justamente "criei e não apareceu". O raio nunca foi o problema (mapNodeRadius tem piso
+        // de 13, então código sem trecho já desenhava); o problema era o PONTO.
+        items.push({ label:'＋ novo código (topo)', on:async()=>{
+          const w = toWorld(menu.x, menu.y);
+          const c = await onAdd(null);
+          if(c && c.id){
+            const x = Math.round(w.x), y = Math.round(w.y);
+            setPositions(p=>({ ...p, [c.id]:{x,y} }));   // imediato: não espera o layout recalcular
+            onUpd(c.id, { pos_x:x, pos_y:y });           // persiste, para sobreviver ao reload
+          }
+        } });
       }
       return html`
         <div style="position:fixed;inset:0;z-index:60" onPointerDown=${()=>setMenu(null)} onContextMenu=${e=>{e.preventDefault();setMenu(null);}}></div>
@@ -10150,10 +10550,12 @@ function IAOrganizarPanel({ project, docs, codes, codeById, codePath, store, all
       }
     }
     let applied=0, skipped=0;
-    // notas-por-trecho (scope='coding'): o merge recria os codings (id novo) e o delete do
-    // antigo faz GC do memo; busca fresco pra migrar a nota pro id novo (mesmo fix do Esquema).
-    let memoByCoding = {};
-    try{ (await store.listMemos(project.id)).forEach(m=>{ if(m.scope==='coding' && m.content) memoByCoding[m.target_id]=m; }); }catch(e){}
+    /* A IA NAO decide destino de trecho: por filhos num codigo que TEM trechos proprios criaria o
+       no misto, e resolver isso exige escolher para onde eles vao — decisao do pesquisador, nao da
+       maquina. Aqui a operacao e RECUSADA e dita pelo nome, em vez de aplicada em silencio ou de
+       abrir um dialogo no meio de um lote. O caminho e o "Dividir em subcodigos" do Esquema. */
+    const recusadas = [];
+    const temTrechosProprios = (id)=> (allCodings||[]).some(c=>c.code_id===id);
     if(store.beginBatch) store.beginBatch();
     try{
       for(let i=0;i<ops.length;i++){
@@ -10164,16 +10566,12 @@ function IAOrganizarPanel({ project, docs, codes, codeById, codePath, store, all
             const survivor = byId(o.survivor);
             const merged = o.merged.filter(id=>byId(id) && !byId(id)._deleted);
             if(!survivor || survivor._deleted || !merged.length){ skipped++; continue; }
-            for(const mid of merged){
-              for(const cod of (allCodings||[]).filter(c=>c.code_id===mid)){
-                const nc = await store.addCoding(project.id, { document_id:cod.document_id, code_id:o.survivor,
-                  span_start:cod.span_start, span_end:cod.span_end, quote:cod.quote, layer:cod.layer,
-                  created_by:cod.created_by??null, author_name:cod.author_name });
-                const mem = memoByCoding[cod.id];
-                if(mem && nc && nc.id) await store.setMemo(project.id, 'coding', nc.id, mem.content, mem.author_name);
-                await store.deleteCoding(cod.id);
-              }
-            }
+            // moveCodings preserva o id de cada coding (e a nota de trecho junto). O `failed` nao
+            // pode ser ignorado: o deleteCode logo abaixo apaga em cascata, entao seguir com
+            // linhas que nao migraram as destruiria. O throw cai no catch por-operacao
+            // (skipped++), sem excluir codigo nenhum.
+            const mv = await moveCodings(store, (allCodings||[]).filter(c=>merged.includes(c.code_id)), o.survivor);
+            if(mv.failed) throw new Error('codificações não migradas');
             for(const mid of merged){ for(const ch of childrenOf(mid)){ await reparentSubtree(ch.id, o.survivor, survivor.depth+1, { hue:survivor.hue, hue_deg:survivor.hue_deg, sat:survivor.sat }); } }
             for(const mid of merged){ await store.deleteCode(mid); const n=byId(mid); if(n) n._deleted=true; }
             applied++;
@@ -10181,11 +10579,13 @@ function IAOrganizarPanel({ project, docs, codes, codeById, codePath, store, all
             let parent = o.parent ? byId(o.parent) : null;
             if(!parent){ const created = await onAdd(null, o.newParentName||'Novo agrupamento'); parent = { ...created }; work.push(parent); }
             if(parent._deleted){ skipped++; continue; }
+            if(temTrechosProprios(parent.id)){ recusadas.push(nameOf(parent.id)); skipped++; continue; }
             for(const id of o.children){ const ch = byId(id); if(!ch || ch._deleted || id===parent.id || isDescendantOf(parent.id, id)) continue; await reparentSubtree(id, parent.id, parent.depth+1, { hue:parent.hue, hue_deg:parent.hue_deg, sat:parent.sat }); }
             applied++;
           } else if(o.op==='reparent'){
             const node = byId(o.id), parent = byId(o.newParent);
             if(!node || node._deleted || !parent || parent._deleted || o.id===parent.id || isDescendantOf(parent.id, o.id)){ skipped++; continue; }
+            if(temTrechosProprios(parent.id)){ recusadas.push(nameOf(parent.id)); skipped++; continue; }
             await reparentSubtree(o.id, parent.id, parent.depth+1, { hue:parent.hue, hue_deg:parent.hue_deg, sat:parent.sat });
             applied++;
           } else if(o.op==='rename'){
@@ -10200,7 +10600,11 @@ function IAOrganizarPanel({ project, docs, codes, codeById, codePath, store, all
     } finally { if(store.endBatch) await store.endBatch(); }
     await reload(); await loadAll();
     patchTurn(turnIdx, { applied:true }); // proposta vira registro somente-leitura
-    setApplyMsg(`${applied} operação(ões) aplicada(s)${skipped?`, ${skipped} ignorada(s)`:''}. Confira o esquema na aba "Esquema ▸ Códigos".`);
+    // as recusadas por "o alvo tem trechos próprios" são ditas PELO NOME: "N ignoradas" sozinho não
+    // deixa o pesquisador saber o que fazer, e aqui existe uma ação concreta (dividir aquele código)
+    const nomesRec = [...new Set(recusadas)];
+    setApplyMsg(`${applied} operação(ões) aplicada(s)${skipped?`, ${skipped} ignorada(s)`:''}. Confira o esquema na aba "Esquema ▸ Códigos".`
+      + (nomesRec.length ? ` ATENÇÃO: ${nomesRec.map(n=>`"${n}"`).join(', ')} ${nomesRec.length>1?'têm':'tem'} trechos próprios e não pode(m) receber subcódigos sem que você decida para onde esses trechos vão — use "Dividir em subcódigos" no Esquema.` : ''));
     // registra no historico que foi aplicado, pra IA saber o estado num proximo turno
     setHistory(h=>[...h, { role:'user', content: `(Apliquei ${applied} operação(ões) da sua proposta. O esquema mudou.)` }]);
     setBusy(false);
@@ -12760,15 +13164,17 @@ function TreeNode({ code, childrenOf, count, sel, selCode, setSelCode, onApply, 
   const kids = childrenOf(code.id);
   const col = codeColor(code.hue, code.depth, code.hue_deg, false, code.sat);
   const isSel = selCode===code.id;
-  const appliable = !!sel;
+  // família não recebe trecho: com uma seleção ativa, clicar nela SELECIONA (para criar subcódigo
+  // dentro, renomear...) em vez de aplicar. Sem isso o tipo declarado seria só decorativo.
+  const appliable = !!sel && kids.length===0;
   return html`<div class="node">
     <div class="node-row ${isSel?'sel':''} ${appliable?'appliable':''}" style=${`padding-left:${6+depthPad*16}px`}
       onClick=${()=> appliable ? onApply(code.id) : setSelCode(code.id) }
       onContextMenu=${onCodeContext ? (e)=>{ e.preventDefault(); e.stopPropagation(); onCodeContext(code, e.clientX, e.clientY); } : null}>
       ${kids.length>0 ? html`<span class="caret" onClick=${e=>{e.stopPropagation();setOpen(!open);}}>${open?'▾':'▸'}</span>` : html`<span class="caret"></span>`}
-      <span class="swatch" style=${`background:${col.solid}`}></span>
+      <span class="swatch" style=${swatchStyle(col, kids.length>0)}></span>
       <span class="node-name" title=${code.name}>${code.is_redaction?'⦸ ':''}${code.name}</span>
-      ${count[code.id]?html`<span class="count">${count[code.id]}</span>`:''}
+      ${count[code.id]?html`<span class="count" title=${kids.length?'Inclui os subcódigos desta família':'Trechos deste código'}>${count[code.id]}</span>`:''}
       <button class="icon-btn" onClick=${e=>{e.stopPropagation(); if(confirm('Excluir o código e seus subcódigos e codificações?')) onDel(code.id);}} title="excluir">✕</button>
     </div>
     ${open && kids.map(k=>html`<${TreeNode} key=${k.id} code=${k} childrenOf=${childrenOf} count=${count}

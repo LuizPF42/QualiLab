@@ -121,12 +121,35 @@ Antes de clicar em qualquer botão, vale entender cinco ideias. Elas se repetem 
 Um texto a ser analisado: uma entrevista, uma decisão judicial, um artigo, uma transcrição. Você importa (`.txt`, `.md`, `.docx`, `.pdf`) ou cola o texto direto. Cada linha de uma planilha (`.csv`/`.xlsx`) também pode virar um documento.
 
 ### Código
-Um rótulo que você aplica a **trechos** do texto ("este parágrafo fala de *acesso à justiça*"). Códigos são **hierárquicos**: uma família (Hierarquia 0) pode ter subcódigos, e estes podem ter os seus. A **cor** vem da família (o matiz) e a **tonalidade** indica a profundidade. É a codificação temática clássica de QDA.
+Um rótulo que você aplica a **trechos** do texto ("este parágrafo fala de *acesso à justiça*"). Códigos são **hierárquicos**: um código pode conter subcódigos, e estes podem conter os seus. A **cor** vem da família (o matiz) e a **tonalidade** indica a profundidade. É a codificação temática clássica de QDA.
+
+### Código e família: uma regra só
+
+> **Um código ou agrupa outros códigos, ou recebe trechos. Nunca as duas coisas.**
+
+Quem tem subcódigos é uma **família**: ela organiza, e por isso não recebe trechos diretamente. Quem não tem subcódigos recebe trechos — seja um código de **Hierarquia 0** (solto no topo) ou um **subcódigo** dentro de uma família. Na árvore isso é visível: a família aparece com o quadradinho de cor **vazado**, só o contorno; quem recebe trechos aparece **preenchido**. No Mapa, a mesma coisa com as bolhas.
+
+**Por que essa regra existe.** Sem ela, um código pode acabar sendo as duas coisas ao mesmo tempo — ter subcódigos *e* trechos próprios —, e aí toda contagem fica ambígua: quando a família mostra "23", são os trechos dela, os dos filhos, ou a soma? Pior, a mesma pergunta atinge a análise: ao comparar "Riscos" com "Adoção", você está comparando conjuntos que não são do mesmo tipo. É por isso que o ATLAS.ti e o QualCoder também separam as duas coisas, e o argumento deles é **metodológico**, não técnico.
+
+No QualiLab a família mostra a **soma dos subcódigos** (o número inclui os filhos; o tooltip avisa). Assim ela continua dizendo quanto aquele tema pesa no material, sem ter trechos próprios.
+
+**Você não precisa decidir nada disso na frente.** Crie códigos à vontade enquanto lê; um código novo nasce simples e recebe trechos. A família aparece **quando você decide subdividir**: no instante em que um código ganha o primeiro subcódigo, ele vira família — e, se já tiver trechos próprios, o QualiLab pergunta ali mesmo para onde eles vão (veja [5.1](#51-criar-códigos) e [7.2](#72-códigos-reorganização-em-lote)). Nada é movido sem você ver.
+
+> **Sobre a profundidade.** O QualiLab permite quantos níveis você quiser (`Adoção ▸ Ganhos ▸ Aceleração`). A literatura recomenda parcimônia: Bazeley sugere algo como 10 a 25 famílias no topo e **2 a 3 níveis** no total. Mais fundo que isso e os códigos tendem a se duplicar nos níveis baixos, o que atrapalha justamente a comparação que a codificação deveria permitir.
 
 ### Categoria (atributo do documento)
 Diferente do código: a categoria descreve o **documento inteiro**, não um trecho. "Ano", "Tribunal", "Tipo de fonte", "Gênero do entrevistado". É o que normalmente vira coluna numa planilha paralela; aqui fica integrado. Há cinco tipos (Texto Fechado, Texto Aberto, Data, Múltipla Escolha, Caixa de Seleção).
 
 > **Código × Categoria, em uma frase:** *código* marca um **pedaço** do texto; *categoria* responde uma pergunta sobre o **documento todo**.
+
+> **Se você vem de outra ferramenta, atenção à palavra "categoria".** Ela é um falso amigo. Aqui significa **atributo do documento**; em duas das ferramentas mais usadas significa o **oposto**: um agrupador de códigos.
+
+| No QualiLab | MAXQDA | NVivo | QualCoder | ATLAS.ti |
+|---|---|---|---|---|
+| **categoria** (atributo do documento) | variável de documento | atributo (numa classificação de caso) | atributo | *não existe*; vira **grupo de documentos** |
+| **família** (código com subcódigos) | código e subcódigos | nó-pai e nós-filhos | **categoria** | **categoria** |
+
+O ATLAS.ti é o único dos quatro que não tem atributo de documento: o manual dele recomenda usar **grupos de documentos** no lugar ("document groups can be regarded as attributes or variables"). É por isso que, ao exportar para ele, cada valor de categoria vira um grupo separado, e uma categoria de texto livre acaba gerando um grupo por documento. Não é um defeito da exportação: é a única representação que o modelo dele admite.
 
 ### Camadas e autoria
 Toda codificação e toda resposta de categoria registra **quem** fez. Há duas camadas:
@@ -308,7 +331,14 @@ Uma planilha (`.csv`/`.xlsx`) vira **um documento por linha**. Veja [Importar e 
 Esta é a tela **Codificação**: leitor à esquerda, painéis de **Categorias** e **Códigos** à direita.
 
 ### 5.1. Criar códigos
-No painel **Códigos** (direita) você cria e organiza os rótulos. Um código novo nasce como família (Hierarquia 0). Você pode criar subcódigos, renomear e excluir. Também dá para criar um código **na hora de aplicar** (veja abaixo).
+No painel **Códigos** (direita) você cria e organiza os rótulos. Um código novo nasce solto em **Hierarquia 0** e já recebe trechos. Você pode criar subcódigos, renomear e excluir. Também dá para criar um código **na hora de aplicar** (veja abaixo).
+
+**Quando um código vira família.** No momento em que ele ganha o primeiro subcódigo. Se ele ainda não tinha trechos, a mudança é silenciosa — não há nada a decidir. Se **já tinha**, o QualiLab abre um aviso perguntando para onde vão esses trechos, porque família não os recebe (a regra está em [Conceitos](#código-e-família-uma-regra-só)). Você tem duas saídas:
+
+- **marcar trecho a trecho** os que pertencem ao subcódigo novo;
+- ou **não marcar nada**: todos vão para um subcódigo de pendência, chamado por padrão `«Nome» (geral)`.
+
+A segunda existe para você não ser obrigado a triar 80 trechos no meio de uma leitura. O `(geral)` **registra a pendência** em vez de fingir que a classificação foi feita — e dá para distribuí-los depois, com calma, em [Esquema ▸ Dividir em subcódigos](#72-códigos-reorganização-em-lote).
 
 **Botão direito num código** (no painel da Codificação) abre um menu com **✎ Editar código** (nome,
 cor, saturação, censura) e **＋ Subcódigo aqui**. É o caminho para mexer num código **sem sair da
@@ -428,11 +458,27 @@ Mesma edição do painel de Categorias, mas focada em montar o esquema: criar, e
 ### 7.2. Códigos (reorganização em lote)
 Pensado para quem terminou uma codificação aberta com **centenas de códigos soltos** e quer organizá-los. É uma árvore com **caixas de seleção**; o painel da direita muda conforme a seleção:
 
-- **Clique simples em um código** (na linha, não na caixa) → editar nome/cor + **Promover a Hierarquia 0** (se for subcódigo).
+- **Clique simples em um código** (na linha, não na caixa) → editar nome/cor + **Promover a Hierarquia 0** (se for subcódigo) + **⑃ Dividir em subcódigos** (se ele tiver trechos).
 - **Marque 2 ou mais** (caixas) → aparecem duas ações:
-  - **Agrupar**: os marcados viram **filhos** de um código (existente, escolhido na lista, ou novo). Continuam separados, só ganham um pai. Adotam a cor do pai.
+  - **Agrupar**: os marcados viram **filhos** de um código (existente, escolhido na lista, ou novo). Continuam separados, só ganham um pai. Adotam a cor do pai. Se o pai escolhido já tiver trechos próprios, ele vira família e o QualiLab pergunta antes para onde vão esses trechos.
   - **Mesclar**: escolhe um **sobrevivente** (sugestão = o mais frequente); as codificações dos demais são **reatribuídas** a ele e os outros são excluídos. **Irreversível**: confirma antes. Os filhos dos mesclados são preservados (passam para o sobrevivente).
 - **Reordenar entre irmãos**: arraste pelo punho **⠿** (só reordena dentro do mesmo pai; para mudar de pai, use **Agrupar**).
+
+#### Dividir um código em subcódigos
+
+O inverso do Mesclar, e a ferramenta para quando um código ficou **largo demais**: você o abre e distribui os trechos dele entre vários subcódigos novos, de uma vez.
+
+Selecione o código e clique em **⑃ Dividir em subcódigos**. A tela tem:
+
+1. **os subcódigos novos** — quantos quiser, um por linha;
+2. **uma tabela** com um trecho por linha e uma coluna por subcódigo. Marque as células. Um trecho pode ir para **mais de um** subcódigo: o primeiro recebe o trecho original (com a nota, se houver) e os demais recebem uma cópia;
+3. **teclas 1 a 9** marcam a coluna correspondente na linha em foco, e as setas ↑↓ percorrem as linhas. É o que torna viável distribuir dezenas de trechos;
+4. **Mutuamente exclusivo**: cada trecho só pode ir para um subcódigo. Marque se você calcula **concordância entre codificadores** — o coeficiente pressupõe isso dentro de um mesmo domínio;
+5. o que você **não marcar** vai para o `(geral)`, cujo nome dá para trocar.
+
+Ao final, o código dividido vira família (0 trechos próprios) e passa a mostrar a soma dos filhos. **É ação de administrador**, porque move codificações de todos os pesquisadores.
+
+> **Nota de método.** A divisão é o momento de fazer as distinções ficarem explícitas: ao separar "Ganhos de produtividade" em "Aceleração de pesquisa" e "Automação de tarefas", você está registrando um argumento sobre o material, não só arrumando a árvore. Vale escrever no **memo** de cada subcódigo o que ele inclui e exclui, enquanto o critério está fresco.
 
 ### 7.3. Ver os códigos como Mapa (quadro branco espacial)
 
@@ -647,6 +693,8 @@ Os menus **exportar ▾** e **importar ▾** ficam no cabeçalho (aparecem quand
 | **CSV (atributos por documento)** | Um documento por linha, com os valores de categoria |
 | **QDPX (ATLAS.ti / MAXQDA / NVivo)** | Padrão REFI-QDA; prefere a camada final quando consolidada |
 | **QDC (codebook REFI-QDA)** | Só o livro de códigos |
+
+> **O que acontece com as categorias no QDPX.** O padrão REFI-QDA guarda **um valor por documento por atributo**, sem autor e sem tipo rico. Na prática: viaja o **gabarito** (as respostas individuais de cada pesquisador ficam só no `.qualilab`); todos os tipos saem como **texto**, com o tipo real numa descrição que só o próprio QualiLab lê de volta; e uma **Caixa de Seleção** com vários valores viaja como um texto único ("a | b"), porque nem o MAXQDA nem o NVivo têm atributo de múltiplos valores. Nada disso se perde no `.qualilab`, que é o único formato sem perda.
 
 > **Todos os itens acima saem completos, sem mascarar nada**, inclusive os trechos marcados como **censura**. São formatos de trabalho e migração: quem exporta está levando o próprio material para outra ferramenta, e mascarar ali seria perda irreversível. As saídas de **transparência** (Relatório Interativo / W3C) ficam na aba **Relatório**, não neste menu, e essas sim mascaram. Antes de mandar qualquer coisa para fora da equipe, veja [12.4](#124-antes-de-publicar-trabalhe-no-laboratório-publique-de-uma-cópia).
 
