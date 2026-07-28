@@ -1,6 +1,14 @@
 // ============================================================
 // QUALILAB — proxy generico pra Gemini / OpenAI / Anthropic / Azure / custom
 // ------------------------------------------------------------
+// DESDE jul/2026 ESTE NAO E MAIS O CAMINHO PADRAO. Com chave BYOK o navegador fala
+// DIRETO com o provedor (bloco "BYOK CLIENTE-DIRETO" no index.html), e esta funcao
+// atende so dois casos: (a) a chave DO SERVIDOR (secrets abaixo), que o navegador
+// nao tem; (b) endpoint custom/azure que nao libere CORS pro navegador — fallback
+// pedido pelo proprio front. Os adaptadores call* daqui estao DUPLICADOS no
+// index.html de proposito: mudou o formato de um provedor, mude nos DOIS.
+// Continua servindo clientes antigos em cache, que ainda mandam BYOK por aqui.
+// ------------------------------------------------------------
 // As chaves COMPARTILHADAS (uma por provedor, opcionais) ficam em secrets do
 // projeto Supabase, nunca no front-end. Um pesquisador tambem pode trazer a
 // PROPRIA chave (BYOK) — ela viaja so no corpo desta requisicao (body.apiKey),

@@ -762,7 +762,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.2.1';
+const QUALILAB_VERSION = '1.3.0';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -792,9 +792,10 @@ function clearRecoveryUrl(){
 const AI_SHARED_KEY = false;
 
 // Handle global do cliente Supabase ativo (setado no boot do App, em modo nuvem).
-// Uso: askAI/askAIChat leem a sessao daqui pra mandar o JWT do usuario a Edge Function
-// ai-ask — uma chave de IA do servidor (se configurada) exige sessao valida + dominio
-// autorizado (ver supabase/functions/ai-ask/index.ts); BYOK continua passando sem sessao.
+// Uso: askAIProxy le a sessao daqui pra mandar o JWT do usuario a Edge Function ai-ask —
+// uma chave de IA do servidor (se configurada) exige sessao valida + dominio autorizado
+// (ver supabase/functions/ai-ask/index.ts). Com BYOK a chamada nem chega la: vai direto do
+// navegador ao provedor (ver "BYOK CLIENTE-DIRETO"), sem sessao e sem intermediario.
 let _sbForAI = null;
 async function aiAuthToken(){
   try{
@@ -9534,10 +9535,11 @@ function CodingMemoModal({ target, memos, onClose, onSave }){
   </div>`;
 }
 
-/* ============ IA (chat simples via Edge Function ai-ask) ============
-   Proxy generico para a Groq, deployado em supabase/functions/ai-ask.
-   Aqui so existe um chat de pergunta/resposta; funcoes mais especificas
-   (sugerir codigo, resumir documento) podem reusar askAI() depois. */
+/* ============ IA (motor de chamada aos provedores) ============
+   Com chave do pesquisador (BYOK) o navegador fala DIRETO com o provedor; a Edge Function
+   ai-ask (supabase/functions/ai-ask) sobrou como caminho da chave do SERVIDOR e fallback de
+   CORS de custom/azure. Ver o bloco "BYOK CLIENTE-DIRETO" mais abaixo. Toda tela de IA passa
+   por askAIChat(); askAI() e o caso de uma rodada so. */
 // catalogo de modelos por provedor pro seletor de botoes em "Minha Conta" — ordenados do
 // mais rapido/barato pro mais capaz/lento/caro (mesmo padrao "tamanho" nos tres provedores).
 // O array tambem decide a ordem dos botoes de provedor.
@@ -9558,21 +9560,21 @@ const AI_PROVIDERS = [
     { id:'claude-opus-4-8',           label:'Opus',     note:'mais capaz, mais lento e caro' },
   ]},
   // Azure OpenAI: como o "custom" (URL base + modelo em texto livre, custom:true), mas
-  // autenticacao por header "api-key" e chave obrigatoria — tratado pela Edge Function.
+  // autenticacao por header "api-key" e chave obrigatoria.
   // baseUrl = endpoint "v1" do recurso (https://SEU-RECURSO.openai.azure.com/openai/v1);
   // modelo = nome do DEPLOYMENT criado no portal do Azure (nao o nome do modelo base).
   { id:'azure', label:'Azure OpenAI', azure:true, custom:true, models:[] },
   // provedor "personalizado": sem lista fixa de modelos (custom:true) — o pesquisador
   // preenche URL base + modelo em texto livre. Cobre qualquer API compativel com o formato
   // classico da OpenAI (/chat/completions): DeepSeek, Mistral, Qwen hospedado, ou um
-  // servidor local (Ollama/vLLM) exposto numa URL publica (a Edge Function roda no servidor
-  // do Supabase, nao alcanca localhost da maquina do pesquisador sem tunel).
+  // servidor proprio (Ollama/vLLM). O navegador tenta DIRETO; se o endpoint nao liberar CORS,
+  // cai na Edge Function ai-ask, que exige URL publica em https (nao alcanca localhost).
   { id:'custom', label:'Personalizado', custom:true, models:[] },
   // Ollama LOCAL: tambem formato classico da OpenAI (custom:true reusa a UI de URL+modelo),
-  // mas a flag local:true desvia a chamada pra DIRETA do navegador (askLocalChat), sem passar
-  // pela Edge Function ai-ask — que roda no servidor do Supabase e nao alcanca o localhost da
-  // maquina. Assim funciona offline/air-gapped, sem tunel. Requer iniciar o Ollama com
-  // OLLAMA_ORIGINS liberando a origem do navegador (CORS); ver hint em "Minha Conta".
+  // mas a flag local:true torna a chamada direta OBRIGATORIA, sem fallback nenhum pela ai-ask
+  // — que roda no servidor do Supabase e nao alcanca o localhost da maquina. Assim funciona
+  // offline/air-gapped, sem tunel. Requer iniciar o Ollama com OLLAMA_ORIGINS liberando a
+  // origem do navegador (CORS); ver hint em "Minha Conta".
   { id:'ollama', label:'Ollama (local)', custom:true, local:true, models:[] },
 ];
 // Sugestoes (NAO uma lista fixa) de modelos Ollama populares — viram <option> de um <datalist>
@@ -9596,6 +9598,25 @@ function getAIConfig(){
     };
   }catch(e){ return { provider:'gemini', apiKey:'', model:'', baseUrl:'' }; }
 }
+// A chave colada parece ser de OUTRO provedor? Erro real do autor (jul/2026): trocar de provedor
+// limpa modelo e URL base, mas NAO a chave (limpar arriscaria apagar a chave salva de quem so
+// espia outro provedor e volta — ha um unico slot em localStorage). A chave antiga foi salva sob
+// o provedor novo, e o unico sinal foi um 401 do provedor la na frente, com a chave ecoada no
+// meio de um JSON de erro. So AVISA, nunca bloqueia: prefixo nao e contrato (muda sem aviso), e
+// nao vale recusar uma chave legitima por causa de uma heuristica. So checa os tres provedores de
+// catalogo — em custom/azure a chave pode ter qualquer forma (DeepSeek usa "sk-", por exemplo).
+function aiKeyProviderHint(provider, key){
+  const k = String(key||'').trim();
+  if(!k || !['gemini','openai','anthropic'].includes(provider)) return null;
+  const formas = [
+    { id:'anthropic', re:/^sk-ant-/,     nome:'da Anthropic' },      // ANTES do openai: "sk-ant-" tambem casa "sk-"
+    { id:'gemini',    re:/^(AIza|AQ\.)/, nome:'do Google (Gemini)' },
+    { id:'openai',    re:/^sk-/,         nome:'da OpenAI' },
+  ];
+  const achou = formas.find(s=>s.re.test(k));
+  if(!achou || achou.id===provider) return null;
+  return `Esta chave parece ser ${achou.nome}, e o provedor selecionado é outro. Confira antes de salvar: a chave errada só dá erro na hora de usar a IA.`;
+}
 // rótulo do modelo ativo, pra proveniência da memória (ex.: "anthropic:claude-opus-4-8",
 // ou "gemini:(padrão)" quando o modelo é o default do provedor). Auditoria em projeto coletivo.
 function currentModelLabel(){
@@ -9615,9 +9636,10 @@ function currentModelLabel(){
   }
   return `${provLabel}: ${mLabel}`;
 }
-// provedor "local" (Ollama/vLLM na maquina): a chamada NAO passa pela Edge Function ai-ask
-// (que roda no servidor do Supabase e nao alcanca o localhost do pesquisador) — o navegador
-// fala DIRETO com o servidor local. Marcado pela flag local:true em AI_PROVIDERS.
+// provedor "local" (Ollama/vLLM na maquina): a chamada NUNCA pode passar pela Edge Function
+// ai-ask (que roda no servidor do Supabase e nao alcanca o localhost do pesquisador) — nem
+// mesmo como fallback. Marcado pela flag local:true em AI_PROVIDERS. Hoje todo BYOK vai direto
+// (ver canAskDirect); esta flag e o que torna o direto OBRIGATORIO.
 function isLocalProvider(provider){
   return !!AI_PROVIDERS.find(p=>p.id===provider)?.local;
 }
@@ -9628,65 +9650,267 @@ function isLocalProvider(provider){
 // e o cache (map) da tabela ai_prices = referencia de preco por modelo (leitura publica).
 let LAST_AI_USAGE = null;
 let AI_PRICES = null;
-// Chamada direta do navegador a um servidor local compativel com o formato classico da OpenAI
-// (/chat/completions). Mesmo corpo do callCustom da Edge Function, porem disparado no cliente —
-// funciona offline/air-gapped, sem tunel nem nuvem. Requer OLLAMA_ORIGINS liberando a origem do
-// navegador (CORS); e, se o app estiver em HTTPS (GitHub Pages), o navegador pode bloquear
-// http://localhost como conteudo misto — rodar o app localmente (http://localhost) contorna.
-// json=true ativa o "modo JSON" do servidor local (response_format json_object). Ollama/vLLM
-// compativeis com OpenAI restringem a saida a JSON valido via gramatica — essencial pros modelos
-// locais menores, que entendem a tarefa mas costumam ignorar a instrucao de "responda so JSON" e
-// devolvem prosa (ai o parseAIJson falha). So passar nas chamadas que esperam JSON (Codificar com
-// IA, "Sugerir memorias"); NUNCA na conversa em prosa do Analisar, senao quebraria a resposta.
-async function askLocalChat({ system, messages, signal, json }){
-  const cfg = getAIConfig();
-  const base = (cfg.baseUrl || 'http://localhost:11434/v1').replace(/\/+$/, '');
-  const msgs = [ ...(system ? [{ role:'system', content: system }] : []), ...(messages || []) ];
-  let res;
-  try{
-    res = await fetch(`${base}/chat/completions`, {
-      method: 'POST',
-      headers: { 'Content-Type':'application/json', ...(cfg.apiKey ? { Authorization:`Bearer ${cfg.apiKey}` } : {}) },
-      body: JSON.stringify({ model: cfg.model, messages: msgs, temperature: 0.3, stream: false, max_tokens: 8192, ...(json ? { response_format:{ type:'json_object' } } : {}) }),
-      ...(signal ? { signal } : {}),
-    });
-  }catch(e){
-    if(e && e.name === 'AbortError') throw e;
-    throw new Error(`Não consegui falar com o servidor local em ${base}. O Ollama está rodando e iniciado com OLLAMA_ORIGINS liberando este site? (Se o app estiver em HTTPS, rode-o localmente em http://localhost.)`);
-  }
-  if(!res.ok){ const t = await res.text().catch(()=> ''); throw new Error(`Servidor local (${res.status}): ${t || 'sem detalhe'}`); }
-  const data = await res.json().catch(()=>({}));
-  LAST_AI_USAGE = data.usage ? { input: data.usage.prompt_tokens||0, output: data.usage.completion_tokens||0, cached: 0 } : null;
-  return data.choices?.[0]?.message?.content || '';
-}
-async function askAI(prompt){
-  const cfg = getAIConfig();
-  if(isLocalProvider(cfg.provider)) return askLocalChat({ messages:[{ role:'user', content: prompt }] });
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/ai-ask`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${await aiAuthToken()}`, apikey: SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt, provider: cfg.provider, ...(cfg.apiKey ? { apiKey: cfg.apiKey } : {}), ...(activeModelId(cfg) ? { model: activeModelId(cfg) } : {}), ...(cfg.baseUrl ? { baseUrl: cfg.baseUrl } : {}) }),
-  });
-  const data = await res.json().catch(()=>({}));
-  if(!res.ok || data.error) throw new Error(data.error || `Erro ${res.status}`);
-  LAST_AI_USAGE = data.usage || null;
-  return data.text || '';
-}
+/* ===== BYOK CLIENTE-DIRETO (jul/2026) ==========================================================
+   Quando a chave e DO PESQUISADOR, o navegador fala DIRETO com o provedor — generalizacao do que
+   o Ollama ja fazia (isLocalProvider -> chamada direta), agora para todos os provedores. TRES
+   ganhos: (1) o operador do servidor sai do circuito (o material deixa de passar pela ai-ask, e a
+   promessa de privacidade do modo arquivo/rascunho volta a valer tambem com IA); (2) some o teto
+   de wall-clock de ~150s da Edge Function (o erro 546 deixa de existir aqui); (3) um laco agentico
+   futuro nao tem intermediario no caminho.
 
-// Motor de conversa multi-turno (Fase 0 do plano de IA assistida). Reaproveita o suporte a
-// { system, messages } que a Edge Function ai-ask JA tem — nao substitui askAI (que segue
-// servindo o caminho de uma rodada). messages = [{role:'user'|'assistant', content}]; o
-// material grande vai no system (prefixo estavel = candidato a prompt caching no provedor).
-//
+   QUEM VAI DIRETO: gemini/openai/anthropic COM chave BYOK (os tres aceitam chamada de navegador —
+   a Anthropic exige o header anthropic-dangerous-direct-browser-access), ollama (sempre) e
+   custom/azure (depende do CORS do endpoint, que e de terceiro).
+   QUEM CONTINUA NA ai-ask: (a) a chave DO SERVIDOR (AI_SHARED_KEY — o navegador nao a tem);
+   (b) custom/azure cujo endpoint recuse o navegador (FALLBACK DE CORS, e SO esses: cair no proxy
+   sem o pesquisador pedir mandaria o corpus pro servidor de outra pessoa, exatamente o que este
+   caminho existe pra evitar; e a Edge Function nao alcanca o localhost do Ollama de jeito nenhum).
+
+   Os adaptadores abaixo sao os MESMOS da ai-ask (supabase/functions/ai-ask/index.ts) — duplicacao
+   DELIBERADA, porque os dois caminhos precisam existir. Mudou o formato de um provedor? Mude nos
+   DOIS. Fica de fora de proposito a validacao anti-SSRF de baseUrl: aqui quem faz o POST e o
+   navegador do proprio pesquisador (risco dele, nao proxy aberto nosso); na ai-ask ela continua
+   valendo. Fica de fora tambem o orcamento de wall-clock (nao ha teto no navegador).
+   =============================================================================================== */
+const AI_MAX_TOKENS = 8192;                            // trava de SAIDA (mesma da ai-ask)
+const AI_TRANSIENT = new Set([429, 500, 502, 503, 504]); // erro transitorio do provedor -> reenvia
+const aiTrunc = (s, n=600) => (String(s).length > n ? String(s).slice(0, n) + '…' : String(s));
+// espera cancelavel (o backoff nao pode ignorar o AbortController das telas de IA)
+function aiSleep(ms, signal){
+  return new Promise((res, rej)=>{
+    if(signal?.aborted) return rej(new DOMException('Aborted','AbortError'));
+    const onAb = ()=>{ clearTimeout(t); rej(new DOMException('Aborted','AbortError')); };
+    const t = setTimeout(()=>{ if(signal) signal.removeEventListener('abort', onAb); res(); }, ms);
+    if(signal) signal.addEventListener('abort', onAb, { once:true });
+  });
+}
+// Tentativas com backoff em erro TRANSITORIO (429 rate limit, 5xx). Erro definitivo (400 request
+// ruim, 401 chave invalida) NAO e reentado. Falha de REDE (inclusive CORS recusado, que o
+// navegador entrega como TypeError sem detalhe nenhum) sai marcada com .aiNetwork — e o unico
+// sinal que autoriza o fallback pela ai-ask (ver aiProxyFallbackOK).
+async function aiFetchRetry(url, init, signal, attempts=3){
+  let last = null, lastErr = null;
+  for(let i=0; i<attempts; i++){
+    try{
+      const res = await fetch(url, { ...init, ...(signal ? { signal } : {}) });
+      if(!AI_TRANSIENT.has(res.status)) return res;
+      last = res;  // transitorio: guarda e tenta de novo (vira erro do provedor se as tentativas acabarem)
+    }catch(e){
+      if(e && e.name === 'AbortError') throw e;
+      lastErr = e;
+    }
+    if(i === attempts-1) break;
+    await aiSleep(500*Math.pow(2,i) + Math.random()*300, signal);
+  }
+  if(last) return last;  // ultima resposta transitoria -> o adaptador a transforma em erro do provedor
+  const err = lastErr || new Error('Sem resposta do provedor de IA.');
+  try{ err.aiNetwork = true; }catch(e){}
+  throw err;
+}
+// Alguns modelos de RACIOCINIO recusam "temperature" com 400. Heuristicos + rede de seguranca,
+// identicos aos da ai-ask: se vier 400 mencionando o parametro, refaz sem ele.
+function openaiTemperatureOK(model){
+  const m = String(model).toLowerCase();
+  if(/^o\d/.test(m)) return false;    // o1, o3, o4-mini... (raciocinio)
+  if(/^gpt-5/.test(m)) return false;  // gpt-5, gpt-5.6-*... (raciocinio)
+  return true;
+}
+function anthropicTemperatureOK(model){
+  const m = String(model).toLowerCase();
+  if(/claude-\w+-5\b/.test(m)) return false;        // sonnet-5, opus-5, fable-5...
+  if(/claude-opus-4-[78]\b/.test(m)) return false;  // opus 4.7 / 4.8
+  return true;
+}
+async function aiPostWithTempFallback(post, tempOK, label){
+  let res = await post(tempOK);
+  if(res.status === 400 && tempOK){
+    const t = await res.text();
+    if(/temperature/i.test(t)) res = await post(false);
+    else throw new Error(`${label} (400): ${aiTrunc(t)}`);
+  }
+  return res;
+}
+// chave no HEADER (x-goog-api-key), nunca na query string: uma URL invalida ou erro de rede
+// poderia ecoar a URL inteira (com a chave) na mensagem de erro.
+async function aiCallGemini(apiKey, model, systemParts, contents, opts, signal){
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+  const res = await aiFetchRetry(url, {
+    method: 'POST',
+    headers: { 'Content-Type':'application/json', 'x-goog-api-key': apiKey },
+    body: JSON.stringify({
+      contents: contents.map(m=>({ role: m.role==='assistant' ? 'model' : 'user', parts:[{ text:m.content }] })),
+      ...(systemParts.length ? { systemInstruction: { parts:[{ text: systemParts.join('\n') }] } } : {}),
+      generationConfig: {
+        temperature: 0.3,
+        maxOutputTokens: AI_MAX_TOKENS,
+        // saida estruturada NATIVA do Gemini nas chamadas que esperam JSON — no caminho da ai-ask
+        // isso nunca chegava a ser usado (o front nunca mandava `json` no corpo).
+        ...(opts.json ? { responseMimeType:'application/json' } : {}),
+      },
+    }),
+  }, signal);
+  if(!res.ok) throw new Error(`Gemini API (${res.status}): ${aiTrunc(await res.text())}`);
+  const data = await res.json();
+  const text = (data.candidates?.[0]?.content?.parts || []).map(p=>p.text).join('') || '';
+  return { text, raw: data };
+}
+// Responses API (/v1/responses), nao a Chat Completions classica — a serie GPT-5 quebrou
+// compatibilidade de formas diferentes por modelo. A Responses API NAO suporta
+// response_format:json_object; por isso `json` nao chega aqui (o parseAIJson tolerante cobre).
+async function aiCallOpenAI(apiKey, model, systemParts, contents, opts, signal){
+  const base = {
+    model,
+    input: [ ...(systemParts.length ? [{ role:'system', content: systemParts.join('\n') }] : []), ...contents ],
+    max_output_tokens: AI_MAX_TOKENS,
+  };
+  const post = (withTemp)=>aiFetchRetry('https://api.openai.com/v1/responses', {
+    method: 'POST',
+    headers: { 'Content-Type':'application/json', Authorization:`Bearer ${apiKey}` },
+    body: JSON.stringify(withTemp ? { ...base, temperature:0.3 } : base),
+  }, signal);
+  const res = await aiPostWithTempFallback(post, openaiTemperatureOK(model), 'OpenAI API');
+  if(!res.ok) throw new Error(`OpenAI API (${res.status}): ${aiTrunc(await res.text())}`);
+  const data = await res.json();
+  const text = data.output_text
+    ?? (data.output || [])
+        .filter(item=>item.type==='message')
+        .flatMap(item=>(item.content || []).filter(c=>c.type==='output_text').map(c=>c.text))
+        .join('')
+    ?? '';
+  return { text, raw: data };
+}
+// Anthropic: `system` separado das mensagens e max_tokens obrigatorio. O header
+// anthropic-dangerous-direct-browser-access e o que habilita CORS na API deles — sem ele o
+// navegador nem manda a requisicao. (O nome e da Anthropic; o "perigo" que ele nomeia e expor a
+// chave num app publico de chave unica, que nao e o nosso caso: aqui a chave e do proprio
+// pesquisador, ja mora no localStorage dele e nao trafega mais pra lugar nenhum.)
+async function aiCallAnthropic(apiKey, model, systemParts, contents, opts, signal){
+  const base = {
+    model,
+    max_tokens: AI_MAX_TOKENS,
+    ...(systemParts.length ? { system: systemParts.join('\n') } : {}),
+    messages: contents,
+  };
+  const post = (withTemp)=>aiFetchRetry('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type':'application/json', 'x-api-key': apiKey, 'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true',
+    },
+    body: JSON.stringify(withTemp ? { ...base, temperature:0.3 } : base),
+  }, signal);
+  const res = await aiPostWithTempFallback(post, anthropicTemperatureOK(model), 'Anthropic API');
+  if(!res.ok) throw new Error(`Anthropic API (${res.status}): ${aiTrunc(await res.text())}`);
+  const data = await res.json();
+  const text = (data.content || []).filter(b=>b.type==='text').map(b=>b.text).join('') || '';
+  return { text, raw: data };
+}
+// Formato classico da OpenAI (/chat/completions), que serve os TRES provedores de URL livre:
+// custom (DeepSeek/Mistral/Qwen/vLLM), azure (autenticacao por header api-key; `model` = nome do
+// DEPLOYMENT) e ollama (servidor na maquina do pesquisador).
+// `json` (response_format json_object) so vai pro OLLAMA, de proposito: os modelos locais menores
+// entendem a tarefa mas ignoram "responda so JSON" e devolvem prosa, e la a gramatica do servidor
+// resolve. Num endpoint custom/azure arbitrario o parametro pode nao ser suportado e virar 400 —
+// mandar seria trocar um risco conhecido (prosa, que o parseAIJson tolera) por um erro duro.
+async function aiCallOpenAICompat(kind, baseUrl, apiKey, model, systemParts, contents, opts, signal){
+  const url = `${String(baseUrl).replace(/\/+$/, '')}/chat/completions`;
+  const label = kind==='azure' ? 'Azure OpenAI' : kind==='ollama' ? 'Servidor local' : 'API personalizada';
+  const base = {
+    model,
+    messages: [ ...(systemParts.length ? [{ role:'system', content: systemParts.join('\n') }] : []), ...contents ],
+    max_tokens: AI_MAX_TOKENS,
+    ...(kind==='ollama' ? { stream:false, ...(opts.json ? { response_format:{ type:'json_object' } } : {}) } : {}),
+  };
+  const post = (withTemp)=>aiFetchRetry(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type':'application/json',
+      ...(kind==='azure' ? { 'api-key': apiKey } : (apiKey ? { Authorization:`Bearer ${apiKey}` } : {})),
+    },
+    body: JSON.stringify(withTemp ? { ...base, temperature:0.3 } : base),
+  }, signal);
+  // sem heuristico (o modelo atras de uma URL livre pode ser qualquer um): tenta com temperature
+  // e cai na rede de seguranca se um modelo de raciocinio recusar o parametro.
+  const res = await aiPostWithTempFallback(post, true, label);
+  if(!res.ok) throw new Error(`${label} (${res.status}): ${aiTrunc(await res.text().catch(()=>''))||'sem detalhe'}`);
+  const data = await res.json();
+  return { text: data.choices?.[0]?.message?.content || '', raw: data };
+}
+// Normaliza o "usage" (tokens REAIS da resposta) de cada provedor pra { input, output, cached } —
+// mesma funcao da ai-ask. A Anthropic reporta input_tokens SEM o cache: somamos read+creation.
+function aiNormUsage(provider, data){
+  try{
+    if(provider === 'gemini'){
+      const u = data?.usageMetadata || {};
+      return { input: u.promptTokenCount ?? 0, output: u.candidatesTokenCount ?? 0, cached: u.cachedContentTokenCount ?? 0 };
+    }
+    if(provider === 'openai'){
+      const u = data?.usage || {};
+      return { input: u.input_tokens ?? 0, output: u.output_tokens ?? 0, cached: u.input_tokens_details?.cached_tokens ?? 0 };
+    }
+    if(provider === 'anthropic'){
+      const u = data?.usage || {};
+      const cacheRead = u.cache_read_input_tokens ?? 0, cacheCreate = u.cache_creation_input_tokens ?? 0;
+      return { input: (u.input_tokens ?? 0) + cacheRead + cacheCreate, output: u.output_tokens ?? 0, cached: cacheRead };
+    }
+    const u = data?.usage || {};  // custom / azure / ollama (formato classico da OpenAI)
+    return { input: u.prompt_tokens ?? 0, output: u.completion_tokens ?? 0, cached: u.prompt_tokens_details?.cached_tokens ?? 0 };
+  }catch(e){ return { input:0, output:0, cached:0 }; }
+}
+// A chamada pode ir DIRETO do navegador ao provedor? So quando as credenciais sao do pesquisador
+// (BYOK) ou o servidor e local. Sem chave = caminho da chave DO SERVIDOR, que so a ai-ask tem.
+function canAskDirect(cfg){
+  if(isLocalProvider(cfg.provider)) return true;
+  if(cfg.provider === 'custom') return !!cfg.baseUrl;               // chave opcional
+  if(cfg.provider === 'azure')  return !!(cfg.baseUrl && cfg.apiKey);
+  return !!cfg.apiKey;                                              // gemini/openai/anthropic
+}
+// Este erro autoriza tentar de novo pela ai-ask? So falha de REDE/CORS (.aiNetwork) e so em
+// custom/azure, cujo endpoint e de terceiro e pode nao liberar o navegador. Nos provedores de
+// catalogo o fallback silencioso seria PIOR que o erro: mandaria o corpus pro servidor de outra
+// pessoa sem o pesquisador ter pedido. No ollama nao faz sentido nenhum (a Edge Function roda na
+// nuvem e nao alcanca o localhost dele). Erro do PROVEDOR (401, 400, 429) nunca cai aqui: a
+// resposta chegou, o proxy daria o mesmo resultado cobrando uma volta a mais.
+function aiProxyFallbackOK(e, cfg){
+  if(!e || e.name === 'AbortError' || !e.aiNetwork) return false;
+  return cfg.provider === 'custom' || cfg.provider === 'azure';
+}
+// Caminho DIRETO. Recebe o mesmo { system, messages } do resto do app; devolve o texto e carimba
+// o LAST_AI_USAGE (calculadora de custo), como o caminho da ai-ask faz.
+async function askAIDirect(cfg, { system, messages, signal, json }){
+  const provider = cfg.provider;
+  const model = activeModelId(cfg);
+  const baseUrl = cfg.baseUrl || (isLocalProvider(provider) ? 'http://localhost:11434/v1' : '');
+  const isCompat = provider==='custom' || provider==='azure' || isLocalProvider(provider);
+  if(isCompat && !model) throw new Error('Informe o modelo em "Minha conta" antes de usar a IA com este provedor.');
+  const all = [ ...(system ? [{ role:'system', content: system }] : []), ...(messages || []) ];
+  const systemParts = all.filter(m=>m.role==='system').map(m=>String(m.content||''));
+  const contents = all.filter(m=>m.role!=='system')
+    .map(m=>({ role: m.role==='assistant' ? 'assistant' : 'user', content: String(m.content||'') }));
+  const opts = { json };
+  let out;
+  try{
+    out = provider==='gemini'    ? await aiCallGemini(cfg.apiKey, model, systemParts, contents, opts, signal)
+        : provider==='openai'    ? await aiCallOpenAI(cfg.apiKey, model, systemParts, contents, opts, signal)
+        : provider==='anthropic' ? await aiCallAnthropic(cfg.apiKey, model, systemParts, contents, opts, signal)
+        : await aiCallOpenAICompat(isLocalProvider(provider)?'ollama':provider, baseUrl, cfg.apiKey, model, systemParts, contents, opts, signal);
+  }catch(e){
+    // mensagem acionavel pro caso mais comum do servidor local (CORS/mixed content/desligado)
+    if(e?.aiNetwork && isLocalProvider(provider)){
+      throw new Error(`Não consegui falar com o servidor local em ${baseUrl}. O Ollama está rodando e iniciado com OLLAMA_ORIGINS liberando este site? (Se o app estiver em HTTPS, rode-o localmente em http://localhost.)`);
+    }
+    throw e;
+  }
+  const u = aiNormUsage(provider, out.raw);
+  LAST_AI_USAGE = (u && (u.input || u.output)) ? u : null;
+  return out.text || '';
+}
+// Caminho PROXY (Edge Function ai-ask): chave do servidor, e fallback de CORS de custom/azure.
 // IMPORTANTE: a ai-ask SO usa body.system no fallback de { prompt } — quando vem body.messages,
-// ela ignora body.system e extrai o system de mensagens com role:'system' DENTRO do array.
-// Por isso o system entra PREPENDADO como 1a mensagem (role:'system'), nao como campo separado;
-// senao o system (= todo o material) seria descartado e o modelo responderia sem contexto.
-// Esse caminho funciona em todos os provedores (Gemini/OpenAI/Anthropic/Azure/custom) sem
-// precisar redeploy da function. Mandamos body.system tambem, por compatibilidade/inocuo.
-async function askAIChat({ system, messages, signal, json }){
-  const cfg = getAIConfig();
-  if(isLocalProvider(cfg.provider)) return askLocalChat({ system, messages, signal, json });
+// ela ignora body.system e extrai o system de mensagens com role:'system' DENTRO do array. Por
+// isso o system entra PREPENDADO como 1a mensagem; senao o material seria descartado e o modelo
+// responderia sem contexto. Mandamos body.system tambem, por compatibilidade/inocuo.
+async function askAIProxy(cfg, { system, messages, signal }){
   const msgs = [ ...(system ? [{ role:'system', content: system }] : []), ...(messages || []) ];
   const res = await fetch(`${SUPABASE_URL}/functions/v1/ai-ask`, {
     method: 'POST',
@@ -9705,6 +9929,24 @@ async function askAIChat({ system, messages, signal, json }){
   if(!res.ok || data.error) throw new Error(data.error || `Erro ${res.status}`);
   LAST_AI_USAGE = data.usage || null;
   return data.text || '';
+}
+// Motor unico de conversa multi-turno das telas de IA. messages = [{role:'user'|'assistant',
+// content}]; o material grande vai no system (prefixo estavel = candidato a prompt caching no
+// provedor). Escolhe o caminho (direto x proxy) e devolve o texto.
+async function askAIChat({ system, messages, signal, json }){
+  const cfg = getAIConfig();
+  if(canAskDirect(cfg)){
+    try{ return await askAIDirect(cfg, { system, messages, signal, json }); }
+    catch(e){
+      if(!aiProxyFallbackOK(e, cfg)) throw e;
+      console.warn('[IA] chamada direta falhou (provável CORS do endpoint); tentando pela função ai-ask:', e?.message || e);
+    }
+  }
+  return askAIProxy(cfg, { system, messages, signal });
+}
+// caminho de UMA rodada (pergunta -> resposta), sobre o mesmo motor
+async function askAI(prompt){
+  return askAIChat({ messages:[{ role:'user', content: prompt }] });
 }
 
 function lastAiUsage(){ return LAST_AI_USAGE; }
@@ -14170,12 +14412,34 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
   const [priceOut,setPriceOut]=useState(()=>{ try{return localStorage.getItem('qualilab:ai_price_out')||'';}catch(e){return '';} });
   const [aiPrices,setAiPrices]=useState(null); // tabela de referencia (pra exibir o preco do modelo)
   useEffect(()=>{ loadAiPrices().then(setAiPrices); }, []);
+  // CONFIG DE IA SALVA (o que esta no localStorage neste instante). Existe porque trocar de
+  // provedor LIMPA os campos — chave/modelo/URL sao credenciais DE UM provedor, e carregar a
+  // chave antiga pro provedor novo so produz um 401 la na frente, com a chave ecoada no erro.
+  // Mas ha um UNICO slot (qualilab:ai_key etc.): se limpar fosse definitivo, passear pelos
+  // botoes e voltar deixaria o campo vazio e o proximo "salvar" APAGARIA a chave guardada.
+  // Por isso voltar ao provedor SALVO repoe a config dele. Atualizado em saveAI/clearAI.
+  const savedAiRef = useRef(null);
+  if(savedAiRef.current === null) savedAiRef.current = { provider:aiProvider, key:aiKey, model:aiModel, baseUrl:aiBaseUrl };
+  const pickProvider = (pid)=>{
+    const s = savedAiRef.current, mesmo = pid===s.provider;
+    setAiProvider(pid);
+    setAiKey(mesmo ? s.key : '');
+    setAiModel(mesmo ? s.model : '');
+    setAiBaseUrl(mesmo ? s.baseUrl : (AI_PROVIDERS.find(p=>p.id===pid)?.local ? 'http://localhost:11434/v1' : ''));
+  };
   // custom e azure compartilham a UI de "URL base + modelo em texto livre" (custom:true);
   // azure tem rotulos proprios e exige a chave (azure:true).
   const provDef = AI_PROVIDERS.find(p=>p.id===aiProvider);
   const needsBaseUrl = !!provDef?.custom;
   const isAzure = !!provDef?.azure;
   const isLocal = !!provDef?.local;
+  // por onde a chamada vai (direto do navegador x função do servidor): espelha canAskDirect, a
+  // FONTE UNICA da decisão — a UI descreve o que o código faz, não uma promessa paralela.
+  const aiDirect = canAskDirect({ provider:aiProvider, apiKey:aiKey.trim(), baseUrl:aiBaseUrl.trim() });
+  // aviso (não bloqueia) quando a chave colada tem cara de outro provedor. O pickProvider já
+  // impede o caso comum (trocar de provedor levando a chave antiga); isto cobre o resto: colar
+  // a chave errada à mão, ou voltar ao provedor salvo cuja chave guardada é de outro.
+  const keyHint = aiKeyProviderHint(aiProvider, aiKey);
   // preco de referencia do modelo ativo (catalogo), pra exibir; id normalizado (tira sufixo de data)
   const refModelId = activeModelId({ provider:aiProvider, model:aiModel });
   const refRow = (!provDef?.custom && aiPrices)
@@ -14212,6 +14476,8 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
         if(priceOut.trim()!=='' && po>=0) localStorage.setItem('qualilab:ai_price_out', String(po)); else localStorage.removeItem('qualilab:ai_price_out');
       }
       AI_PRICES = null; // proxima estimativa recarrega a referencia (caso tenha mudado)
+      // o que acabou de ser gravado passa a ser a config SALVA (e o que pickProvider repoe)
+      savedAiRef.current = { provider:aiProvider, key:aiKey.trim(), model:aiModel.trim(), baseUrl:needsBaseUrl?aiBaseUrl.trim():'' };
     }catch(e){
       // #23: nao mente "salva" quando o localStorage recusa (quota/bloqueio/janela anonima)
       setErr('Não foi possível salvar a configuração de IA neste navegador: o armazenamento pode estar cheio, desabilitado ou bloqueado (ex.: janela anônima). Detalhe: '+String(e&&e.message||e));
@@ -14222,6 +14488,7 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
   const clearAI = ()=>run(async()=>{
     try{ localStorage.removeItem('qualilab:ai_provider'); localStorage.removeItem('qualilab:ai_key'); localStorage.removeItem('qualilab:ai_model'); localStorage.removeItem('qualilab:ai_baseurl'); }catch(e){}
     setAiProvider('gemini'); setAiKey(''); setAiModel(''); setAiBaseUrl('');
+    savedAiRef.current = { provider:'gemini', key:'', model:'', baseUrl:'' }; // nada salvo a repor
     setMsg(AI_SHARED_KEY ? 'Removida. As telas de IA voltam a usar a chave do servidor.' : 'Removida. Configure uma chave de IA para usar as telas de IA.');
   });
 
@@ -14252,24 +14519,34 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
     <div class="card" style="margin-bottom:12px">
       <div class="field-label">IA: ${AI_SHARED_KEY?'chave e modelo pessoais (opcional)':'sua chave e modelo'}</div>
       <p class="hint" style="margin:0 0 8px">${AI_SHARED_KEY
-        ? html`Por padrão, as telas de IA usam a chave e o modelo <b>do servidor</b> deste projeto (para contas autorizadas). Preenchendo aqui, suas análises passam a usar a <b>sua</b> chave (funciona em qualquer modo, inclusive local/arquivo): ela viaja só na requisição até a função do servidor que chama o provedor escolhido; não fica guardada lá, só neste navegador.`
-        : html`As telas de IA usam a <b>sua</b> chave de IA: configure abaixo o provedor, a chave e o modelo. A chave viaja só na requisição até a função do servidor que chama o provedor escolhido; <b>não</b> fica guardada lá, só neste navegador. Funciona em qualquer modo (nuvem, local ou arquivo); para um servidor local (Ollama), o navegador fala direto com ele, sem nuvem.`}</p>
+        ? html`Por padrão, as telas de IA usam a chave e o modelo <b>do servidor</b> deste projeto (para contas autorizadas), e a chamada passa por uma função no servidor. Preenchendo aqui, suas análises passam a usar a <b>sua</b> chave (funciona em qualquer modo, inclusive local/arquivo) e o navegador passa a falar <b>direto</b> com o provedor: o material não passa mais pelo servidor deste projeto.`
+        : html`As telas de IA usam a <b>sua</b> chave de IA: configure abaixo o provedor, a chave e o modelo. Com ela, o navegador fala <b>direto</b> com o provedor escolhido: o material da análise <b>não passa pelo servidor deste projeto</b>, e a chave fica só neste navegador. Funciona em qualquer modo (nuvem, local ou arquivo). O que sai daqui vai para o provedor que você escolher, e é ele quem você precisa confiar.`}</p>
+      <p class="hint" style="margin:-4px 0 8px">${isLocal
+        ? html`<b>Ollama local:</b> o modelo roda na sua máquina e nada sai dela.`
+        : needsBaseUrl && !aiBaseUrl.trim()
+        ? html`Informe a <b>URL base</b>: é com ela que o navegador tenta falar direto com o endpoint.`
+        : !aiDirect
+        ? html`<b>Sem a sua chave aqui</b>, a chamada passa por uma função no servidor deste projeto (<code>ai-ask</code>), que enxerga o material do envio.`
+        : needsBaseUrl
+        ? html`<b>Exceção:</b> se este endpoint não liberar chamadas do navegador (CORS), a chamada é refeita pela função no servidor deste projeto (<code>ai-ask</code>), que então enxerga o material daquele envio. Os demais provedores não usam esse caminho.`
+        : html`A chamada não passa por nenhum servidor do QualiLab.`}</p>
       <div class="field"><div class="field-label">Provedor</div>
         <div class="row" style="gap:6px;flex-wrap:wrap">
           ${AI_PROVIDERS.map(p=>html`<button key=${p.id} class="opt ${aiProvider===p.id?'on':''}"
-            onClick=${()=>{ setAiProvider(p.id); setAiModel(''); setAiBaseUrl(p.local ? 'http://localhost:11434/v1' : ''); }}>${p.label}</button>`)}
+            onClick=${()=>pickProvider(p.id)}>${p.label}</button>`)}
         </div>
       </div>
       ${needsBaseUrl && html`<div class="field"><div class="field-label">${isAzure?'URL base (endpoint do recurso)':isLocal?'URL do servidor local':'URL base da API'}</div>
-        <input class="txtin" value=${aiBaseUrl} onInput=${e=>setAiBaseUrl(e.target.value)} placeholder=${isAzure?'ex.: https://SEU-RECURSO.openai.azure.com/openai/v1':isLocal?'http://localhost:11434/v1':'ex.: https://api.deepseek.com/v1 (precisa ser acessível pela internet; não funciona com localhost)'} />
+        <input class="txtin" value=${aiBaseUrl} onInput=${e=>setAiBaseUrl(e.target.value)} placeholder=${isAzure?'ex.: https://SEU-RECURSO.openai.azure.com/openai/v1':isLocal?'http://localhost:11434/v1':'ex.: https://api.deepseek.com/v1'} />
         <p class="hint" style="margin:6px 0 0">${isAzure
           ? html`Endpoint do seu recurso no portal do Azure, terminando em <code>/openai/v1</code> (superfície "v1"). A autenticação é por chave de API do recurso.`
           : isLocal
           ? html`O navegador chama o Ollama <b>direto</b> nesta URL: não passa pela nuvem, não precisa de túnel. Inicie o Ollama liberando este site no CORS: <code>OLLAMA_ORIGINS=*</code> (ou a origem exata). Se este app estiver em HTTPS, o navegador pode bloquear <code>http://localhost</code> como conteúdo misto; rode o app localmente (<code>http://localhost</code>) pra contornar.`
-          : html`Qualquer API compatível com o formato clássico da OpenAI (<code>/chat/completions</code>), cobre DeepSeek, Mistral, Qwen hospedado, ou um servidor próprio (Ollama/vLLM) exposto numa URL pública.`}</p>
+          : html`Qualquer API compatível com o formato clássico da OpenAI (<code>/chat/completions</code>), cobre DeepSeek, Mistral, Qwen hospedado, ou um servidor próprio (Ollama/vLLM). O navegador tenta falar direto com ela; se ela não liberar o navegador (CORS), a chamada cai na função do servidor, que exige <code>https</code> e um domínio público (não alcança <code>localhost</code>).`}</p>
       </div>`}
       <div class="field"><div class="field-label">Sua chave de API</div>
-        <input class="txtin" type="password" value=${aiKey} onInput=${e=>setAiKey(e.target.value)} placeholder=${isAzure?'obrigatória: chave de API do recurso Azure':isLocal?'deixe em branco (Ollama local não exige chave)':needsBaseUrl?'deixe em branco se o servidor não exigir chave':(AI_SHARED_KEY?'deixe em branco pra usar a chave do servidor':'obrigatória: cole a sua chave de API')} /></div>
+        <input class="txtin" type="password" value=${aiKey} onInput=${e=>setAiKey(e.target.value)} placeholder=${isAzure?'obrigatória: chave de API do recurso Azure':isLocal?'deixe em branco (Ollama local não exige chave)':needsBaseUrl?'deixe em branco se o servidor não exigir chave':(AI_SHARED_KEY?'deixe em branco pra usar a chave do servidor':'obrigatória: cole a sua chave de API')} />
+        ${keyHint && html`<p class="hint" style="margin:6px 0 0;color:var(--danger)">⚠ ${keyHint}</p>`}</div>
       <div class="field" style="margin-bottom:4px"><div class="field-label">${isAzure?'Deployment':'Modelo'}</div>
         ${needsBaseUrl
           ? html`<input class="txtin" value=${aiModel} onInput=${e=>setAiModel(e.target.value)} list=${isLocal?'ollama-model-suggestions':undefined} placeholder=${isAzure?'ex.: gpt-4.1-mini (nome do deployment)':isLocal?'ex.: llama3.1 (ou qwen2.5, mistral…)':'ex.: deepseek-chat'} />
