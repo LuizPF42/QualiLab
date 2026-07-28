@@ -762,7 +762,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.0';
+const QUALILAB_VERSION = '1.4.1';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -2999,6 +2999,16 @@ async function importQualilab(file, store, projectId, projectMode, onProgress){
    'ai_prompt' NAO entra aqui de proposito: cada prompt salvo tem uid() proprio (ja e uuid). */
 const MEMO_PROJECT_SCOPES = new Set(['project','ai_context','ai_instructions','ai_stance','ai_stance_text','ai_include_cats','ai_inject','cloud_stopwords']);
 
+/* Escopos de memo ancorados no MATERIAL: o alvo deixa de existir quando o corpus e esvaziado,
+   entao sao os UNICOS que "Limpar projeto" descarta. Lista por INCLUSAO, e isso e o ponto: os
+   tres stores filtravam por EXCLUSAO ("guarde so o 'project'"), e o resultado era que limpar o
+   corpus em rascunho/arquivo APAGAVA junto toda a configuracao do estudo (os 6 memos ai_*, a
+   biblioteca de prompts, as palavras ignoradas da nuvem) — enquanto na NUVEM ela sobrevivia.
+   Quem so queria trocar o corpus perdia decisao metodologica sem aviso nenhum. Escopo NOVO
+   nasce, por padrao, do lado que SOBREVIVE; so entra aqui se estiver preso a um alvo do
+   material. Usado pelos clearProject dos tres stores (o da nuvem passa a lista ao .in()). */
+const MEMO_MATERIAL_SCOPES = ['document','code','coding'];
+
 async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pdfs, pdfIdx){
   const codLayer = projectMode==='individual' ? 'final' : 'individual';
   if(!db || !Array.isArray(db.documents)) throw new Error('Arquivo .qualilab sem o formato esperado');
@@ -3770,7 +3780,8 @@ async function createFileStore(fileHandle, isNew){
     async deletePdfIndex(docId){ delete pdfIndexData[docId]; await save(); },
     async updateCoding(id,patch){ const c=db.codings.find(x=>x.id===id); if(c) Object.assign(c,patch); await save(); },
     async deleteDocument(id){ const cids=new Set(db.codings.filter(c=>c.document_id===id).map(c=>c.id)); db.documents=db.documents.filter(d=>d.id!==id); db.doc_values=db.doc_values.filter(v=>v.document_id!==id); db.codings=db.codings.filter(c=>c.document_id!==id); db.memos=db.memos.filter(m=>!(m.scope==='document'&&m.target_id===id) && !(m.scope==='coding'&&cids.has(m.target_id))); delete pdfBytes[id]; delete pdfIndexData[id]; await save(); },
-    async clearProject(){ db.documents=[]; db.categories=[]; db.doc_values=[]; db.codes=[]; db.codings=[]; db.memos=db.memos.filter(m=>m.scope==='project'); pdfBytes={}; pdfIndexData={}; await save(); },
+    // "limpar projeto" esvazia o MATERIAL; config do estudo sobrevive (ver MEMO_MATERIAL_SCOPES)
+    async clearProject(){ db.documents=[]; db.categories=[]; db.doc_values=[]; db.codes=[]; db.codings=[]; db.memos=db.memos.filter(m=>!MEMO_MATERIAL_SCOPES.includes(m.scope)); pdfBytes={}; pdfIndexData={}; await save(); },
     listCategories(){ return P(db.categories.slice().sort((a,b)=>a.position-b.position)); },
     async addCategory(pid,cat){ const c={id:uid(),position:db.categories.length,...cat}; db.categories.push(c); await save(); return c; },
     async updateCategory(id,patch){ db.categories=db.categories.map(c=>c.id===id?{...c,...patch}:c); await save(); },
@@ -3983,8 +3994,9 @@ function LocalStore(){
     updateCoding(id,patch){ const c=db.codings.find(x=>x.id===id); if(c) Object.assign(c,patch); save(); return P(); },
     deleteDocument(id){ const cids=new Set(db.codings.filter(c=>c.document_id===id).map(c=>c.id)); db.documents=db.documents.filter(d=>d.id!==id); db.doc_values=db.doc_values.filter(v=>v.document_id!==id); db.codings=db.codings.filter(c=>c.document_id!==id); db.memos=db.memos.filter(m=>!(m.scope==='document'&&m.target_id===id) && !(m.scope==='coding'&&cids.has(m.target_id))); IDB.delBlob(id); save(); return P(); },
     // "limpar projeto" apaga o material, NÃO o diário de insights nem as conversas salvas
-    // de IA (a versão antiga recriava o db sem essas chaves e as destruía junto)
-    clearProject(){ const ids=db.documents.map(d=>d.id); const keepMemos=(db.memos||[]).filter(m=>m.scope==='project'); db={ documents:[], categories:[], doc_values:[], codes:[], codings:[], memos:keepMemos, ia_results:db.ia_results||[], ia_memory:db.ia_memory||[] }; ids.forEach(id=>IDB.delBlob(id)); save(); return P(); },
+    // de IA (a versão antiga recriava o db sem essas chaves e as destruía junto) — nem a
+    // configuração do estudo, que mora em memos de projeto (ver MEMO_MATERIAL_SCOPES)
+    clearProject(){ const ids=db.documents.map(d=>d.id); const keepMemos=(db.memos||[]).filter(m=>!MEMO_MATERIAL_SCOPES.includes(m.scope)); db={ documents:[], categories:[], doc_values:[], codes:[], codings:[], memos:keepMemos, ia_results:db.ia_results||[], ia_memory:db.ia_memory||[] }; ids.forEach(id=>IDB.delBlob(id)); save(); return P(); },
     listCategories(){ return P(db.categories.slice().sort((a,b)=>a.position-b.position)); },
     addCategory(pid,cat){ const c={id:uid(),position:db.categories.length,...cat}; db.categories.push(c); save(); return P(c); },
     updateCategory(id,patch){ db.categories=db.categories.map(c=>c.id===id?{...c,...patch}:c); save(); return P(); },
@@ -4179,10 +4191,10 @@ function SupabaseStore(sb){
       must(await sb.from('documents').delete().eq('project_id',pid));
       must(await sb.from('codes').delete().eq('project_id',pid));
       must(await sb.from('categories').delete().eq('project_id',pid));
-      // mantem o memo do projeto; remove memos de documento/codigo/trecho (orfaos apos a
-      // limpeza — 'coding' faltava e as notas analiticas ficavam orfas). O trigger
+      // remove SO os memos ancorados no material (orfaos apos a limpeza — 'coding' faltava e as
+      // notas analiticas ficavam orfas); memo do projeto e config do estudo ficam. O trigger
       // memos_gc no banco tambem cobre isso; aqui e o cinto pra banco ainda nao migrado.
-      await sb.from('memos').delete().eq('project_id',pid).in('scope',['document','code','coding']);
+      await sb.from('memos').delete().eq('project_id',pid).in('scope',MEMO_MATERIAL_SCOPES);
     },
     async listCategories(pid){ return must(await sb.from('categories').select('*').eq('project_id',pid).order('position')); },
     async addCategory(pid,cat){
