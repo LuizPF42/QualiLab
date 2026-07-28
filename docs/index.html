@@ -762,7 +762,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.3.0';
+const QUALILAB_VERSION = '1.4.0';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -2997,7 +2997,7 @@ async function importQualilab(file, store, projectId, projectMode, onProgress){
        a IA, instrucoes, postura, postura personalizada, categorias como metadados, memos
        injetados) sumia sem erro nenhum.
    'ai_prompt' NAO entra aqui de proposito: cada prompt salvo tem uid() proprio (ja e uuid). */
-const MEMO_PROJECT_SCOPES = new Set(['project','ai_context','ai_instructions','ai_stance','ai_stance_text','ai_include_cats','ai_inject']);
+const MEMO_PROJECT_SCOPES = new Set(['project','ai_context','ai_instructions','ai_stance','ai_stance_text','ai_include_cats','ai_inject','cloud_stopwords']);
 
 async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pdfs, pdfIdx){
   const codLayer = projectMode==='individual' ? 'final' : 'individual';
@@ -5106,7 +5106,7 @@ function App(){
     if(!store || !project || !store.listMemos){ setMemos([]); return; }
     try{ setMemos(await store.listMemos(project.id) || []); }catch(e){ setMemos([]); }
   }, [store, project]);
-  useEffect(()=>{ if(phase==='work' && (mainView==='memos'||mainView==='ia_analisar'||mainView==='codificar'||mainView==='relatorio'||mainView==='visualizar')) loadMemos(); }, [phase, mainView, loadMemos]);
+  useEffect(()=>{ if(phase==='work' && (mainView==='memos'||mainView==='ia_analisar'||mainView==='codificar'||mainView==='relatorio'||mainView==='visualizar'||mainView==='graficos')) loadMemos(); }, [phase, mainView, loadMemos]);
   async function saveMemo(scope, targetId, content, label){
     await store.setMemo(project.id, scope, targetId, content, user?.name||'anônimo', label);
     await loadMemos();
@@ -6748,6 +6748,7 @@ function App(){
       <!-- GRAFICOS: explorador (gráfico SVG + painel de trechos), o split vive no componente -->
       <${ChartsPanel} docs=${docs} cats=${cats} codes=${codes}
         codeById=${codeById} codePath=${codePath}
+        project=${project} memos=${memos} onSetMemo=${saveMemo}
         view=${viewCoder} onView=${setViewCoder} coders=${coders} userId=${user?.id} mode=${mode}
         allCodings=${allCodings} allValues=${allValues} projectMode=${projectMode}
         isAdmin=${isAdmin} darkMode=${darkMode}
@@ -9137,17 +9138,53 @@ function exportChartPNG(svg, name){
 /* ===== Nuvem de palavras ===== */
 // stopwords PT (foco em 3+ letras; tokens de 1-2 chars já caem no filtro de tamanho).
 const STOPWORDS_PT = new Set(('que uma com não nao por para dos das pelo pela como mas ser ter está esta estao estão são sao foi era essa esse isso ele ela eles elas voce você seu sua seus suas meu minha num numa pelos pelas este isto aquele aquela aquilo entre sem sob sobre até ate também tambem mais menos muito pouco quando onde porque qual quais quem cujo então entao assim ainda depois antes agora aqui ali hoje sempre nunca talvez sim nem cada todo toda todos todas outro outra outros outras mesmo mesma tão tao bem mal dele dela deles delas pra pro nesse nessa neste nesta naquele vai vão vao fazer fez tem têm tem havia haver estar estou estava sendo vamos vou foram será sera seria nas nos das dos lhe nos eles isso aos numa pelas algum alguma alguns algumas nenhum nenhuma qualquer porém porem contudo logo pois enquanto durante apenas tipo coisa coisas gente assim ter feito ficar fica ficou tinha tive teve estão estavam pode podem poder deve devem ano anos vez vezes').split(/\s+/));
-function tokenizeWords(text){
+/* LISTA PERSONALIZADA DE PALAVRAS IGNORADAS (nuvem). Guardada no PROJETO (memo
+   scope='cloud_stopwords', target_id = project.id): decidir que "entrevistado" e o nome do
+   moderador não são vocabulário do corpus é decisão metodológica do estudo, então a equipe
+   compartilha e a lista viaja no .qualilab — mesmo raciocínio da config de IA. Formato do
+   content: JSON {pt:bool, words:[...]}; texto solto é aceito na leitura (memo de versão antiga
+   ou editado à mão vira lista, não lista vazia). */
+function normStopWord(w){ return String(w||'').toLowerCase().trim().replace(/^['\-]+|['\-]+$/g,''); }
+function dedupStopWords(list){ const s=new Set(); (list||[]).forEach(w=>{ const n=normStopWord(w); if(n) s.add(n); }); return [...s]; }
+function parseStopConfig(content){
+  const txt=(content||'').trim();
+  if(!txt) return { pt:true, words:[] };
+  try{
+    const o=JSON.parse(txt);
+    if(Array.isArray(o)) return { pt:true, words:dedupStopWords(o) };
+    if(o && typeof o==='object') return { pt:o.pt!==false, words:dedupStopWords(o.words) };
+  }catch(e){}
+  return { pt:true, words:dedupStopWords(txt.split(/[\s,;]+/)) };
+}
+function stringifyStopConfig(cfg){ return JSON.stringify({ pt:(cfg||{}).pt!==false, words:dedupStopWords((cfg||{}).words) }); }
+/* matcher da lista personalizada. Palavra terminada em '*' é PREFIXO ("entrevistad*" pega
+   entrevistado/entrevistada/entrevistados): não há lematização aqui e o português flexiona
+   demais pra lista literal dar conta. Devolve null quando a lista está vazia (sem custo). */
+function makeStopMatcher(words){
+  const exact=new Set(), pref=[];
+  (words||[]).forEach(w=>{ const n=normStopWord(w); if(!n) return;
+    if(n.endsWith('*')){ const p=n.slice(0,-1); if(p) pref.push(p); } else exact.add(n); });
+  if(!exact.size && !pref.length) return null;
+  return (w)=> exact.has(w) || pref.some(p=>w.startsWith(p));
+}
+/* opt.stop = matcher de makeStopMatcher (lista do projeto); opt.usePt=false desliga a lista
+   padrão do português (corpus em outro idioma, ou quem quer ver as palavras funcionais). */
+function tokenizeWords(text, opt={}){
+  const { stop=null, usePt=true } = opt;
   const out=[];
   const m = (text||'').toLowerCase().match(/\p{L}[\p{L}\p{M}'\-]*/gu);
   if(!m) return out;
-  for(const tk of m){ const w=tk.replace(/^['\-]+|['\-]+$/g,''); if(w.length>=3 && !STOPWORDS_PT.has(w) && !/^\d+$/.test(w)) out.push(w); }
+  for(const tk of m){ const w=tk.replace(/^['\-]+|['\-]+$/g,'');
+    if(w.length<3 || /^\d+$/.test(w)) continue;
+    if(usePt && STOPWORDS_PT.has(w)) continue;
+    if(stop && stop(w)) continue;
+    out.push(w); }
   return out;
 }
 /* nuvem de palavras posicionada por espiral de Arquimedes com colisão por retângulo
    (mesma ideia do d3-cloud, sem lib). items: [{label,value,color}] já ordenados desc. */
 function svgWordCloud(items, opt={}){
-  const { w=900, h=520 } = opt;
+  const { w=900, h=520, onClick=null } = opt;
   if(!items.length) return null;
   const fr=items.map(i=>i.value), maxF=Math.max(...fr), minF=Math.min(...fr);
   const sizeOf=(f)=>{ if(maxF===minF) return 26; const t=(Math.sqrt(f)-Math.sqrt(minF))/(Math.sqrt(maxF)-Math.sqrt(minF)); return Math.round(12+t*34); };
@@ -9171,7 +9208,8 @@ function svgWordCloud(items, opt={}){
   // width/height = 100% do contêiner (que tem tamanho fixo = área visível) + preserveAspectRatio
   // "meet" => a nuvem CABE inteira (contain), centralizada, sem rolagem.
   return html`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;display:block;font-family:var(--sans)" xmlns="http://www.w3.org/2000/svg">
-    ${placed.map((p,i)=>html`<text key=${i} x=${(p.x+ox).toFixed(1)} y=${(p.y+oy).toFixed(1)} font-size=${p.size} font-weight="600" fill=${p.color} text-anchor="middle" dominant-baseline="middle"><title>${p.label}: ${p.value}</title>${p.label}</text>`)}
+    ${placed.map((p,i)=>html`<text key=${i} x=${(p.x+ox).toFixed(1)} y=${(p.y+oy).toFixed(1)} font-size=${p.size} font-weight="600" fill=${p.color} text-anchor="middle" dominant-baseline="middle"
+      style=${onClick?'cursor:pointer':''} onClick=${onClick?()=>onClick(p):null}><title>${p.label}: ${p.value}${onClick?' · clique para ignorar':''}</title>${p.label}</text>`)}
   </svg>`;
 }
 /* ============ MemoNav — painel esquerdo da aba Memos ============
@@ -13063,7 +13101,8 @@ function MemoryPanel({ memory, onToggle, onDelete, onAdd, showAdd=true, bare=fal
    daquele recorte no VizExcerpts (mesma leitura da aba Visualizar). Abas:
    freq · co-ocorrência · cobertura · código×atributo · tempo. */
 function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allValues, projectMode,
-                       view, onView, coders, userId, mode, isAdmin, onDelCoding, onAccept, onJump, darkMode, onOpenCode }){
+                       view, onView, coders, userId, mode, isAdmin, onDelCoding, onAccept, onJump, darkMode, onOpenCode,
+                       project, memos, onSetMemo }){
   const isIndividual = projectMode==='individual';
   const closedCats = (cats||[]).filter(c=>CAT_HAS_OPTIONS(c.kind));
   const dateCats   = (cats||[]).filter(c=>c.kind==='date');
@@ -13112,6 +13151,17 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
   const toggleFamily = (setter)=>(id)=> setter(prev=>{ const n=new Set(prev); const off=n.has(id);
     familyOf(id).forEach(f=> off ? n.delete(f) : n.add(f)); return n; });
   const onPickCloud = toggleFamily(setCloudCodes);
+  // ---- palavras ignoradas na nuvem: lista do PROJETO (memo 'cloud_stopwords'), estado local
+  // espelhado do memo pra o clique responder na hora (mesmo padrão do toggle ai_include_cats).
+  const stopMemo = (memos||[]).find(m=>m.scope==='cloud_stopwords' && m.target_id===project?.id);
+  const [stopCfg,setStopCfg] = useState(()=>parseStopConfig(stopMemo?.content));
+  const [stopInput,setStopInput] = useState('');
+  useEffect(()=>{ setStopCfg(parseStopConfig(stopMemo?.content)); }, [stopMemo?.content]);
+  const saveStopCfg = (cfg)=>{ setStopCfg(cfg); if(onSetMemo && project?.id) onSetMemo('cloud_stopwords', project.id, stringifyStopConfig(cfg)); };
+  const addStopWords = (raw)=>{ const add=dedupStopWords(String(raw||'').split(/[\s,;]+/)); setStopInput('');
+    if(add.length) saveStopCfg({ ...stopCfg, words: dedupStopWords([...stopCfg.words, ...add]) }); };
+  const delStopWord = (w)=> saveStopCfg({ ...stopCfg, words: stopCfg.words.filter(x=>x!==w) });
+  const stopMatcher = useMemo(()=>makeStopMatcher(stopCfg.words), [stopCfg.words]);
   const matchingDocIds = useMemo(()=>{
     const s=new Set();
     docs.forEach(d=>{
@@ -13178,13 +13228,13 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
     const wf={}; // palavra -> { total, codes:{codeId:n} }
     src.forEach(c=>{
       const txt=(docContentById[c.document_id]||'').slice(c.span_start, c.span_end);
-      tokenizeWords(txt).forEach(w=>{ const e=wf[w]||(wf[w]={total:0,codes:{}}); e.total++; e.codes[c.code_id]=(e.codes[c.code_id]||0)+1; });
+      tokenizeWords(txt, { stop:stopMatcher, usePt:stopCfg.pt }).forEach(w=>{ const e=wf[w]||(wf[w]={total:0,codes:{}}); e.total++; e.codes[c.code_id]=(e.codes[c.code_id]||0)+1; });
     });
     return Object.entries(wf).map(([w,e])=>{
       let best=null,bn=-1; for(const k in e.codes){ if(e.codes[k]>bn){ bn=e.codes[k]; best=k; } }
       return { key:w, label:w, value:e.total, color:codeColorOf(best) };
     }).sort((a,b)=>b.value-a.value);
-  }, [cod, cloudCodeSet, docContentById, codeById]);
+  }, [cod, cloudCodeSet, docContentById, codeById, stopMatcher, stopCfg.pt]);
 
   // ---- co-ocorrência: matriz código×código (nº de pares de trechos sobrepostos no mesmo doc).
   // eixos escolhidos pelo usuário: Y = linhas (coocY), X = colunas (coocX). Vazio = top-12 por
@@ -13260,12 +13310,15 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
     chart = freqItems.length===0 ? null : svgHBars(freqItems.slice(0,topN), { w:cw,
       onClick: onOpenCode ? (it)=>onOpenCode(it.key, {filter:catFilter}) : null });
   } else if(tab==='nuvem'){
-    hint = cloudCodes.size===1
-      ? `Palavras do código «${codeLabelOf([...cloudCodes][0])}» e subcódigos (tamanho ∝ frequência). Stopwords removidas; sem lematização.`
+    hint = (cloudCodes.size===1
+      ? `Palavras do código «${codeLabelOf([...cloudCodes][0])}» e subcódigos (tamanho ∝ frequência).`
       : cloudCodes.size>1
-      ? `Palavras de ${cloudCodes.size} códigos selecionados (e subcódigos), coloridas pelo código (tamanho ∝ frequência). Stopwords removidas; sem lematização.`
-      : 'Palavras dos trechos codificados, coloridas pelo código predominante (tamanho ∝ frequência). Stopwords removidas; sem lematização.';
-    chart = wordCloud.length===0 ? null : svgWordCloud(wordCloud.slice(0,topN), { w:cw, h:ch });
+      ? `Palavras de ${cloudCodes.size} códigos selecionados (e subcódigos), coloridas pelo código (tamanho ∝ frequência).`
+      : 'Palavras dos trechos codificados, coloridas pelo código predominante (tamanho ∝ frequência).')
+      + (stopCfg.pt ? ' Palavras funcionais do português removidas;' : ' Lista padrão do português desligada;') + ' sem lematização.'
+      + (stopCfg.words.length ? (stopCfg.words.length===1 ? ' 1 palavra ignorada por escolha sua.' : ` ${stopCfg.words.length} palavras ignoradas por escolha sua.`) : '')
+      + ' Clique numa palavra para ignorá-la.';
+    chart = wordCloud.length===0 ? null : svgWordCloud(wordCloud.slice(0,topN), { w:cw, h:ch, onClick:(p)=>addStopWords(p.label) });
   } else if(tab==='cobertura'){
     hint = '% do corpus coberto por cada código (sobreposições mescladas): peso real, não só contagem.' + (onOpenCode?' Clique numa barra para ver os trechos.':'');
     chart = coverItems.length===0 ? null
@@ -13344,6 +13397,31 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
           ${tops.length===0 ? html`<span class="meta" style="padding:10px 8px;display:block">Nenhum código criado.</span>`
             : tops.map(t=>html`<${CloudCodeNode} key=${t.id} code=${t} childrenOf=${childrenOf}
                 counts=${codeCounts} selectedIds=${cloudCodes} onToggle=${onPickCloud} depthPad=${0} />`)}
+        </div>
+      </div>`}
+      ${tab==='nuvem' && html`<div style="border-top:1px solid var(--line-soft)">
+        <div class="field-label" style="padding:10px 14px 2px;margin:0;display:flex;align-items:center;gap:8px">
+          ⦸ Palavras ignoradas
+          ${stopCfg.words.length>0 && html`<span class="pill" style="font-size:10px;padding:1px 8px">${stopCfg.words.length}</span>`}
+        </div>
+        <p class="meta" style="margin:0;padding:0 14px 6px;font-size:11px">Ficam de fora da nuvem. Clique numa palavra da nuvem para ignorá-la. Termine com <b>*</b> para pegar as variações (entrevistad* pega entrevistado, entrevistada, entrevistados). A lista é do projeto e viaja com ele.</p>
+        <div style="padding:0 14px 12px">
+          <form class="row" style="gap:6px" onSubmit=${e=>{ e.preventDefault(); addStopWords(stopInput); }}>
+            <input class="txtin" style="flex:1;min-width:0" placeholder="palavra a ignorar" value=${stopInput}
+              onInput=${e=>setStopInput(e.target.value)} />
+            <button class="btn sm" type="submit" disabled=${!stopInput.trim()}>adicionar</button>
+          </form>
+          ${stopCfg.words.length>0 && html`<div class="row" style="flex-wrap:wrap;gap:5px;margin-top:8px">
+            ${stopCfg.words.map(w=>html`<button key=${w} class="btn sm ghost" style="padding:1px 7px;font-size:11px"
+              title=${`Voltar a contar «${w}»`} onClick=${()=>delStopWord(w)}>${w} ✕</button>`)}
+          </div>`}
+          ${stopCfg.words.length>0 && html`<button class="btn sm ghost" style="width:100%;margin-top:8px"
+            onClick=${()=>{ if(confirm('Limpar a lista de palavras ignoradas deste projeto?')) saveStopCfg({ ...stopCfg, words:[] }); }}>limpar lista</button>`}
+          <label class="row" style="gap:7px;margin-top:10px;font-size:12px;cursor:pointer;align-items:center"
+            title="A lista embutida de palavras funcionais do português (que, para, com, mais...). Desligue para corpus em outro idioma ou para ver essas palavras na nuvem.">
+            <input type="checkbox" checked=${stopCfg.pt} onChange=${e=>saveStopCfg({ ...stopCfg, pt:e.target.checked })} />
+            Usar a lista padrão (português)
+          </label>
         </div>
       </div>`}
       ${tab==='cooc' && html`<div>

@@ -555,11 +555,22 @@ A aba **Gráficos** é um explorador: filtros à esquerda, um gráfico por vez �
 ### Filtros (coluna esquerda)
 - **Por categoria**: restringe **todos** os gráficos aos documentos que passam ("X de Y documentos no filtro").
 - **Ignorar censura**: **ligado por padrão**; remove dos gráficos os trechos de códigos de censura.
-- **Nuvem**: uma árvore com caixas seleciona de quais códigos vem o vocabulário (marcar um código marca a subárvore).
+- **Nuvem**: uma árvore com caixas seleciona de quais códigos vem o vocabulário (marcar um código marca a subárvore); abaixo dela, a lista de **palavras ignoradas** (veja adiante).
 - **Co-ocorrência**: dois seletores escolhem os eixos **X** (colunas) e **Y** (linhas); vazio = os 12 mais frequentes.
 - **Ver:** e **Top:** (10/25/50/Todos) refinam o recorte.
 
 > **Do gráfico para os trechos.** Clique numa **barra** (Frequência, Cobertura, Concordância) ou numa **célula** (Co-ocorrência, Código × atributo) para abrir a **Visualização** já naquele código: o filtro de categorias e o recorte "Ver:" viajam junto, então os trechos exibidos batem com o número do gráfico.
+
+### Palavras ignoradas na nuvem
+
+A nuvem já descarta as palavras funcionais do português (*que*, *para*, *com*...), mas numa entrevista o que domina costuma ser outra coisa: "entrevistado", "pesquisador", "moderador", o nome de quem fala. A lista de **palavras ignoradas**, no painel esquerdo da aba **Nuvem**, resolve isso:
+
+- **Clique numa palavra da própria nuvem** para tirá-la dali; ela vira um item da lista, e o **✕** ao lado devolve a palavra à contagem.
+- **Termine com `*` para pegar as variações**: `entrevistad*` cobre *entrevistado*, *entrevistada* e *entrevistados*. (A nuvem não faz lematização — conta formas, não lemas.)
+- A lista **pertence ao projeto**: viaja no `.qualilab` e, em pesquisa coletiva, vale para a equipe, como as demais decisões de método.
+- **Usar a lista padrão (português)** pode ser desmarcado: corpus em outro idioma, ou análise em que as palavras funcionais são justamente o objeto.
+
+A lista muda **só o que a nuvem conta e desenha** — nada de codificação é alterado.
 
 ---
 
