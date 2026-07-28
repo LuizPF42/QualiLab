@@ -563,6 +563,8 @@ A aba **Gráficos** é um explorador: filtros à esquerda, um gráfico por vez �
 
 ### Palavras ignoradas na nuvem
 
+![A aba Nuvem: à direita, a nuvem de palavras dos trechos codificados, com o tamanho proporcional à frequência e a cor do código predominante; à esquerda, no fim do painel, a seção "Palavras ignoradas" com duas palavras na lista (entrevistad\* e escritório), o campo para acrescentar outras, "limpar lista" e a opção "Usar a lista padrão (português)".](manual-img/06b-graficos-nuvem.png)
+
 A nuvem já descarta as palavras funcionais do português (*que*, *para*, *com*...), mas numa entrevista o que domina costuma ser outra coisa: "entrevistado", "pesquisador", "moderador", o nome de quem fala. A lista de **palavras ignoradas**, no painel esquerdo da aba **Nuvem**, resolve isso:
 
 - **Clique numa palavra da própria nuvem** para tirá-la dali; ela vira um item da lista, e o **✕** ao lado devolve a palavra à contagem.
