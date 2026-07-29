@@ -762,7 +762,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.4';
+const QUALILAB_VERSION = '1.4.5';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -10879,12 +10879,16 @@ function IAOrganizarPanel({ project, docs, codes, codeById, codePath, store, all
     return '\n\nAMOSTRA DE TRECHOS POR CÓDIGO (até 3 por código, distintos e ilustrativos; NÃO são todos os trechos):\n' + blocks.join('\n\n');
   }, [organizable, allCodings, withSamples, idToShort, redactionIds, ocrT.maskByDoc]);
 
-  // material com truncamento (preserva a lista de codigos inteira; corta a amostra primeiro)
+  // material com truncamento (preserva a lista de codigos inteira; corta a amostra primeiro).
+  // matCut diz ao PAINEL o que foi cortado — sem isso o corte só aparecia como marcador dentro
+  // do prompt, que apenas a IA lê (mesmo aviso que o Analisar já dava).
+  const matBudget = Math.max(0, IA_TOTAL_CHAR_LIMIT - codeListBlock.length);
+  const matCut = (codeListBlock + excerptBlock).length > IA_TOTAL_CHAR_LIMIT
+    ? (matBudget>200 ? 'amostra' : 'tudo') : null;
   const buildMaterial = ()=>{
     let mat = codeListBlock + excerptBlock;
-    if(mat.length > IA_TOTAL_CHAR_LIMIT){
-      const budget = Math.max(0, IA_TOTAL_CHAR_LIMIT - codeListBlock.length);
-      mat = codeListBlock + (budget>200 ? excerptBlock.slice(0, budget) + '\n[...amostra truncada: limite de tamanho...]' : '\n[amostra de trechos omitida: esquema grande]');
+    if(matCut){
+      mat = codeListBlock + (matCut==='amostra' ? excerptBlock.slice(0, matBudget) + '\n[...amostra truncada: limite de tamanho...]' : '\n[amostra de trechos omitida: esquema grande]');
     }
     return mat;
   };
@@ -11172,7 +11176,9 @@ function IAOrganizarPanel({ project, docs, codes, codeById, codePath, store, all
           </label>
           <p class="meta" style="margin:8px 0 0">${organizable.length} código(s) para organizar${redactionIds.size?` · ${redactionIds.size} de censura fora`:''}.</p>
         </div>
-        ${ocrT.card}      </div>    </div>
+        ${ocrT.card}
+        ${matCut && html`<div class="banner warn" style="margin-bottom:10px">O material passa do que a IA lê de uma vez (o limite é ~${iaPages(IA_TOTAL_CHAR_LIMIT)} páginas). A lista de códigos vai inteira; ${matCut==='amostra' ? 'parte da amostra de trechos fica de fora' : 'a amostra de trechos fica toda de fora, porque o esquema sozinho já ocupa o limite'}.</div>`}
+      </div>    </div>
 
     <!-- TELA DIREITA: chat da reorganização -->
     <${PaneResizer} which="config" />
@@ -11591,19 +11597,23 @@ function IACategorizarPanel({ project, docs, cats, codePath, allValues, store, i
     return 'CATEGORIAS A PREENCHER (id | nome | tipo | valor esperado):\n' + (lines.join('\n') || '(nenhuma categoria selecionada)');
   }, [selCatObjs, i2t]);
 
+  // devolve {text, omitidos, cortados}: os DOIS cortes precisam chegar ao pesquisador, não só à
+  // IA (o marcador no prompt só ela lê). `omitidos` = documentos inteiros descartados pelo limite
+  // TOTAL; `cortados` = documentos longos que entram pelo começo (IA_DOC_CHAR_LIMIT, via iaCutDoc).
   const docBlock = useMemo(()=>{
-    let total = 0; const parts = [];
+    let total = 0, omitidos = 0, cortados = 0; const parts = [];
     for(const d of selDocObjs){
       const ocrR = ocrT.maskByDoc && ocrT.maskByDoc[d.id];   // §4: censura+OCR numa reconstrução só (em série desalinharia)
       const masked = ocrR
         ? maskGroupedRanges(d.content||'', [ { ranges: redactionRanges(allCodings||[], redactionIds, d.id), label:'[trecho censurado]' }, { ranges: ocrR, label:'[trecho de OCR omitido]' } ])
         : maskRedactedContent(d.content||'', (allCodings||[]).filter(c=>c.document_id===d.id), redactionIds);
       const filled = selCatObjs.map(c=>{ const v=curVal(d.id,c.id); return `  - #${tShort(c.id)} "${c.name}": ${v!=null && v!==''?`"${v}"`:'(vazio)'}`; }).join('\n');
-      const chunk = `--- #${dShort(d.id)} "${d.name}" ---\nVALORES JÁ PREENCHIDOS (não devolva se concordar):\n${filled}\nTEXTO:\n${masked.slice(0, IA_DOC_CHAR_LIMIT)}`;
-      if(total + chunk.length > IA_TOTAL_CHAR_LIMIT){ parts.push('[...documentos restantes omitidos: limite de tamanho; selecione menos documentos...]'); break; }
+      const chunk = `--- #${dShort(d.id)} "${d.name}" ---\nVALORES JÁ PREENCHIDOS (não devolva se concordar):\n${filled}\nTEXTO:\n${iaCutDoc(masked)}`;
+      if(total + chunk.length > IA_TOTAL_CHAR_LIMIT){ omitidos = selDocObjs.length - parts.length; parts.push('[...documentos restantes omitidos: limite de tamanho; selecione menos documentos...]'); break; }
+      if(masked.length > IA_DOC_CHAR_LIMIT) cortados++;   // conta só o que ENTROU cortado
       parts.push(chunk); total += chunk.length;
     }
-    return 'DOCUMENTOS:\n' + (parts.join('\n\n') || '(nenhum documento selecionado)');
+    return { text: 'DOCUMENTOS:\n' + (parts.join('\n\n') || '(nenhum documento selecionado)'), omitidos, cortados };
   }, [selDocObjs, selCatObjs, allCodings, redactionIds, ocrT.maskByDoc, i2d, i2t, allValues, user, projectMode]);
 
   // SECOES NOMEADAS do prompt — FONTE UNICA (system enviado + PromptInspector). Papel =
@@ -11625,14 +11635,14 @@ function IACategorizarPanel({ project, docs, cats, codePath, allValues, store, i
       { key:'memo',  label:'Memo(s) para a IA',         meta:`${injectedMemos.length} injetado(s)`, text: memoText },
       { key:'mem',   label:'Memória do projeto',        meta: nMem ? `${nAtiv} de ${nMem} ativas` : 'nenhuma', text: memoryBlock(memory) },
       { key:'desc',  label:'Sobre o material',          meta:'o recorte', text: `Sobre o material que você recebeu:\n${desc}` },
-      { key:'mat',   label:'Material',                  meta:`${selCatObjs.length} categoria(s) · ${selDocObjs.length} doc(s)`, text: 'MATERIAL:\n' + catBlock + '\n\n' + docBlock },
+      { key:'mat',   label:'Material',                  meta:`${selCatObjs.length} categoria(s) · ${selDocObjs.length} doc(s)`, text: 'MATERIAL:\n' + catBlock + '\n\n' + docBlock.text },
       { key:'rules', label:'Regras e formato de saída', meta:'', text: IA_CAT_SYS_REGRAS },
     ];
   };
   const systemPrompt = promptSections().map(s=>s.text).join('\n\n');
   const buildProv = ()=>{
     const nMem = (memory||[]).length, nAtiv = (memory||[]).filter(m=>m&&m.active).length;
-    const chars = catBlock.length + docBlock.length;
+    const chars = catBlock.length + docBlock.text.length;
     return {
       model: currentModelLabel(),
       material: `${selCatObjs.length} categoria(s) · ${selDocObjs.length} doc(s)`,
@@ -11806,7 +11816,12 @@ function IACategorizarPanel({ project, docs, cats, codePath, allValues, store, i
             ${cats.map(c=>html`<button key=${c.id} class="opt ${selCats.includes(c.id)?'on':''}" style="display:flex;gap:6px;align-items:center;width:100%;margin-bottom:4px;font-size:11px"
               onClick=${()=>toggle(selCats,setSelCats,c.id)}>${selCats.includes(c.id)?'☑':'☐'}<span style="flex:1;text-align:left">${c.name} <span class="meta">· ${kindLabel(c.kind)}</span></span></button>`)}
           </div>
-        </details>      </div>    </div>
+        </details>
+        ${(docBlock.omitidos>0 || docBlock.cortados>0) && html`<div class="banner warn" style="margin-bottom:10px">
+          ${docBlock.omitidos>0 && html`<div>A seleção passa do que a IA lê de uma vez (o limite é ~${iaPages(IA_TOTAL_CHAR_LIMIT)} páginas): ${docBlock.omitidos} documento(s) do fim da lista ficam de fora e não receberão sugestão. Selecione menos documentos de cada vez.</div>`}
+          ${docBlock.cortados>0 && html`<div style=${docBlock.omitidos>0?'margin-top:6px':''}>${iaCutDocMsg(docBlock.cortados)}</div>`}
+        </div>`}
+      </div>    </div>
 
     <!-- DIREITA: chat -->
     <${PaneResizer} which="config" />
@@ -11948,8 +11963,10 @@ function IACodificacaoPanel({ project, docs, codes, codeById, codePath, store, a
     return 'CÓDIGOS DISPONÍVEIS PARA APLICAR (id | caminho | nº de trechos já aplicados):\n' + (lines.join('\n') || '(nenhum código selecionado)');
   }, [selCodeObjs, i2c, codeCount]);
 
+  // devolve {text, omitidos, cortados} — ver a nota no docBlock do IACategorizarPanel: os dois
+  // cortes precisam aparecer pro pesquisador, não só como marcador dentro do prompt.
   const docBlock = useMemo(()=>{
-    let total = 0; const parts = [];
+    let total = 0, omitidos = 0, cortados = 0; const parts = [];
     for(const d of selDocObjs){
       const inDoc = (allCodings||[]).filter(c=>c.document_id===d.id);
       const ocrR = ocrT.maskByDoc && ocrT.maskByDoc[d.id];
@@ -11963,11 +11980,12 @@ function IACodificacaoPanel({ project, docs, codes, codeById, codePath, store, a
       const masked = ocrR   // §4: censura+OCR numa reconstrução só (em série desalinharia)
         ? maskGroupedRanges(d.content||'', [ { ranges: redactionRanges(allCodings||[], redactionIds, d.id), label:'[trecho censurado]' }, { ranges: ocrR, label:'[trecho de OCR omitido]' } ])
         : maskRedactedContent(d.content||'', inDoc, redactionIds);
-      const chunk = `--- #${dShort(d.id)} "${d.name}" ---\nTRECHOS JÁ CODIFICADOS (não repita):\n${already.join('\n') || '  (nenhum)'}\nTEXTO INTEGRAL:\n${masked.slice(0, IA_DOC_CHAR_LIMIT)}`;
-      if(total + chunk.length > IA_TOTAL_CHAR_LIMIT){ parts.push('[...documentos restantes omitidos: limite de tamanho; selecione menos documentos...]'); break; }
+      const chunk = `--- #${dShort(d.id)} "${d.name}" ---\nTRECHOS JÁ CODIFICADOS (não repita):\n${already.join('\n') || '  (nenhum)'}\nTEXTO INTEGRAL:\n${iaCutDoc(masked)}`;
+      if(total + chunk.length > IA_TOTAL_CHAR_LIMIT){ omitidos = selDocObjs.length - parts.length; parts.push('[...documentos restantes omitidos: limite de tamanho; selecione menos documentos...]'); break; }
+      if(masked.length > IA_DOC_CHAR_LIMIT) cortados++;   // conta só o que ENTROU cortado
       parts.push(chunk); total += chunk.length;
     }
-    return 'DOCUMENTOS:\n' + (parts.join('\n\n') || '(nenhum documento selecionado)');
+    return { text: 'DOCUMENTOS:\n' + (parts.join('\n\n') || '(nenhum documento selecionado)'), omitidos, cortados };
   }, [selDocObjs, selCodes, allCodings, redactionIds, ocrT.maskByDoc, codeById, i2d, i2c]);
 
   // SECOES NOMEADAS do prompt — FONTE UNICA (alimenta o `system` enviado E o PromptInspector).
@@ -11989,7 +12007,7 @@ function IACodificacaoPanel({ project, docs, codes, codeById, codePath, store, a
       { key:'memo',  label:'Memo(s) para a IA',         meta:`${injectedMemos.length} injetado(s)`, text: memoText },
       { key:'mem',   label:'Memória do projeto',        meta: nMem ? `${nAtiv} de ${nMem} ativas` : 'nenhuma', text: memoryBlock(memory) },
       { key:'desc',  label:'Sobre o material',          meta:'o recorte', text: `Sobre o material que você recebeu:\n${desc}` },
-      { key:'mat',   label:'Material',                  meta:`${selCodeObjs.length} código(s) · ${selDocObjs.length} doc(s)`, text: 'MATERIAL:\n' + codeListBlock + '\n\n' + docBlock },
+      { key:'mat',   label:'Material',                  meta:`${selCodeObjs.length} código(s) · ${selDocObjs.length} doc(s)`, text: 'MATERIAL:\n' + codeListBlock + '\n\n' + docBlock.text },
       { key:'rules', label:'Regras e formato de saída', meta:'', text: IA_CODIF_SYS_REGRAS },
     ];
   };
@@ -11997,7 +12015,7 @@ function IACodificacaoPanel({ project, docs, codes, codeById, codePath, store, a
   // proveniencia pro cabecalho do inspetor (modelo/contagens/estimativa de tokens).
   const buildProv = ()=>{
     const nMem = (memory||[]).length, nAtiv = (memory||[]).filter(m=>m&&m.active).length;
-    const chars = codeListBlock.length + docBlock.length;
+    const chars = codeListBlock.length + docBlock.text.length;
     return {
       model: currentModelLabel(),
       material: `${selCodeObjs.length} código(s) · ${selDocObjs.length} doc(s)`,
@@ -12170,7 +12188,12 @@ function IACodificacaoPanel({ project, docs, codes, codeById, codePath, store, a
             ${selectableCodes.map(c=>html`<button key=${c.id} class="opt ${selCodes.includes(c.id)?'on':''}" style="display:flex;gap:6px;align-items:center;width:100%;margin-bottom:4px;font-size:11px"
               onClick=${()=>toggle(selCodes,setSelCodes,c.id)}>${selCodes.includes(c.id)?'☑':'☐'}<span style="flex:1;text-align:left">${codePath(c.id).join(' ▸ ')}</span></button>`)}
           </div>
-        </details>      </div>    </div>
+        </details>
+        ${(docBlock.omitidos>0 || docBlock.cortados>0) && html`<div class="banner warn" style="margin-bottom:10px">
+          ${docBlock.omitidos>0 && html`<div>A seleção passa do que a IA lê de uma vez (o limite é ~${iaPages(IA_TOTAL_CHAR_LIMIT)} páginas): ${docBlock.omitidos} documento(s) do fim da lista ficam de fora e não receberão sugestão. Selecione menos documentos de cada vez.</div>`}
+          ${docBlock.cortados>0 && html`<div style=${docBlock.omitidos>0?'margin-top:6px':''}>${iaCutDocMsg(docBlock.cortados)}</div>`}
+        </div>`}
+      </div>    </div>
 
     <${PaneResizer} which="config" />
     <div style="flex:1;min-width:0;display:flex;flex-direction:column;background:var(--paper)">
@@ -12312,6 +12335,18 @@ const IA_TOTAL_CHAR_LIMIT = 100000; // total do material empírico, somando todo
 // exibicao em unidade humana (NAO afeta o corte): "pagina comum" ~3000 caracteres (~500 palavras).
 const IA_CHARS_PER_PAGE = 3000;
 const iaPages = (chars)=> Math.round((chars||0)/IA_CHARS_PER_PAGE);
+
+// CORTE POR DOCUMENTO — fonte unica dos painteis que enviam texto integral (Analisar nos escopos
+// `docs`/`docs_codes`, Sugerir Codificacao, Sugerir Categorizacao). Duas coisas que faltavam:
+//  - o MARCADOR, pra IA nao ler o fim abrupto como lacuna do corpus (mesma razao do materialDesc:
+//    recorte deliberado != lacuna; sem ele a IA criticava ausencia que e corte NOSSO);
+//  - a CONTAGEM, que vira aviso na tela. O corte TOTAL ja avisava; este era o irmao silencioso,
+//    e um documento de 60 paginas entrava pela sexta parte sem nenhum sinal.
+// Painel novo que envie texto integral usa iaCutDoc + soma os cortados no banner.
+const iaCutDoc = (text)=> (text||'').length > IA_DOC_CHAR_LIMIT
+  ? text.slice(0, IA_DOC_CHAR_LIMIT) + '\n[...documento truncado aqui: limite de tamanho por documento; o restante do texto NAO foi enviado, e omissao deliberada, nao fim do documento...]'
+  : (text||'');
+const iaCutDocMsg = (n)=> `${n} documento(s) da seleção passam de ~${iaPages(IA_DOC_CHAR_LIMIT)} páginas e entram só pelo começo: o resto do texto não vai à IA. Para trabalhar um documento longo inteiro, divida-o em documentos menores.`;
 
 // CONTEUDO DA IA (referência consolidada v3 — texto refinado pelo autor). A constituição é a base
 // FIXA (invioláveis) injetada em toda tarefa (Codificar e Analisar); a postura é a camada metodológica
@@ -12622,11 +12657,15 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
       { ranges: ocrR, label: '[trecho de OCR omitido]' },
     ]);
   };
-  const docsBlock = ()=>{
+  // `cut` e um contador MUTAVEL preenchido de passagem (o corte por documento so se conhece com o
+  // texto ja mascarado, e remascarar tudo so pra contar dobraria o custo da tela). Quem chama e o
+  // useMemo do material, que devolve a contagem junto do texto.
+  const docsBlock = (cut)=>{
     const chosen = docs.filter(d=>selDocs.includes(d.id));
     return chosen.map(d=>{
       const content = maskedDocContent(d);
-      return `--- Documento: ${d.name}${docCatsBracket(d.id)} ---\n${content.slice(0, IA_DOC_CHAR_LIMIT)}`;
+      if(cut && content.length > IA_DOC_CHAR_LIMIT) cut.docs++;
+      return `--- Documento: ${d.name}${docCatsBracket(d.id)} ---\n${iaCutDoc(content)}`;
     }).join('\n\n');
   };
 
@@ -12670,7 +12709,7 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
     }).join('\n\n');
   };
 
-  const docsWithCodingsBlock = ()=>{
+  const docsWithCodingsBlock = (cut)=>{
     const chosen = docs.filter(d=>selDocs.includes(d.id));
     // filtro opcional de codigos: se nada selecionado, inclui todos os codigos do documento
     const codeFilter = selCodes.length ? new Set(selCodes) : null;
@@ -12688,18 +12727,22 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
       const header = codeFilter ? 'Trechos dos códigos selecionados presentes neste documento:' : 'Codificação aplicada neste documento:';
       const empty = codeFilter ? '(nenhum trecho dos códigos selecionados neste documento; o documento pode conter outras codificações não exibidas)' : '(nenhuma codificação neste documento)';
       const content = maskedDocContent(d);
-      return `--- Documento: ${d.name}${docCatsBracket(d.id)} ---\n${content.slice(0, IA_DOC_CHAR_LIMIT)}\n\n${header}\n${codeBlocks.length?codeBlocks.join('\n\n'):empty}`;
+      if(cut && content.length > IA_DOC_CHAR_LIMIT) cut.docs++;
+      return `--- Documento: ${d.name}${docCatsBracket(d.id)} ---\n${iaCutDoc(content)}\n\n${header}\n${codeBlocks.length?codeBlocks.join('\n\n'):empty}`;
     }).join('\n\n');
   };
 
   // memoizado: montar o material concatena (e mascara) o texto integral dos documentos
   // selecionados — recalcular isso a cada tecla digitada no chat era o custo dominante da
   // tela. Deps = tudo que os blocos leem (seleção, docs, codings, máscara, memos, categorias).
-  const rawMaterial = useMemo(()=>(
-    scope==='docs' ? docsBlock()
-    : scope==='codes' ? codesBlock()
-    : docsWithCodingsBlock()
-  ), [scope, selDocs, selCodes, docs, allCodings, maskedCodeIds, ocrMaskByDoc, codeById, memos, cats, allValues, includeCats]); // eslint-disable-line
+  const material = useMemo(()=>{
+    const cut = { docs:0 };   // preenchido de passagem pelos blocos (ver docsBlock)
+    const text = scope==='docs' ? docsBlock(cut)
+      : scope==='codes' ? codesBlock()
+      : docsWithCodingsBlock(cut);
+    return { text, docsCortados: cut.docs };
+  }, [scope, selDocs, selCodes, docs, allCodings, maskedCodeIds, ocrMaskByDoc, codeById, memos, cats, allValues, includeCats]); // eslint-disable-line
+  const rawMaterial = material.text;
   const materialTruncated = rawMaterial.length > IA_TOTAL_CHAR_LIMIT;
   const buildMaterial = ()=> materialTruncated
     ? rawMaterial.slice(0, IA_TOTAL_CHAR_LIMIT) + '\n\n[...material truncado: limite de tamanho da requisição...]'
@@ -13012,6 +13055,7 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
     ${ocrT.card}
 
     ${materialTruncated && html`<div class="banner warn" style="margin-bottom:10px">A seleção tem ~${iaPages(rawMaterial.length)} páginas, mais do que a IA analisa bem de uma vez (o limite é ~${iaPages(IA_TOTAL_CHAR_LIMIT)} páginas). Só as primeiras ~${iaPages(IA_TOTAL_CHAR_LIMIT)} páginas serão enviadas; para uma leitura completa, selecione menos itens de cada vez: a IA rende mais em recortes focados.</div>`}
+    ${material.docsCortados>0 && html`<div class="banner warn" style="margin-bottom:10px">${iaCutDocMsg(material.docsCortados)}</div>`}
     ${history.length>0 && html`<p class="hint" style="margin:0">Conversa em andamento à direita. Mude a seleção e clique em <b>Analisar de novo</b> (no chat) para recomeçar com outro material.</p>`}
     </div>
     </div>

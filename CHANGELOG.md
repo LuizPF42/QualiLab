@@ -9,6 +9,35 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION` no `index.html`, acrescente a seção aqui e
 > regenere o estável (`scripts/gen-estavel.sh`).
 
+## 1.4.5 (29/07/2026)
+
+### Corrigido: a IA cortava material sem avisar
+
+Quando o que você seleciona passa do tamanho que a IA lê de uma vez, o QualiLab corta o excedente.
+São dois cortes, e os dois eram silenciosos em algum lugar do app. O único registro ia dentro do
+texto enviado, ou seja, quem ficava sabendo era a IA, não você: material saía da análise sem que
+nada na tela indicasse, e o resultado parecia completo.
+
+**Corte da seleção inteira** (o limite é ~33 páginas somando tudo). A tela **Analisar com IA** já
+avisava; as três telas de IA do **Codificar Automaticamente** cortavam caladas. Agora as três
+avisam, dizendo o que ficou de fora:
+
+- **Sugerir Codificação** e **Sugerir Categorização**: quantos documentos do fim da lista não
+  entram (e por isso não vão receber sugestão nenhuma);
+- **Organizar Códigos**: que a amostra de trechos foi cortada, ou que ela ficou toda de fora
+  porque a lista de códigos sozinha já ocupa o limite. A lista de códigos vai sempre inteira.
+
+**Corte de cada documento** (o limite é ~10 páginas por documento). Este era silencioso nas
+**quatro** telas de IA, Analisar inclusive: um documento de 60 páginas entrava pela sexta parte e
+nada dizia. Agora as quatro avisam quantos documentos da sua seleção entraram só pelo começo. Se
+precisa da análise de um documento longo inteiro, o caminho é dividi-lo em documentos menores.
+
+Junto com isso, o texto enviado à IA passou a marcar onde o documento foi cortado. Sem a marca, o
+documento simplesmente terminava no meio de uma frase, e a IA podia ler isso como lacuna do seu
+corpus (chegando a criticar uma ausência que era corte nosso).
+
+O comportamento do corte não mudou: o que mudou é você ficar sabendo.
+
 ## 1.4.4 (29/07/2026)
 
 ### Corrigido: a nota de trecho vazava na codificação cega (leia se você usa esse modo)
