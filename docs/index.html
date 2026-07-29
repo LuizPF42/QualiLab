@@ -762,7 +762,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.3';
+const QUALILAB_VERSION = '1.4.4';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -6289,10 +6289,18 @@ function App(){
   const codePath = useCallback((id)=>{ const out=[]; let c=codeById[id]; let guard=0; while(c&&guard++<12){ out.unshift(c.name); c=c.parent_id?codeById[c.parent_id]:null; } return out; }, [codeById]);
   // o próprio autor sempre remove; admin remove (rejeita) o grifo de qualquer codificador; fora da nuvem/individual tudo é do usuário
   const canRemoveCoding = useCallback((c)=> store?.mode!=='cloud' || projectMode==='individual' || c.created_by===user?.id || isAdmin, [store, projectMode, user, isAdmin]);
-  function codingsForCtxMenu(menu){
+  /* `incluirDeOutros` separa ANOTAR de REMOVER/TROCAR. O canRemoveCoding e o gate certo pra
+     destruir o grifo alheio (isso e rejeicao, e cabe ao autor ou ao admin), e era o gate ERRADO
+     pra nota analitica: ela e uma nota UNICA por coding, compartilhada e co-editavel por
+     construcao — o mesmo membro ja escrevia na nota do grifo do colega pela aba Memos, em dois
+     cliques. O gate nao protegia a nota, so escondia o caminho que importa (o leitor, onde a
+     observacao nasce). Quem protege de verdade e o SERVIDOR: sob cego, a coding alheia nem chega
+     em visibleCodings, entao esta lista fica so com as proprias sem precisar de regra aqui. */
+  function codingsForCtxMenu(menu, incluirDeOutros){
     if(!menu) return [];
     const matches = visibleCodings.filter(c=>{
-      if(c.document_id!==activeId || !canRemoveCoding(c)) return false;
+      if(c.document_id!==activeId) return false;
+      if(!incluirDeOutros && !canRemoveCoding(c)) return false;
       if(menu.sel) return c.span_start < menu.sel.end && c.span_end > menu.sel.start;
       // faixa [pos, runEnd) quando houver (grifo do PDF: o frag inteiro); ponto senão. No leitor os
       // runs são cortados nas bordas das codings, então faixa e ponto dão o MESMO conjunto lá.
@@ -6952,6 +6960,7 @@ function App(){
     const left = Math.max(8, Math.min(ctxMenu.x, rightLimit - menuW));
     const top = Math.max(8, Math.min(ctxMenu.y, window.innerHeight - maxMenuH - 8));
     const removable = codingsForCtxMenu(ctxMenu);
+    const annotatable = codingsForCtxMenu(ctxMenu, true);   // anotar vale pro grifo de qualquer autor
     const quote = ctxMenu.quote || ctxMenu.sel?.quote || '';
     // --- lista de aplicar: filtrada pela busca e navegável pelo teclado ---
     const ctxQ = foldText(ctxQuery);
@@ -7010,9 +7019,9 @@ function App(){
           <span class="swatch" style=${`background:${col.solid};display:inline-block;margin-right:7px;vertical-align:middle;flex-shrink:0`}></span>${code?.is_redaction?'⦸ ':''}${path||'(código removido)'}${c.layer==='final'?' · gabarito':alien&&c.author_name?` · ${c.author_name}`:''}
         </button>`; })}
       </${CtxSection}>`}
-      ${!ctxMenu.changeCoding && removable.length>0 && html`<${CtxSection} title="Anotar trecho (nota analítica)" count=${removable.length}>
-        ${removable.map(c=>{ const code=codeById[c.code_id]; const path=codePath(c.code_id).join(' ▸ '); const col=code ? codeColor(code.hue,code.depth,code.hue_deg,false,code.sat) : codeColor(0,0); const hasNote=memos.some(m=>m.scope==='coding'&&m.target_id===c.id&&m.content); return html`<button key=${'memo'+c.id} onClick=${()=>{ closeCtxMenu(); setCodingMemoTarget({ id:c.id, quote, codePath:codePath(c.code_id).join(' ▸ ') }); }} style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;width:100%;box-sizing:border-box" title=${`Escrever/editar a nota analítica deste trecho: ${path}`}>
-          <span class="swatch" style=${`background:${col.solid};display:inline-block;margin-right:7px;vertical-align:middle;flex-shrink:0`}></span>✎ ${path||'(código)'}${hasNote?' ●':''}
+      ${!ctxMenu.changeCoding && annotatable.length>0 && html`<${CtxSection} title="Anotar trecho (nota analítica)" count=${annotatable.length}>
+        ${annotatable.map(c=>{ const code=codeById[c.code_id]; const path=codePath(c.code_id).join(' ▸ '); const col=code ? codeColor(code.hue,code.depth,code.hue_deg,false,code.sat) : codeColor(0,0); const hasNote=memos.some(m=>m.scope==='coding'&&m.target_id===c.id&&m.content); const deOutro=c.created_by!==user?.id&&c.author_name; return html`<button key=${'memo'+c.id} onClick=${()=>{ closeCtxMenu(); setCodingMemoTarget({ id:c.id, quote, codePath:codePath(c.code_id).join(' ▸ ') }); }} style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;width:100%;box-sizing:border-box" title=${`Escrever/editar a nota analítica deste trecho: ${path}${deOutro?` (grifo de ${c.author_name}; a nota é compartilhada)`:''}`}>
+          <span class="swatch" style=${`background:${col.solid};display:inline-block;margin-right:7px;vertical-align:middle;flex-shrink:0`}></span>✎ ${path||'(código)'}${c.layer==='final'?' · gabarito':deOutro?` · ${c.author_name}`:''}${hasNote?' ●':''}
         </button>`; })}
       </${CtxSection}>`}
       ${ctxMenu.changeCoding && html`<div style="padding:7px 12px 3px;font-size:11px;color:var(--ink-faint);font-weight:600;text-transform:uppercase;letter-spacing:.04em">Trocar código</div>`}
@@ -9441,7 +9450,10 @@ function MemoNav({ project, docs, codes, codings, memos, sel, onSel, onRenameDoc
           style="padding:5px 14px 5px 28px;cursor:pointer;flex-direction:column;align-items:flex-start;gap:1px"
           onClick=${()=>onSel({scope:'coding', targetId:m.target_id})}>
         <span class="node-name" style="font-size:12px;color:var(--ink-soft)" title=${co?codeName(co.code_id):''}>${co?codeName(co.code_id):'(trecho removido)'}</span>
-        <span style="font-size:11.5px;color:var(--ink-faint);font-family:var(--serif);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:210px">${co?.quote||m.content.slice(0,60)}</span>
+        <!-- sem trecho conhecido, o preview e o TRECHO ausente, nunca o conteudo da nota: era o
+             m.content.slice(0,60) aqui que fazia a nota de um codificador aparecer, legivel, pra
+             quem nao podia ver o grifo dela (ver a nota do memo_visible no schema.sql) -->
+        <span style="font-size:11.5px;color:var(--ink-faint);font-family:var(--serif);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:210px">${co?.quote||'trecho não disponível'}</span>
       </div>`)}
     </div>`}
 

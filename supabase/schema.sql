@@ -189,14 +189,29 @@ returns boolean language sql security definer stable set search_path = public as
 $$;
 
 -- memo visivel? os escopos que apontam para um documento ('document') ou para um trecho
--- ('coding', via a coding) herdam a visibilidade do documento; os demais (project, code,
--- ai_*) seguem abertos ao membro.
+-- ('coding', via a coding) herdam a visibilidade do ALVO; os demais (project, code, ai_*)
+-- seguem abertos ao membro.
+--
+-- CORRIGIDO 29/jul: o escopo 'coding' herdava so o can_see_doc, e faltava o can_see_authored —
+-- ou seja, sob CODIFICACAO CEGA o servidor escondia a coding alheia e MANDAVA a nota dela. A
+-- nota analitica e o raciocinio do codificador, o dado que mais contamina um estudo cego, e o
+-- cliente ainda a exibia: o MemoNav caia num fallback "(trecho removido)" que mostrava o inicio
+-- do CONTEUDO como preview. Nao era vazamento silencioso, era vazamento legivel.
+-- A regra agora e a MESMA da policy codings_select (documento E autor), que e o unico jeito de
+-- os dois nao divergirem de novo: memo de trecho segue exatamente a visibilidade do trecho.
+-- Efeito colateral aceito: memo ORFAO (coding inexistente) deixa de ser servido a qualquer um,
+-- porque o `exists` da false quando nao ha linha. Orfao nao deveria existir (os triggers
+-- memos_gc limpam nos cascades) e servir memo cujo alvo sumiu era justamente o que alimentava
+-- aquele fallback do MemoNav.
 create or replace function public.memo_visible(p_project uuid, p_scope text, p_target uuid)
 returns boolean language sql security definer stable set search_path = public as $$
   select case
     when p_scope = 'document' then public.can_see_doc(p_project, p_target)
-    when p_scope = 'coding'   then public.can_see_doc(p_project,
-                                    (select c.document_id from public.codings c where c.id = p_target))
+    when p_scope = 'coding'   then exists (
+      select 1 from public.codings c
+       where c.id = p_target
+         and public.can_see_doc(p_project, c.document_id)
+         and public.can_see_authored(p_project, c.created_by))
     else true
   end;
 $$;

@@ -587,7 +587,7 @@ A aba **Memos** guarda **notas analíticas**, texto livre que você anexa a um a
 - **Memo do projeto**: uma nota geral do projeto (rascunho livre; veja o aviso sobre a IA abaixo).
 - **Documentos**: uma nota por documento.
 - **Códigos**: uma nota por código (sua definição, regra de aplicação etc.).
-- **Trechos anotados**: a nota ancorada num **grifo** específico (a seção aparece quando há alguma). Escreve-se pelo **botão direito sobre o grifo → "Anotar trecho (nota analítica)"**, ou aqui nos Memos. *(Por enquanto o grifo anotado não ganha marca no leitor de codificação; você reencontra a nota nesta seção ou no [Relatório Interativo](#121-relatório-interativo-ati).)*
+- **Trechos anotados**: a nota ancorada num **grifo** específico (a seção aparece quando há alguma). Escreve-se pelo **botão direito sobre o grifo → "Anotar trecho (nota analítica)"**, ou aqui nos Memos. Em pesquisa coletiva ela é **compartilhada**: você pode anotar o grifo de qualquer colega que consiga ver (o menu mostra de quem é o grifo), e a equipe lê e edita a mesma nota. Sob **codificação cega** isso não se aplica, porque você não vê os grifos alheios, nem as notas deles. *(Por enquanto o grifo anotado não ganha marca no leitor de codificação; você reencontra a nota nesta seção ou no [Relatório Interativo](#121-relatório-interativo-ati).)*
 
 No [Relatório Interativo (ATI)](#121-relatório-interativo-ati), a **nota de trecho** é o que aparece ao clicar num grifo, e a **nota de código** aparece na legenda (em árvore): é assim que as duas alimentam a transparência ativa.
 
@@ -668,7 +668,7 @@ Ainda na pílula do projeto, o admin pode: ver a **lista de membros** e mudar pa
 - **Distribuição restritiva**: cada pesquisador só **enxerga** os documentos atribuídos a ele. Serve para **dividir o corpus** (cada um cuida da sua parte, ninguém codifica em duplicidade). Documento sem ninguém atribuído fica só com os administradores; desligada, todos veem o corpus inteiro.
 - **Codificação cega (*true blind*)**: cada pesquisador só **enxerga as próprias** codificações e respostas. Para **confiabilidade entre codificadores**, atribua o **mesmo** documento a duas pessoas (fica duplo-cego). Enquanto está ligada, o gabarito também fica oculto para os membros (revelá-lo no meio contamina); desligue para reconciliar em conjunto. Administradores continuam vendo tudo.
 
-> As duas regras são impostas pelo **servidor**, não só escondidas na tela: o membro não alcança pela API o que está oculto (nem o texto do trecho, nem o PDF). Para o membro em projeto cego somem o filtro **"Ver:"** e a aba **Reconciliação**. Mudanças na distribuição aparecem ao **recarregar** (não em tempo real). É recurso **só da nuvem coletiva** (depende de contas de vários pesquisadores) e **não** viaja no `.qualilab`.
+> As duas regras são impostas pelo **servidor**, não só escondidas na tela: o membro não alcança pela API o que está oculto (nem o texto do trecho, nem o PDF, nem a **nota analítica** escrita sobre um trecho que ele não pode ver). Para o membro em projeto cego somem o filtro **"Ver:"** e a aba **Reconciliação**. Mudanças na distribuição aparecem ao **recarregar** (não em tempo real). É recurso **só da nuvem coletiva** (depende de contas de vários pesquisadores) e **não** viaja no `.qualilab`.
 
 ### Enviar para a nuvem
 Se o projeto ativo for **rascunho** ou **arquivo**, a pílula mostra **"Enviar para a nuvem"**: cria um projeto novo na nuvem e copia tudo (documentos, categorias, códigos, codificações, memos) de uma vez, sem exportar/importar `.qualilab` na mão.

@@ -9,6 +9,32 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION` no `index.html`, acrescente a seção aqui e
 > regenere o estável (`scripts/gen-estavel.sh`).
 
+## 1.4.4 (29/07/2026)
+
+### Corrigido: a nota de trecho vazava na codificação cega (leia se você usa esse modo)
+
+Em projeto com **codificação cega**, o QualiLab escondia de você as codificações dos outros
+pesquisadores, como prometido, mas **entregava as notas analíticas delas**. Na aba **Memos**, a
+seção "Trechos anotados" listava essas notas com o rótulo "(trecho removido)" e mostrava o começo
+do texto como prévia; clicando, a nota inteira abria. Ou seja: você não via o grifo do colega, mas
+podia ler o raciocínio dele, que é justamente o que a codificação cega existe para impedir.
+
+Agora a nota de trecho segue **exatamente** a visibilidade do trecho: se você não pode ver o
+grifo, não vê nem lê a nota dele, e o servidor recusa gravá-la. Vale para o **gabarito** também,
+que já ficava fora da vista no modo cego.
+
+**Isso é uma correção no servidor**, então vale para todo mundo assim que a página é recarregada,
+sem depender da versão que o navegador tem em cache. Se você usou codificação cega até aqui,
+considere que as notas de trecho podem ter sido vistas por quem não devia.
+
+### Anotar o trecho de outro pesquisador, direto no leitor
+
+Em pesquisa coletiva, "Anotar trecho" no menu do botão direito só aparecia nos grifos **seus**.
+Mas a nota de trecho é **compartilhada** e sempre foi editável por qualquer membro pela aba
+**Memos**: o menu escondia o caminho, não protegia a nota. Agora ela aparece para qualquer grifo
+que você possa ver, com o nome de quem grifou (ou "gabarito"), que é onde a observação costuma
+nascer: lendo. Remover o grifo de outra pessoa continua sendo do autor ou de um administrador.
+
 ## 1.4.3 (29/07/2026)
 
 ### Reorganizar o esquema não descobre mais trecho censurado
