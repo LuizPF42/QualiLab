@@ -762,7 +762,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.1';
+const QUALILAB_VERSION = '1.4.2';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -1914,16 +1914,51 @@ async function exportQDPX(docs, cats, allV, codes, allC, project, memos, pdfByte
   for(const d of docs){
     srcFolder.file(`${stripGuid(d.id)}.txt`, d.content);   // cru: ver a nota de censura no topo
     // codings de censura entram como qualquer outra (o pesquisador leva a censura pra ferramenta destino)
-    const selXml = allC.filter(c=>c.document_id===d.id).map(c=>{
-      const codingGuid = uid();
-      const au = ensureAuthor(c.author_name);
-      const name = (c.quote||'').slice(0,80);
+    // V1: UMA <PlainTextSelection> por (SPAN, AUTOR), com um <Coding> por codificacao. Emitir uma
+    // selection POR CODIFICACAO fazia dois codigos no mesmo trecho chegarem ao ATLAS.ti como duas
+    // quotations identicas sobrepostas (visto ao vivo); o idiomatico la — e o que o XSD permite
+    // (PlainTextSelectionType: Coding maxOccurs="unbounded") — e UMA quotation com varios codigos.
+    // O AUTOR ENTRA NA CHAVE por compatibilidade, e nao e detalhe: o QualCoder le o codificador do
+    // atributo creatingUser da SELECTION e ignora o do <Coding> (refi.py, load_codings_for_text —
+    // o XSD permite creatingUser nos dois, ele so olha um). Agrupar codificacoes de PESSOAS
+    // diferentes no mesmo span reatribuiria todas ao primeiro do grupo, em silencio: perda de
+    // autoria, que a matriz de fidelidade do harness declara preservada. Consequencia aceita: dois
+    // codificadores no MESMO trecho continuam gerando duas quotations (era o que ja acontecia).
+    // Agrupa o que importa e e seguro: a mesma pessoa aplicando varios codigos ao mesmo trecho.
+    const spanBuckets = new Map();
+    allC.filter(c=>c.document_id===d.id).forEach(c=>{
+      const k = c.span_start+':'+c.span_end+':'+(c.author_name||'');
+      const g = spanBuckets.get(k); if(g) g.push(c); else spanBuckets.set(k, [c]);
+    });
+    // SEGUNDO limite do agrupamento: a selection tem UM SO <Description>, e ele e a nota analitica
+    // do trecho. Duas codificacoes com nota PROPRIA nao cabem numa selection sem perder uma delas.
+    // Concatenar foi tentado e DESCARTADO: (a) no nosso proprio round-trip as duas notas voltavam
+    // fundidas numa codificacao so (perda real, nao cosmetica); (b) o MAXQDA TRUNCA o comentario de
+    // trecho em 511 caracteres na importacao (manual, "Import a REFI-QDA Project"), entao o texto
+    // concatenado ainda podia ser cortado no meio, em silencio. Regra: cada selection leva no
+    // maximo UMA nota — as sem nota viajam junto da primeira com nota; cada nota a mais abre a sua.
+    const spanGroups = [];
+    for(const bucket of spanBuckets.values()){
+      const comNota = bucket.filter(c=>String(codingMemo[c.id]||'').trim());
+      const semNota = bucket.filter(c=>!String(codingMemo[c.id]||'').trim());
+      if(!comNota.length) spanGroups.push(bucket);
+      else {
+        spanGroups.push([comNota[0], ...semNota]);
+        for(let i=1;i<comNota.length;i++) spanGroups.push([comNota[i]]);
+      }
+    }
+    // a selection herda guid e autor da PRIMEIRA codificacao do grupo — o guid e o id que o
+    // pushCodingsFor devolve a ela na volta (ancora do memo de trecho, por isso a com nota vem
+    // primeiro); o autor e o mesmo de todo o grupo por construcao, ja que entra na chave.
+    const selXml = spanGroups.map(group=>{
+      const head = group[0];
+      const name = (head.quote||'').slice(0,80);
       // posicoes em code points (REFI-QDA/QualCoder), convertidas do offset UTF-16 interno
-      const cs = u16ToCp(d.content, c.span_start), ce = u16ToCp(d.content, c.span_end);
-      const cmemo = codingMemo[c.id]; // #18: memo de trecho
-      return `<PlainTextSelection guid="${stripGuid(c.id)}" name="${xmlEsc(name)}" startPosition="${cs}" endPosition="${ce}" creatingUser="${au}">`
-        + ((cmemo && String(cmemo).trim()) ? `<Description>${xmlEsc(cmemo)}</Description>` : '') // #18: Description antes de Coding (XSD)
-        + `<Coding guid="${codingGuid}" creatingUser="${au}"><CodeRef targetGUID="${stripGuid(c.code_id)}"/></Coding>`
+      const cs = u16ToCp(d.content, head.span_start), ce = u16ToCp(d.content, head.span_end);
+      const cmemo = String(codingMemo[head.id]||'').trim();   // #18: memo de trecho (no maximo um)
+      return `<PlainTextSelection guid="${stripGuid(head.id)}" name="${xmlEsc(name)}" startPosition="${cs}" endPosition="${ce}" creatingUser="${ensureAuthor(head.author_name)}">`
+        + (cmemo ? `<Description>${xmlEsc(cmemo)}</Description>` : '') // #18: Description antes de Coding (XSD)
+        + group.map(c=>`<Coding guid="${uid()}" creatingUser="${ensureAuthor(c.author_name)}"><CodeRef targetGUID="${stripGuid(c.code_id)}"/></Coding>`).join('')
         + `</PlainTextSelection>`;
     }).join('');
     const dmemo = docMemo[d.id]; // #18: memo de documento
@@ -1958,11 +1993,15 @@ async function exportQDPX(docs, cats, allV, codes, allC, project, memos, pdfByte
     + `<Project xmlns="urn:QDA-XML:project:1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" `
     + `xsi:schemaLocation="urn:QDA-XML:project:1.0 http://schema.qdasoftware.org/versions/Project/v1.0/Project.xsd" `
     + `name="${xmlEsc(project.name||'Projeto QualiLab')}" origin="QualiLab" creationDateTime="${new Date().toISOString()}">`
-    + `<Users>${usersXml}</Users>`
-    + `<CodeBook><Codes>${codesXml}</Codes></CodeBook>`
-    + `<Variables>${variablesXml}</Variables>`
-    + `<Cases>${casesXml}</Cases>`
-    + `<Sources>${sourcesXml}</Sources>`
+    // Cada wrapper do XSD exige pelo menos UM filho (UsersType, CodesType, VariablesType,
+    // CasesType, SourcesType sao sequence com minOccurs=1); no Project eles sao minOccurs=0.
+    // Emitir a caixa VAZIA invalidava o .qdpx inteiro — projeto sem categoria nenhuma (comum)
+    // saia com <Variables></Variables> e importador estrito recusa o arquivo. Omite o vazio.
+    + (usersXml ? `<Users>${usersXml}</Users>` : '')
+    + (codesXml ? `<CodeBook><Codes>${codesXml}</Codes></CodeBook>` : '')
+    + (variablesXml ? `<Variables>${variablesXml}</Variables>` : '')
+    + (casesXml ? `<Cases>${casesXml}</Cases>` : '')
+    + (sourcesXml ? `<Sources>${sourcesXml}</Sources>` : '')
     + ((projectMemo && String(projectMemo).trim()) ? `<Notes><Note guid="${uid()}" name="Memo do projeto"><PlainTextContent>${xmlEsc(projectMemo)}</PlainTextContent></Note></Notes>` : '') // #18: memo de projeto (Notes apos Sources, ordem XSD)
     + `</Project>`;
 
@@ -2277,7 +2316,7 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
 
   // codigos hierarquicos (recursivo); hue por familia de topo, na ordem em que aparecem
   const newCodes = [];
-  const newMemos = []; // comentarios -> memos: { scope:'document'|'code', oldId, content, author }
+  const newMemos = []; // comentarios -> memos: { scope:'document'|'code'|'coding', oldId, content, author }
   let topHue = 0;
   function walkCode(el, parentId, depth, hue){
     const id = stripGuid(el.getAttribute('guid'));
@@ -2350,14 +2389,17 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
   const countCodings = (sel)=> directChildren(sel, 'Coding').length;
   function pushCodingsFor(sel, docId, start, end, content){
     let n = 0;
-    directChildren(sel, 'Coding').forEach((cod,i)=>{
+    directChildren(sel, 'Coding').forEach(cod=>{
       const ref = cod.querySelector('CodeRef');
       if(!ref) return;
       const codeId = stripGuid(ref.getAttribute('targetGUID'));
       // autor: quem aplicou o codigo (Coding); se faltar, quem criou a selecao
       const author = authorOf(cod.getAttribute('creatingUser') || sel.getAttribute('creatingUser'));
       newCodings.push({
-        id: i===0 ? stripGuid(sel.getAttribute('guid')) : uid(),
+        // a PRIMEIRA codificacao CRIADA herda o id da selection (e o que ancora o memo de trecho
+        // dela, ver addCodingMemo). Contado por n, nao pelo indice do forEach: um <Coding> sem
+        // CodeRef e pulado, e com i===0 a selection ficaria sem nenhuma coding com o seu id.
+        id: n===0 ? stripGuid(sel.getAttribute('guid')) : uid(),
         document_id: docId, code_id: codeId, span_start:start, span_end:end,
         quote: (content||'').slice(start,end), author_name: author
       });
@@ -2366,6 +2408,17 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
     return n;
   }
   function importSelections(parentEl, docId, content, index, geomPages){
+    // <Description> da selection -> memo de trecho (a nota analitica). O exportQDPX ja gravava e o
+    // import DESCARTAVA: a nota saia no .qdpx e nao voltava. Ancora no id da primeira codificacao
+    // criada, que e o proprio guid da selection (ver pushCodingsFor). So com n>0: selection sem
+    // codificacao nenhuma nao tem onde pendurar a nota, e o memo ficaria orfao.
+    const addCodingMemo = (sel, n)=>{
+      if(!n) return;
+      const dsc = firstChild(sel, 'Description');
+      const t = dsc ? (dsc.textContent||'').trim() : '';
+      if(t) newMemos.push({ scope:'coding', oldId:stripGuid(sel.getAttribute('guid')), content:t,
+                            author:authorOf(sel.getAttribute('creatingUser')) });
+    };
     // PlainTextSelection: quando o conteudo veio do .txt (sem geomPages), os offsets de caractere
     // sao a fonte mais confiavel. Quando o conteudo veio do pdf.js (geomPages presente), os offsets
     // do ATLAS.ti nao se aplicam ao texto do pdf.js — entao localizamos pelo texto do "name".
@@ -2384,6 +2437,7 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
         start = sp.start; end = sp.end; approx = sp.approx;
       }
       const n = pushCodingsFor(sel, docId, start, end, content);
+      addCodingMemo(sel, n);
       if(approx) approxCount += n;
     });
     // PDFSelection: 1) se ha geometria (conteudo do pdf.js), reconstroi o texto do retangulo a
@@ -2403,6 +2457,7 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
         continue;
       }
       const n = pushCodingsFor(sel, docId, sp.start, sp.end, content);
+      addCodingMemo(sel, n);   // .qdpx estrangeiro pode comentar a selecao retangular tambem
       if(sp.geom) geomCount += n; else if(sp.approx) approxCount += n;
     }
   }
@@ -2580,9 +2635,16 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
     }
     // created_by: null => o agrupamento por codificador usa author_name (do QDPX), não o uuid de quem importou
     // layer: em projeto individual tudo vai para a camada final (sem reconciliacao); em coletivo, fica individual
-    const codingItems = newCodings.filter(c=>docMap[c.document_id] && codeMap[c.code_id]).map(c=>({
-      created_by:null, layer:codLayer, document_id:docMap[c.document_id], code_id:codeMap[c.code_id],
-      span_start:c.span_start, span_end:c.span_end, quote:c.quote, author_name:c.author_name }));
+    // id PRE-GERADO (mesmo padrao do mergeQualilabDb): o memo de trecho precisa do id FINAL da
+    // codificacao, e o insert em LOTE nao devolve as linhas na ordem de envio. Antes o id vindo do
+    // .qdpx era simplesmente descartado aqui — por isso nao havia onde ancorar a nota.
+    const codingMap = {};   // id do .qdpx (= guid da selection) -> id novo
+    const codingItems = newCodings.filter(c=>docMap[c.document_id] && codeMap[c.code_id]).map(c=>{
+      const id = uid();
+      if(c.id) codingMap[c.id] = id;
+      return { id, created_by:null, layer:codLayer, document_id:docMap[c.document_id], code_id:codeMap[c.code_id],
+        span_start:c.span_start, span_end:c.span_end, quote:c.quote, author_name:c.author_name };
+    });
     if(store.addCodingsBulk){
       linhasRecusadas += bulkFails(await store.addCodingsBulk(projectId, codingItems));
       for(let i=0;i<newCodings.length;i++) await tick();
@@ -2592,12 +2654,14 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
       for(const co of codingItems){ await store.addCoding(projectId, co); await tick(); }
       for(let i=codingItems.length;i<newCodings.length;i++) await tick();   // descartados (doc/codigo ausente)
     }
-    // comentarios do .qdpx (<Description> de documento/codigo) -> memos do QualiLab (um por alvo)
+    // comentarios do .qdpx (<Description> de documento/codigo/trecho) -> memos do QualiLab (um por alvo)
     if(store.setMemo){
       // dedup por (scope,target_id) obrigatorio no lote (mesma razao do setMemosBulk no merge)
       const memoRows = {};
       for(const m of newMemos){
-        const targetId = m.scope==='document' ? docMap[m.oldId] : codeMap[m.oldId];
+        const targetId = m.scope==='document' ? docMap[m.oldId]
+          : m.scope==='coding' ? codingMap[m.oldId]   // alvo descartado (doc/codigo ausente) -> memo cai fora
+          : codeMap[m.oldId];
         if(targetId) memoRows[m.scope+':'+targetId] = { scope:m.scope, target_id:targetId, content:m.content, author_name:m.author };
       }
       const rows = Object.values(memoRows).filter(r=>(r.content||'').trim());
