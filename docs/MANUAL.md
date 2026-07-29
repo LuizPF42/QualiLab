@@ -495,6 +495,8 @@ Ao editar um código, o admin pode:
 - Escolher a **cor da família** por um controle de **matiz** (0–359), ou **cinza** / **preto**, propagada aos subcódigos.
 - Marcar o código como **censura** (força a cor preta). Veja [5.5](#55-censura-mascarar-trechos-sensíveis).
 
+**A censura acompanha a posição na árvore.** Subcódigo criado dentro de uma família de censura já nasce censurado, e **mover ou agrupar** um código para dentro dela também o marca, junto com os subcódigos dele. O QualiLab avisa antes, dizendo quantos códigos e quantos trechos passam a ser mascarados; em pesquisa coletiva isso conta como alteração de censura, então é ação de admin. O caminho inverso é diferente de propósito: tirar um código de dentro da família **não** desmarca a censura dele, porque desmarcar deve ser uma decisão explícita, tomada na caixa **censura** do próprio código. Se você **mesclar** um código de censura em um código normal, os trechos dele deixam de ser mascarados: o QualiLab avisa e pede confirmação, mas quem decide é você.
+
 > **Importante:** o painel de Códigos da aba **Codificação** continua existindo e é independente. A reorganização em lote é só aqui no Esquema, de propósito (menos mudança de hábito na tela de codificar).
 
 ---

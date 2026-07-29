@@ -762,7 +762,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.2';
+const QUALILAB_VERSION = '1.4.3';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -7966,6 +7966,7 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
   const [query, setQuery] = useState('');
   const [splitCode, setSplitCode] = useState(null);   // id do código aberto na tela de divisão
   const [groupConfirm, setGroupConfirm] = useState(null); // agrupar num alvo que tem trechos próprios
+  const [notice, setNotice] = useState('');               // recusa explicada (ex.: censura só por admin)
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [busy, setBusy] = useState(false);
   const treeKeys = useTreeKeys();   // a11y: ↑↓ ←→ Home/End Enter na arvore (ver useTreeKeys)
@@ -8013,21 +8014,49 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
   // recalcula a profundidade (e, se adoptColor, a cor) de um codigo e de toda a sua
   // subarvore — necessario sempre que um codigo muda de pai, senao a luminosidade do
   // swatch (que depende de code.depth) fica errada pra posicao nova na arvore.
-  async function reparentSubtree(codeId, newParentId, newDepth, adoptColor){
-    const patch = { parent_id:newParentId, depth:newDepth };
-    if(adoptColor){ patch.hue = adoptColor.hue; patch.hue_deg = adoptColor.hue_deg ?? null; patch.sat = adoptColor.sat ?? null; }
-    await store.updateCode(codeId, patch);
+  // CENSURA — duas regras, as duas sobre a POSICAO na arvore, nao sobre a cor herdada:
+  // - markRedaction: entrar numa familia de censura MARCA a subarvore movida, mesma heranca
+  //   que o addCode ja faz na criacao. Sem isso o codigo entrava PRETO (o adoptColor trazia o
+  //   hue_deg -2 do alvo) e DESCOBERTO: parecia censurado sem estar, o pior dos dois mundos.
+  // - hue_deg de no que JA e censura nunca e sobrescrito pelo adoptColor: agrupar um codigo
+  //   censurado sob um pai normal mantinha is_redaction e perdia o preto (censurado sem
+  //   parecer). O preto acompanha a censura, nao o pai. Sobrescrever so pra CIMA tambem evita
+  //   que promover um codigo censurado esbarre no codes_color_guard (mudanca de cor no nivel 0).
+  async function reparentSubtree(codeId, newParentId, newDepth, adoptColor, markRedaction){
+    const patchFor = (node, base)=>{
+      const p = { ...base };
+      const jaCensura = !!node?.is_redaction;
+      if(adoptColor){
+        p.hue = adoptColor.hue; p.sat = adoptColor.sat ?? null;
+        if(!jaCensura && !markRedaction) p.hue_deg = adoptColor.hue_deg ?? null;
+      }
+      if(markRedaction && !jaCensura){ p.is_redaction = true; p.hue_deg = -2; }
+      return p;
+    };
+    await store.updateCode(codeId, patchFor(codeById[codeId], { parent_id:newParentId, depth:newDepth }));
     const stack=[{id:codeId,depth:newDepth}];
     while(stack.length){
       const {id,depth}=stack.pop();
       for(const ch of childrenOf(id)){
         const cd = depth+1;
-        const cpatch = { depth:cd };
-        if(adoptColor){ cpatch.hue=adoptColor.hue; cpatch.hue_deg=adoptColor.hue_deg ?? null; cpatch.sat=adoptColor.sat ?? null; }
-        await store.updateCode(ch.id, cpatch);
+        await store.updateCode(ch.id, patchFor(ch, { depth:cd }));
         stack.push({id:ch.id,depth:cd});
       }
     }
+  }
+
+  /* CENSURA na reorganizacao: quanto custa mover `ids` pra dentro de uma familia censurada.
+     Conta a SUBARVORE inteira de cada movido (a marca cascateia, igual ao setCodeRedaction) e
+     ignora quem ja e censura — mover censura pra dentro de censura nao muda nada e nao deve
+     pedir permissao nem confirmacao. Devolve null quando nao ha nada a marcar. */
+  function redactionImpact(ids){
+    const alvos = new Set();
+    const walk = (id)=>{ const c = codeById[id]; if(!c || alvos.has(id)) return;
+      if(!c.is_redaction) alvos.add(id);
+      childrenOf(id).forEach(ch=>walk(ch.id)); };
+    ids.forEach(walk);
+    if(!alvos.size) return null;
+    return { n: alvos.size, trechos: allCodings.filter(c=>alvos.has(c.code_id)).length };
   }
 
   async function promoteToRoot(code){
@@ -8046,7 +8075,19 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
   async function handleGroup(targetId, newName, ids){
     const alvo = targetId ? codeById[targetId] : null;
     const proprios = alvo ? allCodings.filter(c=>c.code_id===alvo.id) : [];
-    if(proprios.length){ setGroupConfirm({ targetId, newName, ids, n:proprios.length, keepName:`${alvo.name} (geral)` }); return; }
+    // mover pra dentro de uma familia de censura E alterar censura: o alcance da mascara muda
+    // (os trechos saem do material da IA e do Relatorio). Por isso pede a MESMA permissao do
+    // setCodeRedaction — e a recusa e uma frase, nao a excecao crua do codes_color_guard.
+    // Pai NOVO nasce sem censura, entao alvo null nunca cai aqui.
+    const redact = alvo?.is_redaction ? redactionImpact(ids) : null;
+    if(redact && !isAdmin){
+      setNotice(`"${alvo.name}" é um código de censura, e mover códigos para dentro dele marca os trechos como censura. Só administradores alteram a censura. Peça a um administrador do projeto.`);
+      return;
+    }
+    if(proprios.length || redact){
+      setGroupConfirm({ targetId, newName, ids, redact, n:proprios.length, keepName:`${alvo.name} (geral)` });
+      return;
+    }
     await doGroup(targetId, newName, ids, null);
   }
   async function doGroup(targetId, newName, ids, keepName){
@@ -8067,9 +8108,11 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
           if(r.failed) throw new Error(`${r.failed} trecho(s) não puderam ser movidos; o agrupamento foi interrompido.`);
         }
       }
+      // markRedaction segue o ALVO, nao o groupConfirm: o "(geral)" criado acima nasce por addCode
+      // dentro do alvo e ja herda a censura por lá, mas os movidos so herdam aqui.
       for(const id of ids){
         if(id===target.id || isDescendantOf(target.id, id)) continue;
-        await reparentSubtree(id, target.id, target.depth+1, { hue:target.hue, hue_deg:target.hue_deg, sat:target.sat });
+        await reparentSubtree(id, target.id, target.depth+1, { hue:target.hue, hue_deg:target.hue_deg, sat:target.sat }, !!target.is_redaction);
       }
     } finally { if(store.endBatch) await store.endBatch(); setBusy(false); }
     setGroupConfirm(null);
@@ -8077,7 +8120,33 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
     clearSelection();
   }
 
+  /* CENSURA na mesclagem: ela MOVE trechos de um codigo pra outro, entao atravessa a fronteira
+     da censura nos dois sentidos, e nenhum dos dois avisava.
+     - sobrevivente censurado: os trechos dos mesclados passam a ser mascarados (direcao segura)
+       e os subcodigos deles herdam a marca, como em qualquer entrada em familia de censura;
+     - sobrevivente NORMAL absorvendo um codigo de censura: os trechos dele DESCOBREM, em
+       silencio. E o unico caminho do app que reduz o alcance da mascara sem passar pela caixa
+       de censura, e por isso o aviso e explicito em vez de so admin-only (ja e). Nao recusamos:
+       reunir um codigo de censura num codigo normal e ato legitimo de admin, so nao pode ser
+       feito sem saber. */
   async function handleMerge(survivorId, mergedIds){
+    const alvo = codeById[survivorId];
+    if(alvo?.is_redaction){
+      const filhos = redactionImpact(mergedIds.flatMap(id=>childrenOf(id).map(ch=>ch.id)));
+      // so os trechos que HOJE nao sao mascarados: mesclar censura dentro de censura nao muda
+      // nada e nao pode pedir confirmacao (aviso que nao corresponde a mudanca ensina a ignorar)
+      const trechos = allCodings.filter(c=>mergedIds.includes(c.code_id) && !codeById[c.code_id]?.is_redaction).length;
+      const partes = [];
+      if(trechos) partes.push(`${trechos} trecho(s) passam a ser mascarados`);
+      if(filhos) partes.push(`${filhos.n} subcódigo(s) passam a ser censura`);
+      if(partes.length && !confirm(`"${alvo.name}" é um código de censura: ${partes.join(' e ')}. Continuar?`)) return;
+    } else {
+      const expostos = mergedIds.filter(id=>codeById[id]?.is_redaction);
+      if(expostos.length){
+        const trechos = allCodings.filter(c=>expostos.includes(c.code_id)).length;
+        if(!confirm(`ATENÇÃO: ${expostos.length} código(s) de censura vão ser mesclados em "${alvo?.name}", que não é código de censura. ${trechos} trecho(s) DEIXAM de ser mascarados: voltam a ir para a IA e aparecem inteiros no Relatório e nos exports de transparência. Continuar?`)) return;
+      }
+    }
     setBusy(true);
     try{
       const survivor = codeById[survivorId];
@@ -8094,7 +8163,7 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
         // (que apaga em cascata) destruiria esses filhos junto
         for(const mid of mergedIds){
           for(const ch of childrenOf(mid)){
-            await reparentSubtree(ch.id, survivorId, survivor.depth+1, { hue:survivor.hue, hue_deg:survivor.hue_deg, sat:survivor.sat });
+            await reparentSubtree(ch.id, survivorId, survivor.depth+1, { hue:survivor.hue, hue_deg:survivor.hue_deg, sat:survivor.sat }, !!survivor.is_redaction);
           }
         }
         // 3) exclui os mesclados (ja sem filhos nem codificacoes)
@@ -8164,17 +8233,26 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
     onCancel=${()=>setSplitCode(null)}
     onDone=${async()=>{ setSplitCode(null); clearSelection(); await reload(); await loadAll(); }} />`;
 
+  // um modal, dois avisos independentes: o alvo com trechos proprios (precisa do "(geral)") e o
+  // alvo de censura (a marca cascateia pros movidos). Podem valer ao mesmo tempo, e empilhar dois
+  // dialogos no mesmo gesto seria pior que dizer as duas coisas de uma vez.
   const groupModal = groupConfirm && (()=>{ const alvo = codeById[groupConfirm.targetId];
+    const balde = groupConfirm.n > 0;
+    const R = groupConfirm.redact;
     return html`<div class="modal-bg" onClick=${()=>setGroupConfirm(null)}><div class="modal" style="max-width:520px" onClick=${e=>e.stopPropagation()}>
-      <h3 style="margin:0 0 6px">"${alvo?.name}" vai virar família</h3>
-      <p class="hint" style="margin:0 0 12px">Ele tem <b>${groupConfirm.n} trecho(s)</b> próprios, e família não recebe trechos. Eles vão para um subcódigo dentro dele:</p>
-      <input class="txtin" autofocus style="width:100%;box-sizing:border-box" value=${groupConfirm.keepName}
-        onInput=${e=>setGroupConfirm(g=>({...g, keepName:e.target.value}))} />
-      <p class="hint" style="margin:6px 0 0">Fica como pendência: para distribuí-los entre os subcódigos, use <b>Dividir em subcódigos</b> depois.</p>
+      <h3 style="margin:0 0 6px">${balde ? `"${alvo?.name}" vai virar família` : `Mover para dentro de "${alvo?.name}"`}</h3>
+      ${balde && html`
+        <p class="hint" style="margin:0 0 12px">Ele tem <b>${groupConfirm.n} trecho(s)</b> próprios, e família não recebe trechos. Eles vão para um subcódigo dentro dele:</p>
+        <input class="txtin" autofocus style="width:100%;box-sizing:border-box" value=${groupConfirm.keepName}
+          onInput=${e=>setGroupConfirm(g=>({...g, keepName:e.target.value}))} />
+        <p class="hint" style="margin:6px 0 0">Fica como pendência: para distribuí-los entre os subcódigos, use <b>Dividir em subcódigos</b> depois.</p>`}
+      ${R && html`<div class="banner warn" style=${balde?'margin-top:12px':'margin:0 0 4px'}>
+        <b>⦸ "${alvo?.name}" é um código de censura.</b> ${R.n} código(s)${R.trechos?` e ${R.trechos} trecho(s)`:''} passam a ser censura junto: os trechos saem do material da IA e aparecem mascarados no Relatório e nos exports de transparência. Para reverter, desmarque a censura no código depois de mover.
+      </div>`}
       <div class="row" style="gap:8px;justify-content:flex-end;margin-top:16px">
         <button class="btn sm ghost" onClick=${()=>setGroupConfirm(null)}>Cancelar</button>
-        <button class="btn sm primary" disabled=${busy || !groupConfirm.keepName.trim()}
-          onClick=${()=>doGroup(groupConfirm.targetId, groupConfirm.newName, groupConfirm.ids, groupConfirm.keepName)}>${busy?'Agrupando...':'Agrupar'}</button>
+        <button class="btn sm primary" disabled=${busy || (balde && !groupConfirm.keepName.trim())}
+          onClick=${()=>doGroup(groupConfirm.targetId, groupConfirm.newName, groupConfirm.ids, balde?groupConfirm.keepName:null)}>${busy?'Agrupando...':'Agrupar'}</button>
       </div>
     </div></div>`; })();
 
@@ -8198,6 +8276,10 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
         </div>`}
         <span class="meta" style="margin-left:auto">${codes.length} código(s)</span>
       </div>
+      ${notice && html`<div class="banner warn" style="margin:10px 14px 0;display:flex;gap:8px;align-items:flex-start;flex:none">
+        <span style="flex:1">${notice}</span>
+        <button class="btn sm ghost" style="flex:none" title="dispensar" onClick=${()=>setNotice('')}>✕</button>
+      </div>`}
       ${schemaMode==='arvore' ? treeBody
         : html`<div class="pane-body" style="position:relative;padding:0;overflow:hidden;min-height:0">
             <${SchemaMapView} codes=${codes} codeById=${codeById} codePath=${codePath} count=${count}
