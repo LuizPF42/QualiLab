@@ -9,6 +9,142 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION` no `index.html`, acrescente a seção aqui e
 > regenere o estável (`scripts/gen-estavel.sh`).
 
+## 1.4.3 (29/07/2026)
+
+### Reorganizar o esquema não descobre mais trecho censurado
+
+Marcar uma família como censura já valia para os subcódigos criados depois dela. Faltava o
+caminho da **reorganização**: mover ou agrupar um código para dentro de uma família de censura
+deixava esse código **descoberto**, e ainda por cima **pintado de preto** (a cor que a censura
+usa). Ele parecia censurado sem estar, e os trechos dele continuavam indo para a IA e saindo
+inteiros no Relatório e nos exports de transparência.
+
+Agora, ao mover códigos para dentro de uma família de censura:
+
+- eles (e os subcódigos deles) **passam a ser censura junto**, como já acontecia na criação;
+- o QualiLab avisa **antes**, dizendo quantos códigos e quantos trechos passam a ser mascarados;
+- em pesquisa coletiva, isso é **alteração de censura**, então só administradores fazem. Quem
+  não é administrador recebe uma explicação, não um erro.
+
+Na direção oposta, tirar um código de censura de dentro da família **não desmarca** a censura
+(desmarcar continua sendo um ato explícito, na caixa do código) e ele **não perde mais a cor
+preta** ao adotar a cor do novo pai.
+
+### A mesclagem avisa quando muda o alcance da censura
+
+Mesclar um código de censura em um código normal move os trechos dele para fora da censura: eles
+voltam a ir para a IA e a aparecer inteiros nos relatórios. Isso acontecia em silêncio. Agora o
+QualiLab avisa quantos trechos deixam de ser mascarados e pede confirmação. No sentido inverso
+(mesclar em um código de censura), avisa quantos passam a ser mascarados.
+
+## 1.4.2 (29/07/2026)
+
+### O QDPX agora leva uma citação por trecho, não uma por código
+
+Quando você aplica **dois códigos ao mesmo trecho**, o arquivo QDPX chegava ao ATLAS.ti (ou ao
+MAXQDA, ou ao NVivo) como **duas citações idênticas sobrepostas** — o mesmo texto duplicado na
+lista, atrapalhando a leitura e a contagem. Agora vai **uma citação com os dois códigos**, que é
+como essas ferramentas representam isso.
+
+O agrupamento é **deliberadamente conservador**, em dois casos:
+
+- Quando o mesmo trecho foi codificado por **pessoas diferentes**, as citações continuam separadas,
+  uma por codificador. O QualCoder lê o nome do codificador da citação, não de cada código dentro
+  dela; juntar as duas faria o trabalho de um aparecer como sendo do outro, sem aviso.
+- Quando **dois códigos do mesmo trecho têm nota analítica própria**, também ficam separados. O
+  formato só reserva um espaço de comentário por citação — e o MAXQDA ainda corta esse comentário
+  em 511 caracteres ao importar.
+
+Em ambos, preferimos a citação repetida a uma autoria trocada ou a uma nota cortada.
+
+### A nota analítica do trecho volta quando você reimporta um QDPX
+
+A nota que você escreve num grifo ("Anotar trecho") já era gravada no QDPX, mas **era descartada na
+importação**: exportar e reimportar perdia todas elas em silêncio. Agora voltam inteiras, cada uma
+presa ao trecho certo.
+
+### Correção: projeto sem categorias gerava um QDPX que alguns programas recusam
+
+Um projeto que nunca definiu categorias exportava um arquivo com uma seção de atributos vazia, o
+que torna o QDPX inválido perante o padrão REFI-QDA — importadores mais rigorosos podiam recusar o
+arquivo inteiro. A seção vazia deixou de ser escrita. Vale também para projetos sem códigos e sem
+documentos.
+
+## 1.4.1 (28/07/2026)
+
+### "Limpar conteúdo" não apaga mais a configuração do seu estudo
+
+No **rascunho** e no **modo arquivo**, limpar o conteúdo do projeto levava junto coisas que não
+são material: as suas instruções à IA, a postura de análise, o "Memo para a IA", a biblioteca de
+prompts salvos e a lista de palavras ignoradas da nuvem. Quem só queria trocar o corpus perdia
+decisões de método, sem aviso. **Na nuvem isso já funcionava certo** — agora os três modos se
+comportam igual.
+
+O que "Limpar conteúdo" apaga continua sendo o material: documentos, códigos, codificações,
+categorias e as notas presas a eles (nota de documento, definição de código, nota de trecho —
+o alvo delas deixa de existir). Sobrevivem: o memo do projeto, toda a configuração de IA, os
+prompts salvos, a lista de palavras ignoradas e o histórico de IA (conversas e memórias).
+
+## 1.4.0 (28/07/2026)
+
+### Você escolhe quais palavras ficam de fora da nuvem
+
+A nuvem de palavras (aba **Gráficos ▸ Nuvem**) já descartava as palavras funcionais do português
+(*que*, *para*, *com*...), mas isso não resolvia o problema real de quem trabalha com entrevistas:
+a nuvem enchia de **"entrevistado", "pesquisador", "moderador"** e dos nomes dos falantes, e não
+havia saída.
+
+Agora há uma lista de **palavras ignoradas**, no painel à esquerda:
+
+- **Clique numa palavra da nuvem para tirá-la dali.** É o caminho mais rápido, e desfaz-se com um
+  clique no ✕ da palavra na lista.
+- **Termine com `*` para pegar as variações**: `entrevistad*` cobre *entrevistado*, *entrevistada*
+  e *entrevistados* de uma vez (a nuvem não faz lematização; o português flexiona demais para uma
+  lista literal dar conta).
+- **A lista pertence ao projeto**: viaja no `.qualilab`, e numa pesquisa coletiva vale para a
+  equipe toda, como o restante das decisões de método.
+- **Dá para desligar a lista padrão do português** ("Usar a lista padrão"), para corpus em outro
+  idioma ou para quando você quer justamente ver as palavras funcionais.
+
+Nada disso altera as suas codificações: a lista muda só o que a nuvem conta e desenha.
+
+## 1.3.0 (28/07/2026)
+
+### A sua chave de IA agora fala direto com o provedor
+
+Quando você usa a **sua própria chave** (o caso normal), o navegador passou a chamar o provedor
+de IA **diretamente**. O material da análise **não passa mais por nenhum servidor do QualiLab**.
+
+Isso muda uma frase importante do manual: nos modos **arquivo** e **rascunho**, o conteúdo não
+passa pelo servidor de outra pessoa — e agora isso vale **também quando você usa a IA**. O que
+continua igual é a outra ponta: o **provedor que você escolher** vê o material enviado, e é
+nele que mora a decisão de confiança.
+
+Dois efeitos práticos:
+
+- **Análises longas deixam de estourar tempo.** O caminho antigo tinha um limite de ~150 segundos
+  por chamada (era o "Erro 546" em material grande com modelo lento). Esse teto não existe mais.
+- **O card de IA em Minha conta diz por onde a sua chamada vai** — direto ao provedor, à sua
+  máquina (Ollama) ou, no caso abaixo, pela função do servidor.
+
+**Duas exceções, e a segunda é a única em que algo passa pelo servidor deste projeto.** O
+**Ollama local** continua indo direto para a sua máquina, sem internet. E um endpoint
+*Personalizado*/*Azure* que **não libere chamadas de navegador** (uma regra de quem serve a API,
+chamada CORS) faz a chamada ser refeita pela função no servidor, como antes — o card em Minha
+conta avisa quando esse é o seu caso. Nos demais provedores isso nunca acontece: se a chamada
+direta falhar, você vê o erro, e não um desvio silencioso.
+
+**Trocar de provedor não carrega mais a chave antiga.** Chave, modelo e URL base pertencem a um
+provedor; ao trocar, os campos vêm limpos. **Voltar ao provedor que está salvo repõe a
+configuração dele**, então dar uma olhada nos outros e voltar não perde nada. E se você colar uma
+chave com cara de outro provedor, o card avisa na hora (só avisa: nada fica bloqueado).
+
+Antes, a chave ficava no campo ao trocar de provedor e era fácil salvá-la sob o provedor errado —
+o erro só aparecia depois, como uma recusa do provedor na hora de usar a IA.
+
+Detalhe menor: com o Gemini, as telas que pedem uma resposta em formato estrito agora usam o
+modo de saída estruturada nativo do provedor, o que reduz respostas fora de formato.
+
 ## 1.2.1 (27/07/2026)
 
 - A dica do painel de Códigos ainda descrevia o modelo antigo ("família no topo... o código novo
