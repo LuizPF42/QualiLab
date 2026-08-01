@@ -151,7 +151,7 @@
   .reader span[data-c]{border-radius:3px;padding:0 1px;cursor:default;}
   .reader span[data-match]{border-radius:2px;box-shadow:inset 0 0 0 1px #C98A12;}
   .reader span[data-match].current{background:#FFD54A!important;color:#3a2c00;box-shadow:none;}
-  /* destaque momentaneo ao "pular ao trecho" a partir da Visualizacao */
+  /* destaque momentaneo ao "pular ao trecho" a partir da Leitura */
   .reader span.qljump{border-radius:3px;animation:qlJumpFlash 1.6s ease-out;}
   @keyframes qlJumpFlash{0%,25%{box-shadow:0 0 0 3px var(--sky);}100%{box-shadow:0 0 0 3px transparent;}}
 
@@ -262,7 +262,7 @@
   .empty .t{font-family:var(--serif);font-size:20px;color:var(--ink);margin:10px 0 6px;}
 
   .author{font-size:10.5px;background:var(--line-soft);color:var(--ink-soft);border-radius:99px;padding:1px 7px;}
-  /* botoezinhos dentro do balao de codificador (Visualizacao): ● abre a nota analitica, × remove */
+  /* botoezinhos dentro do balao de codificador (Leitura): ● abre a nota analitica, × remove */
   .anndot{border:0;background:none;color:var(--sky);cursor:pointer;font-size:10px;line-height:1;padding:0;}
   .balx{border:0;background:none;color:var(--ink-faint);cursor:pointer;font-size:13px;line-height:1;padding:0;}
   .balx:hover{color:var(--danger);}
@@ -762,7 +762,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.5';
+const QUALILAB_VERSION = '1.4.6';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -828,7 +828,7 @@ async function aiAuthToken(){
       da Codificacao, que usava estado, re-renderizava a arvore de codigos inteira durante o arrasto).
    Persiste em localStorage; aplicado no carregamento do modulo, antes da primeira pintura. */
 const PANE_W_DEFAULT = { side:270, config:400, right:340 };
-//   side   = navegacao/filtro (Reconciliacao, Visualizacao, Graficos, Memos, Esquema, Relatorio)
+//   side   = navegacao/filtro (Reconciliacao, Leitura, Graficos, Memos, Esquema, Relatorio)
 //   config = configuracao das 4 telas de IA (selecao de docs + arvore de codigos + toggles)
 //   right  = painel de trabalho da Codificacao, que fica a DIREITA do leitor
 const PANE_W_MIN = 180;
@@ -2131,6 +2131,56 @@ const swatchStyle = (col, isFamily)=> isFamily
   ? `background:transparent;box-shadow:inset 0 0 0 2px ${col.solid}`
   : `background:${col.solid}`;
 
+/* ============ NAVEGAÇÃO DO CORPUS (DocsNav) — ordenação/agrupamento, PURO ============
+   O valor de UMA categoria para UM documento, com a mesma regra de precedência que a
+   Leitura usa no filtro: gabarito (layer 'final') vence; sem gabarito, a primeira
+   resposta individual. Multi-valor (checkbox) volta CRU, com o CAT_MULTI_SEP — quem
+   agrupa é que decide se um documento entra em vários grupos. */
+function docValueOf(allValues, docId, catId){
+  const rows = (allValues||[]).filter(v=>v.document_id===docId && v.category_id===catId);
+  if(!rows.length) return '';
+  const fin = rows.find(r=>r.layer==='final');
+  const v = fin ? fin.value : rows[0].value;
+  return v==null ? '' : String(v);
+}
+
+/* Ordena/filtra/agrupa a lista de documentos do DocsNav. Devolve SEMPRE uma lista de seções
+   ([{key,label,docs}]); sem agrupamento é uma seção só, com label null — assim o render é um
+   caminho só. Decisões:
+   - "ordem de importação" é a ordem do ARRAY docs, que é a ordem em que o store devolve
+     (nuvem: created_at; rascunho/arquivo: ordem em que o importador criou). Num .qdpx é a ordem
+     das entradas do zip, que parece aleatória — foi essa a dor que motivou o navegador;
+   - nome usa localeCompare('pt', numeric) — sem numeric, "Doc 10" vem antes de "Doc 2";
+   - empate SEMPRE cai na ordem de importação, pra ordenação ser estável entre renders;
+   - documento com valor MULTI aparece em cada grupo do seu valor (é o que "pasta" significaria
+     aqui); o rodapé conta documentos ÚNICOS, senão a soma dos grupos mentiria;
+   - grupo sem valor vai por último, sempre — é a lista de pendências de metadado. */
+function docsNavGroups(docs, opts, ctx){
+  const { q='', sort='nome', groupBy='' } = opts||{};
+  const { counts=null, valueOf=null } = ctx||{};
+  const ordem = new Map(); (docs||[]).forEach((d,i)=>ordem.set(d.id,i));
+  const fq = foldText(q).trim();
+  const byImport = (a,b)=> ordem.get(a.id)-ordem.get(b.id);
+  const byName = (a,b)=> String(a.name||'').localeCompare(String(b.name||''),'pt',{numeric:true,sensitivity:'base'}) || byImport(a,b);
+  const cmp = sort==='import' ? byImport
+            : sort==='trechos' ? ((a,b)=>((counts?.[b.id]||0)-(counts?.[a.id]||0)) || byName(a,b))
+            : byName;
+  const list = (docs||[]).filter(d=>!fq || foldText(d.name||'').includes(fq)).sort(cmp);
+  if(!groupBy) return [{ key:'', label:null, docs:list }];
+  const groups = new Map();
+  list.forEach(d=>{
+    const raw = valueOf ? (valueOf(d.id, groupBy)||'') : '';
+    const vals = raw ? String(raw).split(CAT_MULTI_SEP).map(s=>s.trim()).filter(Boolean) : [];
+    (vals.length ? vals : ['']).forEach(v=>{
+      if(!groups.has(v)) groups.set(v, []);
+      groups.get(v).push(d);
+    });
+  });
+  return [...groups.entries()]
+    .sort((a,b)=> a[0]===b[0] ? 0 : !a[0] ? 1 : !b[0] ? -1 : a[0].localeCompare(b[0],'pt',{numeric:true,sensitivity:'base'}))
+    .map(([v,ds])=>({ key:v||'(sem valor)', label:v||'(sem valor)', docs:ds }));
+}
+
 const COMBINING_MARK = /\p{M}/u;
 function buildMatchIndex(content){
   const map = []; const parts = []; let lastSpace = false;
@@ -2848,7 +2898,7 @@ async function resolveDocIndexNoBytes(store, d){
       if(p){
         const idx = remapIndexToContent(p.index, p.content, content);
         // PERF: POPULA o cache de sessao (antes so LIA dele) — sem isto cada entrada na
-        // Visualizacao/Relatorio e em cada tela de IA re-baixava o .idx.json de TODOS os docs
+        // Leitura/Relatorio e em cada tela de IA re-baixava o .idx.json de TODOS os docs
         // com PDF, mesmo sem nada ter mudado. So cacheia INDICE ENCONTRADO, nunca o null:
         // o resolvePdfIndex (caminho COM bytes) consulta o mesmo cache e faz curto-circuito
         // quando acha a entrada, entao um null cacheado aqui o impediria de reconstruir o
@@ -3621,7 +3671,7 @@ async function importTaguette(file, store, projectId, projectMode, onProgress){
         for(const it of codeItems){ await store.addCode(projectId, it); await tick(); }
       }
       // Taguette nao registra autor por trecho — sem isso, o agrupamento por codificador
-      // (Graficos/Visualizacao) trata tudo como um unico codificador, "Taguette"
+      // (Graficos/Leitura) trata tudo como um unico codificador, "Taguette"
       const codingItems = newCodings.map(c=>({ created_by:null, layer:codLayer, document_id:c.document_id, code_id:c.code_id, span_start:c.span_start, span_end:c.span_end, quote:c.quote, author_name:'Taguette' }));
       if(store.addCodingsBulk){
         linhasRecusadas += bulkFails(await store.addCodingsBulk(projectId, codingItems));
@@ -4534,7 +4584,7 @@ function NavGroup({ title, children, defaultOpen=true }){
 }
 
 /* PDF-BLOCK/§4: indice reversivel de CADA documento com PDF, carregado sob demanda nas telas que
-   mostram "p. N" (Visualizacao e Relatorio). NUNCA baixa os bytes do PDF — so o .idx.json
+   mostram "p. N" (Leitura e Relatorio). NUNCA baixa os bytes do PDF — so o .idx.json
    persistido (cache de sessao -> persistido com remap); doc sem indice fica sem pagina, e certo.
    Extraido do App em jul/2026: o setter e o efeito ficam escondidos aqui e so saem os dois
    valores que as telas consomem. CUIDADO ao mexer: `docPdfIdx` e lido DENTRO do efeito mas fica
@@ -4565,7 +4615,20 @@ function useDocPdfIndexes(store, docs, mainView){
   }, [mainView, docs]);
   // offset -> pagina pros cards de trecho (null = sem indice pra esse doc)
   const docPageOf = (docId, off)=>{ const e = docPdfIdx[docId]; return (e && e.index) ? pageOfOffset(e.index, off) : null; };
-  return { docPdfIdx, docPageOf };
+  // total de paginas por documento (DocsNav). MEMOIZADO: e uma varredura do indice inteiro, e a
+  // lista chama uma vez POR DOCUMENTO a cada render — sem o mapa, um corpus de 85 PDFs varreria
+  // dezenas de milhares de frags a cada tecla digitada no filtro por nome.
+  const docPages = useMemo(()=>{
+    const m={};
+    for(const [id, e] of Object.entries(docPdfIdx)){
+      if(!e?.index?.length) continue;
+      let mx=0; for(const f of e.index) if(f.page>mx) mx=f.page;
+      if(mx) m[id]=mx;
+    }
+    return m;
+  }, [docPdfIdx]);
+  const docPageCount = (docId)=> docPages[docId] || null;
+  return { docPdfIdx, docPageOf, docPageCount };
 }
 
 /* Status de conexao e de gravacao do store: pilula "offline", "✓ salvo HH:MM", % de quota do
@@ -4639,14 +4702,23 @@ function App(){
   const [iaResults, setIaResults] = useState([]); // resultados salvos da aba "Analisar com IA"
   const [aiMemory, setAiMemory] = useState([]); // diário de insights da IA (memória persistente do projeto)
   const [memoSel, setMemoSel] = useState({ scope:'project', targetId:null }); // alvo selecionado na aba Memos
-  // estado da aba Visualização (elevado para poder usar o split nativo do app)
+  // estado da aba Leitura (elevado para poder usar o split nativo do app)
   const [vizCatFilter,  setVizCatFilter]  = useState({});
   const [vizSelCode,    setVizSelCode]    = useState(null);
   const [vizCross,      setVizCross]      = useState(['','']);
+  // a Leitura (ex-"Visualizacao") era so code-centric. Ganhou um .seg de sub-abas (3a linha, como os Graficos):
+  // "Documentos" le o documento INTEIRO com os grifos no contexto; "Trechos" e a leitura por
+  // codigo de sempre. Sao dois modos de LER, nao dois filtros — por isso o painel lateral muda
+  // junto (lista de documentos a direita | arvore de codigos a esquerda).
+  // default = DOCUMENTOS (pedido do autor): a tela se chama Leitura, e o que se le primeiro e o
+  // material. Casa com a ordem do .seg — o 1o botao e o modo em que a tela abre.
+  const [vizSub,        setVizSub]        = useState('documentos');  // 'documentos' | 'trechos'
+  const [vizSelDoc,     setVizSelDoc]     = useState(null);
+  const [vizShowHl,     setVizShowHl]     = useState(true);       // grifos ligados no leitor da Leitura
 
   const [sel, setSel] = useState(null);
   const [codingMemoTarget, setCodingMemoTarget] = useState(null); // { id, quote, codePath } -> abre CodingMemoModal (nota por trecho)
-  const [pendingJump, setPendingJump] = useState(null); // { docId, start } -> ao vir da Visualizacao, rola o leitor ate o trecho
+  const [pendingJump, setPendingJump] = useState(null); // { docId, start } -> ao vir da Leitura, rola o leitor ate o trecho
   const [readerFlash, setReaderFlash] = useState(null); // span_start do run a destacar momentaneamente no leitor
   const [ctxMenu, setCtxMenu] = useState(null); // menu de contexto (botão direito) p/ aplicar/remover código
   const [ctxCreating, setCtxCreating] = useState(false); // mini-formulário "criar novo código" dentro do menu
@@ -4801,6 +4873,17 @@ function App(){
     catch(e){ return base; }
   });
   useEffect(()=>{ try{ localStorage.setItem('qualilab:reader_prefs', JSON.stringify(readerPrefs)); }catch(e){} }, [readerPrefs]);
+  // preferencia de NAVEGACAO do corpus (DocsNav): como ordenar e agrupar a lista de documentos.
+  // Mesmo lugar e mesmo motivo do readerPrefs: e preferencia de quem le, nao decisao do estudo —
+  // nao viaja no .qualilab. O groupBy guarda um id de CATEGORIA, que so existe no projeto atual;
+  // o DocsNav valida antes de usar (groupOk) e cai em "(nenhum)" num projeto que nao a tenha.
+  const [docsNavPrefs, setDocsNavPrefs] = useState(()=>{
+    const base = { sort:'nome', groupBy:'' };
+    try{ return { ...base, ...JSON.parse(localStorage.getItem('qualilab:docs_nav')||'{}') }; }
+    catch(e){ return base; }
+  });
+  useEffect(()=>{ try{ localStorage.setItem('qualilab:docs_nav', JSON.stringify(docsNavPrefs)); }catch(e){} }, [docsNavPrefs]);
+  const [docsMenu, setDocsMenu] = useState(false);   // popover do seletor de documentos no leitor
   // busca dentro do documento aberto (independente da selecao de codigo/categoria)
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -4849,7 +4932,7 @@ function App(){
   }, [allCodings, codings, projectMode]);
 
   // codificações visíveis no leitor conforme o recorte "Ver:" — mesma fonte (codingsForView)
-  // usada por Visualizar, Gráficos e Relatório, pra o comportamento ser idêntico em todas as telas.
+  // usada por Leitura, Gráficos e Relatório, pra o comportamento ser idêntico em todas as telas.
   const visibleCodings = useMemo(()=>
     codingsForView(codings, viewCoder, user?.id, projectMode)
   , [codings, viewCoder, user, projectMode]);
@@ -4871,7 +4954,7 @@ function App(){
     return runs;
   }, [activeDoc, visibleCodings, searchMatches]);
 
-  // veio da Visualizacao (clicou num trecho): quando o leitor do doc certo estiver montado,
+  // veio da Leitura (clicou num trecho): quando o leitor do doc certo estiver montado,
   // rola ate o run que comeca no span e o destaca (span_start e sempre uma fronteira em buildRuns).
   // Declarado DEPOIS de readerRuns de proposito — o array de dependencias referencia readerRuns,
   // avaliado no render; declarar antes daria TDZ ("Cannot access 'readerRuns' before initialization").
@@ -4894,9 +4977,23 @@ function App(){
   // PDF-BLOCK: ao trocar de documento, reseta a página lembrada do PDF (cada doc começa na 1ª) e
   // descarta a região pendente (não amarra um retângulo de um doc à codificação de outro)
   useEffect(()=>{ pdfPageRef.current=1; pendingRegionRef.current=null; setPdfIndexState(null); }, [activeId]);
-  // PDF-BLOCK/§4: "p. N" na Visualização e no Relatório — ver useDocPdfIndexes (o efeito de carga
+  // PDF-BLOCK/§4: "p. N" na Leitura e no Relatório — ver useDocPdfIndexes (o efeito de carga
   // e o setter vivem la; aqui so chegam o mapa e o resolvedor de pagina)
-  const { docPdfIdx, docPageOf } = useDocPdfIndexes(store, docs, mainView);
+  const { docPdfIdx, docPageOf, docPageCount } = useDocPdfIndexes(store, docs, mainView);
+  // --- sub-aba "Documentos" da Leitura (leitor do documento inteiro) ---
+  // Qual documento abrir: o escolhido na lista; sem escolha, o MESMO que está aberto na
+  // Codificação (continuidade entre as telas — ler ali e voltar não perde o lugar); sem nenhum,
+  // o primeiro do corpus, pra tela nenhuma nascer vazia.
+  const vizDoc = useMemo(()=> docs.find(d=>d.id===vizSelDoc) || docs.find(d=>d.id===activeId) || docs[0] || null,
+    [docs, vizSelDoc, activeId]);
+  // codificações do recorte "Ver:" — as MESMAS que o resto da tela usa
+  const vizLayerCodings = useMemo(()=> codingsForView(allCodings, viewCoder, user?.id, projectMode),
+    [allCodings, viewCoder, user?.id, projectMode]);
+  const vizDocCodings = useMemo(()=> vizDoc ? vizLayerCodings.filter(c=>c.document_id===vizDoc.id) : [],
+    [vizLayerCodings, vizDoc]);
+  const vizCountByDoc = useMemo(()=>{
+    const m={}; vizLayerCodings.forEach(c=>{ m[c.document_id]=(m[c.document_id]||0)+1; }); return m;
+  }, [vizLayerCodings]);
   // SINAL DE QUALIDADE da extração (triagem do batch): sinais de content pra TODOS os docs
   // (barato, memoizado) — alimenta o ⚠︎ no seletor de documentos.
   const docHealth = useMemo(()=>{
@@ -5304,7 +5401,7 @@ function App(){
       try{
         // §4: PDF é extraído UMA vez só — buildPdfIndexFromBytes devolve o MESMO content do
         // extractText (mesma cadeia reflowPdfPages) MAIS o índice reversível, que é persistido
-        // junto (o "ver original" abre na página certa e a Visualização mostra "p. N" sem re-extrair)
+        // junto (o "ver original" abre na página certa e a Leitura mostra "p. N" sem re-extrair)
         const isPdf = /\.pdf$/i.test(f.name);
         let content, pdfBuilt = null, pdfU8 = null;
         if(isPdf){ pdfU8 = new Uint8Array(await f.arrayBuffer()); pdfBuilt = await buildPdfIndexFromBytes(pdfU8); content = pdfBuilt.content; }
@@ -6474,7 +6571,7 @@ function App(){
         ${project && html`<div class="seg" style="margin-left:10px">
           <button class=${mainView==='codificar'?'on':''} onClick=${()=>setMainView('codificar')}>Codificação</button>
           ${projectMode==='collective' && !focusMode && !blindLock && html`<button class=${mainView==='reconciliar'?'on':''} onClick=${()=>setMainView('reconciliar')}>Reconciliação</button>`}
-          <button class=${mainView==='visualizar'?'on':''} onClick=${()=>setMainView('visualizar')}>Visualização</button>
+          <button class=${mainView==='visualizar'?'on':''} onClick=${()=>setMainView('visualizar')}>Leitura</button>
           <button class=${mainView==='graficos'?'on':''} onClick=${()=>setMainView('graficos')}>Gráficos</button>
           <button class=${mainView==='memos'?'on':''} onClick=${()=>setMainView('memos')}>Memos</button>
           ${!focusMode && html`<button class=${mainView==='esquema'?'on':''} onClick=${()=>setMainView('esquema')}>Esquema</button>`}
@@ -6591,10 +6688,30 @@ function App(){
       <!-- ESQUERDA: documento -->
       <section class="pane left">
         <div class="pane-head" style="flex-wrap:nowrap">
-          <select class="opt" style="max-width:840px;min-width:0" value=${activeId||''} onChange=${e=>setActiveId(e.target.value)} disabled=${editingText}>
-            ${docs.length===0 && html`<option value="">sem documentos</option>`}
-            ${docs.map(d=>html`<option value=${d.id}>${(docHealth[d.id] && !docHealth[d.id].ok ? '⚠︎ ' : '')+d.name}</option>`)}
-          </select>
+          ${/* SELETOR DE DOCUMENTO: era um <select> plano na ordem de importacao (num .qdpx, a ordem
+                das entradas do zip — parece aleatoria). Virou um popover com o DocsNav: filtro por
+                nome, ordenacao e agrupamento por categoria. A barra do leitor e de UMA LINHA, entao
+                o gatilho e um botao com ellipsis, e a lista mora no popover. */''}
+          <div style="position:relative;flex:0 1 auto;min-width:0">
+            <button class="btn sm ghost" disabled=${editingText||docs.length===0}
+              style="max-width:520px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block"
+              title=${docs.length===0?'Nenhum documento no projeto':'Escolher documento (filtrar, ordenar, agrupar)'}
+              onClick=${()=>setDocsMenu(o=>!o)}>
+              ${docs.length===0 ? 'sem documentos'
+                : (activeHealth && !activeHealth.ok ? '⚠︎ ' : '▤ ')+(activeDoc?.name||'escolher documento')+' ▾'}
+            </button>
+            ${docsMenu && html`<div>
+              <div onClick=${()=>setDocsMenu(false)} style="position:fixed;inset:0;z-index:40"></div>
+              ${/* left:0 porque este botao fica na borda ESQUERDA da barra (mesmo caso do "＋ enviar";
+                    o right:0 padrao do .exmenu faria o popover crescer pra fora da tela) */''}
+              <div class="exmenu" style="left:0;right:auto;width:430px;max-width:calc(100vw - 24px);max-height:min(70vh,560px);display:flex;flex-direction:column">
+                <${DocsNav} docs=${docs} activeId=${activeId} health=${docHealth}
+                  cats=${cats} allValues=${allValues} prefs=${docsNavPrefs} onPrefs=${setDocsNavPrefs}
+                  autoFocus=${true} onClose=${()=>setDocsMenu(false)}
+                  onPick=${id=>{ setActiveId(id); setDocsMenu(false); }} />
+              </div>
+            </div>`}
+          </div>
           <div style="position:relative">
             ${(projRestrict && !isAdmin)
               ? html`<span class="meta" title="Distribuição restritiva: o corpus é definido pelos administradores, que atribuem os documentos a cada pesquisador.">documentos definidos pelo admin</span>`
@@ -6761,7 +6878,7 @@ function App(){
       </aside>
     </div>`
     : mainView==='reconciliar' ? (()=>{
-        // item de navegação no padrão .node-row (mesma linguagem visual da Visualização)
+        // item de navegação no padrão .node-row (mesma linguagem visual da Leitura)
         const navRow = (active, label, onClick, indent=0)=> html`<div class="node-row ${active?'sel':''}" onClick=${onClick}
           style=${`cursor:pointer;border-radius:0;padding:7px ${12+indent*14}px`} title=${label}>
           <span class="node-name" style=${active?'font-weight:600':''}>${label}</span>
@@ -6836,9 +6953,11 @@ function App(){
         view=${viewCoder} onView=${setViewCoder} coders=${coders} userId=${user?.id} mode=${mode}
         allCodings=${allCodings} allValues=${allValues} projectMode=${projectMode}
         isAdmin=${isAdmin} darkMode=${darkMode}
-        onOpenCode=${(codeId, opts={})=>{ /* grafico → trechos: abre a Visualização já no código
+        onOpenCode=${(codeId, opts={})=>{ /* grafico → trechos: abre a Leitura já no código
           clicado, LEVANDO o filtro de categorias do gráfico junto (senão a contagem da barra
           não bate com os trechos exibidos); cross = par de co-ocorrência (célula da matriz) */
+          setVizSub('trechos');   // este caminho abre num CÓDIGO: forçar a sub-aba, senão o
+                                  // default (documentos) engoliria o código clicado em silêncio
           setVizSelCode(codeId);
           setVizCross(opts.cross?[opts.cross,'']:['','']);
           setVizCatFilter(opts.filter||{});
@@ -6921,14 +7040,56 @@ function App(){
         memory=${aiMemory} onAddMemory=${addMemory} onToggleMemory=${toggleMemoryActive} onDeleteMemory=${deleteMemory}
         onSave=${saveIaResult} onSetMemo=${saveMemo} onDeletePrompt=${removeMemo} />
     </div>`
-    : html`<div class="split">
-      <!-- VISUALIZACAO esquerda: navegação por código -->
+    : html`<div class="split" style="flex-direction:column">
+      ${/* VISUALIZACAO: dois modos de LER o que ja foi codificado, no .seg da 3a linha (mesma
+            gramatica dos Graficos). "Documentos" = o documento inteiro com os grifos no
+            contexto (parente do leitor ATI); "Trechos" = os trechos de um codigo em todo o
+            projeto. O painel lateral muda com o modo, por isso a barra fica FORA do split. */''}
+      <div class="pane-head" style="flex:none;flex-wrap:wrap;gap:10px">
+        <div class="seg">
+          <button class=${vizSub==='documentos'?'on':''} onClick=${()=>setVizSub('documentos')}>▤ Documentos</button>
+          <button class=${vizSub==='trechos'?'on':''} onClick=${()=>setVizSub('trechos')}>✎ Trechos</button>
+        </div>
+        <div class="row" style="gap:10px;flex-wrap:wrap;margin-left:auto">
+          ${vizSub==='documentos' && html`
+            ${vizDoc && html`<span class="meta" style="max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title=${vizDoc.name}>${vizDoc.name}</span>`}
+            <label class="meta" style="display:flex;gap:5px;align-items:center;cursor:pointer" title="Ler o documento sem os grifos, como o texto limpo">
+              <input type="checkbox" checked=${vizShowHl} onChange=${e=>setVizShowHl(e.target.checked)} /> grifos
+            </label>`}
+          ${/* o "Ver:" vale para os DOIS modos e mora aqui nos dois: ele recorta os grifos do
+                leitor e os trechos da outra sub-aba — é a mesma decisão, não pode trocar de
+                lugar (nem sumir) quando se troca de modo de leitura */''}
+          ${((mode==='cloud' && projectMode==='collective') || (coders||[]).length>1) && html`
+            <${ViewSelect} value=${viewCoder} onChange=${setViewCoder} coders=${coders} userId=${user?.id} projectMode=${projectMode} mode=${mode} />`}
+          ${vizSub==='documentos' && vizDoc && html`<button class="btn sm ghost" title="Abrir este documento na Codificação"
+            onClick=${()=>{ setActiveId(vizDoc.id); setMainView('codificar'); }}>codificar →</button>`}
+        </div>
+      </div>
+
+      ${vizSub==='documentos' ? html`<div class="split">
+        ${/* Navegação do corpus à ESQUERDA e leitor à direita: é o grupo de painel desta tela
+              ("navegação e filtros à esquerda", com a largura --pane-side compartilhada com a
+              sub-aba Trechos, os Gráficos, os Memos e o Relatório). AQUI vão morar as pastas por
+              categoria — hoje o agrupar do DocsNav é o esboço da ideia (ver o item do to-do). */''}
+        <section class="pane" style="flex:0 0 var(--pane-side);min-width:0;background:var(--surface)">
+          <${DocsNav} docs=${docs} activeId=${vizDoc?.id} onPick=${id=>setVizSelDoc(id)}
+            health=${docHealth} counts=${vizCountByDoc} pageCount=${docPageCount}
+            cats=${cats} allValues=${allValues} prefs=${docsNavPrefs} onPrefs=${setDocsNavPrefs} />
+        </section>
+        <${PaneResizer} which="side" />
+        <section class="pane" style="flex:1;min-width:0">
+          <${VizDocReader} doc=${vizDoc} codings=${vizDocCodings} codeById=${codeById} codePath=${codePath}
+            memos=${memos} prefs=${readerPrefs} showHl=${vizShowHl} darkMode=${darkMode}
+            onJump=${(docId, span)=>{ setActiveId(docId); setMainView('codificar'); if(span && span.start!=null) setPendingJump({ docId, start:span.start }); }} />
+        </section>
+      </div>`
+      : html`<div class="split">
+      <!-- TRECHOS esquerda: navegação por código -->
       <section class="pane" style="flex:0 0 var(--pane-side);min-width:0">
         <div class="pane-body scroll" style="padding:0">
           <${VizNav} cats=${cats} codes=${codes} allCodings=${allCodings} allValues=${allValues} docs=${docs}
             view=${viewCoder} catFilter=${vizCatFilter} selCode=${vizSelCode}
-            onView=${setViewCoder} onCatFilter=${setVizCatFilter} onSelCode=${setVizSelCode}
-            coders=${coders} userId=${user?.id} mode=${mode}
+            onCatFilter=${setVizCatFilter} onSelCode=${setVizSelCode} userId=${user?.id}
             codePath=${codePath} codeById=${codeById} projectMode=${projectMode} />
         </div>
       </section>
@@ -6947,6 +7108,7 @@ function App(){
             onJump=${(docId, span)=>{ setActiveId(docId); setMainView('codificar'); if(span && span.start!=null) setPendingJump({ docId, start:span.start }); }} projectMode=${projectMode} darkMode=${darkMode} />
         </div>
       </section>
+      </div>`}
     </div>`}
   </div>
 
@@ -8894,11 +9056,200 @@ function ReconcileCodesAllDocs({ docs, allCodings, coders, codeById, codePath, i
   </div>`;
 }
 
-/* ============ VizNav — painel esquerdo da Visualização ============
+/* ============ DocsNav — navegação do corpus, reusada em dois lugares ============
+   Substituiu o <select> plano do leitor (única porta pro corpus até jul/2026, em ordem de
+   importação, que num .qdpx parece aleatória) e é a lista de documentos que faltava na
+   Leitura, que era code-centric.
+   O componente é o MESMO nos dois; o que muda é o que o chamador consegue passar:
+   - `counts` (nº de trechos por documento) só existe onde allCodings existe. A Codificação
+     NÃO está em AGG_VIEWS de propósito (2 requests por documento na tela mais usada), então
+     lá `counts` é null e a coluna simplesmente não aparece — degradar era a alternativa a
+     pagar um request justamente onde se evitou pagá-lo. Por isso a ordenação por trechos
+     também some de lá, e uma preferência salva nela cai em "nome" (effSort).
+   - `pageCount` idem: o índice de PDF só é carregado em visualizar/relatorio (useDocPdfIndexes).
+   A preferência (ordenar/agrupar) mora no localStorage, como readerPrefs: é navegação do
+   usuário, não decisão metodológica do estudo — não vai pro projeto. */
+function DocsNav({ docs, activeId, onPick, health, counts, pageCount, cats, allValues,
+                   prefs, onPrefs, autoFocus, onClose }){
+  const [q, setQ] = useState('');
+  const [hi, setHi] = useState(0);              // índice destacado (setas ↑↓ + Enter)
+  const [closed, setClosed] = useState(()=>new Set());
+  // foco por ref, não pelo atributo autofocus: o Chrome só honra o autofocus de elemento
+  // inserido dinamicamente em algumas condições, e abrir o popover já podendo digitar é
+  // metade do valor dele (medido: sem isso, o foco ficava no body e nem o Escape funcionava)
+  const inputRef = useRef(null);
+  useEffect(()=>{ if(autoFocus) inputRef.current?.focus(); }, [autoFocus]);
+  const sort = (prefs?.sort==='trechos' && !counts) ? 'nome' : (prefs?.sort || 'nome');
+  const groupBy = prefs?.groupBy || '';
+  // "pasta" aqui é categoria fechada (ou data): o mesmo recorte que o filtro do VizNav usa.
+  // Só entram as que TÊM valor preenchido no que o chamador passou — e isso resolve dois casos
+  // com a mesma regra: categoria que ninguém respondeu (agrupar jogaria tudo em "(sem valor)")
+  // e a Codificação, onde allValues é [] porque a tela não está em AGG_VIEWS. Oferecer ali um
+  // agrupamento que não agrupa nada seria falha silenciosa, que é pior que a opção ausente.
+  const catsComValor = useMemo(()=>{
+    const s=new Set(); (allValues||[]).forEach(v=>{ if(v.value!=null && String(v.value)!=='') s.add(v.category_id); }); return s;
+  }, [allValues]);
+  const groupCats = (cats||[]).filter(c=>(CAT_HAS_OPTIONS(c.kind)||c.kind==='date') && catsComValor.has(c.id));
+  const groupOk = groupCats.some(c=>c.id===groupBy) ? groupBy : '';
+
+  const groups = useMemo(()=>docsNavGroups(docs, { q, sort, groupBy:groupOk },
+    { counts, valueOf:(docId,catId)=>docValueOf(allValues, docId, catId) }),
+    [docs, q, sort, groupOk, counts, allValues]);
+  // lista achatada dos VISÍVEIS (grupo fechado não entra): é sobre ela que as setas andam
+  const flat = useMemo(()=>groups.flatMap(g=>closed.has(g.key)?[]:g.docs), [groups, closed]);
+  const uniq = useMemo(()=>new Set(groups.flatMap(g=>g.docs.map(d=>d.id))).size, [groups]);
+  useEffect(()=>{ setHi(0); }, [q, sort, groupOk]);
+  const hiIdx = Math.max(0, Math.min(hi, flat.length-1));
+
+  const onKey = (e)=>{
+    if(e.key==='ArrowDown'){ e.preventDefault(); setHi(i=>Math.min(i+1, flat.length-1)); }
+    else if(e.key==='ArrowUp'){ e.preventDefault(); setHi(i=>Math.max(i-1, 0)); }
+    else if(e.key==='Enter'){ e.preventDefault(); const d=flat[hiIdx]; if(d) onPick(d.id); }
+  };
+  // Escape no CONTAINER, não no campo de busca: o foco pode estar num dos <select> de ordenar/
+  // agrupar, e ali o keydown do input nunca chega. O mecanismo global de modais do App não
+  // cobre isso (ele cuida do foco, não do Escape — ver a nota de a11y no CLAUDE.md).
+  const onKeyRoot = (e)=>{ if(e.key==='Escape'){ e.preventDefault(); onClose ? onClose() : setQ(''); } };
+
+  const row = (d, i)=>{
+    const bad = health?.[d.id] && !health[d.id].ok;
+    const pg = pageCount ? pageCount(d.id) : null;
+    return html`<div key=${d.id} class="node-row ${d.id===activeId?'sel':''}"
+      style=${`cursor:pointer;${i===hiIdx?'outline:2px solid var(--sky);outline-offset:-2px;':''}`}
+      onMouseEnter=${()=>setHi(i)} onClick=${()=>onPick(d.id)}>
+      ${bad && html`<span style="color:var(--amber);flex:none" title=${'Qualidade da extração:\n• '+health[d.id].flags.join('\n• ')}>⚠︎</span>`}
+      <span class="node-name" title=${d.name}>${d.name}</span>
+      ${pg ? html`<span class="meta" style="flex:none" title="páginas do PDF original">${pg} p.</span>` : ''}
+      ${counts ? html`<span class="count" title="trechos codificados neste documento">${counts[d.id]||0}</span>` : ''}
+    </div>`;
+  };
+
+  let n = -1;   // índice corrente na lista achatada (o render percorre na MESMA ordem do flat)
+  return html`<div style="display:flex;flex-direction:column;height:100%;min-height:0" onKeyDown=${onKeyRoot}>
+    <div style="padding:10px 12px;border-bottom:1px solid var(--line-soft);display:flex;flex-direction:column;gap:7px">
+      <input class="txtin" ref=${inputRef} value=${q} placeholder="filtrar por nome…"
+        onInput=${e=>setQ(e.target.value)} onKeyDown=${onKey} />
+      <div class="row" style="gap:6px">
+        <span class="meta" style="flex:none">ordenar</span>
+        <select class="opt" style="flex:1;min-width:0;font-size:12px" value=${sort}
+          onChange=${e=>onPrefs&&onPrefs(p=>({...p, sort:e.target.value}))}>
+          <option value="nome">nome (A→Z)</option>
+          <option value="import">ordem de importação</option>
+          ${counts && html`<option value="trechos">nº de trechos</option>`}
+        </select>
+      </div>
+      ${groupCats.length>0 && html`<div class="row" style="gap:6px">
+        <span class="meta" style="flex:none">agrupar</span>
+        <select class="opt" style="flex:1;min-width:0;font-size:12px" value=${groupOk}
+          onChange=${e=>onPrefs&&onPrefs(p=>({...p, groupBy:e.target.value}))}>
+          <option value="">(nenhum)</option>
+          ${groupCats.map(c=>html`<option key=${c.id} value=${c.id}>${c.name}</option>`)}
+        </select>
+      </div>`}
+    </div>
+    <div class="tree scroll" style="flex:1;overflow-y:auto;padding:4px 6px;min-height:0">
+      ${flat.length===0 && html`<span class="meta" style="padding:14px 8px;display:block">
+        ${docs.length===0 ? 'Nenhum documento no projeto.' : 'Nenhum documento com esse nome.'}</span>`}
+      ${groups.map(g=>{
+        if(g.label==null) return g.docs.map(d=>row(d, ++n));
+        const shut = closed.has(g.key);
+        return html`<div key=${g.key}>
+          <div class="node-row" style="cursor:pointer;padding-left:2px"
+            onClick=${()=>setClosed(s=>{ const x=new Set(s); x.has(g.key)?x.delete(g.key):x.add(g.key); return x; })}>
+            <span class="caret">${shut?'▸':'▾'}</span>
+            <span class="node-name" style="font-weight:600" title=${g.label}>${g.label}</span>
+            <span class="count">${g.docs.length}</span>
+          </div>
+          ${!shut && g.docs.map(d=>row(d, ++n))}
+        </div>`;
+      })}
+    </div>
+    <div style="padding:6px 12px;border-top:1px solid var(--line-soft)">
+      <span class="meta">${uniq===docs.length ? `${docs.length} documento${docs.length!==1?'s':''}` : `${uniq} de ${docs.length} documentos`}</span>
+    </div>
+  </div>`;
+}
+
+/* ============ VizDocReader — o documento INTEIRO, em modo leitura ============
+   Sub-aba "Documentos" da Leitura. É o leitor da Codificação sem as ferramentas de
+   codificar: mesmas classes (.reader-pane/.reader), mesmos runs (buildRuns), mesma cor
+   (codeColor), mesmas regras visuais — censura com caixa fechada e prioridade no run,
+   border-bottom só quando há mais de um código. O que NÃO tem, de propósito: seleção de
+   texto que vira codificação, menu de contexto, edição, PDF. Aqui se LÊ.
+   Parentesco declarado: é o mesmo desenho do leitor de transparência (ATI), que também
+   pré-renderiza runs e abre o detalhe do grifo num painel — a diferença é que lá o alvo é
+   o avaliador externo e aqui é o pesquisador, então nada é mascarado (tela de trabalho).
+   Clicar num grifo abre a faixa de detalhe embaixo; clicar fora dela fecha. */
+function VizDocReader({ doc, codings, codeById, codePath, memos, prefs, showHl, darkMode, onJump }){
+  const [pick, setPick] = useState(null);   // { start, codings:[...] } do grifo clicado
+  const boxRef = useRef(null);
+  // trocar de documento volta ao TOPO e fecha o detalhe: o componente não remonta (mesma
+  // posição na árvore), então sem isto o leitor abre o documento novo na rolagem do anterior
+  useEffect(()=>{ setPick(null); if(boxRef.current) boxRef.current.scrollTop = 0; }, [doc?.id]);
+  const codingMemo = useMemo(()=> indexMemos(memos||[]).codingMemo, [memos]);
+  const runs = useMemo(()=>{
+    const content = doc?.content || '';
+    if(!content) return [];
+    const dc = (codings||[]).filter(c=>c.document_id===doc.id && c.span_start>=0 && c.span_end>c.span_start);
+    return buildRuns(content, showHl ? dc : []);
+  }, [doc, codings, showHl]);
+
+  if(!doc) return html`<div class="empty">
+    <div class="t">Selecione um documento</div>
+    <div>Escolha um documento à direita para lê-lo inteiro, com os grifos no contexto em que foram feitos.</div>
+  </div>`;
+
+  return html`<div style="display:flex;flex-direction:column;height:100%;min-height:0">
+    <div ref=${boxRef} class=${`pane-body scroll reader-pane theme-${prefs.theme} width-${prefs.width}`} style="flex:1;min-height:0">
+      <div class="reader" style=${`font-size:${(17*prefs.scale).toFixed(1)}px`}>
+        ${runs.map((run,i)=>{
+          if(run.codings.length===0) return html`<span key=${i} data-start=${run.start}>${run.text}</span>`;
+          // MESMA regra do leitor da Codificação: censura na frente quando há sobreposição
+          // (a caixa fechada é o sinal, e não pode ficar atrás de outro código por acaso de ordem)
+          const top = run.codings.find(c=>codeById[c.code_id]?.is_redaction) || run.codings[run.codings.length-1];
+          const code = codeById[top.code_id];
+          const col = code ? codeColor(code.hue, code.depth, code.hue_deg, darkMode, code.sat) : codeColor(0,0,null,darkMode);
+          const title = run.codings.map(c=>codePath(c.code_id).join(' ▸ ')+' ('+(c.author_name||'sem autor')+')').join('  |  ');
+          const readerDark = prefs.theme==='dark' || darkMode;
+          const border = code?.is_redaction ? `border:2px solid ${readerDark ? '#fff' : col.solid}`
+            : run.codings.length>1 ? `border-bottom:2px solid ${col.solid}` : '';
+          const isPick = pick && pick.start===run.start;
+          return html`<span key=${i} data-start=${run.start} data-c="1" title=${title}
+            style=${`cursor:pointer;background:${col.tint};${border}${isPick?';outline:2px solid var(--sky);outline-offset:-2px':''}`}
+            onClick=${()=>{ if(window.getSelection && !window.getSelection().isCollapsed) return;
+                            setPick(p=>p&&p.start===run.start?null:{ start:run.start, codings:run.codings }); }}>${run.text}</span>`;
+        })}
+      </div>
+    </div>
+    ${pick && html`<div class="toolbar" style="flex:none;flex-wrap:wrap;align-items:flex-start;gap:10px">
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px">
+        ${pick.codings.map(c=>{
+          const cc = codeById[c.code_id];
+          const col = codeColor(cc?.hue||0, cc?.depth||0, cc?.hue_deg, false, cc?.sat);
+          const nota = codingMemo[c.id];
+          return html`<div key=${c.id} style="min-width:0">
+            <div class="row" style="gap:6px;flex-wrap:wrap">
+              <span class="swatch" style=${`background:${col.solid}`}></span>
+              <span style="font-weight:600;font-size:12.5px">${codePath(c.code_id).join(' ▸ ')}</span>
+              <span class="author">${c.layer==='final' ? '✓ gabarito' : (c.author_name||'sem autor')}</span>
+            </div>
+            ${nota && html`<div class="anncard" style="margin-top:4px">${nota}</div>`}
+          </div>`;
+        })}
+      </div>
+      <button class="btn sm ghost" title="Abrir este trecho na Codificação" onClick=${()=>onJump&&onJump(doc.id, { start:pick.start })}>abrir na Codificação →</button>
+      <button class="icon-btn" title="Fechar" onClick=${()=>setPick(null)}>✕</button>
+    </div>`}
+  </div>`;
+}
+
+/* ============ VizNav — painel esquerdo da Leitura ============
    Visual idêntico ao painel de Codificação: mesmas classes CSS, sem fundo colorido. */
 function VizNav({ cats, codes, allCodings, allValues, docs, view, catFilter, selCode,
-                  onView, onCatFilter, onSelCode, coders, userId, mode, codePath, codeById, projectMode }){
-  const [catsOpen, setCatsOpen] = useState(true);
+                  onCatFilter, onSelCode, userId, codePath, codeById, projectMode }){
+  // COLAPSADA por padrão: são até N selects empurrando a árvore de códigos — que é o assunto do
+  // painel — pra baixo da dobra. Quem tem filtro ativo vê a pílula no cabeçalho da seção.
+  const [catsOpen, setCatsOpen] = useState(false);
   const closedCats = cats.filter(c=>CAT_HAS_OPTIONS(c.kind)||c.kind==='date');
   const tops = codes.filter(c=>!c.parent_id);
   const childrenOf = (id)=>codes.filter(c=>c.parent_id===id);
@@ -8938,12 +9289,9 @@ function VizNav({ cats, codes, allCodings, allValues, docs, view, catFilter, sel
 
   const hasFilter = Object.values(catFilter).some(Boolean);
 
+  /* O "Ver:" NÃO mora mais aqui: subiu pra barra de sub-abas, onde vale para os dois modos de
+     leitura (era estranho ele existir só num deles, e num lugar diferente em cada um). */
   return html`<div style="background:var(--surface);display:flex;flex-direction:column;height:100%">
-
-    <!-- recorte "Ver:" compartilhado (mesmo seletor do leitor) -->
-    ${((mode==='cloud' && projectMode==='collective') || (coders||[]).length>1) && html`<div class="pane-head" style="flex-direction:column;align-items:stretch;gap:6px;padding:10px 14px">
-      <${ViewSelect} value=${view} onChange=${onView} coders=${coders} userId=${userId} projectMode=${projectMode} mode=${mode} />
-    </div>`}
 
     <!-- categorias: seção colapsável idêntica ao "Gerenciar esquema" -->
     ${closedCats.length>0 && html`<div style="border-bottom:1px solid var(--line-soft)">
@@ -8988,7 +9336,9 @@ function VizCodeNode({ code, childrenOf, counts, sel, onSel, depthPad }){
       ${kids.length>0 ? html`<span class="caret" onClick=${e=>{e.stopPropagation();setOpen(!open);}}>${open?'▾':'▸'}</span>` : html`<span class="caret"></span>`}
       <span class="swatch" style=${`background:${col.solid}`}></span>
       <span class="node-name" title=${code.name}>${code.name}</span>
-      ${counts[code.id] ? html`<span class="count">${counts[code.id]}</span>` : ''}
+      ${/* CODIFICAÇÕES, não pedaços de texto: inclui os subcódigos e conta uma vez por
+            codificador. O painel da direita mostra as duas contas quando divergem. */''}
+      ${counts[code.id] ? html`<span class="count" title="Codificações com este código (inclui os subcódigos; o mesmo trecho conta uma vez por codificador)">${counts[code.id]}</span>` : ''}
     </div>
     ${open && kids.map(k=>html`<${VizCodeNode} key=${k.id} code=${k} childrenOf=${childrenOf}
       counts=${counts} sel=${sel} onSel=${onSel} depthPad=${depthPad+1} />`)}
@@ -9017,8 +9367,9 @@ function CloudCodeNode({ code, childrenOf, counts, selectedIds, onToggle, depthP
   </div>`;
 }
 
-/* ============ VizExcerpts — painel direito da Visualização ============
-   Trechos do código selecionado, legíveis, agrupados por documento. */
+/* ============ VizExcerpts — sub-aba "Trechos" da Leitura ============
+   Os trechos do código selecionado em todo o projeto, agrupados por documento. O outro eixo
+   de leitura (o documento inteiro) é a sub-aba "Documentos" — ver VizDocReader. */
 function VizExcerpts({ docs, codes, codeById, codePath, allCodings, allValues, memos,
                        view, userId, catFilter, selCode, crossCodes, setCrossCodes,
                        onDelCoding, onAccept, onJump, projectMode, isAdmin, mode, pageOf }){
@@ -9091,21 +9442,27 @@ function VizExcerpts({ docs, codes, codeById, codePath, allCodings, allValues, m
   // agrupa codings de MESMO span+codigo no mesmo documento numa unidade so: um trecho identico
   // grifado por varios codificadores aparece uma vez, com um balao por pessoa (mesmo padrao da
   // Reconciliacao). So funde span EXATO (o quote e o mesmo) — spans parecidos mas diferentes
-  // continuam separados. excerpts ja vem ordenado e o Map preserva a ordem de insercao (= ordem de span).
+  // continuam separados. A lista ja vem ordenada e o Map preserva a ordem de insercao.
+  const groupSpans = (cods)=>{
+    const groups = new Map();
+    cods.forEach(c=>{
+      const k = c.code_id+'|'+c.span_start+'|'+c.span_end;
+      let grp = groups.get(k);
+      if(!grp){ grp = { key:k, code_id:c.code_id, span_start:c.span_start, span_end:c.span_end, quote:c.quote, items:[] }; groups.set(k, grp); }
+      grp.items.push(c);
+    });
+    return [...groups.values()];
+  };
   const byDoc = useMemo(()=>{
     const g={};
     excerpts.forEach(c=>{ (g[c.document_id]=g[c.document_id]||[]).push(c); });
-    return Object.entries(g).map(([docId, cods])=>{
-      const groups = new Map();
-      cods.forEach(c=>{
-        const k = c.code_id+'|'+c.span_start+'|'+c.span_end;
-        let grp = groups.get(k);
-        if(!grp){ grp = { key:k, code_id:c.code_id, span_start:c.span_start, span_end:c.span_end, quote:c.quote, items:[] }; groups.set(k, grp); }
-        grp.items.push(c);
-      });
-      return [docId, [...groups.values()]];
-    });
+    return Object.entries(g).map(([docId, cods])=>[docId, groupSpans(cods)]);
   }, [excerpts]);
+
+  // as DUAS unidades do cabeçalho: pedaços de texto distintos (= cards, = soma dos subtotais
+  // por documento) e codificações (= aplicações do código, o que a árvore e os Gráficos contam)
+  const nCod = excerpts.length;
+  const nSpans = useMemo(()=>byDoc.reduce((n,[,cods])=>n+cods.length, 0), [byDoc]);
 
   const selCodeObj = selCode ? codeById[selCode] : null;
   const crossOpts = codes.filter(c=>c.id!==selCode);
@@ -9117,49 +9474,22 @@ function VizExcerpts({ docs, codes, codeById, codePath, allCodings, allValues, m
 
   const col = codeColor(selCodeObj?.hue||0, selCodeObj?.depth||0, selCodeObj?.hue_deg, false, selCodeObj?.sat);
 
-  return html`<div class="section" style="max-width:820px;margin:0 auto">
-
-    <!-- cabeçalho: caminho do código + contagem -->
-    <p class="h" style="font-size:15px;margin-bottom:4px">
-      <span class="swatch" style=${`background:${col.solid}`}></span>
-      ${codePath(selCode).join(' ▸ ')}
-      <span class="pill">${excerpts.length} trecho${excerpts.length!==1?'s':''}</span>
-    </p>
-
-    <!-- co-ocorrência -->
-    <div class="row" style="gap:7px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
-      <span class="meta">Co-ocorrência com:</span>
-      ${[0,1].map(i=>html`<select key=${i} class="opt" style="max-width:210px;font-size:12.5px"
-        value=${(crossCodes||[])[i]||''} onChange=${e=>{ const v=e.target.value; setCrossCodes(s=>{ const n=s.slice(); n[i]=v; return n; }); }}>
-        <option value="">${i===0?'(nenhum)':'e também…'}</option>
-        ${crossOpts.map(c=>html`<option value=${c.id}>${codePath(c.id).join(' ▸ ')}</option>`)}
-      </select>`)}
-      ${(crossCodes||[]).some(Boolean) && html`<button class="btn sm ghost" onClick=${()=>setCrossCodes(['',''])}>limpar</button>`}
-    </div>
-
-    ${excerpts.length===0 && html`<div class="card"><span class="meta">Nenhum trecho corresponde aos filtros.</span></div>`}
-
-    <!-- grupos por documento -->
-    ${byDoc.map(([docId, cods])=>html`<div key=${docId} style="margin-bottom:22px">
-      <div class="row" style="margin-bottom:8px;gap:7px;align-items:baseline">
-        <button class="btn sm" title="Abrir no leitor" onClick=${()=>onJump&&onJump(docId)}>${docById[docId]?.name||docId}</button>
-        <span class="count">${cods.length}</span>
-      </div>
-      ${cods.map(g=>{
-        // familia agrega subcodigos: cada trecho mostra a cor/caminho do seu codigo especifico (folha)
-        const codeObj = codeById[g.code_id];
-        const codeCol = g.code_id===selCode ? col : codeColor(codeObj?.hue??selCodeObj?.hue??0, codeObj?.depth??selCodeObj?.depth??0, codeObj?.hue_deg??selCodeObj?.hue_deg, false, codeObj?.sat??selCodeObj?.sat);
-        const showSubPath = g.code_id!==selCode;
-        const indivItems = g.items.filter(i=>(i.layer||'individual')!=='final');
-        const finalItem = g.items.find(i=>i.layer==='final');
-        const acceptRep = indivItems[0] || g.items[0];
-        const groupCanAccept = isAdmin && projectMode==='collective' && !finalItem && indivItems.length>0 && !isFinalAlready(acceptRep);
-        const openIt = g.items.find(i=>i.id===openNote && codingMemo[i.id]);
-        // ● abre a nota analitica daquele coding; × remove aquela marca (respeitando quem pode)
-        const dot = (it)=> codingMemo[it.id] ? html`<button class="anndot" title="Ver nota analítica" onClick=${e=>{ e.stopPropagation(); setOpenNote(o=>o===it.id?null:it.id); }}>●</button>` : null;
-        const rmx = (it, lbl)=> canRemove(it) ? html`<button class="balx" title=${lbl} onClick=${()=>onDelCoding(it.id)}>×</button>` : null;
-        const pgN = pageOf ? pageOf(docId, g.span_start) : null;   // §4: página do trecho no PDF original (null = doc sem índice)
-        return html`<div key=${g.key} class="card"
+  // UM card de trecho, extraído do laço pra deixar o render do agrupamento legível.
+  const card = (g, docId)=>{
+    // familia agrega subcodigos: cada trecho mostra a cor/caminho do seu codigo especifico (folha)
+    const codeObj = codeById[g.code_id];
+    const codeCol = g.code_id===selCode ? col : codeColor(codeObj?.hue??selCodeObj?.hue??0, codeObj?.depth??selCodeObj?.depth??0, codeObj?.hue_deg??selCodeObj?.hue_deg, false, codeObj?.sat??selCodeObj?.sat);
+    const showSubPath = g.code_id!==selCode;
+    const indivItems = g.items.filter(i=>(i.layer||'individual')!=='final');
+    const finalItem = g.items.find(i=>i.layer==='final');
+    const acceptRep = indivItems[0] || g.items[0];
+    const groupCanAccept = isAdmin && projectMode==='collective' && !finalItem && indivItems.length>0 && !isFinalAlready(acceptRep);
+    const openIt = g.items.find(i=>i.id===openNote && codingMemo[i.id]);
+    // ● abre a nota analitica daquele coding; × remove aquela marca (respeitando quem pode)
+    const dot = (it)=> codingMemo[it.id] ? html`<button class="anndot" title="Ver nota analítica" onClick=${e=>{ e.stopPropagation(); setOpenNote(o=>o===it.id?null:it.id); }}>●</button>` : null;
+    const rmx = (it, lbl)=> canRemove(it) ? html`<button class="balx" title=${lbl} onClick=${()=>onDelCoding(it.id)}>×</button>` : null;
+    const pgN = pageOf ? pageOf(docId, g.span_start) : null;   // §4: página do trecho no PDF original (null = doc sem índice)
+    return html`<div key=${g.key} class="card"
           style=${`margin-bottom:8px;padding:0;overflow:hidden;display:flex;border-left:3px solid ${codeCol.solid}`}>
         <div style="flex:1;padding:12px 14px;min-width:0">
           ${showSubPath && html`<div class="row" style="gap:6px;margin-bottom:6px">
@@ -9186,7 +9516,47 @@ function VizExcerpts({ docs, codes, codeById, codePath, allCodings, allValues, m
             ${codingMemo[openIt.id]}
           </div>`}
         </div>
-      </div>`; })}
+      </div>`;
+  };
+
+  return html`<div class="section" style="max-width:820px;margin:0 auto">
+
+    <!-- cabeçalho: caminho do código + contagem -->
+    <p class="h" style="font-size:15px;margin-bottom:4px">
+      <span class="swatch" style=${`background:${col.solid}`}></span>
+      ${codePath(selCode).join(' ▸ ')}
+      ${/* DUAS unidades, e a pílula conta a que se VÊ: o número de CARDS (pedaços de texto
+            distintos), que é a soma dos subtotais por documento logo abaixo. Antes a pílula
+            contava CODIFICAÇÕES e o subtotal contava cards, então o total não era a soma dos
+            subtotais: com 3 codificadores sobre os mesmos 2 trechos, dizia "6" e mostrava 1+1.
+            Quando as duas contas divergem, a segunda aparece ao lado em vez de sumir — é ela
+            que a árvore de códigos à esquerda e os Gráficos contam. */''}
+      <span class="pill" title=${nSpans===nCod ? 'Trechos de texto com este código' :
+        `${nSpans} trecho(s) de texto, com ${nCod} codificações no total: o mesmo trecho foi codificado por mais de um codificador, ou também está no gabarito. É a contagem por codificação que a árvore de códigos e os Gráficos usam.`}>
+        ${nSpans} trecho${nSpans!==1?'s':''}</span>
+      ${nCod!==nSpans && html`<span class="meta" style="font-weight:400"> · ${nCod} codificações</span>`}
+    </p>
+
+    <!-- co-ocorrência -->
+    <div class="row" style="gap:7px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
+      <span class="meta">Co-ocorrência com:</span>
+      ${[0,1].map(i=>html`<select key=${i} class="opt" style="max-width:210px;font-size:12.5px"
+        value=${(crossCodes||[])[i]||''} onChange=${e=>{ const v=e.target.value; setCrossCodes(s=>{ const n=s.slice(); n[i]=v; return n; }); }}>
+        <option value="">${i===0?'(nenhum)':'e também…'}</option>
+        ${crossOpts.map(c=>html`<option value=${c.id}>${codePath(c.id).join(' ▸ ')}</option>`)}
+      </select>`)}
+      ${(crossCodes||[]).some(Boolean) && html`<button class="btn sm ghost" onClick=${()=>setCrossCodes(['',''])}>limpar</button>`}
+    </div>
+
+    ${excerpts.length===0 && html`<div class="card"><span class="meta">Nenhum trecho corresponde aos filtros.</span></div>`}
+
+    <!-- grupos por documento -->
+    ${byDoc.map(([docId, cods])=>html`<div key=${docId} style="margin-bottom:22px">
+      <div class="row" style="margin-bottom:8px;gap:7px;align-items:baseline">
+        <button class="btn sm" title="Abrir no leitor" onClick=${()=>onJump&&onJump(docId)}>${docById[docId]?.name||docId}</button>
+        <span class="count" title="Trechos deste código neste documento">${cods.length}</span>
+      </div>
+      ${cods.map(g=>card(g, docId))}
     </div>`)}
   </div>`;
 }
@@ -9381,7 +9751,7 @@ function svgWordCloud(items, opt={}){
 }
 /* ============ MemoNav — painel esquerdo da aba Memos ============
    Memo do projeto + lista de documentos + árvore de códigos. Visual idêntico
-   ao painel de Codificação/Visualização (mesmas classes .node-row etc). */
+   ao painel de Codificação/Leitura (mesmas classes .node-row etc). */
 function MemoNav({ project, docs, codes, codings, memos, sel, onSel, onRenameDoc, aiMemory, iaResults }){
   const treeKeys = useTreeKeys();   // a11y: as linhas aqui nao tinham NENHUM elemento focavel
   const [docsOpen, setDocsOpen] = useState(false);
@@ -12087,7 +12457,7 @@ function IACodificacaoPanel({ project, docs, codes, codeById, codePath, store, a
     // #27: so marca como concluido (somente-leitura) quando NADA falhou; havendo falha, mantem o turno
     // interativo (via !t.applied) e guarda os indices salvos pra reaplicar SO os pendentes.
     patchTurn(turnIdx, skipped===0 ? { applied:true, saved } : { saved });
-    setApplyMsg(`${applied} codificação(ões) aplicada(s)${skipped?`, ${skipped} falhou(aram); clique em Aplicar de novo para tentar só as pendentes`:''}. Confira no leitor (aba Codificação) ou na Visualização.`);
+    setApplyMsg(`${applied} codificação(ões) aplicada(s)${skipped?`, ${skipped} falhou(aram); clique em Aplicar de novo para tentar só as pendentes`:''}. Confira no leitor (aba Codificação) ou na Leitura.`);
     if(skipped===0 && applied) setHistory(h=>[...h, { role:'user', content:`(Apliquei ${applied} codificação(ões) da sua proposta.)` }]);
     setBusy(false);
   }
@@ -12554,7 +12924,7 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
   // codigos de censura nao sao categoria analitica — ficam fora da lista selecionavel do
   // escopo "Trechos + Codigo" (sua inclusao no material e decidida pelo bloco de censura).
   const selectableCodes = (codes||[]).filter(c=>!c.is_redaction);
-  // arvore de codigos (mesma hierarquia/visual da Visualizacao, via CloudCodeNode) pros
+  // arvore de codigos (mesma hierarquia/visual da Leitura, via CloudCodeNode) pros
   // seletores: filhos/topos a partir de selectableCodes (sem censura) + contagem por codigo.
   const childrenOfSel = (id)=> selectableCodes.filter(c=>c.parent_id===id);
   const selCodeIdSet = new Set(selectableCodes.map(c=>c.id));
@@ -13312,7 +13682,7 @@ function MemoryPanel({ memory, onToggle, onDelete, onAdd, showAdd=true, bare=fal
 /* ============ GRAFICOS — explorador interativo ============
    Uma aba = um gráfico por vez (.seg), desenhado em SVG (exportável PNG/SVG),
    com painel de trechos à direita: clicar numa barra/célula abre as codificações
-   daquele recorte no VizExcerpts (mesma leitura da aba Visualizar). Abas:
+   daquele recorte no VizExcerpts (mesma leitura da aba Leitura). Abas:
    freq · co-ocorrência · cobertura · código×atributo · tempo. */
 function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allValues, projectMode,
                        view, onView, coders, userId, mode, isAdmin, onDelCoding, onAccept, onJump, darkMode, onOpenCode,
@@ -13349,7 +13719,7 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
     measure(); const ro=new ResizeObserver(measure); ro.observe(el); return ()=>{ cancelAnimationFrame(raf); ro.disconnect(); };
   }, []);
 
-  // filtro por categorias (painel esquerdo, igual à Visualização): restringe os
+  // filtro por categorias (painel esquerdo, igual à Leitura): restringe os
   // documentos considerados em TODOS os gráficos. {catId: valor exigido}.
   const [catFilter,setCatFilter] = useState({});
   const [hideRedaction,setHideRedaction] = useState(true); // "ignorar censura" (padrão ligado): tira códigos is_redaction
@@ -13392,7 +13762,7 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
   }, [docs, allValues, catFilter]);
   const fdocs = useMemo(()=> docs.filter(d=>matchingDocIds.has(d.id)), [docs, matchingDocIds]);
 
-  // codings do recorte "Ver:" compartilhado (mesma fonte do leitor/Visualizar/Relatório),
+  // codings do recorte "Ver:" compartilhado (mesma fonte do leitor/Leitura/Relatório),
   // já restritas aos documentos que passam no filtro de categorias.
   const cod = useMemo(()=> codingsForView(allCodings, view, userId, projectMode).filter(c=>matchingDocIds.has(c.document_id) && (!hideRedaction || !isRedactionCoding(c))), [allCodings, view, userId, projectMode, matchingDocIds, hideRedaction, codeById]);
   const codingsByDoc = useMemo(()=>{ const g={}; cod.forEach(c=>{ (g[c.document_id]=g[c.document_id]||[]).push(c); }); return g; }, [cod]);
@@ -13418,7 +13788,7 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
     }).filter(i=>i.chars>0).sort((a,b)=>b.value-a.value);
   }, [cod, corpusLen, codePath]);
 
-  // ---- árvore de códigos do painel esquerdo (filtro da nuvem), no padrão da Visualização.
+  // ---- árvore de códigos do painel esquerdo (filtro da nuvem), no padrão da Leitura.
   const tops = useMemo(()=> codes.filter(c=>!c.parent_id), [codes]);
   const childrenOf = (id)=> codes.filter(c=>c.parent_id===id);
   // contagem por código (direta + agregada nos ancestrais) no recorte atual — igual ao VizNav.
@@ -13569,7 +13939,7 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
   const svgEl = ()=>chartRef.current?.querySelector('svg');
   const hasFilter = Object.values(catFilter).some(Boolean);
 
-  // Painel esquerdo (filtro por categorias, mesmo tamanho da Visualização) + gráfico à direita.
+  // Painel esquerdo (filtro por categorias, mesmo tamanho da Leitura) + gráfico à direita.
   // htm devolve um array com os dois <section>; o App já os envolve num .split.
   return html`
   <section class="pane" style="flex:0 0 var(--pane-side);min-width:0">

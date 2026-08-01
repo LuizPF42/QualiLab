@@ -25,7 +25,7 @@ Este manual ensina a *usar* o QualiLab passo a passo. Para a lista de recursos e
 6. [Categorias (atributos do documento)](#6-categorias-atributos-do-documento)
 7. [Esquema](#7-esquema): organizar códigos e categorias em lote
 8. [Reconciliação](#8-reconciliação): consolidar o gabarito (projeto coletivo)
-9. [Visualização](#9-visualização): ler os trechos por código
+9. [Leitura](#9-leitura): ler o corpus e os trechos codificados
 10. [Gráficos](#10-gráficos)
 11. [Memos](#11-memos): notas analíticas
 12. [Relatório](#12-relatório): o hub de publicação e transparência
@@ -52,7 +52,7 @@ QualiLab é o seu **laboratório de pesquisa qualitativa em um único arquivo**:
 
 O nome não é enfeite. Laboratório é onde se **experimenta**: você levanta uma hipótese, mistura materiais, testa uma ideia, descarta o que não se sustenta e transforma o que sobra em algo útil. O QualiLab é feito para esse vaivém, não para "guardar" a análise, mas para **mexer** nela.
 
-Por isso **Visualização**, **Gráficos** e o **Relatório Interativo (ATI)** não são acessórios pregados no fim do processo: são as bancadas do laboratório. Em **Visualização** você junta todos os trechos de um código e relê o conjunto; em **Gráficos** você levanta e derruba hipóteses olhando frequências, cobertura e co-ocorrências; no **Relatório** você **transforma a exploração em produto**: um relatório pronto, uma página interativa, um conjunto de anotações. Exploração de um lado, produto do outro, e o caminho entre os dois curto o bastante para você ir e voltar quantas vezes precisar.
+Por isso **Leitura**, **Gráficos** e o **Relatório Interativo (ATI)** não são acessórios pregados no fim do processo: são as bancadas do laboratório. Em **Leitura** você relê o documento inteiro com os grifos no contexto, ou junta todos os trechos de um código; em **Gráficos** você levanta e derruba hipóteses olhando frequências, cobertura e co-ocorrências; no **Relatório** você **transforma a exploração em produto**: um relatório pronto, uma página interativa, um conjunto de anotações. Exploração de um lado, produto do outro, e o caminho entre os dois curto o bastante para você ir e voltar quantas vezes precisar.
 
 ### Os problemas que ele ataca
 
@@ -99,7 +99,7 @@ Antes de carregar qualquer material, decida **o quanto da ferramenta você pode 
 4. **Traga os documentos** e preencha as **categorias** que vai querer comparar depois ([seções 4](#4-documentos) e [6](#6-categorias-atributos-do-documento)).
 5. **Codifique**, deixe os códigos emergirem (indutivo) ou siga um esquema prévio; registre decisões em memos ([seção 5](#5-codificação-de-trechos)).
 6. **Reconcilie** (em equipe) ou revise (sozinho) ([seção 8](#8-reconciliação)).
-7. **Experimente e publique**, explore em Visualização e Gráficos e transforme em produto pelo Relatório ([seções 9](#9-visualização)–[12](#12-relatório)).
+7. **Experimente e publique**, explore em Leitura e Gráficos e transforme em produto pelo Relatório ([seções 9](#9-leitura)–[12](#12-relatório)).
 
 ### Como o QualiLab foi feito (e o que esperar)
 
@@ -177,7 +177,7 @@ Em **projeto individual**, tudo já vai direto para o gabarito. Em **projeto col
 2. Na aba **Codificação**, clique em **colar texto** e cole um trecho: uma fala de entrevista, um parágrafo de decisão, uma notícia (ou use **＋ enviar** para um `.txt`, `.pdf` ou `.docx`).
 3. **Selecione** com o mouse uma frase que lhe chame atenção, clique com o **botão direito** e escolha **+ Criar novo código**. Dê um nome ao tema (ex.: *acesso à justiça*) e clique em **Criar e aplicar**. Pronto, seu primeiro trecho codificado.
 4. Codifique mais alguns trechos: **repita o mesmo código** onde o tema volta, **crie outros** onde surgem temas novos.
-5. Abra a aba **Visualização** e clique no seu código: todos os trechos que você marcou aparecem juntos, lado a lado. É a sua análise começando a tomar forma.
+5. Abra a aba **Leitura**, vá em **Trechos** e clique no seu código: todos os trechos que você marcou aparecem juntos, lado a lado. É a sua análise começando a tomar forma.
 
 > Gostou? Antes de ir longe, decida **onde salvar** o trabalho (o rascunho é efêmero, [seção 16](#16-salvamento-backup-e-modos-de-armazenamento)) e leia a **[seção 0](#0-a-ideia-do-qualilab)** para tirar o máximo da ferramenta. O resto do manual aprofunda cada um destes passos.
 
@@ -241,7 +241,7 @@ Depois de abrir um projeto, o **cabeçalho** tem duas linhas:
 |---|---|
 | **Codificação** | Ler o documento e aplicar códigos/categorias |
 | **Reconciliação** | *(só projeto coletivo)* consolidar o gabarito |
-| **Visualização** | Ver todos os trechos de um código |
+| **Leitura** | Ler o documento inteiro, ou todos os trechos de um código |
 | **Gráficos** | Frequências, nuvem, co-ocorrência etc. |
 | **Memos** | Notas analíticas |
 | **Esquema** | Organizar códigos e categorias em lote |
@@ -272,7 +272,7 @@ uma por tela) e **sobrevive ao recarregamento**, por navegador. São três grupo
 
 | Painel | Onde |
 |---|---|
-| Navegação e filtros (à esquerda) | Visualização, Gráficos, Memos, Reconciliação, Relatório |
+| Navegação e filtros (à esquerda) | Leitura, Gráficos, Memos, Reconciliação, Relatório |
 | Painel de trabalho (à direita) | Codificação, Esquema |
 | Configuração de IA (à esquerda) | as quatro telas de IA |
 
@@ -302,7 +302,13 @@ Na aba **Codificação**, no topo do leitor, clique em **＋ enviar** e escolha 
 Use o botão de **colar** (ao lado de ＋ enviar) para criar um documento a partir de texto copiado, sem arquivo.
 
 ### Trocar de documento, renomear e editar o texto
-- O **seletor** no topo do leitor alterna entre os documentos do projeto.
+- O **botão com o nome do documento**, no topo do leitor, abre a lista de documentos do projeto:
+  **filtre por nome** (ignora acento e maiúscula), **ordene** por nome ou pela ordem de importação e,
+  quando você já preencheu categorias, **agrupe** por uma delas. As **setas ↑ ↓** percorrem a lista,
+  **Enter** abre o documento em destaque e **Esc** fecha. A escolha de ordenar/agrupar fica guardada
+  neste navegador e vale para os próximos projetos.
+  > A **ordem de importação** costuma parecer aleatória: num `.qdpx` ela é a ordem das entradas dentro
+  > do pacote, não a alfabética. Por isso a lista já vem **ordenada por nome**.
 - As ações sobre o documento aberto ficam no menu **⋯** (à direita da busca): **OCR**, **editar título e texto** e **excluir documento**.
 - **🗑 excluir documento** remove o documento aberto e todas as suas codificações. Não há desfazer, então confirme com cuidado.
 - **✏ editar título e texto** abre o modo de edição do documento aberto: nele você corrige o **título** e o **texto extraído**, útil quando um PDF vem com sujeira (um trecho grudado, um rodapé que sobrou, uma linha quebrada). **Salvar** grava as duas coisas; **Cancelar** descarta.
@@ -317,9 +323,9 @@ Quando o documento veio de um **PDF**, o leitor ganha um botão **▤ original**
 Para **PDF digitalizado** (escaneado, só imagem), use o **◫ OCR** (no menu **⋯**): o app reconstrói o texto página a página, aproveitando o texto nativo onde existe e lendo por OCR (offline, no seu navegador) onde é imagem, com barra de progresso e opção de cancelar. Também dá para fazer **OCR de uma área**: no modo original, o botão **▭ OCR de área** deixa você arrastar um retângulo sobre um pedaço da página; o texto lido abre num quadro **editável** para você corrigir antes de aplicar e codificar. A primeira vez baixa o modelo de OCR (~15 MB) e o processo é lento (alguns segundos por página).
 
 
-> **Sinal de qualidade da extração.** Documentos com extração provavelmente ruim (vazios, PDF sem espaços entre palavras, glifos quebrados `�■□` ou OCR de baixa confiança) ganham um **⚠︎** antes do nome no seletor e uma pílula âmbar **⚠︎ extração** no leitor. É um aviso para **conferir e limpar** (pelo **✏ editar**) ou rodar **OCR** antes de codificar aquele documento.
+> **Sinal de qualidade da extração.** Documentos com extração provavelmente ruim (vazios, PDF sem espaços entre palavras, glifos quebrados `�■□` ou OCR de baixa confiança) ganham um **⚠︎** antes do nome na lista de documentos (passe o mouse para ler o motivo) e uma pílula âmbar **⚠︎ extração** no leitor. É um aviso para **conferir e limpar** (pelo **✏ editar**) ou rodar **OCR** antes de codificar aquele documento.
 
-> **Números de página.** Como o QualiLab guarda a correspondência trecho ↔ página do PDF, o número da página (**p. N**) do original acompanha o trecho na **Visualização**, no **Relatório**, nos exports **CSV/JSON** e nas anotações **W3C**, e o **▤ original** abre já na página do trecho selecionado.
+> **Números de página.** Como o QualiLab guarda a correspondência trecho ↔ página do PDF, o número da página (**p. N**) do original acompanha o trecho na **Leitura**, no **Relatório**, nos exports **CSV/JSON** e nas anotações **W3C**, e o **▤ original** abre já na página do trecho selecionado.
 
 ### Importar muitos documentos de uma vez
 Uma planilha (`.csv`/`.xlsx`) vira **um documento por linha**. Veja [Importar e exportar](#15-importar-e-exportar).
@@ -518,14 +524,54 @@ O resultado vira a camada **Final**, usada nos relatórios e gráficos quando vo
 
 ---
 
-## 9. Visualização
+## 9. Leitura
 
-![Visualização: à esquerda, os filtros por categoria e a árvore de códigos; à direita, todos os trechos do código selecionado, agrupados por documento e com a autoria e a camada de cada codificação.](manual-img/05-visualizacao.png)
+É a tela de **reler o que já foi codificado** — no material ou no esquema —, em dois modos, nas
+sub-abas **▤ Documentos** e **✎ Trechos**. Na Codificação você marca; aqui você lê o resultado. A
+tela abre em **Documentos**; vindo de um clique nos [Gráficos](#10-gráficos), abre direto nos
+**Trechos** do código clicado. O filtro [**Ver:**](#58-filtro-ver-de-quem-é-o-que-aparece) fica na
+barra das sub-abas e vale para os dois modos: recorta os grifos do documento e os trechos do código.
 
-Tela mestre-detalhe para **ler todos os trechos de um código**:
+> Esta aba se chamava **Visualização** até a versão 1.4.6. O nome mudou porque "visualização" é o
+> que a aba [Gráficos](#10-gráficos) faz, e porque, com o modo Documentos, esta virou de fato uma
+> tela de leitura.
 
-- **Esquerda**: escolha a camada (Ver:) e navegue pela árvore de códigos (e pelas categorias colapsáveis).
-- **Direita**: todos os trechos do código selecionado, em tipografia de leitura, **agrupados por documento**.
+### ▤ Documentos — a leitura do material
+
+![Leitura, sub-aba Documentos: à esquerda a lista do corpus agrupada por categoria, com o número de trechos de cada documento; à direita o documento inteiro com os grifos no texto.](manual-img/05b-visualizacao-documentos.png)
+
+Escolha um documento à esquerda e leia **o documento inteiro**, com os grifos no contexto em que
+foram feitos. É a mesma leitura que o [Relatório Interativo](#12-relatório) entrega a quem avalia a
+pesquisa, disponível enquanto você trabalha — e onde você responde "o que eu já fiz aqui?".
+
+- **Passar o mouse** num grifo mostra o código e quem o aplicou; **clicar** abre uma faixa embaixo
+  com o caminho do código, a camada (individual ou gabarito) e a **nota analítica** do trecho, mais
+  um atalho para abrir aquele trecho na Codificação.
+- A caixa **grifos** desliga todos de uma vez, para ler o texto limpo.
+- A lista à esquerda tem o mesmo filtrar/ordenar/agrupar do leitor, mais o **número de trechos** de
+  cada documento — o que a torna também um mapa do que ainda **não** foi codificado. Agrupada por
+  uma categoria, ela funciona como um primeiro esboço de **pastas**.
+- O documento que aparece aqui é o mesmo que você tem aberto na Codificação, e o botão
+  **codificar →** leva você de volta para lá.
+
+Aqui não se codifica: selecionar texto não aplica código e não há menu de contexto. Para trabalhar
+no documento, use a Codificação.
+
+### ✎ Trechos — a leitura do esquema
+
+![Leitura, sub-aba Trechos: à esquerda, a seção de filtros por categoria recolhida e a árvore de códigos com a contagem de cada um; à direita, todos os trechos do código selecionado, agrupados por documento e com a autoria e a camada de cada codificação.](manual-img/05-visualizacao.png)
+
+Escolha um código à esquerda e leia **todos os trechos dele em todo o projeto**, em tipografia de
+leitura, agrupados por documento. É onde você responde "o que eu chamei de X?".
+
+> **Duas contagens, duas perguntas.** Em pesquisa coletiva, o mesmo trecho costuma ter mais de uma
+> marca: a de cada codificador e a do gabarito. A pílula do cabeçalho conta **trechos** (pedaços de
+> texto, o que você vê na tela, e a soma dos números ao lado de cada documento); quando há mais de
+> uma marca sobre o mesmo pedaço, aparece ao lado a contagem de **codificações** — *"2 trechos · 6
+> codificações"*. A segunda é a que a **árvore de códigos** à esquerda e os **Gráficos** usam, então
+> não estranhe se os números diferirem: eles respondem a perguntas diferentes. Trechos com bordas
+> diferentes (um codificador marcou uma frase, outro marcou a frase e mais um pedaço) contam
+> separado, porque não são o mesmo pedaço.
 
 Recursos:
 - **Trechos idênticos, um card só**: quando **mais de um pesquisador** marca o **mesmo trecho com o mesmo código**, ele aparece **uma vez**, com um **balão de nome por pesquisador** embaixo, em vez de cards repetidos. Cada balão traz um **×** para remover aquela marcação específica.
@@ -561,7 +607,7 @@ A aba **Gráficos** é um explorador: filtros à esquerda, um gráfico por vez �
 - **Co-ocorrência**: dois seletores escolhem os eixos **X** (colunas) e **Y** (linhas); vazio = os 12 mais frequentes.
 - **Ver:** e **Top:** (10/25/50/Todos) refinam o recorte.
 
-> **Do gráfico para os trechos.** Clique numa **barra** (Frequência, Cobertura, Concordância) ou numa **célula** (Co-ocorrência, Código × atributo) para abrir a **Visualização** já naquele código: o filtro de categorias e o recorte "Ver:" viajam junto, então os trechos exibidos batem com o número do gráfico.
+> **Do gráfico para os trechos.** Clique numa **barra** (Frequência, Cobertura, Concordância) ou numa **célula** (Co-ocorrência, Código × atributo) para abrir a **Leitura** já naquele código: o filtro de categorias e o recorte "Ver:" viajam junto, então os trechos exibidos batem com o número do gráfico.
 
 ### Palavras ignoradas na nuvem
 

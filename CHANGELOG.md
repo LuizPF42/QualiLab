@@ -9,6 +9,69 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION` no `index.html`, acrescente a seção aqui e
 > regenere o estável (`scripts/gen-estavel.sh`).
 
+## 1.4.6 (01/08/2026)
+
+### A aba "Visualização" agora se chama "Leitura"
+
+"Visualização" é o nome que a área costuma dar a gráfico, e gráfico é o que a aba ao lado faz. Com
+o modo Documentos (abaixo), esta virou de fato a tela de **reler o que já foi codificado** — no
+material ou no esquema. Nada mudou de lugar além do nome.
+
+### Navegador de documentos
+
+Até aqui, a única porta para o corpus era a lista suspensa no alto do leitor: todos os documentos,
+na ordem em que foram importados, sem busca. Num `.qdpx` essa ordem é a das entradas dentro do
+pacote — na prática, aleatória. Com 200 documentos, achar um era rolar a lista até dar sorte.
+
+No lugar dela, um **navegador de documentos**, que aparece em dois lugares.
+
+**No leitor (aba Codificação)**, o nome do documento virou um botão que abre a lista com:
+
+- **filtro por nome**, ignorando acento e maiúscula;
+- **ordenação** por nome (agora o padrão) ou pela ordem de importação;
+- **agrupamento** por uma categoria — o efeito de "pastas", usando o metadado que você já
+  preencheu, sem inventar estrutura nova;
+- o **⚠︎** dos documentos com extração provavelmente ruim, com o motivo no repouso do mouse;
+- teclado: **↑ ↓** percorrem, **Enter** abre, **Esc** fecha.
+
+A escolha de ordenar e agrupar fica guardada no navegador e vale para os próximos projetos.
+
+### A Visualização agora tem dois modos de leitura
+
+A tela ganhou sub-abas, como os Gráficos: **▤ Documentos** e **✎ Trechos**.
+
+**Trechos** é a Visualização de sempre: escolha um código e leia os trechos dele em todo o projeto.
+
+**Documentos** é nova, e é o que faltava: o **documento inteiro**, com os grifos no contexto em que
+foram feitos — a mesma leitura que o Relatório Interativo entrega ao avaliador, agora disponível
+enquanto você trabalha. Passando o mouse num grifo você vê o código e quem o aplicou; clicando,
+abre uma faixa com o caminho do código, a camada e a nota analítica, e um atalho para o trecho na
+Codificação. A caixa **grifos** desliga todos de uma vez, quando você quer ler o texto limpo.
+
+À esquerda, no mesmo lugar em que as outras telas põem a navegação, fica a lista do corpus, com o
+mesmo filtrar/ordenar/agrupar do leitor mais o **número de trechos** de cada documento — o que a
+torna também um mapa do que ainda não foi codificado. Agrupada por uma categoria, ela é o primeiro
+esboço de **pastas**.
+
+### Corrigido: a contagem de trechos não batia com o que a tela mostrava
+
+Em pesquisa coletiva, um trecho consolidado costuma ter três marcas: a de cada codificador e a do
+gabarito. O cabeçalho dizia **"6 trechos"** onde a tela mostrava **2 cards** — e o subtotal ao lado
+de cada documento dizia 1 e 1, ou seja, o total não era nem a soma dos próprios subtotais.
+
+Agora a pílula conta **pedaços de texto** (o que você vê) e, quando há mais de uma marca sobre o
+mesmo pedaço, a outra conta aparece ao lado: **"2 trechos · 6 codificações"**. As duas respondem a
+perguntas diferentes e as duas são úteis — a segunda é a que a árvore de códigos à esquerda e os
+Gráficos usam, e o repouso do mouse explica isso em cada lugar.
+
+O filtro **Ver:** (de quem são os grifos) fica na barra das sub-abas e vale para os dois modos, e a
+seção **Categorias** do painel da esquerda passou a vir recolhida, para a árvore de códigos aparecer
+sem rolagem.
+
+A tela abre em **Documentos**, e o documento que aparece ali é o mesmo que você tem aberto na
+Codificação, para ir e voltar sem perder o lugar. Clicar numa barra dos Gráficos continua levando
+direto para os **Trechos** daquele código.
+
 ## 1.4.5 (29/07/2026)
 
 ### Corrigido: a IA cortava material sem avisar
