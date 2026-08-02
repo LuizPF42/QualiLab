@@ -762,7 +762,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.6';
+const QUALILAB_VERSION = '1.4.7';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -1493,10 +1493,12 @@ function humanizeError(raw){
   if(t.includes('invalid login credentials')) return 'E-mail ou senha incorretos.';
   if(t.includes('email not confirmed')) return 'E-mail ainda não confirmado. Verifique sua caixa de entrada (e o spam).';
   if(t.includes('already registered') || t.includes('already been registered')) return 'Este e-mail já tem cadastro. Use "Entrar".';
-  // "a alteracao NAO foi salva" (frase antiga) so vale pra ESCRITA: a mesma mensagem aparecia
+  // "a alteracao NAO foi salva" (frase antiga) so valia pra ESCRITA: a mesma mensagem aparecia
   // ao falhar um login ou uma LEITURA de fundo, onde nao havia alteracao nenhuma pra salvar.
-  // "a ação não foi concluída" e verdadeiro nos tres casos; quem escreve ja tem a pilula
-  // "offline: alterações não salvas" no cabeçalho e o banner do onSaveError.
+  // "a ação não foi concluída" e verdadeiro nos tres casos. Desde a fila (FILA-BLOCK, v1.4.7)
+  // isto NAO alcanca mais a escrita do trabalho diario — falha de rede ali e capturada pelo
+  // writeQ e vira fila, nunca banner. Sobram leitura, login e escrita ESTRUTURAL, pra quem a
+  // frase continua exata.
   if(t.includes('failed to fetch') || t.includes('networkerror') || t.includes('load failed') || t.includes('fetch failed')) return 'Falha de conexão com o servidor. Verifique sua internet e tente de novo (a ação não foi concluída).';
   if(t.includes('row-level security')) return 'Sem permissão para esta operação neste projeto (regra de acesso do servidor).';
   if(t.includes('exceeded the quota') || t.includes('quotaexceeded')) return 'Espaço de armazenamento do navegador esgotado. Baixe um .qualilab do projeto antes de continuar.';
@@ -2067,6 +2069,60 @@ async function mapPool(items, limit, fn, onProgress){
    admin) exibiria "Importado: N trechos" com o banco vazio. Cada importador acumula isto e
    devolve em `linhasRecusadas`, que a mensagem de import mostra. */
 function bulkFails(r){ return (r && r.failed) || 0; }
+
+/* ============ FILA-BLOCK (fila de escrita da nuvem) — peças puras ============
+   Contexto: ate ago/2026 uma escrita que falhasse por rede LANCAVA, virava banner e o trabalho
+   ficava so na tela. O incidente que motivou a fila foi um PostgREST travado no projeto publico:
+   o navegador estava ONLINE e o servidor e que nao respondia (504 do gateway).
+
+   queueErrKind separa falha RECUPERAVEL (rede caiu, gateway 504, servidor reiniciando) de
+   DEFINITIVA (RLS recusou, constraint recusou, alvo nao existe mais). So a primeira pode entrar
+   na fila — reenfileirar a segunda gira pra sempre.
+   O CRITERIO E O SQLSTATE: erro vindo do POSTGRES traz `code` de 5 chars (42501 = RLS, 23503 =
+   FK, 23505 = unica) e prova que a requisicao CHEGOU e foi JULGADA — repetir da o mesmo veredito.
+   Erro sem SQLSTATE nao chegou a ser julgado (TypeError de rede; 504 do Kong, cujo corpo nem e
+   JSON) e merece retentativa.
+   O DEFAULT E 'transient' DE PROPOSITO, e quem impede laco infinito e o teto de tentativas do
+   chamador, nao esta funcao: classificar errado como definitivo DESCARTA trabalho do pesquisador,
+   enquanto classificar errado como recuperavel custa algumas tentativas antes de virar rejeitada.
+   Assimetria de custo — na duvida, tente de novo. */
+const QUEUE_RETRY_SQLSTATES = new Set([
+  '40001','40P01',            // serializacao / deadlock: repetir e exatamente o certo
+  '53300','53400','55P03',    // conexoes esgotadas / limite de recurso / lock nao disponivel
+  '57014','57P01','57P03',    // consulta cancelada, admin desligou, servidor iniciando
+  '08000','08003','08006',    // conexao caiu no meio
+]);
+function queueErrKind(err){
+  if(!err) return 'transient';
+  const code = String((err.code ?? '')).trim();
+  if(/^[0-9A-Z]{5}$/.test(code)) return QUEUE_RETRY_SQLSTATES.has(code) ? 'transient' : 'permanent';
+  const st = Number(err.status ?? err.statusCode ?? 0);
+  // 4xx = o servidor entendeu e recusou -> definitivo. Excecoes: 401 (o supabase-js renova o JWT
+  // sozinho e a proxima tentativa passa), 408/425/429 (explicitamente "tente de novo").
+  if(st >= 400 && st < 500 && st !== 401 && st !== 408 && st !== 425 && st !== 429) return 'permanent';
+  return 'transient';
+}
+
+/* Sobrepoe as operacoes PENDENTES ao que o servidor devolveu.
+   SEM ISTO A FILA E UMA ARMADILHA, e nao um recurso: o caminho de leitura do app e autoritativo
+   do servidor (o poll do documento ativo refaz listCodings a cada 20s, e o setValue rele logo
+   depois de gravar). A codificacao que esta na fila e nao no banco SUMIRIA DA TELA — o
+   pesquisador veria o proprio trabalho desaparecer e recodificaria por cima, que e pior que o
+   banner que a fila veio substituir. Aplicado DENTRO das leituras do SupabaseStore, o App inteiro
+   fica intocado: nenhuma tela sabe que a fila existe.
+   `keep` filtra so o que ENTRA (act 'put'), pelo escopo da leitura (ex.: codings deste
+   documento); 'del' e 'patch' podem passar sempre — id que nao esta na lista nao casa e nao faz
+   nada. A ordem FIFO importa: e ela que faz "criar e depois apagar" terminar sem a linha. */
+function applyQueue(rows, effs, keep){
+  let out = (rows||[]).slice();
+  for(const o of (effs||[])){
+    const same = r => o.key.every(k=> r[k] === o.match[k]);
+    if(o.act==='patch'){ out = out.map(r=> same(r) ? {...r, ...o.patch} : r); continue; }
+    out = out.filter(r=> !same(r));
+    if(o.act==='put' && (!keep || keep(o.row))) out.push(o.row);
+  }
+  return out;
+}
 
 /* S1 da cirurgia de esquema (SPEC em to-do/to-do.md): move codificacoes de um codigo para outro
    PRESERVANDO o id de cada linha. E a peca comum aos DOIS sentidos — dividir um codigo largo em
@@ -3763,13 +3819,17 @@ const IDB = {
   async open(){
     if(this._db) return this._db;
     return new Promise((res,rej)=>{
-      const r = indexedDB.open('qualilab_meta',4);   // v2: + pdf_blobs (PDF-BLOCK); v3: + pdf_index (§4); v4: + sem_index (SEM-BLOCK)
+      const r = indexedDB.open('qualilab_meta',5);   // v2: + pdf_blobs (PDF-BLOCK); v3: + pdf_index (§4); v4: + sem_index (SEM-BLOCK); v5: + wqueue (fila de escrita da nuvem)
       r.onupgradeneeded = e=>{
         const d=e.target.result;
         if(!d.objectStoreNames.contains('file_handles')) d.createObjectStore('file_handles',{keyPath:'key'});
         if(!d.objectStoreNames.contains('pdf_blobs')) d.createObjectStore('pdf_blobs');   // PDF-BLOCK: bytes por docId (chave out-of-line)
         if(!d.objectStoreNames.contains('pdf_index')) d.createObjectStore('pdf_index');   // PDF-BLOCK/§4: indice reversivel (string compacta) por docId
         if(!d.objectStoreNames.contains('sem_index')) d.createObjectStore('sem_index');   // SEM-BLOCK: indice de vocabulario por projectId
+        /* FILA-BLOCK: store PROPRIO ('wqueue'), e nao o 'write_queue' legado, DE PROPOSITO — nao ha
+           como saber com que keyPath aquele foi criado em cada instalacao antiga, e um put() com
+           chave fora de linha estoura DataError onde ele tem keyPath. Store novo custa nada. */
+        if(!d.objectStoreNames.contains('wqueue')) d.createObjectStore('wqueue');         // fila de escrita da nuvem (chave out-of-line)
       };
       r.onsuccess = e=>{ this._db=e.target.result; res(this._db); };
       r.onerror = ()=>rej(r.error);
@@ -3794,6 +3854,12 @@ const IDB = {
   async getSem(key){ try{ return await this.tx('sem_index','readonly',s=>s.get(key)); }catch(e){ return null; } },
   async delSem(key){ try{ return await this.tx('sem_index','readwrite',s=>s.delete(key)); }catch(e){ return null; } },
   async keysSem(){ try{ return await this.tx('sem_index','readonly',s=>s.getAllKeys()); }catch(e){ return []; } },
+  /* FILA-BLOCK: a fila de escrita da nuvem inteira sob UMA chave. E pequena por construcao (dezenas
+     de operacoes de poucos KB — o que passa disso e import, que NAO e enfileirado) e reescrever a
+     lista toda a cada mudanca elimina a classe de bug de indice dessincronizado com os registros.
+     Falha de IDB nao propaga: a fila continua valendo em memoria, so nao sobrevive ao F5. */
+  async putQ(list){ try{ return await this.tx('wqueue','readwrite',s=>s.put(list,'pending')); }catch(e){ return null; } },
+  async getQ(){ try{ return (await this.tx('wqueue','readonly',s=>s.get('pending'))) || []; }catch(e){ return []; } },
 };
 
 /* ============ FILE STORE (File System Access API — arquivo .qualilab no disco) ============
@@ -4166,12 +4232,122 @@ function SupabaseStore(sb){
   // prefixo do e-mail (Google so com 'email', sem nome no perfil) -> nome atual em memoria.
   const nameOf = (u, fallback)=> (u && u.user_metadata && (u.user_metadata.name || u.user_metadata.full_name)) || fallback || (u && u.email ? u.email.split('@')[0] : '') || name;
 
-  /* NAO ha fila de escrita offline: a versao anterior tinha um "withQueue" que nunca era
-     chamado pelos metodos (e cujo replay era impossivel — so gravava {key,ts}, sem a
-     operacao). Removido em jul/2026 pra nao vender resiliencia que nao existe: escrita
-     que falha por rede LANCA o erro, o App mostra banner e o usuario re-tenta. Se um dia
-     for implementar de verdade: enfileirar {op,args} serializaveis no IDB, envolver os
-     metodos de escrita e reaplicar FIFO num flush() no evento 'online'. */
+  /* ============ FILA-BLOCK: fila de escrita da nuvem (ago/2026) ============
+     Escrita do TRABALHO DIARIO que falha por motivo recuperavel nao lanca mais: entra numa fila
+     FIFO persistida no IDB, a mudanca continua na tela (applyQueue, sobreposto nas LEITURAS deste
+     store) e o replay acontece sozinho. Substituiu o "withQueue" morto removido em jul/2026.
+
+     O QUE ENTRA: codings, doc_values, memos, ia_results, ia_memory. O QUE NAO ENTRA, DE PROPOSITO:
+     documentos, esquema de codigos/categorias, gestao de projeto e os *Bulk do import. Duas razoes
+     independentes — (a) replay atrasado de mudanca ESTRUTURAL em projeto coletivo e semanticamente
+     perigoso (criar um codigo 10 min depois, quando outro pesquisador ja reorganizou a arvore,
+     produz estado que ninguem pediu), e (b) import ja tem contabilidade propria de linha recusada
+     (bulkFails/linhasRecusadas) que a fila atrapalharia. Essas seguem lancando e virando banner.
+
+     A UNIDADE ENFILEIRADA E OPERACAO DE TABELA CRUA, nao metodo do store: {t,table,payload,eq}
+     serializa direto pro IDB e o replay independe de `user`/`name` (que sao lidos AGORA, na
+     montagem, e viajam dentro do payload). Guardar {op,args} — o que o to-do sugeria — reintroduz
+     a dependencia de estado vivo no momento do replay.
+
+     ID DO CLIENTE E O QUE TORNA O REPLAY SEGURO: todo insert enfileiravel leva id gerado aqui.
+     Depois de um 504 nao da pra saber se o servidor commitou; com id do cliente, 23505 no replay
+     PROVA que commitou e a operacao conta como sucesso, em vez de virar duplicata. */
+  const QUEUE_MAX_TRIES = 8;
+  const QUEUE_BACKOFF = [2000, 5000, 10000, 20000, 30000, 60000];
+  let queue = [], rejected = [], qSeq = 0;
+  let qFlushing = false, qTimer = null, qStep = 0, qLoaded = false, onQueueCb = null;
+
+  const qState = ()=>({ pending: queue.length, rejected: rejected.slice(), lastError: queue[0]?.lastError || null });
+  const qNotify = ()=>{ try{ onQueueCb?.(qState()); }catch(e){} };
+  // so o que e serializavel: nada de closure na fila (e o que permitiu persistir de verdade)
+  const qPersist = ()=> IDB.putQ(queue.map(i=>({ seq:i.seq, pid:i.pid, label:i.label, jobs:i.jobs, effs:i.effs, tries:i.tries, ts:i.ts })));
+
+  async function qLoad(){
+    if(qLoaded) return; qLoaded = true;
+    const saved = await IDB.getQ();
+    if(saved?.length){ queue = saved; qSeq = Math.max(...saved.map(i=>i.seq||0)); qNotify(); qSchedule(); }
+  }
+
+  async function qRunJob(j){
+    if(j.t==='rpc'){ const r = await sb.rpc(j.fn, j.args); if(r.error) throw r.error; return; }
+    const tbl = sb.from(j.table);
+    if(j.t==='insert'){
+      const r = await tbl.insert(j.payload);
+      // 23505 num insert com id do CLIENTE = a linha JA entrou numa tentativa anterior cuja
+      // resposta se perdeu (o caso classico do 504). Isso e sucesso, nao conflito.
+      if(r.error && String(r.error.code)==='23505') return;
+      if(r.error) throw r.error;
+      return;
+    }
+    if(j.t==='upsert'){ const r = await tbl.upsert(j.payload,{ onConflict:j.onConflict }); if(r.error) throw r.error; return; }
+    let b = j.t==='update' ? tbl.update(j.payload) : j.t==='delete' ? tbl.delete() : null;
+    if(!b) throw new Error('operação de fila desconhecida: '+j.t);
+    for(const [k,v] of Object.entries(j.eq||{})) b = b.eq(k,v);
+    const r = await b; if(r.error) throw r.error;
+  }
+
+  function qSchedule(){
+    if(qTimer || qFlushing || !queue.length) return;
+    const ms = QUEUE_BACKOFF[Math.min(qStep, QUEUE_BACKOFF.length-1)];
+    qStep++;
+    qTimer = setTimeout(()=>{ qTimer=null; qFlush(); }, ms);
+  }
+
+  /* Esvazia em ORDEM e com UM voo por vez. Uma operacao definitivamente recusada (ou que estourou
+     o teto de tentativas) sai da fila pra `rejected` e o resto SEGUE — senao uma linha ruim
+     bloquearia todo o trabalho posterior. Nada e descartado em silencio: `rejected` vira banner. */
+  async function qFlush(){
+    if(qFlushing || !queue.length) return;
+    qFlushing = true; clearTimeout(qTimer); qTimer = null;
+    try{
+      while(queue.length){
+        const item = queue[0];
+        try{
+          for(const j of item.jobs){
+            // job 'soft' = limpeza best-effort que ja era tolerante no caminho direto (apagar
+            // memo orfao). Falhar ali nunca pode travar a operacao principal.
+            try{ await qRunJob(j); }catch(e){ if(!j.soft) throw e; }
+          }
+          queue.shift(); qStep = 0; await qPersist(); qNotify();
+        }catch(e){
+          item.tries = (item.tries||0) + 1;
+          item.lastError = String(e?.message || e);
+          if(queueErrKind(e)==='permanent' || item.tries >= QUEUE_MAX_TRIES){
+            rejected.push(queue.shift()); await qPersist(); qNotify(); continue;
+          }
+          await qPersist(); qNotify(); qSchedule(); return;
+        }
+      }
+    } finally { qFlushing = false; qNotify(); }
+  }
+
+  async function qPush(item){
+    await qLoad();
+    item.seq = ++qSeq; item.tries = 0; item.ts = Date.now();
+    queue.push(item);
+    await qPersist(); qNotify(); qSchedule();
+  }
+
+  /* Tenta DIRETO e so cai na fila se a falha for recuperavel — com a nuvem de pe o caminho e
+     byte a byte o de antes, entao a fila nao muda o comportamento normal.
+     Com a fila JA ocupada, porem, nao se tenta antes: a operacao seguinte ultrapassaria a presa e
+     a ordem FIFO se perderia (o "criar e depois apagar" terminaria com a linha viva). */
+  async function writeQ(item, direct){
+    if(queue.length){ await qPush(item); return item.ret; }
+    try{ return await direct(); }
+    catch(e){
+      if(queueErrKind(e)!=='transient') throw e;
+      await qPush(item);
+      return item.ret;
+    }
+  }
+  // efeitos pendentes de um tipo, na ordem. Filtra por projeto quando os dois lados sabem qual e
+  // (a fila sobrevive a troca de projeto no IDB; sem isto um memo de outro projeto vazaria na tela)
+  const qEffs = (kind, pid)=> queue.flatMap(i=> (!pid || !i.pid || i.pid===pid) ? i.effs.filter(e=>e.kind===kind) : []);
+  const qSortDesc = (rows)=> rows.slice().sort((a,b)=> String(b.created_at||'').localeCompare(String(a.created_at||'')));
+
+  if(typeof window !== 'undefined') window.addEventListener('online', ()=>{ qStep = 0; qFlush(); });
+
   return {
     mode:'cloud',
     // retoma sessão de e-mail/senha; sessões anônimas são ignoradas (usuário volta à tela de auth)
@@ -4295,6 +4471,12 @@ function SupabaseStore(sb){
     async getPdfIndex(docId){ try{ const r=await sb.storage.from('pdfs').download(`${docId}.idx.json`); if(r.error||!r.data) return null; return unpackPdfIndex(await r.data.text()); }catch(e){ return null; } },
     async setPdfIndex(docId,data){ try{ const body=new Blob([packPdfIndex(data)],{type:'application/json'}); const r=await sb.storage.from('pdfs').upload(`${docId}.idx.json`, body, { upsert:true, contentType:'application/json' }); if(r.error) console.warn('índice do PDF não enviado:', r.error); }catch(e){ console.warn('índice do PDF não enviado:', e); } },
     async deletePdfIndex(docId){ try{ await sb.storage.from('pdfs').remove([`${docId}.idx.json`]); }catch(e){} },
+    /* FILA-BLOCK: updateCoding NAO e enfileiravel, e a razao e um contrato, nao uma omissao.
+       Ele e a base do moveCodings, cujo contrato (ver regra de ouro #0 / secao Stores) e que
+       `failed > 0` ABORTA antes de qualquer deleteCode. Enfileirar faria `failed` ser sempre 0:
+       o merge seguiria, o deleteCode apagaria EM CASCATA justamente as codificacoes que ainda nao
+       migraram, e a fila reaplicaria updates que nao casam com linha nenhuma (update sem alvo nao
+       da erro). Trocaria um banner por perda silenciosa de dados. Mexeu aqui? Releia isto. */
     async updateCoding(id,patch){ must(await sb.from('codings').update(patch).eq('id',id)); },
     async deleteDocument(id){ let cids=[]; try{ cids=(await sb.from('codings').select('id').eq('document_id',id)).data?.map(r=>r.id)||[]; }catch(e){} must(await sb.from('documents').delete().eq('id',id)); await sb.from('memos').delete().eq('scope','document').eq('target_id',id); if(cids.length) await sb.from('memos').delete().eq('scope','coding').in('target_id',cids); },
     async clearProject(pid){
@@ -4324,16 +4506,46 @@ function SupabaseStore(sb){
         if(Object.keys(rest).length) must(await sb.from('categories').update(rest).eq('id',id)); }
     },
     async deleteCategory(id){ must(await sb.from('categories').delete().eq('id',id)); },
-    async getDocValues(docId){ return must(await sb.from('doc_values').select('*').eq('document_id',docId)); },
+    async getDocValues(docId){
+      const rows = must(await sb.from('doc_values').select('*').eq('document_id',docId));
+      return applyQueue(rows, qEffs('value'), r=> r.document_id===docId);
+    },
     // valor individual do usuario atual (cada pesquisador responde o seu)
     async setDocValue(pid,docId,catId,value){
-      if(value===''){ must(await sb.from('doc_values').delete().eq('document_id',docId).eq('category_id',catId).eq('set_by',user.id).eq('layer','individual')); return; }
-      must(await sb.from('doc_values').upsert({project_id:pid,document_id:docId,category_id:catId,value,set_by:user.id,author_name:name,layer:'individual',updated_at:new Date().toISOString()},{onConflict:'document_id,category_id,set_by,layer'}));
+      const key = ['document_id','category_id','set_by','layer'];
+      const match = { document_id:docId, category_id:catId, set_by:user.id, layer:'individual' };
+      if(value==='') return writeQ(
+        { pid, label:'resposta removida',
+          jobs:[{ t:'delete', table:'doc_values', eq:match }],
+          effs:[{ kind:'value', act:'del', key, match }] },
+        async ()=>{ must(await sb.from('doc_values').delete().eq('document_id',docId).eq('category_id',catId).eq('set_by',user.id).eq('layer','individual')); });
+      const payload = { project_id:pid, document_id:docId, category_id:catId, value, set_by:user.id, author_name:name, layer:'individual', updated_at:new Date().toISOString() };
+      /* FILA-BLOCK: o `id` fica FORA do payload de proposito — o upsert casa por
+         (document_id,category_id,set_by,layer) e mandar id novo TROCARIA o id da linha existente.
+         So a linha do OVERLAY ganha id sintetico, que a tela usa como chave de lista. */
+      return writeQ(
+        { pid, label:'resposta de categoria',
+          jobs:[{ t:'upsert', table:'doc_values', payload, onConflict:'document_id,category_id,set_by,layer' }],
+          effs:[{ kind:'value', act:'put', key, match, row:{ id:uid(), ...payload } }] },
+        async ()=>{ must(await sb.from('doc_values').upsert(payload,{onConflict:'document_id,category_id,set_by,layer'})); });
     },
     // valor consolidado (gabarito) — somente o dono escreve (garantido por RLS)
     async setFinalValue(pid,docId,catId,value){
-      if(value===''){ must(await sb.from('doc_values').delete().eq('document_id',docId).eq('category_id',catId).eq('layer','final')); return; }
-      must(await sb.from('doc_values').upsert({project_id:pid,document_id:docId,category_id:catId,value,set_by:user.id,author_name:name,layer:'final',updated_at:new Date().toISOString()},{onConflict:'document_id,category_id,set_by,layer'}));
+      // a chave aqui NAO leva set_by: so existe uma linha final por documento+categoria, e o
+      // delete de hoje ja apaga o gabarito seja qual for quem o consolidou
+      const key = ['document_id','category_id','layer'];
+      const match = { document_id:docId, category_id:catId, layer:'final' };
+      if(value==='') return writeQ(
+        { pid, label:'gabarito removido',
+          jobs:[{ t:'delete', table:'doc_values', eq:match }],
+          effs:[{ kind:'value', act:'del', key, match }] },
+        async ()=>{ must(await sb.from('doc_values').delete().eq('document_id',docId).eq('category_id',catId).eq('layer','final')); });
+      const payload = { project_id:pid, document_id:docId, category_id:catId, value, set_by:user.id, author_name:name, layer:'final', updated_at:new Date().toISOString() };
+      return writeQ(
+        { pid, label:'gabarito de categoria',
+          jobs:[{ t:'upsert', table:'doc_values', payload, onConflict:'document_id,category_id,set_by,layer' }],
+          effs:[{ kind:'value', act:'put', key, match, row:{ id:uid(), ...payload } }] },
+        async ()=>{ must(await sb.from('doc_values').upsert(payload,{onConflict:'document_id,category_id,set_by,layer'})); });
     },
     // PERF: gabarito em lote — items JA deduplicados (1 por document_id+category_id) pelo
     // chamador, igual o pickVal/finalPick que mergeQualilabDb ja fazia antes de escrever.
@@ -4378,7 +4590,10 @@ function SupabaseStore(sb){
     // trechos de UM codigo, em todos os documentos. A tela de Codificacao nao carrega o agregado
     // (nao esta em AGG_VIEWS, e nao deve estar: sao 2 requests por documento), mas a conversao em
     // familia precisa saber se o pai tem trechos proprios — e quais.
-    async listCodingsByCode(pid,codeId){ return must(await sb.from('codings').select('*').eq('project_id',pid).eq('code_id',codeId)); },
+    async listCodingsByCode(pid,codeId){
+      const rows = must(await sb.from('codings').select('*').eq('project_id',pid).eq('code_id',codeId));
+      return applyQueue(rows, qEffs('coding',pid), r=> r.code_id===codeId);
+    },
     // PERF: codes.parent_id e uma FK auto-referenciada NAO deferravel (schema.sql) — um pai
     // referenciado por uma linha mais adiante na MESMA instrucao de insert falha se ainda nao
     // foi inserido. Ordena por depth ascendente (pai sempre depth-1 do filho) e roda os chunks
@@ -4394,12 +4609,25 @@ function SupabaseStore(sb){
     // memos de SUBcodigos e das codings da subarvore (apagados por cascade do Postgres) sao
     // limpos pelo trigger memos_gc no banco — o cliente nao conhece a subarvore daqui.
     async deleteCode(id){ must(await sb.from('codes').delete().eq('id',id)); await sb.from('memos').delete().eq('scope','code').eq('target_id',id); },
-    async listCodings(pid,docId){ return must(await sb.from('codings').select('*').eq('project_id',pid).eq('document_id',docId)); },
+    async listCodings(pid,docId){
+      const rows = must(await sb.from('codings').select('*').eq('project_id',pid).eq('document_id',docId));
+      return applyQueue(rows, qEffs('coding',pid), r=> r.document_id===docId);
+    },
     async addCoding(pid,co){
       const hasCB = Object.prototype.hasOwnProperty.call(co,'created_by');
-      const row = {project_id:pid, created_by:user.id, author_name:name, ...co};
+      /* FILA-BLOCK: o id nasce AQUI (antes ele vinha do servidor pelo .select().single()). E o que
+         permite (a) devolver a linha na hora quando a operacao vai pra fila, com o mesmo formato
+         do caminho direto, e (b) replay idempotente — 23505 depois de um 504 prova que a linha ja
+         entrou. O created_at tambem vem do cliente pra que as duas linhas sejam iguais; o caminho
+         direto continua devolvendo a linha do SERVIDOR, que e a canonica. */
+      const row = { id:uid(), project_id:pid, created_by:user.id, author_name:name, created_at:new Date().toISOString(), ...co };
       if(hasCB && co.created_by===null) row.created_by = null;
-      return must(await sb.from('codings').insert(row).select().single());
+      return writeQ(
+        { pid, label:'codificação',
+          jobs:[{ t:'insert', table:'codings', payload:row }],
+          effs:[{ kind:'coding', act:'put', key:['id'], match:{ id:row.id }, row }],
+          ret: row },
+        async ()=> must(await sb.from('codings').insert(row).select().single()));
     },
     // PERF: codings em lote. items JA vem com `id` pre-gerado pelo chamador (uid()) — igual ao
     // docMap/catMap/codeMap do merge — pra montar o mapa id-antigo->id-novo (memos de trecho)
@@ -4415,18 +4643,38 @@ function SupabaseStore(sb){
       });
       return bulkWrite('codings', rows);
     },
-    async deleteCoding(id){ must(await sb.from('codings').delete().eq('id',id)); await sb.from('memos').delete().eq('scope','coding').eq('target_id',id); },
+    async deleteCoding(id){
+      return writeQ(
+        { pid:null, label:'codificação removida',
+          // o 2o job e `soft`: apagar o memo orfao ja era best-effort no caminho direto (sem must)
+          jobs:[{ t:'delete', table:'codings', eq:{ id } },
+                { t:'delete', table:'memos', eq:{ scope:'coding', target_id:id }, soft:true }],
+          effs:[{ kind:'coding', act:'del', key:['id'], match:{ id } },
+                { kind:'memo', act:'del', key:['scope','target_id'], match:{ scope:'coding', target_id:id } }] },
+        async ()=>{ must(await sb.from('codings').delete().eq('id',id)); await sb.from('memos').delete().eq('scope','coding').eq('target_id',id); });
+    },
     // memos: nota unica compartilhada por alvo (projeto/documento/codigo); ultima edicao vale
-    async listMemos(pid){ try{ return must(await sb.from('memos').select('*').eq('project_id',pid)); }catch(e){ return []; } },
+    async listMemos(pid){
+      try{
+        const rows = must(await sb.from('memos').select('*').eq('project_id',pid));
+        return applyQueue(rows, qEffs('memo',pid), r=> r.project_id===pid);
+      }catch(e){ return []; }
+    },
     async setMemo(pid, scope, targetId, content, authorName, label){
-      if(!content || !content.trim()){
-        must(await sb.from('memos').delete().eq('project_id',pid).eq('scope',scope).eq('target_id',targetId));
-        return;
-      }
-      must(await sb.from('memos').upsert(
-        { project_id:pid, scope, target_id:targetId, content, label:label||'', author_name:authorName||'anonimo', updated_by:user?.id||null, updated_at:new Date().toISOString() },
-        { onConflict:'project_id,scope,target_id' }
-      ));
+      const key = ['project_id','scope','target_id'];
+      const match = { project_id:pid, scope, target_id:targetId };
+      if(!content || !content.trim()) return writeQ(
+        { pid, label:'nota removida',
+          jobs:[{ t:'delete', table:'memos', eq:match }],
+          effs:[{ kind:'memo', act:'del', key, match }] },
+        async ()=>{ must(await sb.from('memos').delete().eq('project_id',pid).eq('scope',scope).eq('target_id',targetId)); });
+      const payload = { project_id:pid, scope, target_id:targetId, content, label:label||'', author_name:authorName||'anonimo', updated_by:user?.id||null, updated_at:new Date().toISOString() };
+      // id sintetico so no overlay, pelo mesmo motivo do doc_values (o upsert casa por 3 colunas)
+      return writeQ(
+        { pid, label:'nota',
+          jobs:[{ t:'upsert', table:'memos', payload, onConflict:'project_id,scope,target_id' }],
+          effs:[{ kind:'memo', act:'put', key, match, row:{ id:uid(), ...payload } }] },
+        async ()=>{ must(await sb.from('memos').upsert(payload,{ onConflict:'project_id,scope,target_id' })); });
     },
     // PERF: memos em lote. items JA vem deduplicados por (scope,target_id) pelo chamador
     // (mergeQualilabDb acumula/mescla ANTES de chamar, mesma logica que setMemo faria chamada
@@ -4438,13 +4686,33 @@ function SupabaseStore(sb){
       const rows = items.map(m=>({ project_id:pid, scope:m.scope, target_id:m.target_id, content:m.content, label:m.label||'', author_name:m.author_name||'anonimo', updated_by:user?.id||null, updated_at:now }));
       return bulkWrite('memos', rows, { upsert:true, onConflict:'project_id,scope,target_id' });
     },
-    async deleteMemo(id){ must(await sb.from('memos').delete().eq('id',id)); },
+    async deleteMemo(id){
+      return writeQ(
+        { pid:null, label:'nota removida',
+          jobs:[{ t:'delete', table:'memos', eq:{ id } }],
+          effs:[{ kind:'memo', act:'del', key:['id'], match:{ id } }] },
+        async ()=>{ must(await sb.from('memos').delete().eq('id',id)); });
+    },
     // resultados salvos da aba "Analisar com IA"
-    async listIaResults(pid){ try{ return must(await sb.from('ia_results').select('*').eq('project_id',pid).order('created_at',{ascending:false})); }catch(e){ return []; } },
+    async listIaResults(pid){
+      try{
+        const rows = must(await sb.from('ia_results').select('*').eq('project_id',pid).order('created_at',{ascending:false}));
+        // reordena: o overlay empilha no FIM, e esta lista e ordenada por created_at desc
+        return qSortDesc(applyQueue(rows, qEffs('ia_result',pid), r=> r.project_id===pid));
+      }catch(e){ return []; }
+    },
+    /* FILA-BLOCK: esta e a operacao que motivou a fila — a conversa da tela Analisar vive SO na
+       memoria da aba ate ser salva (o IA_CONV_CACHE nao sobrevive ao F5), entao um 504 aqui
+       custava a analise inteira. E o melhor caso possivel de enfileiramento: append puro, sem FK
+       que possa sumir e sem ordem a preservar com mais nada. */
     async addIaResult(pid,{scope,mode_label,result,author_name}){
-      return must(await sb.from('ia_results').insert(
-        { project_id:pid, scope, mode_label, result, author_name:author_name||'anonimo', created_by:user?.id||null }
-      ).select().single());
+      const row = { id:uid(), project_id:pid, scope, mode_label, result, author_name:author_name||'anonimo', created_by:user?.id||null, created_at:new Date().toISOString() };
+      return writeQ(
+        { pid, label:'conversa salva',
+          jobs:[{ t:'insert', table:'ia_results', payload:row }],
+          effs:[{ kind:'ia_result', act:'put', key:['id'], match:{ id:row.id }, row }],
+          ret: row },
+        async ()=> must(await sb.from('ia_results').insert(row).select().single()));
     },
     // PERF: conversas salvas em lote (merge de .qualilab). created_at do arquivo e PRESERVADO
     // quando existe: em lote todas as linhas nasceriam com o MESMO now(), e listIaResults ordena
@@ -4458,12 +4726,27 @@ function SupabaseStore(sb){
       });
       return bulkWrite('ia_results', rows, { chunk:100 });
     },
-    async deleteIaResult(id){ must(await sb.from('ia_results').delete().eq('id',id)); },
-    async listMemory(pid){ try{ return must(await sb.from('ia_memory').select('*').eq('project_id',pid).order('created_at',{ascending:false})); }catch(e){ return []; } },
+    async deleteIaResult(id){
+      return writeQ(
+        { pid:null, label:'conversa removida',
+          jobs:[{ t:'delete', table:'ia_results', eq:{ id } }],
+          effs:[{ kind:'ia_result', act:'del', key:['id'], match:{ id } }] },
+        async ()=>{ must(await sb.from('ia_results').delete().eq('id',id)); });
+    },
+    async listMemory(pid){
+      try{
+        const rows = must(await sb.from('ia_memory').select('*').eq('project_id',pid).order('created_at',{ascending:false}));
+        return qSortDesc(applyQueue(rows, qEffs('ia_memory',pid), r=> r.project_id===pid));
+      }catch(e){ return []; }
+    },
     async addMemory(pid,{content,reason,source,ai_model,mode_label,author_name}){
-      return must(await sb.from('ia_memory').insert(
-        { project_id:pid, content, reason:reason||'', source:source||'ai', active:true, ai_model:ai_model||'', mode_label:mode_label||'', author_name:author_name||'anonimo', created_by:user?.id||null }
-      ).select().single());
+      const row = { id:uid(), project_id:pid, content, reason:reason||'', source:source||'ai', active:true, ai_model:ai_model||'', mode_label:mode_label||'', author_name:author_name||'anonimo', created_by:user?.id||null, created_at:new Date().toISOString() };
+      return writeQ(
+        { pid, label:'memória',
+          jobs:[{ t:'insert', table:'ia_memory', payload:row }],
+          effs:[{ kind:'ia_memory', act:'put', key:['id'], match:{ id:row.id }, row }],
+          ret: row },
+        async ()=> must(await sb.from('ia_memory').insert(row).select().single()));
     },
     // PERF: diario de insights em lote (merge de .qualilab). `active` entra direto na linha —
     // o caminho serial precisava de um setMemoryActive DEPOIS do insert (2 round-trips por
@@ -4480,10 +4763,26 @@ function SupabaseStore(sb){
     // via RPC: a policy de update de ia_memory protege o content (autor/admin), mas o
     // toggle de "usar na analise" e aberto a todo membro. Fallback direto pra banco antigo.
     async setMemoryActive(id,active){
-      const r = await sb.rpc('set_memory_active',{ p_id:id, p_active:!!active });
-      if(r.error) must(await sb.from('ia_memory').update({ active:!!active }).eq('id',id));
+      /* FILA-BLOCK: o job enfileirado e a RPC, nao o update direto — o update e o FALLBACK pra
+         banco nao migrado e a RLS o recusaria vindo de membro que nao e o autor, que e justamente
+         a razao de a RPC existir. Enfileirar o fallback trocaria "espera a rede voltar" por
+         "recusado pela RLS". */
+      return writeQ(
+        { pid:null, label:'memória ligada/desligada',
+          jobs:[{ t:'rpc', fn:'set_memory_active', args:{ p_id:id, p_active:!!active } }],
+          effs:[{ kind:'ia_memory', act:'patch', key:['id'], match:{ id }, patch:{ active:!!active } }] },
+        async ()=>{
+          const r = await sb.rpc('set_memory_active',{ p_id:id, p_active:!!active });
+          if(r.error) must(await sb.from('ia_memory').update({ active:!!active }).eq('id',id));
+        });
     },
-    async deleteMemory(id){ must(await sb.from('ia_memory').delete().eq('id',id)); },
+    async deleteMemory(id){
+      return writeQ(
+        { pid:null, label:'memória removida',
+          jobs:[{ t:'delete', table:'ia_memory', eq:{ id } }],
+          effs:[{ kind:'ia_memory', act:'del', key:['id'], match:{ id } }] },
+        async ()=>{ must(await sb.from('ia_memory').delete().eq('id',id)); });
+    },
     // sincronizacao ao vivo: dispara onChange a cada alteracao em codings/doc_values do projeto
     realtime(projectId, onChange){
       const ch = sb.channel('qualilab:'+projectId)
@@ -4492,6 +4791,13 @@ function SupabaseStore(sb){
         .subscribe();
       return ()=>{ try{ sb.removeChannel(ch); }catch(e){} };
     },
+    /* FILA-BLOCK: superfície da fila pro App (só na nuvem — Local/File gravam sem rede e o
+       equivalente lá é o onSaveError). O cb dispara já na assinatura, como o onUsage, pra que
+       uma fila restaurada do IDB apareça no cabeçalho sem esperar a próxima falha. */
+    onQueue(cb){ onQueueCb = cb; qLoad().then(()=>{ try{ cb?.(qState()); }catch(e){} }); },
+    flushQueue(){ qStep = 0; return qFlush(); },
+    // descarta as rejeitadas depois que o pesquisador baixou o .qualilab (o banner some)
+    clearRejected(){ rejected = []; qNotify(); },
   };
 }
 
@@ -4642,6 +4948,7 @@ function useStoreStatus(store){
   const [lastSaved, setLastSaved] = useState(null); // hora do ultimo save ok (local/arquivo) — "✓ salvo HH:MM"
   const [localUsage, setLocalUsage] = useState(0);  // chars do JSON no localStorage (indicador de quota, so modo local)
   const [backupStatus, setBackupStatus] = useState({ active:false, name:null, lastOk:null, lastError:null, warnLarge:false }); // backup automatico em pasta (so LocalStore)
+  const [queue, setQueue] = useState({ pending:0, rejected:[], lastError:null }); // FILA-BLOCK: escrita pendente (so nuvem)
 
   useEffect(()=>{
     const goOnline = ()=>setOnline(true);
@@ -4651,10 +4958,11 @@ function useStoreStatus(store){
     if(store?.onSaveError) store.onSaveError(e=>{ setSaveError(e); if(!e) setLastSaved(new Date()); });
     if(store?.onUsage) store.onUsage(setLocalUsage);
     if(store?.onBackupStatus) store.onBackupStatus(setBackupStatus);
+    if(store?.onQueue) store.onQueue(setQueue); else setQueue({ pending:0, rejected:[], lastError:null });
     return ()=>{ window.removeEventListener('online',goOnline); window.removeEventListener('offline',goOffline); };
   }, [store]);
 
-  return { online, saveError, lastSaved, localUsage, backupStatus };
+  return { online, saveError, lastSaved, localUsage, backupStatus, queue };
 }
 
 /* ============================== APP ============================== */
@@ -4789,7 +5097,7 @@ function App(){
     return ()=> window.removeEventListener('beforeunload', h);
   }, [project]);
   /* conexao + status de gravacao (offline, "✓ salvo", quota, backup em pasta) — ver useStoreStatus */
-  const { online, saveError, lastSaved, localUsage, backupStatus } = useStoreStatus(store);
+  const { online, saveError, lastSaved, localUsage, backupStatus, queue } = useStoreStatus(store);
   const [sendCloudOpen, setSendCloudOpen] = useState(false); // modal "Enviar para a nuvem" (projeto local/arquivo -> projeto novo na nuvem)
   const [nudgeHidden, setNudgeHidden] = useState(false); // oculta o nudge do rascunho ATE recarregar (colapsavel por sessao)
   // aviso de tela pequena (.small-warn, so aparece <=720px por CSS — aqui so guardamos o "fechei")
@@ -6591,7 +6899,7 @@ function App(){
               + ' Clique para gerenciar.',
             cloud:'Projeto na NUVEM, no servidor padrão do QualiLab (Supabase). Clique para gerenciar.',
             custom:`Projeto na nuvem, no SEU servidor Supabase (${SUPABASE_URL}). Clique para gerenciar.`,
-            offline:'Sem conexão com a nuvem: as alterações NÃO estão sendo salvas. Clique para gerenciar.',
+            offline:'Sem conexão com a nuvem. O que você fizer agora fica guardado neste navegador e sobe sozinho quando a conexão voltar. Clique para gerenciar.',
           }[cs];
           return html`<button class="pill ${cs==='local'?'':'mode-'+cs}" style="cursor:pointer"
             title=${csTitle} onClick=${()=>setProjEdit(true)}>
@@ -6643,7 +6951,17 @@ function App(){
             </div>
           </div>`}
         </div>`}
-        ${mode==='cloud' && !online && html`<span class="pill mode-offline" style="font-size:11px" title="Sem conexão: alterações NÃO estão sendo salvas na nuvem. Aguarde reconectar antes de continuar">offline: alterações não salvas</span>`}
+        ${/* FILA-BLOCK: com a fila, "offline" deixou de significar "perdendo trabalho" — a pílula
+             diz o que está pendente e serve de gatilho manual. A mensagem antiga ("alterações NÃO
+             estão sendo salvas") virou mentira no dia em que a fila entrou. */''}
+        ${mode==='cloud' && queue.pending>0 && html`<button class="pill mode-offline" style="font-size:11px;cursor:pointer"
+          title=${'Guardado neste navegador e aguardando a nuvem responder. Pode continuar trabalhando: sobe sozinho, e o que está na fila continua aparecendo na tela.'
+                  + (queue.lastError ? '\nÚltima falha: '+queue.lastError : '')
+                  + '\nClique para tentar agora.'}
+          onClick=${()=>store.flushQueue?.()}>
+          ${queue.pending} ${queue.pending===1?'alteração aguardando envio':'alterações aguardando envio'} · tentar agora</button>`}
+        ${mode==='cloud' && !online && queue.pending===0 && html`<span class="pill mode-offline" style="font-size:11px"
+          title="Sem conexão com a nuvem. O que você fizer agora fica guardado neste navegador e sobe sozinho quando a conexão voltar.">offline</span>`}
         ${store?.mode==='local' && localUsage>=0.75*LOCAL_QUOTA_CHARS && html`<span class="pill mode-offline" style="font-size:11px"
           title="O armazenamento deste navegador (~5 MB) está quase cheio: quando estourar, NADA mais é salvo. Baixe um .qualilab agora e considere migrar para o modo arquivo ou nuvem (pílula do projeto → Conexão).">
           armazenamento ${Math.round(localUsage/LOCAL_QUOTA_CHARS*100)}% cheio</span>`}
@@ -6676,6 +6994,16 @@ function App(){
       <b>Atenção: as últimas alterações NÃO foram salvas</b> ${mode==='local' ? '(armazenamento do navegador cheio ou indisponível).' : '(falha ao gravar o arquivo: verifique se o disco/pasta ainda está acessível).'}
       Continuar trabalhando sem resolver isso arrisca perder o que vier depois. Baixe um backup agora:
       <button class="btn sm" onClick=${saveQualilab}>Baixar .qualilab</button>
+    </div>`}
+    ${/* FILA-BLOCK: recusa DEFINITIVA (a nuvem julgou e disse não) ou estouro do teto de
+         tentativas. Nunca é descarte silencioso: a fila tira da fila e joga aqui. */''}
+    ${queue.rejected.length>0 && html`<div class="banner err">
+      <b>${queue.rejected.length} alteração(ões) a nuvem recusou</b> e não estão salvas${queue.rejected[0]?.lastError ? ' ('+queue.rejected[0].lastError+')' : ''}:
+      ${[...new Set(queue.rejected.map(r=>r.label).filter(Boolean))].join(', ')}.
+      Em geral é permissão (o seu papel no projeto mudou) ou o alvo ter sido excluído por outra pessoa enquanto você estava sem conexão.
+      Baixe um backup antes de refazer:
+      <button class="btn sm" onClick=${saveQualilab}>Baixar .qualilab</button>
+      <button class="icon-btn" title="já resolvi, ocultar este aviso" onClick=${()=>store.clearRejected?.()}>✕</button>
     </div>`}
     ${err && (()=>{ const h = humanizeError(err); return html`<div class="banner err">${h||err}${h && html`<div class="meta" style="margin-top:4px">${err}</div>`} <button class="icon-btn" title="ocultar este aviso" onClick=${()=>setErr(null)}>✕</button></div>`; })()}
     ${importMsg && html`<div class="banner warn">${importMsg} <button class="icon-btn" title="ocultar este aviso" onClick=${()=>setImportMsg(null)}>✕</button></div>`}

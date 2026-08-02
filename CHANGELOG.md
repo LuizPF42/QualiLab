@@ -9,6 +9,33 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION` no `index.html`, acrescente a seção aqui e
 > regenere o estável (`scripts/gen-estavel.sh`).
 
+## 1.4.7 (01/08/2026)
+
+### A nuvem cair não faz mais você perder trabalho
+
+Antes, se o servidor não respondesse na hora de salvar, o QualiLab mostrava um aviso vermelho e a
+alteração simplesmente não acontecia: cabia a você perceber, lembrar o que estava fazendo e refazer.
+Numa conversa longa da tela **Analisar com IA**, isso custava a análise inteira.
+
+Agora, quando a nuvem falha por um motivo passageiro (conexão caiu, servidor fora do ar, tempo
+esgotado), a alteração **fica guardada neste navegador e continua aparecendo na tela**. Ela sobe
+sozinha assim que a nuvem responder, e o cabeçalho mostra quantas estão aguardando — clique ali
+para tentar na hora. Você pode continuar trabalhando normalmente enquanto isso, e **fechar a aba
+não perde a fila**: ela volta quando você reabrir o projeto.
+
+Vale para o trabalho do dia a dia: codificações, respostas de categoria, notas (memos), conversas
+salvas da IA e o diário de memórias. Mudanças estruturais — criar ou excluir documento, mexer no
+esquema de códigos, gestão do projeto e importações — continuam avisando na hora se falharem: numa
+pesquisa coletiva, reaplicar esse tipo de mudança minutos depois produziria um estado que ninguém
+pediu.
+
+Se a nuvem **recusar** uma alteração de vez (por exemplo, o seu papel no projeto mudou, ou outra
+pessoa excluiu o que você estava anotando), ela não some calada: aparece um aviso dizendo o que foi
+recusado, com atalho para baixar um `.qualilab` antes de refazer.
+
+Por consequência, o indicador `offline` do cabeçalho parou de dizer "alterações não estão sendo
+salvas" — não é mais verdade.
+
 ## 1.4.6 (01/08/2026)
 
 ### A aba "Visualização" agora se chama "Leitura"
