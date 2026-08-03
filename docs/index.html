@@ -762,7 +762,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.7';
+const QUALILAB_VERSION = '1.4.8';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -7020,9 +7020,17 @@ function App(){
                 das entradas do zip — parece aleatoria). Virou um popover com o DocsNav: filtro por
                 nome, ordenacao e agrupamento por categoria. A barra do leitor e de UMA LINHA, entao
                 o gatilho e um botao com ellipsis, e a lista mora no popover. */''}
-          <div style="position:relative;flex:0 1 auto;min-width:0">
+          ${/* GOTCHA: o `width:100%` do botao e load-bearing. Largura AUTO em <button> e
+                fit-content mesmo com display:block (Chrome dimensiona controle de formulario
+                pelo conteudo, nao pelo bloco que o contem), entao o botao ficava do tamanho do
+                titulo inteiro, ignorava o `overflow:hidden` (nada a cortar: a caixa era do
+                tamanho do texto) e VAZAVA por cima do "＋ enviar" e do "pesquisar" quando o
+                wrapper encolhia. Com width:100% ele acompanha o wrapper e o corte com "…"
+                volta a acontecer. O piso de 110px no wrapper garante que sobre pelo menos o
+                comeco do nome quando a barra aperta. */''}
+          <div style="position:relative;flex:0 1 auto;min-width:110px">
             <button class="btn sm ghost" disabled=${editingText||docs.length===0}
-              style="max-width:520px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block"
+              style="width:100%;max-width:520px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block"
               title=${docs.length===0?'Nenhum documento no projeto':'Escolher documento (filtrar, ordenar, agrupar)'}
               onClick=${()=>setDocsMenu(o=>!o)}>
               ${docs.length===0 ? 'sem documentos'

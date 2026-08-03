@@ -9,6 +9,16 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION` no `index.html`, acrescente a seção aqui e
 > regenere o estável (`scripts/gen-estavel.sh`).
 
+## 1.4.8 (03/08/2026)
+
+### O nome do documento não escorre mais por cima dos botões
+
+Na tela **Codificação**, com a janela estreita (ou o painel da direita bem largo), o nome de um
+documento longo passava por cima do "＋ enviar" e do "pesquisar": as letras ficavam sobrepostas
+aos botões e a barra virava um borrão. Agora o nome é cortado com "…" quando não cabe, e os
+botões continuam legíveis e clicáveis. O nome completo segue no tooltip e na lista que abre ao
+clicar nele.
+
 ## 1.4.7 (01/08/2026)
 
 ### A nuvem cair não faz mais você perder trabalho
