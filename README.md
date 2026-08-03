@@ -87,6 +87,14 @@ Cada categoria pode ter descrição/instrução e habilitar as opções **"Não 
   - **Web Annotation (W3C)** — exporta as anotações no padrão aberto **[W3C Web Annotation Data Model](https://www.w3.org/TR/annotation-model/)** (JSON-LD), a mesma "língua de dados" sob o ATI, o [hypothes.is](https://web.hypothes.is/), o Anno-REP e o Dataverse — interoperável sem casar com nenhuma ferramenta específica.
   - Em projeto coletivo, os três respeitam a camada escolhida (gabarito final ou individuais). Em todas as saídas de transparência, trechos marcados como **censura** são mascarados por padrão.
 
+### Busca semântica (sem chave, no seu navegador)
+
+Além da busca literal (com expressão regular, diferenciação de maiúsculas e palavra inteira) e da busca global em todo o corpus, o leitor tem **"≈ termos"**: você descreve o *sentido* que procura e o app sugere **palavras e expressões do seu próprio corpus** próximas daquele sentido. Clicar numa sugestão dispara a busca **literal** por ela, com a etiqueta `≈ termo` em cada ocorrência — o resultado continua sendo texto que está mesmo lá, não um palpite do modelo.
+
+Isso **não é IA generativa e não pede chave nenhuma**. Roda com [transformers.js](https://github.com/huggingface/transformers.js) e o modelo [`paraphrase-multilingual-MiniLM-L12-v2`](https://huggingface.co/Xenova/paraphrase-multilingual-MiniLM-L12-v2), um modelo de *embeddings* (converte texto em coordenadas, para medir proximidade de sentido; não escreve nada), **executado dentro do navegador**: o modelo vem até os dados, os dados não vão até o modelo. Por isso vale também nos modos rascunho e arquivo sem quebrar a promessa de privacidade deles, e funciona sem conexão depois do primeiro uso.
+
+Dois custos a saber: o modelo é baixado **uma vez** (~113 MB no caminho WASM, ~224 MB no caminho WebGPU, em cache do navegador depois disso) e a **primeira consulta da sessão leva ~10 s** enquanto o motor sobe. O índice do vocabulário é um **cache derivado**: fica no IndexedDB deste navegador, é refeito quando o corpus muda e **não viaja** no `.qualilab`.
+
 ### Análise assistida por IA (opcional)
 Duas telas **opt-in e transparentes** — **Codificar com IA** (a IA propõe codificação, categorização e organização de códigos; você aprova item a item) e **Analisar com IA** (conversa sobre o material selecionado). Nada é enviado sem você clicar, e o **prompt exato** fica sempre visível antes de rodar.
 
@@ -243,6 +251,7 @@ Sem build, sem bundler, sem framework pesado.
 - **DOCX**: [mammoth](https://github.com/mwilliamson/mammoth.js)
 - **QDPX**: [JSZip](https://stuk.github.io/jszip/)
 - **Import Taguette (`.sqlite3`)**: [sql.js](https://github.com/sql-js/sql.js) (SQLite compilado para WASM)
+- **Busca semântica**: [transformers.js](https://github.com/huggingface/transformers.js) + o modelo de *embeddings* [`paraphrase-multilingual-MiniLM-L12-v2`](https://huggingface.co/Xenova/paraphrase-multilingual-MiniLM-L12-v2) (ONNX, baixado sob demanda e executado **no navegador**; nenhuma chave, nenhuma chamada a servidor de IA)
 - **Import Excel (`.xlsx`)**: [SheetJS](https://sheetjs.com/) (carregado sob demanda, só ao importar uma planilha)
 - **Armazenamento local**: File System Access API + IndexedDB (nativos do navegador)
 - **Nuvem** (opcional): [Supabase](https://supabase.com/)
