@@ -762,7 +762,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.8';
+const QUALILAB_VERSION = '1.4.9';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -1370,15 +1370,27 @@ function findMatches(text, query, opts, cap){
    no mesmo span (ex.: um trecho com "Tema X" que por acaso contem um nome ja censurado por
    outro codigo continuaria aparecendo intacto aqui). Cobertura parcial, de proposito por ora —
    ver CLAUDE.md ("Censura — proximos passos") pra fechar essa lacuna e estender pra exports. */
-function maskRedactedContent(content, codings, maskedCodeIds){
+/* DUAS MASCARAS, DOIS CONTEXTOS (decidido em 29/jul, spec em to-do/spec-mcp-tools.md):
+   - prosa SEM offsets (prompt das telas de IA, ATI, W3C, Relatorio) -> rotulo '[trecho censurado]';
+   - superficie COM offsets (os tools de leitura do corpus) -> opts.fill, que PRESERVA O
+     COMPRIMENTO trocando cada caractere por █.
+   Nao e estetica: o rotulo tem 18 chars e substitui faixa de qualquer tamanho, entao todo offset
+   DEPOIS da primeira faixa mascarada passaria a apontar pro lugar errado — e os tools servem
+   span_start/span_end contra este mesmo texto. Uma funcao so, com opcao: mascara duplicada e
+   exatamente a classe de bug que "vaza em silencio". */
+function maskRedactedContent(content, codings, maskedCodeIds, opts){
   if(!maskedCodeIds || !maskedCodeIds.size) return content;
   const ranges = (codings||[])
     .filter(c=>maskedCodeIds.has(c.code_id) && c.span_start>=0 && c.span_end>c.span_start)
     .map(c=>[c.span_start, c.span_end]).sort((a,b)=>a[0]-b[0]);
   if(!ranges.length) return content;
   const merged=[]; for(const r of ranges){ const last=merged[merged.length-1]; if(last && r[0]<=last[1]) last[1]=Math.max(last[1],r[1]); else merged.push([...r]); }
+  const fill = !!(opts && opts.fill);
   let out='', pos=0;
-  for(const [s,e] of merged){ out += content.slice(pos,s) + '[trecho censurado]'; pos = e; }
+  for(const [s,e] of merged){
+    out += content.slice(pos,s) + (fill ? '█'.repeat(Math.max(0, Math.min(e, content.length) - s)) : '[trecho censurado]');
+    pos = e;
+  }
   return out + content.slice(pos);
 }
 
@@ -1483,7 +1495,7 @@ const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Math.random().toStr
 function sameJson(a,b){ return a===b || (Array.isArray(a) && Array.isArray(b) && a.length===b.length && JSON.stringify(a)===JSON.stringify(b)); }
 
 // telas que dependem do agregado do projeto inteiro (allCodings/allValues via loadAll)
-const AGG_VIEWS = ['visualizar','graficos','ia_analisar','ia_codificar','esquema','relatorio','reconciliar','memos'];
+const AGG_VIEWS = ['visualizar','graficos','ia_analisar','ia_codificar','esquema','relatorio','reconciliar','memos','mcp'];
 
 /* traduz os erros técnicos mais frequentes (em inglês, vindos do Supabase/rede/navegador)
    pra uma mensagem acionável em português. Devolve null quando não reconhece — o chamador
@@ -4899,7 +4911,7 @@ function NavGroup({ title, children, defaultOpen=true }){
 function useDocPdfIndexes(store, docs, mainView){
   const [docPdfIdx, setDocPdfIdx] = useState({});   // docId -> { content, index|null }
   useEffect(()=>{
-    if((mainView!=='visualizar' && mainView!=='relatorio') || !store) return;
+    if((mainView!=='visualizar' && mainView!=='relatorio' && mainView!=='mcp') || !store) return;
     let alive = true;
     // PERF: era doc-a-doc em SERIE — na nuvem, um download do .idx.json por documento, um
     // depois do outro (um corpus com 51 PDFs = 51 idas ao Storage enfileiradas antes do
@@ -5587,7 +5599,7 @@ function App(){
     if(!store || !project || !store.listMemos){ setMemos([]); return; }
     try{ setMemos(await store.listMemos(project.id) || []); }catch(e){ setMemos([]); }
   }, [store, project]);
-  useEffect(()=>{ if(phase==='work' && (mainView==='memos'||mainView==='ia_analisar'||mainView==='codificar'||mainView==='relatorio'||mainView==='visualizar'||mainView==='graficos')) loadMemos(); }, [phase, mainView, loadMemos]);
+  useEffect(()=>{ if(phase==='work' && (mainView==='memos'||mainView==='ia_analisar'||mainView==='codificar'||mainView==='relatorio'||mainView==='visualizar'||mainView==='graficos'||mainView==='mcp')) loadMemos(); }, [phase, mainView, loadMemos]);
   async function saveMemo(scope, targetId, content, label){
     await store.setMemo(project.id, scope, targetId, content, user?.name||'anônimo', label);
     await loadMemos();
@@ -10644,6 +10656,65 @@ async function aiPostWithTempFallback(post, tempOK, label){
   }
   return res;
 }
+/* ===== TOOL CALLING — o envelope de cada provedor (jul/2026) ==================================
+   O laco agentico de leitura do corpus (contrato fechado em to-do/spec-mcp-tools.md) existe pra
+   que o modelo PECA o material quando precisa, em vez de receber um recorte feito antes da
+   pergunta. Ganho metodologico: ele fica OBRIGADO a pedir o trecho em vez de "lembrar" dele —
+   defesa estrutural contra citacao alucinada, nao exortacao no prompt.
+
+   Sao quatro envelopes incompativeis (o Gemini nem tem id de chamada), e o laco nao pode conhecer
+   nenhum deles, senao trocar de provedor vira reescrita da tela. Entao o app fala uma FORMA
+   NEUTRA e cada adaptador traduz nos dois sentidos:
+
+     definicao de tool   { name, description, parameters }     parameters = JSON Schema de objeto
+     turno do modelo     { role:'assistant', content, tool_calls:[{ id, name, args }] }
+     resultado do tool   { role:'tool', tool_call_id, name, content }    content = string (JSON)
+     retorno do adapter  { text, toolCalls:[{ id, name, args, argsError }], raw }
+
+   TOOLS SO VAO PELO CAMINHO DIRETO. A ai-ask nao aceita `tools` no corpo — e mesmo que aceitasse,
+   cair no proxy num laco agentico mandaria pedaco do corpus pro operador do servidor A CADA
+   PASSO, que e exatamente o que o cliente-direto eliminou (M7 do to-do). Quem nao pode ir direto
+   recebe erro dizendo isso; fallback silencioso aqui seria vazamento, nao robustez.
+   =============================================================================================== */
+const aiToolId = (name, i) => `call_${i}_${String(name||'tool').replace(/[^\w]/g,'')}`;
+// Em OpenAI/compat os argumentos chegam como STRING. JSON ruim vira SINAL, nunca objeto vazio: um
+// tool rodando com os defaults por causa de um parse falho e o erro que ninguem enxerga (a
+// resposta sai plausivel). Quem chama devolve o argsError ao modelo como erro que ensina a sair.
+function aiParseToolArgs(s){
+  if(s == null || s === '') return { args:{} };
+  if(typeof s === 'object') return { args:s };
+  try{ const v = JSON.parse(s); return { args: (v && typeof v === 'object') ? v : {} }; }
+  catch(e){ return { args:{}, argsError:String(s).slice(0,300) }; }
+}
+// GEMINI: nao ha id de chamada — a correlacao e por NOME e por ORDEM (as respostas voltam na
+// mesma ordem das chamadas). O id da forma neutra e sintetico, so pro laco ter uma chave.
+// O schema tambem passa por um filtro: a API recusa o vocabulario de validacao que ela nao
+// implementa, e o 400 que ela devolve nao diz qual palavra ofendeu.
+function aiGeminiSchema(s){
+  if(!s || typeof s !== 'object') return s;
+  if(Array.isArray(s)) return s.map(aiGeminiSchema);
+  const fora = ['$schema','$defs','definitions','$ref','additionalProperties','examples','default'];
+  const out = {};
+  for(const k of Object.keys(s)){ if(fora.includes(k)) continue; out[k] = aiGeminiSchema(s[k]); }
+  return out;
+}
+function aiGeminiContents(contents){
+  const out = [];
+  for(const m of contents){
+    if(m.role === 'tool'){
+      // functionResponse.response tem de ser OBJETO (string crua da 400); o texto vai numa chave
+      out.push({ role:'user', parts:[{ functionResponse:{ name:m.name, response:{ result:String(m.content||'') } } }] });
+    } else if(m.role === 'assistant'){
+      const parts = [];
+      if(m.content) parts.push({ text:String(m.content) });
+      for(const c of (m.tool_calls||[])) parts.push({ functionCall:{ name:c.name, args:c.args||{} } });
+      out.push({ role:'model', parts: parts.length ? parts : [{ text:'' }] });
+    } else {
+      out.push({ role:'user', parts:[{ text:String(m.content||'') }] });
+    }
+  }
+  return out;
+}
 // chave no HEADER (x-goog-api-key), nunca na query string: uma URL invalida ou erro de rede
 // poderia ecoar a URL inteira (com a chave) na mensagem de erro.
 async function aiCallGemini(apiKey, model, systemParts, contents, opts, signal){
@@ -10652,30 +10723,61 @@ async function aiCallGemini(apiKey, model, systemParts, contents, opts, signal){
     method: 'POST',
     headers: { 'Content-Type':'application/json', 'x-goog-api-key': apiKey },
     body: JSON.stringify({
-      contents: contents.map(m=>({ role: m.role==='assistant' ? 'model' : 'user', parts:[{ text:m.content }] })),
+      contents: aiGeminiContents(contents),
       ...(systemParts.length ? { systemInstruction: { parts:[{ text: systemParts.join('\n') }] } } : {}),
+      ...(opts.tools?.length ? { tools:[{ functionDeclarations: opts.tools.map(t=>({
+        name: t.name, description: t.description, parameters: aiGeminiSchema(t.parameters),
+      })) }] } : {}),
       generationConfig: {
         temperature: 0.3,
         maxOutputTokens: AI_MAX_TOKENS,
         // saida estruturada NATIVA do Gemini nas chamadas que esperam JSON — no caminho da ai-ask
-        // isso nunca chegava a ser usado (o front nunca mandava `json` no corpo).
-        ...(opts.json ? { responseMimeType:'application/json' } : {}),
+        // isso nunca chegava a ser usado (o front nunca mandava `json` no corpo). NAO convive com
+        // function calling (da 400): com tools, quem estrutura a saida e o schema do proprio tool.
+        ...((opts.json && !opts.tools?.length) ? { responseMimeType:'application/json' } : {}),
       },
     }),
   }, signal);
   if(!res.ok) throw new Error(`Gemini API (${res.status}): ${aiTrunc(await res.text())}`);
   const data = await res.json();
-  const text = (data.candidates?.[0]?.content?.parts || []).map(p=>p.text).join('') || '';
-  return { text, raw: data };
+  const parts = data.candidates?.[0]?.content?.parts || [];
+  const text = parts.map(p=>p.text).join('') || '';
+  const toolCalls = parts.filter(p=>p.functionCall).map((p,i)=>({
+    id: aiToolId(p.functionCall.name, i), name: p.functionCall.name, args: p.functionCall.args || {},
+  }));
+  return { text, toolCalls, raw: data };
 }
 // Responses API (/v1/responses), nao a Chat Completions classica — a serie GPT-5 quebrou
 // compatibilidade de formas diferentes por modelo. A Responses API NAO suporta
 // response_format:json_object; por isso `json` nao chega aqui (o parseAIJson tolerante cobre).
+// Na Responses API o turno do modelo e o resultado do tool sao ITENS do `input`, nao mensagens
+// com role: o function_call tem de voltar ANTES do seu function_call_output, correlacionados pelo
+// call_id. Mandar so o resultado (sem reenviar a chamada) da 400.
+function aiOpenAIInput(contents){
+  const out = [];
+  for(const m of contents){
+    if(m.role === 'tool'){
+      out.push({ type:'function_call_output', call_id:m.tool_call_id, output:String(m.content||'') });
+    } else if(m.role === 'assistant'){
+      if(m.content) out.push({ role:'assistant', content:String(m.content) });
+      for(const c of (m.tool_calls||[])) out.push({ type:'function_call', call_id:c.id, name:c.name, arguments: JSON.stringify(c.args||{}) });
+    } else {
+      out.push({ role:'user', content:String(m.content||'') });
+    }
+  }
+  return out;
+}
 async function aiCallOpenAI(apiKey, model, systemParts, contents, opts, signal){
   const base = {
     model,
-    input: [ ...(systemParts.length ? [{ role:'system', content: systemParts.join('\n') }] : []), ...contents ],
+    input: [ ...(systemParts.length ? [{ role:'system', content: systemParts.join('\n') }] : []), ...aiOpenAIInput(contents) ],
     max_output_tokens: AI_MAX_TOKENS,
+    // forma ACHATADA da Responses API (name/parameters no topo, nao aninhados em `function`).
+    // strict:false explicito: no modo estrito o schema teria de declarar additionalProperties
+    // false e TODO campo como obrigatorio, o que mataria os parametros opcionais dos tools.
+    ...(opts.tools?.length ? { tools: opts.tools.map(t=>({
+      type:'function', name:t.name, description:t.description, parameters:t.parameters, strict:false,
+    })) } : {}),
   };
   const post = (withTemp)=>aiFetchRetry('https://api.openai.com/v1/responses', {
     method: 'POST',
@@ -10691,19 +10793,49 @@ async function aiCallOpenAI(apiKey, model, systemParts, contents, opts, signal){
         .flatMap(item=>(item.content || []).filter(c=>c.type==='output_text').map(c=>c.text))
         .join('')
     ?? '';
-  return { text, raw: data };
+  const toolCalls = (data.output || []).filter(item=>item.type==='function_call').map((item,i)=>{
+    const p = aiParseToolArgs(item.arguments);
+    return { id: item.call_id || aiToolId(item.name, i), name: item.name, args: p.args, ...(p.argsError ? { argsError:p.argsError } : {}) };
+  });
+  return { text, toolCalls, raw: data };
 }
 // Anthropic: `system` separado das mensagens e max_tokens obrigatorio. O header
 // anthropic-dangerous-direct-browser-access e o que habilita CORS na API deles — sem ele o
 // navegador nem manda a requisicao. (O nome e da Anthropic; o "perigo" que ele nomeia e expor a
 // chave num app publico de chave unica, que nao e o nosso caso: aqui a chave e do proprio
 // pesquisador, ja mora no localStorage dele e nao trafega mais pra lugar nenhum.)
+// Anthropic: a chamada e um bloco `tool_use` dentro do turno do assistant, e o resultado e um
+// bloco `tool_result` num turno de USER. REGRA QUE MORDE: um turno de assistant com N tool_use
+// tem de ser respondido por UM unico turno de user com os N tool_result — N turnos separados sao
+// recusados. Por isso os resultados consecutivos sao fundidos aqui.
+function aiAnthropicMessages(contents){
+  const out = [];
+  for(const m of contents){
+    if(m.role === 'tool'){
+      const bloco = { type:'tool_result', tool_use_id:m.tool_call_id, content:String(m.content||'') };
+      const ult = out[out.length-1];
+      if(ult && ult.role==='user' && Array.isArray(ult.content) && ult.content[0]?.type==='tool_result') ult.content.push(bloco);
+      else out.push({ role:'user', content:[bloco] });
+    } else if(m.role === 'assistant' && (m.tool_calls||[]).length){
+      const blocos = [];
+      if(m.content) blocos.push({ type:'text', text:String(m.content) });
+      for(const c of m.tool_calls) blocos.push({ type:'tool_use', id:c.id, name:c.name, input:c.args||{} });
+      out.push({ role:'assistant', content: blocos });
+    } else {
+      out.push({ role: m.role==='assistant' ? 'assistant' : 'user', content:String(m.content||'') });
+    }
+  }
+  return out;
+}
 async function aiCallAnthropic(apiKey, model, systemParts, contents, opts, signal){
   const base = {
     model,
     max_tokens: AI_MAX_TOKENS,
     ...(systemParts.length ? { system: systemParts.join('\n') } : {}),
-    messages: contents,
+    ...(opts.tools?.length ? { tools: opts.tools.map(t=>({
+      name: t.name, description: t.description, input_schema: t.parameters,
+    })) } : {}),
+    messages: aiAnthropicMessages(contents),
   };
   const post = (withTemp)=>aiFetchRetry('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -10717,7 +10849,8 @@ async function aiCallAnthropic(apiKey, model, systemParts, contents, opts, signa
   if(!res.ok) throw new Error(`Anthropic API (${res.status}): ${aiTrunc(await res.text())}`);
   const data = await res.json();
   const text = (data.content || []).filter(b=>b.type==='text').map(b=>b.text).join('') || '';
-  return { text, raw: data };
+  const toolCalls = (data.content || []).filter(b=>b.type==='tool_use').map(b=>({ id:b.id, name:b.name, args:b.input || {} }));
+  return { text, toolCalls, raw: data };
 }
 // Formato classico da OpenAI (/chat/completions), que serve os TRES provedores de URL livre:
 // custom (DeepSeek/Mistral/Qwen/vLLM), azure (autenticacao por header api-key; `model` = nome do
@@ -10726,14 +10859,32 @@ async function aiCallAnthropic(apiKey, model, systemParts, contents, opts, signa
 // entendem a tarefa mas ignoram "responda so JSON" e devolvem prosa, e la a gramatica do servidor
 // resolve. Num endpoint custom/azure arbitrario o parametro pode nao ser suportado e virar 400 —
 // mandar seria trocar um risco conhecido (prosa, que o parseAIJson tolera) por um erro duro.
+// Formato classico de tools: `tool_calls` no turno do assistant e `role:'tool'` no resultado. E o
+// que o Ollama expoe, entao o laco agentico cabe nele sem plumbing propria (o modelo e que decide
+// se da conta — chamada de tool erra mais que seguir JSON, e num laco o erro COMPOE).
+function aiCompatMessages(contents){
+  return contents.map(m=>{
+    if(m.role === 'tool') return { role:'tool', tool_call_id:m.tool_call_id, content:String(m.content||'') };
+    if(m.role === 'assistant' && (m.tool_calls||[]).length) return {
+      role:'assistant', content: m.content ? String(m.content) : null,
+      tool_calls: m.tool_calls.map(c=>({ id:c.id, type:'function', function:{ name:c.name, arguments: JSON.stringify(c.args||{}) } })),
+    };
+    return { role: m.role==='assistant' ? 'assistant' : 'user', content:String(m.content||'') };
+  });
+}
 async function aiCallOpenAICompat(kind, baseUrl, apiKey, model, systemParts, contents, opts, signal){
   const url = `${String(baseUrl).replace(/\/+$/, '')}/chat/completions`;
   const label = kind==='azure' ? 'Azure OpenAI' : kind==='ollama' ? 'Servidor local' : 'API personalizada';
   const base = {
     model,
-    messages: [ ...(systemParts.length ? [{ role:'system', content: systemParts.join('\n') }] : []), ...contents ],
+    messages: [ ...(systemParts.length ? [{ role:'system', content: systemParts.join('\n') }] : []), ...aiCompatMessages(contents) ],
     max_tokens: AI_MAX_TOKENS,
-    ...(kind==='ollama' ? { stream:false, ...(opts.json ? { response_format:{ type:'json_object' } } : {}) } : {}),
+    ...(opts.tools?.length ? { tools: opts.tools.map(t=>({ type:'function', function:{
+      name: t.name, description: t.description, parameters: t.parameters,
+    } })) } : {}),
+    // com tools o modo JSON sai de cena: a gramatica de json_object obrigaria a resposta a ser um
+    // objeto, e o turno que CHAMA um tool nao e JSON nenhum.
+    ...(kind==='ollama' ? { stream:false, ...((opts.json && !opts.tools?.length) ? { response_format:{ type:'json_object' } } : {}) } : {}),
   };
   const post = (withTemp)=>aiFetchRetry(url, {
     method: 'POST',
@@ -10748,7 +10899,13 @@ async function aiCallOpenAICompat(kind, baseUrl, apiKey, model, systemParts, con
   const res = await aiPostWithTempFallback(post, true, label);
   if(!res.ok) throw new Error(`${label} (${res.status}): ${aiTrunc(await res.text().catch(()=>''))||'sem detalhe'}`);
   const data = await res.json();
-  return { text: data.choices?.[0]?.message?.content || '', raw: data };
+  const msg = data.choices?.[0]?.message || {};
+  // servidor local as vezes devolve tool_call sem id; sem um id o resultado nao tem como voltar
+  const toolCalls = (msg.tool_calls || []).map((tc,i)=>{
+    const p = aiParseToolArgs(tc.function?.arguments);
+    return { id: tc.id || aiToolId(tc.function?.name, i), name: tc.function?.name || '', args: p.args, ...(p.argsError ? { argsError:p.argsError } : {}) };
+  });
+  return { text: msg.content || '', toolCalls, raw: data };
 }
 // Normaliza o "usage" (tokens REAIS da resposta) de cada provedor pra { input, output, cached } —
 // mesma funcao da ai-ask. A Anthropic reporta input_tokens SEM o cache: somamos read+creation.
@@ -10789,9 +10946,11 @@ function aiProxyFallbackOK(e, cfg){
   if(!e || e.name === 'AbortError' || !e.aiNetwork) return false;
   return cfg.provider === 'custom' || cfg.provider === 'azure';
 }
-// Caminho DIRETO. Recebe o mesmo { system, messages } do resto do app; devolve o texto e carimba
-// o LAST_AI_USAGE (calculadora de custo), como o caminho da ai-ask faz.
-async function askAIDirect(cfg, { system, messages, signal, json }){
+// Caminho DIRETO, forma COMPLETA: devolve o turno inteiro ({ text, toolCalls, usage, raw }) e
+// carimba o LAST_AI_USAGE (calculadora de custo), como o caminho da ai-ask faz. O askAIDirect
+// abaixo continua devolvendo so o texto — e o contrato que as 4 telas de IA usam hoje, e nao ha
+// motivo pra elas passarem a desembrulhar um objeto.
+async function askAIDirectFull(cfg, { system, messages, signal, json, tools }){
   const provider = cfg.provider;
   const model = activeModelId(cfg);
   const baseUrl = cfg.baseUrl || (isLocalProvider(provider) ? 'http://localhost:11434/v1' : '');
@@ -10799,9 +10958,15 @@ async function askAIDirect(cfg, { system, messages, signal, json }){
   if(isCompat && !model) throw new Error('Informe o modelo em "Minha conta" antes de usar a IA com este provedor.');
   const all = [ ...(system ? [{ role:'system', content: system }] : []), ...(messages || []) ];
   const systemParts = all.filter(m=>m.role==='system').map(m=>String(m.content||''));
-  const contents = all.filter(m=>m.role!=='system')
-    .map(m=>({ role: m.role==='assistant' ? 'assistant' : 'user', content: String(m.content||'') }));
-  const opts = { json };
+  // a forma neutra do TOOL CALLING atravessa aqui intacta (tool_calls e role:'tool'); quem traduz
+  // pro envelope de cada provedor sao os aiCall*, nao este ponto.
+  const contents = all.filter(m=>m.role!=='system').map(m=>(
+    m.role === 'tool'
+      ? { role:'tool', tool_call_id:m.tool_call_id, name:m.name, content:String(m.content||'') }
+      : { role: m.role==='assistant' ? 'assistant' : 'user', content:String(m.content||''),
+          ...((m.tool_calls||[]).length ? { tool_calls:m.tool_calls } : {}) }
+  ));
+  const opts = { json, tools };
   let out;
   try{
     out = provider==='gemini'    ? await aiCallGemini(cfg.apiKey, model, systemParts, contents, opts, signal)
@@ -10817,8 +10982,9 @@ async function askAIDirect(cfg, { system, messages, signal, json }){
   }
   const u = aiNormUsage(provider, out.raw);
   LAST_AI_USAGE = (u && (u.input || u.output)) ? u : null;
-  return out.text || '';
+  return { text: out.text || '', toolCalls: out.toolCalls || [], usage: LAST_AI_USAGE, raw: out.raw };
 }
+async function askAIDirect(cfg, args){ return (await askAIDirectFull(cfg, args)).text; }
 // Caminho PROXY (Edge Function ai-ask): chave do servidor, e fallback de CORS de custom/azure.
 // IMPORTANTE: a ai-ask SO usa body.system no fallback de { prompt } — quando vem body.messages,
 // ela ignora body.system e extrai o system de mensagens com role:'system' DENTRO do array. Por
@@ -10857,6 +11023,25 @@ async function askAIChat({ system, messages, signal, json }){
     }
   }
   return askAIProxy(cfg, { system, messages, signal });
+}
+// Motor do LACO AGENTICO (um PASSO dele). Diferenca pro askAIChat: devolve o turno inteiro
+// ({ text, toolCalls, usage }) em vez de so o texto, porque quem chama precisa saber se o modelo
+// pediu material — executa os tools, acrescenta os resultados as mensagens e chama de novo.
+// SEMPRE DIRETO, sem fallback pelo proxy: ver o bloco TOOL CALLING. A recusa aqui e uma frase
+// acionavel, nao um erro cru — quem cai nela e quem ainda nao configurou chave propria.
+async function askAITools({ system, messages, tools, signal }){
+  const cfg = getAIConfig();
+  if(!canAskDirect(cfg)){
+    throw new Error('A análise com ferramentas conversa direto com o provedor, então precisa de uma chave própria: configure em "Minha conta". (Ela não passa pela função do servidor, de propósito: num laço, cada passo mandaria mais um pedaço do corpus para o operador.)');
+  }
+  try{
+    return await askAIDirectFull(cfg, { system, messages, tools, signal });
+  }catch(e){
+    // custom/azure com CORS recusado: no askAIChat isso cairia no proxy; aqui nao pode, e o
+    // pesquisador precisa saber que o caminho existe mas nao serve a esta tela.
+    if(aiProxyFallbackOK(e, cfg)) throw new Error(`Não consegui falar com o endpoint configurado, e a análise com ferramentas não usa o caminho pelo servidor. Confira se o endpoint libera este site (CORS). Detalhe: ${e.message || e}`);
+    throw e;
+  }
 }
 // caminho de UMA rodada (pergunta -> resposta), sobre o mesmo motor
 async function askAI(prompt){
@@ -15630,6 +15815,7 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
     </div>
   </div></div>`;
 }
+
 
 try {
   render(html`<${App} />`, document.getElementById('app'));

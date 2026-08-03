@@ -6,8 +6,22 @@ e decisões internas) está nos commits e no `CLAUDE.md`.
 A versão aparece no canto direito do cabeçalho e no rodapé da tela de entrada. **Cite esse
 número ao relatar um problema**: sem ele não há como saber qual build o seu navegador carregou.
 
-> Ao publicar uma versão: suba o `QUALILAB_VERSION` no `index.html`, acrescente a seção aqui e
-> regenere o estável (`scripts/gen-estavel.sh`).
+> **Este arquivo é próprio deste repositório desde ago/2026** e descreve só o aplicativo
+> publicado aqui. O QualiLab dentro do assistente (extensão do Claude Desktop, plugin) tem
+> numeração e changelog próprios, no repositório `QualiLab-plugin` — as ferramentas de
+> leitura por agente não fazem parte deste app.
+>
+> Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
+> gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
+
+## 1.4.9 (03/08/2026)
+
+### Melhorias internas de produção do código do app
+
+Nada muda na tela. Esta versão marca uma mudança na forma como o QualiLab é produzido: o
+aplicativo publicado aqui passou a ser gerado e numerado de forma independente das ferramentas
+que rodam dentro de assistentes de IA. Na prática, o que você usa fica mais previsível — cada
+versão publicada aqui traz só o que diz respeito a este aplicativo.
 
 ## 1.4.8 (03/08/2026)
 
