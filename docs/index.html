@@ -762,7 +762,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.9';
+const QUALILAB_VERSION = '1.4.11';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -3560,12 +3560,35 @@ async function parseXLSX(file){
   return { headers, rows: clean.slice(1) };
 }
 
+/* MEMO COSTURADO A PARTIR DE COLUNAS. Uma ou VARIAS colunas da planilha podem virar o memo do
+   documento (o campo "Observacoes" do pesquisador, o parecer do avaliador, o resumo do caso).
+   Com varias, o memo e COSTURADO: um bloco por coluna, na ordem em que elas aparecem na
+   planilha, separados por linha em branco — a MESMA forma do zoteroMemoText, pra memo importado
+   ter um desenho so. Por que memo e nao categoria: e texto do pesquisador SOBRE o documento, que
+   e a definicao de memo aqui, e texto longo em campo de categoria fica ilegivel (mesma decisao
+   tomada no import do Zotero para resumo e notas). `titles` prefixa cada bloco com o CABECALHO da
+   coluna: numa planilha o cabecalho e a unica coisa que diz o que aquele texto e, e dois blocos
+   sem titulo se leem como um paragrafo so, sem dono. Celula vazia nao vira bloco vazio nem titulo
+   orfao; linha sem nenhuma das colunas preenchida devolve '' e o chamador nao grava memo. */
+function sheetMemoText(row, memoCols, headers, titles){
+  const cel = (arr,c)=>{ const v = (arr||[])[c]; return v==null ? '' : String(v).trim(); };
+  const blocos = [];
+  for(const c of memoCols||[]){
+    const v = cel(row, c); if(!v) continue;
+    const h = cel(headers, c);
+    blocos.push(titles && h ? h + '\n' + v : v);
+  }
+  return blocos.join('\n\n');
+}
+
 /* aplica o .csv ja parseado e mapeado. mapping = { textCol, nameCol(-1 se nenhum),
-   cats:[{col,name,kind}] }. Espelha o padrao dos outros imports (beginBatch/endBatch,
-   setVal individual/final conforme projectMode). */
+   cats:[{col,name,kind}], memoCols:[col], memoTitles:bool }. Espelha o padrao dos outros
+   imports (beginBatch/endBatch, setVal individual/final conforme projectMode). */
 async function importCSV(parsed, mapping, store, projectId, projectMode, onProgress){
   const { headers, rows } = parsed;
   const cats = (mapping.cats||[]).filter(c=> c.col!=null && c.col>=0);
+  const memoCols = (mapping.memoCols||[]).filter(c=> c!=null && c>=0);
+  const memoTitles = mapping.memoTitles !== false;
   // monta as categorias; para tipos com opcoes, deriva os valores distintos observados
   const catDefs = cats.map(c=>{
     let options;
@@ -3595,7 +3618,12 @@ async function importCSV(parsed, mapping, store, projectId, projectMode, onProgr
     });
   });
 
-  const total = docDefs.length + catDefs.length + docDefs.length*catDefs.length;
+  const memoRows = docDefs.map(d=>({
+    scope:'document', target_id:d.id,
+    content: sheetMemoText(d.row, memoCols, headers, memoTitles), author_name:'Planilha',
+  })).filter(r=> r.content);
+
+  const total = docDefs.length + catDefs.length + docDefs.length*catDefs.length + memoRows.length;
   const tick = makeProgressTicker(onProgress, total);
   const setVal = projectMode==='individual' ? store.setFinalValue.bind(store) : store.setDocValue.bind(store);
   let linhasRecusadas = 0;   // linhas recusadas pelo servidor num lote (ver bulkFails)
@@ -3636,10 +3664,18 @@ async function importCSV(parsed, mapping, store, projectId, projectMode, onProgr
         }
       }
     }
+    // memos: um por documento (chave (scope,target_id) unica por construcao — nao precisa do
+    // dedup que o importQDPX faz). Local/File caem no setMemo serial, ja rapido em memoria.
+    if(store.setMemosBulk){
+      linhasRecusadas += bulkFails(await store.setMemosBulk(projectId, memoRows));
+      for(let i=0;i<memoRows.length;i++) await tick();
+    } else if(store.setMemo){
+      for(const r of memoRows){ await store.setMemo(projectId, r.scope, r.target_id, r.content, r.author_name); await tick(); }
+    }
   } finally {
     if(store.endBatch) await store.endBatch();
   }
-  return { documentos:docDefs.length, categorias:catDefs.length, ignoradas, linhasRecusadas };
+  return { documentos:docDefs.length, categorias:catDefs.length, memos:memoRows.length, ignoradas, linhasRecusadas };
 }
 
 /* ============ IMPORT .sqlite3 do TAGUETTE ============
@@ -3821,6 +3857,425 @@ async function importQDC(file, store, projectId, onProgress){
   }
 
   return { codigos: newCodes.length, linhasRecusadas };
+}
+
+/* ============ IMPORT ZOTERO (colecao exportada em "Zotero RDF") ============
+   O Zotero exporta uma colecao como uma PASTA, nao como um arquivo: um <nome>.rdf com os
+   metadados e uma subpasta files/<id>/<arquivo>.pdf com os anexos. Como nao ha arquivo unico
+   pra escolher, a entrada e um <input webkitdirectory> (o usuario escolhe a PASTA) e o z:path
+   de cada anexo e casado contra a lista que o navegador entrega.
+
+   MAPEAMENTO (e o porque de cada escolha):
+   - cada ITEM bibliografico com anexo PDF vira um DOCUMENTO, cujo texto sai do MESMO
+     buildPdfIndexFromBytes do "+ enviar" — entao "ver original", "p. N", grifos sobre o PDF e
+     OCR funcionam identicos, sem caminho de ingestao paralelo;
+   - os metadados escolhidos no modal viram CATEGORIAS (atributo de documento);
+   - referencia + resumo + notas do Zotero viram o MEMO do documento. Nota do Zotero e texto do
+     PESQUISADOR sobre a fonte, e no vocabulario do QualiLab isso e memo, nao atributo — alem de
+     ter centenas de caracteres, que num campo de categoria fica ilegivel.
+   Sem codigos nem codificacoes: uma biblioteca de referencias nao tem isso, e o Zotero RDF
+   tambem nao exporta as marcacoes feitas no leitor de PDF dele. */
+
+// pdf.js parseia num worker so, e o reflow roda na thread principal: paralelismo alto aqui nao
+// acelera e multiplica o pico de memoria (PDF academico de 200 paginas). Metade do limite padrao.
+const ZOT_PDF_POOL = 4;
+
+const ZOT_TYPE_LABELS = {
+  journalArticle:'Artigo de periódico', magazineArticle:'Artigo de revista', newspaperArticle:'Artigo de jornal',
+  book:'Livro', bookSection:'Capítulo de livro', encyclopediaArticle:'Verbete de enciclopédia', dictionaryEntry:'Verbete de dicionário',
+  conferencePaper:'Trabalho em evento', presentation:'Apresentação', thesis:'Tese/dissertação', manuscript:'Manuscrito',
+  preprint:'Preprint', report:'Relatório', document:'Documento', webpage:'Página web', blogPost:'Post de blog',
+  letter:'Carta', interview:'Entrevista', email:'E-mail', forumPost:'Post de fórum', instantMessage:'Mensagem',
+  statute:'Legislação', bill:'Projeto de lei', case:'Decisão judicial', hearing:'Audiência', patent:'Patente',
+  videoRecording:'Vídeo', audioRecording:'Áudio', podcast:'Podcast', film:'Filme', tvBroadcast:'Programa de TV',
+  radioBroadcast:'Programa de rádio', artwork:'Obra de arte', map:'Mapa', computerProgram:'Software',
+  dataset:'Base de dados', standard:'Norma técnica',
+};
+const ZOT_LANG_LABELS = {
+  pt:'Português', por:'Português', en:'Inglês', eng:'Inglês', es:'Espanhol', spa:'Espanhol',
+  fr:'Francês', fra:'Francês', fre:'Francês', de:'Alemão', deu:'Alemão', ger:'Alemão',
+  it:'Italiano', ita:'Italiano', nl:'Holandês', la:'Latim', lat:'Latim', ru:'Russo',
+  zh:'Chinês', ja:'Japonês', ar:'Árabe',
+};
+function zoteroLangLabel(raw){
+  const s = String(raw||'').trim(); if(!s) return '';
+  return ZOT_LANG_LABELS[s.toLowerCase().replace(/_/g,'-').split('-')[0]] || s;
+}
+
+/* dc:date -> valor da categoria de Data (DD/MM/AAAA com partes vazias, o formato do parseDate).
+   Dia e mes so entram quando NAO ha ambiguidade: "13/11/2014" e "11/13/2014" sao indistinguiveis
+   sem saber a locale de quem cadastrou, e trocar dia por mes em silencio e pior do que guardar so
+   o ano — que e o que uma referencia bibliografica costuma ter de qualquer jeito. */
+function zoteroDateValue(raw){
+  const s = String(raw||'').trim(); if(!s) return '';
+  const mk = (d,mo,y)=> `${d?String(d).padStart(2,'0'):''}/${mo?String(mo).padStart(2,'0'):''}/${y}`;
+  let m;
+  if((m = /^(\d{4})-(\d{1,2})-(\d{1,2})(\D|$)/.exec(s))) return mk(m[3], m[2], m[1]);   // ISO completo
+  if((m = /^(\d{4})-(\d{1,2})\s*$/.exec(s)))             return mk('', m[2], m[1]);      // AAAA-MM
+  if((m = /^(\d{1,2})\/(\d{4})\s*$/.exec(s)))            return mk('', m[1], m[2]);      // M/AAAA (forma comum do Zotero)
+  if((m = /(?:^|\D)(\d{4})(?:\D|$)/.exec(s)))            return mk('', '', m[1]);        // qualquer coisa com um ano dentro
+  return '';
+}
+function zoteroYear(raw){ const v = zoteroDateValue(raw); return v ? v.split('/')[2] : ''; }
+
+// lista completa pra categoria/memo: "Kittel, Bernhard; Kuehn, David"
+function zoteroPeopleFull(people){
+  return (people||[]).map(p=> p.name ? p.name : [p.last,p.first].filter(Boolean).join(', ')).filter(Boolean).join('; ');
+}
+// forma curta pro NOME do documento: 3+ autores viram "et al." pra o nome nao virar um paragrafo
+// (a lista completa continua na categoria Autores e no memo)
+function zoteroAuthorLabel(people){
+  const n = (people||[]).map(p=> p.last || p.name || p.first).filter(Boolean);
+  if(!n.length) return '';
+  if(n.length===1) return n[0];
+  if(n.length===2) return n[0]+' e '+n[1];
+  return n[0]+' et al.';
+}
+const zoteroPublication = (it)=> it.container || it.publisher || '';
+
+/* Nome do documento. 'autor' poe autor e ano na frente pra a lista de documentos (ordenada por
+   NOME por padrao) sair como uma bibliografia; 'titulo' e a alternativa pra quem cataloga por
+   assunto. Separador `·`, nao travessao (convencao de UI deste app). */
+function zoteroDocName(it, style){
+  const t = (it.title||'').trim() || '(sem título)';
+  if(style==='titulo') return t;
+  const a = zoteroAuthorLabel((it.authors||[]).length ? it.authors : it.editors);
+  const y = zoteroYear(it.date);
+  const head = a && y ? `${a} (${y})` : (a || (y ? `(${y})` : ''));
+  return head ? `${head} · ${t}` : t;
+}
+
+/* Referencia legivel pro memo. NAO e uma norma de citacao (ABNT/APA): o RDF nem sempre traz o
+   que uma norma exige, e prometer formatacao normalizada seria mentira — e uma linha de
+   identificacao, na ordem em que se procura por ela. */
+function zoteroCitation(it){
+  const aut = zoteroPeopleFull(it.authors);
+  const ed  = zoteroPeopleFull(it.editors);
+  const y   = zoteroYear(it.date);
+  const cab = [aut || (ed ? ed+' (org.)' : ''), y ? '('+y+')' : ''].filter(Boolean).join(' ');
+  let s = (cab ? cab+'. ' : '') + ((it.title||'').trim() || '(sem título)') + '.';
+  if(it.container){
+    s += ' ' + it.container;
+    if(aut && ed && ed!==aut) s += ' (org. ' + ed + ')';
+    const vn = [];
+    if(it.volume) vn.push('v. '+it.volume);
+    if(it.issue)  vn.push('n. '+it.issue);
+    if(vn.length) s += ', ' + vn.join(', ');
+    s += '.';
+  }
+  if(it.publisher && it.publisher!==it.container) s += ' ' + it.publisher + '.';
+  if(it.pages) s += ' p. ' + it.pages + '.';
+  if(it.doi) s += ' DOI ' + it.doi + '.';
+  else if(it.url) s += ' ' + it.url;
+  return s;
+}
+// memo do documento: referencia + resumo + notas do Zotero, cada bloco com um titulo curto
+function zoteroMemoText(it){
+  const blocos = [ zoteroCitation(it) ];
+  if((it.abstract||'').trim()) blocos.push('Resumo\n' + it.abstract.trim());
+  const notas = (it.notes||[]).map(n=>(n||'').trim()).filter(Boolean);
+  notas.forEach((n,i)=> blocos.push((notas.length>1 ? `Nota do Zotero ${i+1}` : 'Nota do Zotero') + '\n' + n));
+  return blocos.join('\n\n');
+}
+
+/* CASAMENTO ARQUIVO x z:path. O RDF declara "files/823/Nome.pdf"; o navegador entrega
+   webkitRelativePath = "Process Tracing/files/823/Nome.pdf", COM a pasta raiz na frente, que o
+   RDF nao conhece. Por isso o casamento e por SUFIXO de segmento, nunca por igualdade. Duas
+   armadilhas reais: o z:path vem percent-encoded em parte dos exports e cru em outros, e a caixa
+   do nome pode divergir. Sufixo AMBIGUO (dois arquivos com o mesmo final de caminho) e recusado
+   de proposito — casar com o primeiro daria o PDF errado ao item errado, em silencio. */
+function zoteroNormPath(p){
+  let s = String(p||'').replace(/\\/g,'/');
+  try{ if(/%[0-9a-f]{2}/i.test(s)) s = decodeURIComponent(s); }catch(e){}
+  return s.replace(/^\.?\//,'');
+}
+function zoteroFileIndex(relPaths){
+  const bySuffix = new Map(), amb = new Set();
+  for(const rp of relPaths||[]){
+    const segs = zoteroNormPath(rp).toLowerCase().split('/');
+    for(let i=segs.length-1;i>=0;i--){
+      const k = segs.slice(i).join('/');
+      if(bySuffix.has(k)) amb.add(k); else bySuffix.set(k, rp);
+    }
+  }
+  return { bySuffix, amb };
+}
+function zoteroFindFile(declared, idx){
+  const n = zoteroNormPath(declared).toLowerCase();
+  if(!n || !idx) return null;
+  if(idx.bySuffix.has(n) && !idx.amb.has(n)) return idx.bySuffix.get(n);
+  const base = n.split('/').pop();   // ultimo recurso: so o nome do arquivo, e so se for unico
+  if(base && idx.bySuffix.has(base) && !idx.amb.has(base)) return idx.bySuffix.get(base);
+  return null;
+}
+
+// anexo que vira o TEXTO do documento: PDF. Snapshot HTML e link externo ficam de fora e sao
+// CONTADOS — o extractText cairia no file.text() e despejaria a marcacao crua como se fosse o
+// texto do artigo, que e o tipo de falha que passa por importacao bem-sucedida.
+const zoteroPickAttachment = (atts)=> (atts||[]).find(a=> /pdf/i.test(a.mime||'') || /\.pdf$/i.test(a.path||'')) || null;
+
+const zoteroText = (el, tag)=>{ const c = firstChild(el, tag); return c ? (c.textContent||'').trim() : ''; };
+
+// <bib:authors>/<bib:editors> -> rdf:Seq > rdf:li > foaf:Person (ou foaf:Organization, autoria
+// institucional). NUNCA querySelectorAll aqui: XML do DOMParser, regra de ouro #0.
+function zoteroPeople(el, tag){
+  const wrap = firstChild(el, tag); if(!wrap) return [];
+  const seq = firstChild(wrap, 'rdf:Seq') || wrap;
+  const out = [];
+  for(const li of directChildren(seq, 'rdf:li')){
+    const p = firstChild(li, 'foaf:Person');
+    if(p){ out.push({ last: zoteroText(p,'foaf:surname'), first: zoteroText(p,'foaf:givenName') }); continue; }
+    const o = firstChild(li, 'foaf:Organization');
+    if(o){ out.push({ name: zoteroText(o,'foaf:name') }); continue; }
+    const t = (li.textContent||'').trim(); if(t) out.push({ name:t });
+  }
+  return out.filter(p=> p.name || p.last || p.first);
+}
+
+/* <dc:identifier> vem em duas formas: texto rotulado ("DOI 10.1017/x", "ISBN 978-...") ou
+   <dcterms:URI><rdf:value>http://...</rdf:value></dcterms:URI>. Detalhe que so aparece lendo um
+   export real: o DOI do ARTIGO costuma vir no no do PERIODICO (dcterms:isPartOf), nao no do
+   artigo — por isso os dois nos sao varridos, e o do item primeiro (ele e mais especifico). */
+function zoteroIdents(el, into){
+  for(const id of directChildren(el, 'dc:identifier')){
+    const uri = firstChild(id, 'dcterms:URI');
+    if(uri){ const v = zoteroText(uri,'rdf:value'); if(v && !into.url) into.url = v; continue; }
+    const t = (id.textContent||'').trim(); let m;
+    if((m = /^DOI\s+(.+)$/i.exec(t)))       { if(!into.doi)  into.doi  = m[1].trim(); }
+    else if((m = /^ISBN\s+(.+)$/i.exec(t))) { if(!into.isbn) into.isbn = m[1].trim(); }
+    else if((m = /^ISSN\s+(.+)$/i.exec(t))) { if(!into.issn) into.issn = m[1].trim(); }
+    else if(/^https?:\/\//i.test(t))        { if(!into.url)  into.url  = t; }
+  }
+}
+
+// <dc:subject> guarda palavra-chave (texto solto ou <z:AutomaticTag>) E classificacao de
+// biblioteca (<dcterms:LCC>). Qualquer filho ELEMENTO que nao seja AutomaticTag fica de fora:
+// "H61 .B37 2013" no seletor da categoria de palavras-chave e lixo.
+function zoteroTags(el){
+  const out = [];
+  for(const s of directChildren(el, 'dc:subject')){
+    const auto = firstChild(s, 'z:AutomaticTag');
+    if(auto){ const v = zoteroText(auto,'rdf:value'); if(v) out.push(v); continue; }
+    if(s.children.length) continue;
+    const t = (s.textContent||'').trim(); if(t) out.push(t);
+  }
+  return out;
+}
+
+/* Le o .rdf e devolve os itens bibliograficos com os anexos e notas ja resolvidos.
+   Identidade dos nos: tudo se liga por rdf:about/rdf:resource entre elementos de TOPO
+   (o <z:Attachment> e o <bib:Memo> sao irmaos do item, nao filhos). */
+function parseZoteroRDF(xmlText){
+  const xml = new DOMParser().parseFromString(String(xmlText||''), 'application/xml');
+  if(xml.querySelector('parsererror')) throw new Error('o arquivo .rdf não é um XML válido.');
+  const root = xml.documentElement;
+  if(!root || !/(^|:)RDF$/.test(root.tagName||'')) throw new Error('o arquivo não parece um export "Zotero RDF" (elemento raiz <rdf:RDF> não encontrado).');
+
+  const byAbout = new Map();
+  for(const el of root.children){ const a = el.getAttribute('rdf:about'); if(a && !byAbout.has(a)) byAbout.set(a, el); }
+  // filho que ou traz o no inline, ou aponta por rdf:resource pra um no de topo
+  const deref = (el)=>{ const r = el.getAttribute('rdf:resource'); return r ? (byAbout.get(r)||null) : (el.children[0]||null); };
+
+  const items = [], notasReferenciadas = new Set();
+  for(const el of root.children){
+    const tipo = zoteroText(el, 'z:itemType');
+    if(!tipo || tipo==='attachment') continue;   // <bib:Journal> de container nao tem itemType
+
+    const it = {
+      key: el.getAttribute('rdf:about') || '',
+      itemType: tipo,
+      title: zoteroText(el,'dc:title'),
+      abstract: zoteroText(el,'dcterms:abstract'),
+      date: zoteroText(el,'dc:date'),
+      language: zoteroText(el,'z:language'),
+      pages: zoteroText(el,'bib:pages'),
+      authors: zoteroPeople(el,'bib:authors'),
+      editors: zoteroPeople(el,'bib:editors'),
+      publisher:'', container:'', volume:'', issue:'', doi:'', isbn:'', issn:'', url:'',
+      tags: zoteroTags(el), attachments: [], notes: [],
+    };
+    zoteroIdents(el, it);
+    const partOf = firstChild(el,'dcterms:isPartOf');
+    const cont = partOf ? deref(partOf) : null;
+    if(cont){
+      it.container = zoteroText(cont,'dc:title');
+      it.volume = zoteroText(cont,'prism:volume');
+      it.issue  = zoteroText(cont,'prism:number');
+      zoteroIdents(cont, it);
+    }
+    const pub = firstChild(el,'dc:publisher');
+    if(pub){ const org = firstChild(pub,'foaf:Organization'); it.publisher = org ? zoteroText(org,'foaf:name') : (pub.textContent||'').trim(); }
+    if(!it.url && /^https?:\/\//i.test(it.key)) it.url = it.key;
+
+    for(const l of directChildren(el,'link:link')){
+      const a = deref(l); if(!a) continue;
+      const p = firstChild(a,'z:path');
+      const path = p ? (p.getAttribute('rdf:resource') || (p.textContent||'').trim()) : '';
+      if(path) it.attachments.push({ path, mime: zoteroText(a,'link:type'), title: zoteroText(a,'dc:title') });
+    }
+    for(const n of directChildren(el,'dcterms:isReferencedBy')){
+      const r = n.getAttribute('rdf:resource'); if(r) notasReferenciadas.add(r);
+      const m = deref(n); if(!m || !/Memo$/.test(m.tagName||'')) continue;
+      const t = docxHtmlToText(zoteroText(m,'rdf:value'));   // a nota do Zotero e HTML
+      if(t.trim()) it.notes.push(t.trim());
+    }
+    items.push(it);
+  }
+  // nota AVULSA = <bib:Memo> de topo que nenhum item referencia. Nao vira documento (nao e fonte,
+  // e escrita do proprio pesquisador) nem memo (nao ha alvo): so e contada, pra o resumo do
+  // import nao dar a entender que a pasta inteira entrou.
+  let notasAvulsas = 0;
+  for(const el of root.children){
+    if(!/Memo$/.test(el.tagName||'')) continue;
+    const a = el.getAttribute('rdf:about');
+    if(!a || !notasReferenciadas.has(a)) notasAvulsas++;
+  }
+  return { items, notasAvulsas };
+}
+
+/* Campos do Zotero oferecidos como CATEGORIA no modal. `get` ja devolve no formato da categoria.
+   `multi` marca o campo com varios valores (palavras-chave), que vira checkbox por padrao. O
+   modal so lista campo que ao menos um item preencheu: oferecer "ISBN" numa pasta so de artigos
+   e ruido no unico momento em que o pesquisador decide o esquema do estudo.
+   `on` = ligado por padrao. Os cinco ligados sao os que respondem as perguntas que uma revisao
+   de literatura faz (o que é, de quando, de quem, onde saiu) e os que rendem grafico e
+   agrupamento; identificador e numero de pagina ficam desligados porque sao rastreio, nao
+   variavel de analise — e categoria demais no esquema atrapalha a tela toda. */
+const ZOTERO_FIELDS = [
+  { key:'tipo',       name:'Tipo de item',   kind:'select',   on:true,  get:it=> ZOT_TYPE_LABELS[it.itemType] || it.itemType || '' },
+  { key:'ano',        name:'Ano',            kind:'date',     on:true,  get:it=> zoteroDateValue(it.date) },
+  { key:'autores',    name:'Autores',        kind:'text',     on:true,  get:it=> zoteroPeopleFull((it.authors||[]).length ? it.authors : it.editors) },
+  { key:'publicacao', name:'Publicação',     kind:'select',   on:true,  get:it=> zoteroPublication(it) },
+  { key:'tags',       name:'Palavras-chave', kind:'checkbox', on:true,  multi:true, get:it=> (it.tags||[]).join(CAT_MULTI_SEP) },
+  { key:'idioma',     name:'Idioma',         kind:'select',   on:false, get:it=> zoteroLangLabel(it.language) },
+  { key:'doi',        name:'DOI',            kind:'text',     on:false, get:it=> it.doi||'' },
+  { key:'url',        name:'URL',            kind:'text',     on:false, get:it=> it.url||'' },
+  { key:'paginas',    name:'Páginas',        kind:'text',     on:false, get:it=> it.pages||'' },
+];
+// quais campos existem nestes itens (+ amostra pro modal). Puro: alimenta a UI e os testes.
+function zoteroFieldStats(items){
+  return ZOTERO_FIELDS.map(f=>{
+    let n = 0; const vistos = new Set(), amostra = [];
+    for(const it of items||[]){
+      const v = (f.get(it)||'').trim(); if(!v) continue;
+      n++;
+      if(amostra.length<3 && !vistos.has(v)){ vistos.add(v); amostra.push(f.key==='ano' ? v.replace(/^\/+/,'') : v); }
+    }
+    return { key:f.key, name:f.name, kind:f.kind, on:f.on, preenchidos:n, amostra };
+  }).filter(s=> s.preenchidos>0);
+}
+
+/* Aplica o import. mapping = { kinds:{<campo>:kind|'ignore'}, nameStyle:'autor'|'titulo',
+   keepPdf:bool }. Espelha o padrao dos outros importadores (beginBatch/endBatch, *Bulk onde o
+   store tem, contabilidade de linhas recusadas via bulkFails). */
+async function importZoteroRDF(parsed, mapping, store, projectId, projectMode, onProgress){
+  const { items, fileOf } = parsed;
+  const sel = ZOTERO_FIELDS.filter(f=>{ const k = mapping.kinds?.[f.key]; return k && k!=='ignore'; })
+                           .map(f=>({ ...f, kind: mapping.kinds[f.key] }));
+
+  // FASE 1 (a cara): extrai o texto dos PDFs. Serial, isto e minutos numa pasta de 50 itens —
+  // regra de ouro #0. O erro por item e TRATADO aqui em vez de virar o `null` mudo do mapPool:
+  // PDF corrompido tem de aparecer no resumo, senao "importei 40" esconde que 3 ficaram de fora.
+  const comArquivo = (items||[]).filter(it=> fileOf.get(it.key));
+  const built = await mapPool(comArquivo, ZOT_PDF_POOL, async (it)=>{
+    try{
+      const bytes = new Uint8Array(await fileOf.get(it.key).arrayBuffer());
+      const r = await buildPdfIndexFromBytes(bytes);
+      return { it, bytes, content:r.content||'', index:r.index };
+    }catch(e){ console.warn('Zotero: falha ao ler o PDF de "'+(it.title||it.key)+'":', e); return { it, erro:true }; }
+  }, (done,total)=> onProgress?.(done, total, 'lendo os PDFs'));
+
+  const ok = built.filter(b=> b && !b.erro);
+  const falhaPdf = built.filter(b=> !b || b.erro).length;
+  // PDF sem camada de texto (escaneado) ENTRA mesmo assim: o documento nasce vazio mas com o
+  // original guardado, e o OCR da tela de Codificacao reconstroi o texto. Descartar aqui tiraria
+  // do pesquisador justamente o caso em que a ferramenta tem resposta.
+  const semTexto = ok.filter(b=> !(b.content||'').trim()).length;
+
+  // FASE 2: categorias. Opcoes derivadas dos valores observados (mesma regra do importCSV).
+  const catDefs = sel.map(f=>{
+    let options;
+    if(CAT_HAS_OPTIONS(f.kind)){
+      const seen = new Set(), opts = [];
+      for(const b of ok){
+        const raw = (f.get(b.it)||'').trim(); if(!raw) continue;
+        const partes = f.kind==='checkbox' ? raw.split(/\s*[|;]\s*/).filter(Boolean) : [raw];
+        for(const p of partes){ if(!seen.has(p)){ seen.add(p); opts.push(p); } }
+      }
+      options = opts;
+    }
+    return { id:uid(), name:f.name, kind:f.kind, options, get:f.get };
+  });
+
+  const docDefs = ok.map(b=>({ id:uid(), name: zoteroDocName(b.it, mapping.nameStyle), content:b.content, b }));
+  const memoRows = docDefs.map(d=>({ scope:'document', target_id:d.id, content: zoteroMemoText(d.b.it), author_name:'Zotero' }))
+                          .filter(r=> (r.content||'').trim());
+
+  const total = docDefs.length + catDefs.length + docDefs.length*catDefs.length + memoRows.length;
+  const tick = makeProgressTicker(onProgress, total);
+  const setVal = projectMode==='individual' ? store.setFinalValue.bind(store) : store.setDocValue.bind(store);
+  let linhasRecusadas = 0;
+  let pdfFail = 0;
+  if(store.beginBatch) store.beginBatch();
+  try{
+    const docItems = docDefs.map(d=>({ id:d.id, name:d.name, content:d.content }));
+    if(store.addDocumentsBulk){
+      linhasRecusadas += bulkFails(await store.addDocumentsBulk(projectId, docItems));
+      for(let i=0;i<docItems.length;i++) await tick();
+    } else {
+      for(const it of docItems){ await store.addDocument(projectId, it); await tick(); }
+    }
+
+    // PDF original + indice reversivel, sob os ids novos. Mesmo par que o "+ enviar" grava, entao
+    // "ver original"/"p. N"/OCR nascem funcionando. mapPool porque na nuvem cada um e um upload
+    // com o peso real do arquivo (gotcha #0, sentido escrita).
+    if(mapping.keepPdf && store.setPdfBlob){
+      await mapPool(docDefs, ZOT_PDF_POOL, async (d)=>{
+        try{
+          await store.setPdfBlob(d.id, d.b.bytes);
+          try{ await store.setPdfIndex?.(d.id, { content:d.content, index:d.b.index }); }
+          catch(e){ console.warn('índice do PDF não persistido ('+d.name+'):', e); }
+          if(d.b.index) PDF_INDEX_CACHE.set(d.id, { content:d.content, index:d.b.index });
+        }catch(e){ pdfFail++; console.warn('PDF original não guardado ('+d.name+'):', e); }
+      }, (done,tot)=> onProgress?.(done, tot, 'guardando os PDFs'));
+    }
+
+    for(let i=0;i<catDefs.length;i++){ const c = catDefs[i];
+      await store.addCategory(projectId, { id:c.id, name:c.name, kind:c.kind, options:c.options, position:i }); await tick(); }
+
+    // cada par (documento,categoria) aparece UMA vez pela construcao do laco: nao ha chave de
+    // conflito repetida no lote, entao nao precisa do dedup que o importQDPX faz
+    const valBulk = projectMode==='individual' ? store.setFinalValuesBulk : store.setDocValuesBulk;
+    if(valBulk){
+      const rows = [];
+      for(const d of docDefs) for(const c of catDefs){ const v = (c.get(d.b.it)||'').trim(); if(v) rows.push({ document_id:d.id, category_id:c.id, value:v }); }
+      linhasRecusadas += bulkFails(await valBulk.call(store, projectId, rows));
+      for(let i=0;i<docDefs.length*catDefs.length;i++) await tick();
+    } else {
+      for(const d of docDefs) for(const c of catDefs){
+        const v = (c.get(d.b.it)||'').trim();
+        if(v) await setVal(projectId, d.id, c.id, v);
+        await tick();
+      }
+    }
+
+    if(store.setMemosBulk){
+      linhasRecusadas += bulkFails(await store.setMemosBulk(projectId, memoRows));
+      for(let i=0;i<memoRows.length;i++) await tick();
+    } else if(store.setMemo){
+      for(const r of memoRows){ await store.setMemo(projectId, r.scope, r.target_id, r.content, r.author_name); await tick(); }
+    }
+  } finally {
+    if(store.endBatch) await store.endBatch();
+  }
+
+  return {
+    documentos: docDefs.length, categorias: catDefs.length, memos: memoRows.length,
+    semArquivo: (items||[]).length - comArquivo.length,
+    falhaPdf, semTexto, pdfFail, notasAvulsas: parsed.notasAvulsas||0,
+    notas: (items||[]).reduce((n,it)=> n + (it.notes||[]).length, 0),
+    linhasRecusadas,
+  };
 }
 
 /* ============ IDB HELPER (IndexedDB p/ persistir handles de arquivo entre sessões) ============
@@ -5086,7 +5541,9 @@ function App(){
   const taguetteInputRef = useRef(null);
   const qdcInputRef = useRef(null);
   const csvInputRef = useRef(null);
+  const zoteroInputRef = useRef(null);                // pasta exportada em "Zotero RDF" (webkitdirectory)
   const [csvPending, setCsvPending] = useState(null); // {parsed,fileName} aguardando mapeamento
+  const [zoteroPending, setZoteroPending] = useState(null); // {items,fileOf,notasAvulsas,pasta,...} aguardando mapeamento
   const undoStackRef = useRef([]);
   const [busy, setBusy] = useState(null);
   const [progress, setProgress] = useState(null); // {done,total} durante import grande
@@ -6533,11 +6990,75 @@ function App(){
         const [vals, cods] = await Promise.all([store.getDocValues(firstId), store.listCodings(project.id, firstId)]);
         setValues(vals); setCodings(cods);
       }
+      await loadMemos();
       setErr(null);
       setBusy(null);
       const ignMsg = r.ignoradas>0 ? ` ${r.ignoradas} linha(s) ignorada(s) por estarem sem texto.` : '';
-      setImportMsg(`Importado da planilha: ${r.documentos} documento(s), ${r.categorias} categoria(s).${ignMsg}${r.linhasRecusadas?` ATENÇÃO: ${r.linhasRecusadas} linha(s) foram recusadas pelo servidor (permissão/RLS ou dado inválido) e NÃO foram gravadas. Detalhes no console do navegador.`:''}`);
+      const memoMsg = r.memos>0 ? `, ${r.memos} memo(s) de documento` : '';
+      setImportMsg(`Importado da planilha: ${r.documentos} documento(s), ${r.categorias} categoria(s)${memoMsg}.${ignMsg}${r.linhasRecusadas?` ATENÇÃO: ${r.linhasRecusadas} linha(s) foram recusadas pelo servidor (permissão/RLS ou dado inválido) e NÃO foram gravadas. Detalhes no console do navegador.`:''}`);
     }catch(e){ setBusy(null); setProgress(null); setErr('Falha ao importar planilha: '+(e.message||e)); }
+  }
+
+  /* ZOTERO — 1a etapa: le o .rdf da PASTA escolhida e resolve os anexos contra os arquivos que o
+     navegador entregou. Tudo aqui e barato (XML de metadados + casamento de caminho); o custo
+     real (extrair o texto dos PDFs) so acontece depois do modal, quando o pesquisador confirmou. */
+  async function openZoteroMapping(fileList){
+    const files = Array.from(fileList||[]); if(!files.length) return;
+    const rel = (f)=> f.webkitRelativePath || f.name;
+    const rdfs = files.filter(f=> /\.rdf$/i.test(f.name));
+    if(!rdfs.length){ setErr('Pasta sem arquivo .rdf. No Zotero: clique com o botão direito na coleção → "Exportar coleção…" → formato "Zotero RDF", com "Exportar arquivos" marcado; depois escolha aqui a PASTA que ele criou.'); return; }
+    if(rdfs.length>1){ setErr(`A pasta tem ${rdfs.length} arquivos .rdf. Escolha uma pasta com uma exportação só.`); return; }
+    try{
+      const parsed = parseZoteroRDF(await rdfs[0].text());
+      if(!parsed.items.length) throw new Error('nenhum item bibliográfico encontrado no .rdf.');
+      // resolve anexo -> File uma vez so; o modal precisa disso pra dizer quantos itens tem PDF
+      const idx = zoteroFileIndex(files.map(rel));
+      const byRel = new Map(files.map(f=>[rel(f), f]));
+      const fileOf = new Map(), semPdf = [];
+      for(const it of parsed.items){
+        const att = zoteroPickAttachment(it.attachments);
+        const hit = att ? zoteroFindFile(att.path, idx) : null;
+        if(hit && byRel.has(hit)) fileOf.set(it.key, byRel.get(hit));
+        else semPdf.push({ titulo: it.title||'(sem título)', motivo: !att ? (it.attachments.length ? 'anexo não é PDF' : 'sem anexo') : 'arquivo não encontrado na pasta' });
+      }
+      setZoteroPending({ ...parsed, fileOf, semPdf, pasta: rel(files[0]).split('/')[0] || rdfs[0].name });
+    }catch(e){ setErr('Falha ao ler a exportação do Zotero: '+(e.message||e)); }
+  }
+  // ZOTERO — 2a etapa: aplica o mapeamento confirmado no modal
+  async function doImportZotero(mapping){
+    const pending = zoteroPending; if(!pending) return;
+    setZoteroPending(null);
+    // consentimento pra o PDF ORIGINAL na nuvem: MESMA porta do "＋ enviar" (o operador do
+    // servidor passaria a poder ler o original). Perguntado UMA vez, antes do trabalho pesado.
+    const keepPdf = mapping.keepPdf && (store?.mode!=='cloud' || cloudPdfConsentOk());
+    setBusy('Importando do Zotero...');
+    setProgress({done:0,total:0});
+    try{
+      const r = await importZoteroRDF(pending, { ...mapping, keepPdf }, store, project.id, projectMode, (done,total,label)=>setProgress({done,total,label}));
+      setProgress(null);
+      const [freshDocs, cats2] = await Promise.all([store.listDocuments(project.id), store.listCategories(project.id)]);
+      setCats(cats2); setDocs(freshDocs);
+      const firstId = freshDocs[0]?.id || null;
+      if(firstId){
+        setActiveId(firstId);
+        const [vals, cods] = await Promise.all([store.getDocValues(firstId), store.listCodings(project.id, firstId)]);
+        setValues(vals); setCodings(cods);
+      }
+      await loadMemos();
+      setErr(null);
+      setBusy(null);
+      // cada coisa que ficou de fora e dita pelo NOME: import que só anuncia o que entrou faz
+      // parecer completo o que não é (mesma regra dos avisos de corte das telas de IA)
+      const fora = [];
+      if(r.semArquivo) fora.push(`${r.semArquivo} item(ns) sem PDF na pasta`);
+      if(r.falhaPdf) fora.push(`${r.falhaPdf} PDF(s) que não puderam ser lidos`);
+      if(r.notasAvulsas) fora.push(`${r.notasAvulsas} nota(s) avulsa(s) do Zotero`);
+      const foraMsg = fora.length ? ` Não importado(s): ${fora.join(', ')}.` : '';
+      const ocrMsg = r.semTexto ? ` ${r.semTexto} PDF(s) sem camada de texto entraram vazios: abra o documento e use "⋯ → ler com OCR".` : '';
+      const notasMsg = r.notas ? ` ${r.notas} nota(s) do Zotero foram para o memo do documento.` : '';
+      const pdfMsg = r.pdfFail ? ` Atenção: ${r.pdfFail} PDF(s) originais não puderam ser guardados (o texto entrou, mas "ver original"/OCR podem não aparecer neles).` : '';
+      setImportMsg(`Importado do Zotero: ${r.documentos} documento(s), ${r.categorias} categoria(s), ${r.memos} memo(s) com a referência.${notasMsg}${ocrMsg}${foraMsg}${pdfMsg}${r.linhasRecusadas?` ATENÇÃO: ${r.linhasRecusadas} linha(s) foram recusadas pelo servidor (permissão/RLS ou dado inválido) e NÃO foram gravadas. Detalhes no console do navegador.`:''}`);
+    }catch(e){ setBusy(null); setProgress(null); setErr('Falha ao importar do Zotero: '+(e.message||e)); }
   }
 
   async function doClearProject(){
@@ -6960,6 +7481,7 @@ function App(){
               <button title="Importa o projeto completo do Taguette (documentos, tags e trechos codificados)" onClick=${()=>{ setImpOpen(false); taguetteInputRef.current.click(); }}>.sqlite3 (Taguette)</button>
               <button title="Importa só o livro de códigos (.qdc), sem documentos nem codificações" onClick=${()=>{ setImpOpen(false); qdcInputRef.current.click(); }}>.qdc (codebook REFI-QDA)</button>
               <button title="Importa uma planilha (.csv ou Excel .xlsx): cada linha vira um documento; você escolhe qual coluna é o texto e quais viram categorias" onClick=${()=>{ setImpOpen(false); csvInputRef.current.click(); }}>planilha (.csv / .xlsx → documentos + categorias)</button>
+              <button title="Importa uma coleção do Zotero exportada em Zotero RDF (com arquivos): cada referência com PDF vira um documento, os metadados viram categorias e a referência/resumo/notas viram o memo" onClick=${()=>{ setImpOpen(false); zoteroInputRef.current.click(); }}>pasta do Zotero (Zotero RDF → documentos + categorias)</button>
             </div>
           </div>`}
         </div>`}
@@ -6986,6 +7508,11 @@ function App(){
       <input ref=${taguetteInputRef} type="file" accept=".sqlite3,.sqlite,.db" style="display:none" onChange=${e=>{ if(e.target.files[0]) doImportTaguette(e.target.files[0]); e.target.value=''; }} />
       <input ref=${qdcInputRef} type="file" accept=".qdc" style="display:none" onChange=${e=>{ if(e.target.files[0]) doImportQDC(e.target.files[0]); e.target.value=''; }} />
       <input ref=${csvInputRef} type="file" accept=".csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" style="display:none" onChange=${e=>{ if(e.target.files[0]) openCsvMapping(e.target.files[0]); e.target.value=''; }} />
+      ${/* ZOTERO: a exportacao "Zotero RDF" e uma PASTA (.rdf + files/), nao um arquivo — por isso
+            webkitdirectory. Precisa do ${true} explicito: htm daria string vazia num atributo solto,
+            e Preact escreveria dom.webkitdirectory='' (falso), abrindo o seletor de ARQUIVO.
+            Sem `accept`: num input de pasta ele filtraria os anexos e sobraria o .rdf sozinho. */''}
+      <input ref=${zoteroInputRef} type="file" webkitdirectory=${true} style="display:none" onChange=${e=>{ if(e.target.files.length) openZoteroMapping(e.target.files); e.target.value=''; }} />
     </header>
 
     ${!smallWarnHidden && html`<div class="small-warn">
@@ -7651,6 +8178,8 @@ function App(){
     onBuildDb=${buildQualilabDb} onGatherPdfs=${gatherPdfs} onGatherPdfIndexes=${gatherPdfIndexes} hasPdfs=${docs.some(d=>d.has_pdf)}
     onEnter=${enterCloudFromSend} onClose=${()=>setSendCloudOpen(false)} />`}
 
+  ${zoteroPending && html`<${ZoteroImportModal} pending=${zoteroPending} localMode=${store?.mode==='local'}
+    onCancel=${()=>setZoteroPending(null)} onConfirm=${doImportZotero} />`}
   ${csvPending && html`<${CsvImportModal} parsed=${csvPending.parsed} fileName=${csvPending.fileName}
     onCancel=${()=>setCsvPending(null)} onConfirm=${doImportCSV} />`}
   `;
@@ -7671,6 +8200,7 @@ function CsvImportModal({ parsed, fileName, onCancel, onConfirm }){
   })();
   const [roles, setRoles] = useState(()=> headers.map((_,c)=> c===guessTextCol ? 'text' : 'cat:select'));
   const setRole = (c,v)=> setRoles(rs=> rs.map((x,i)=> i===c ? v : x));
+  const [memoTitles, setMemoTitles] = useState(true);
 
   const textCount = roles.filter(r=>r==='text').length;
   const valid = textCount===1;
@@ -7678,15 +8208,27 @@ function CsvImportModal({ parsed, fileName, onCancel, onConfirm }){
     {v:'ignore', l:'(ignorar)'},
     {v:'text', l:'Texto (conteúdo do documento)'},
     {v:'name', l:'Nome do documento'},
+    {v:'memo', l:'Memo do documento'},
     ...CAT_KINDS.map(k=>({v:'cat:'+k.id, l:'Categoria · '+k.label})),
   ];
+
+  // colunas de memo na ORDEM da planilha: e essa a ordem dos blocos no memo costurado, e e a
+  // mesma ordem em que elas aparecem na lista aqui em cima — o que se ve e o que sai.
+  const memoCols = roles.map((r,c)=> r==='memo' ? c : -1).filter(c=> c>=0);
+  // previa com a 1a linha que tenha alguma das colunas preenchida: costura e titulos so ficam
+  // concretos vendo o resultado. Cap de 200 linhas — planilha grande toda vazia nao vale a varredura.
+  const memoPreview = (()=>{
+    if(!memoCols.length) return '';
+    for(const r of rows.slice(0,200)){ const t = sheetMemoText(r, memoCols, headers, memoTitles); if(t) return t; }
+    return '';
+  })();
 
   function confirm(){
     if(!valid) return;
     const textCol = roles.findIndex(r=>r==='text');
     const nameCol = roles.findIndex(r=>r==='name'); // -1 se nenhum
     const cats = roles.map((r,c)=> r.startsWith('cat:') ? { col:c, name:headers[c], kind:r.slice(4) } : null).filter(Boolean);
-    onConfirm({ textCol, nameCol, cats });
+    onConfirm({ textCol, nameCol, cats, memoCols, memoTitles });
   }
 
   // amostra por coluna: primeiros 3 VALORES DISTINTOS nao-vazios (para no 3o, varre so o necessario) —
@@ -7702,7 +8244,7 @@ function CsvImportModal({ parsed, fileName, onCancel, onConfirm }){
       <h3 style="margin:0 0 4px">Importar planilha</h3>
       <p class="hint" style="margin:0 0 12px">
         <b>${fileName}</b> · ${rows.length} linha(s) → cada linha vira um documento.
-        Escolha o papel de cada coluna. Exatamente uma coluna deve ser o <b>Texto</b> (o conteúdo a codificar); as demais podem virar categorias.
+        Escolha o papel de cada coluna. Exatamente uma coluna deve ser o <b>Texto</b> (o conteúdo a codificar); as demais podem virar categorias ou o <b>memo</b> do documento.
       </p>
       <div style="max-height:46vh;overflow:auto;display:flex;flex-direction:column;gap:8px">
         ${headers.map((h,c)=> html`<div key=${c} class="card" style="padding:8px 10px;display:flex;align-items:center;gap:10px">
@@ -7717,12 +8259,98 @@ function CsvImportModal({ parsed, fileName, onCancel, onConfirm }){
           </select>
         </div>`)}
       </div>
+      ${memoCols.length>0 && html`<div style="margin-top:12px">
+        <div class="field-label">Memo do documento <span class="meta">· ${memoCols.length} coluna(s)</span></div>
+        ${memoCols.length>1 && html`<p class="hint" style="margin:0 0 6px">
+          As colunas viram um memo só, um bloco por coluna, na ordem em que aparecem acima.
+        </p>`}
+        <label class="row" style="gap:8px;align-items:flex-start;margin-bottom:6px">
+          <input type="checkbox" checked=${memoTitles} onChange=${e=>setMemoTitles(e.target.checked)} style="margin-top:3px" />
+          <span>Identificar cada bloco pelo título da coluna
+            <span class="hint" style="display:block">Sem isso, os blocos ficam colados sem dizer de onde vieram.</span>
+          </span>
+        </label>
+        ${memoPreview ? html`<div class="card" style="padding:8px 10px;white-space:pre-wrap;font-size:12px;max-height:120px;overflow:auto">${memoPreview}</div>`
+                      : html`<span class="hint">Nenhuma das primeiras linhas tem essas colunas preenchidas.</span>`}
+      </div>`}
       ${!valid && html`<p class="hint" style="color:var(--danger);margin:10px 0 0">
         ${textCount===0 ? 'Selecione uma coluna como "Texto (conteúdo do documento)".' : 'Apenas uma coluna pode ser o Texto.'}
       </p>`}
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
         <button class="btn ghost" onClick=${onCancel}>Cancelar</button>
         <button class="btn primary" disabled=${!valid} onClick=${confirm}>Importar</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* Mapeamento do import do Zotero. Mesma gramatica do CsvImportModal (um <select> de papel por
+   campo), com duas decisoes a mais que so existem aqui: o NOME do documento (a pasta traz autor,
+   ano e titulo, e a lista de documentos e ordenada por nome) e guardar ou nao o PDF original.
+   O que NAO entra em nenhum item aparece antes do botao, nao depois do import: e agora que da
+   pra voltar ao Zotero e anexar o que falta. */
+function ZoteroImportModal({ pending, localMode, onCancel, onConfirm }){
+  const { items, fileOf, semPdf, pasta, notasAvulsas } = pending;
+  const comPdf = items.filter(it=> fileOf.get(it.key));
+  const stats = zoteroFieldStats(comPdf.length ? comPdf : items);
+  const [kinds, setKinds] = useState(()=> Object.fromEntries(stats.map(s=>[s.key, s.on ? s.kind : 'ignore'])));
+  const [nameStyle, setNameStyle] = useState('autor');
+  const [keepPdf, setKeepPdf] = useState(true);
+  const nCats = stats.filter(s=> kinds[s.key] && kinds[s.key]!=='ignore').length;
+  const roleOpts = [{v:'ignore', l:'(não importar)'}, ...CAT_KINDS.map(k=>({v:k.id, l:'Categoria · '+k.label}))];
+  const exemplo = comPdf[0] ? zoteroDocName(comPdf[0], nameStyle) : '';
+
+  return html`<div class="modal-bg" onClick=${onCancel}>
+    <div class="modal" onClick=${e=>e.stopPropagation()} style="max-width:640px">
+      <h3 style="margin:0 0 4px">Importar do Zotero</h3>
+      <p class="hint" style="margin:0 0 12px">
+        <b>${pasta}</b> · ${items.length} referência(s), <b>${comPdf.length} com PDF</b>.
+        Cada referência com PDF vira um documento (o texto sai do PDF); a referência, o resumo e as notas do Zotero vão para o <b>memo do documento</b>.
+      </p>
+
+      ${comPdf.length===0 && html`<div class="banner err" style="margin:0 0 12px">
+        Nenhuma referência desta pasta tem PDF anexado que dê para localizar. Exporte de novo no Zotero com <b>"Exportar arquivos"</b> marcado e escolha aqui a pasta inteira que ele criou.
+      </div>`}
+
+      <div class="field-label">Nome do documento</div>
+      <div class="row" style="gap:6px;margin-bottom:4px">
+        <button class="opt ${nameStyle==='autor'?'on':''}" onClick=${()=>setNameStyle('autor')}>Autor (ano) · título</button>
+        <button class="opt ${nameStyle==='titulo'?'on':''}" onClick=${()=>setNameStyle('titulo')}>Só o título</button>
+      </div>
+      ${exemplo && html`<div class="hint" style="font-family:var(--mono);font-size:11px;margin:0 0 12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title=${exemplo}>ex.: ${exemplo}</div>`}
+
+      <div class="field-label">Metadados → categorias ${nCats ? html`<span class="meta">(${nCats})</span>` : ''}</div>
+      <div style="max-height:34vh;overflow:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
+        ${stats.length===0 && html`<span class="hint">Estas referências não têm metadados preenchidos.</span>`}
+        ${stats.map(s=> html`<div key=${s.key} class="card" style="padding:8px 10px;display:flex;align-items:center;gap:10px">
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:600">${s.name} <span class="meta" style="font-weight:400">· ${s.preenchidos} de ${comPdf.length||items.length}</span></div>
+            <div class="hint" style="font-family:var(--mono);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title=${s.amostra.join(' · ')}>ex.: ${s.amostra.join(' · ')}</div>
+          </div>
+          <select value=${kinds[s.key]} onChange=${e=>setKinds(k=>({...k, [s.key]:e.target.value}))} style="flex-shrink:0">
+            ${roleOpts.map(o=> html`<option key=${o.v} value=${o.v}>${o.l}</option>`)}
+          </select>
+        </div>`)}
+      </div>
+
+      <label class="row" style="gap:8px;align-items:flex-start;margin-bottom:6px">
+        <input type="checkbox" checked=${keepPdf} onChange=${e=>setKeepPdf(e.target.checked)} style="margin-top:3px" />
+        <span>Guardar o PDF original
+          <span class="hint" style="display:block">Habilita "ver original", o número da página nos trechos e o OCR de páginas escaneadas. ${localMode ? 'Fica só neste navegador.' : ''}</span>
+        </span>
+      </label>
+
+      ${(semPdf.length>0 || notasAvulsas>0) && html`<details style="margin-top:8px">
+        <summary class="hint" style="cursor:pointer">O que não vai entrar (${semPdf.length + (notasAvulsas?1:0)})</summary>
+        <div class="hint" style="margin-top:6px;max-height:18vh;overflow:auto">
+          ${semPdf.map((s,i)=> html`<div key=${i} style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title=${s.titulo}>${s.titulo} <span class="meta">· ${s.motivo}</span></div>`)}
+          ${notasAvulsas>0 && html`<div>${notasAvulsas} nota(s) avulsa(s) do Zotero <span class="meta">· sem referência a que se ancorar</span></div>`}
+        </div>
+      </details>`}
+
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+        <button class="btn ghost" onClick=${onCancel}>Cancelar</button>
+        <button class="btn primary" disabled=${comPdf.length===0} onClick=${()=>onConfirm({ kinds, nameStyle, keepPdf })}>Importar ${comPdf.length||''}</button>
       </div>
     </div>
   </div>`;

@@ -14,6 +14,58 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.11 (04/08/2026)
+
+### Colunas da planilha podem virar o memo do documento
+
+Planilha de pesquisa quase sempre tem uma coluna que não é dado nem atributo: "Observações",
+"Parecer", "Resumo do caso" — o que **você** anotou sobre aquela linha. Até agora ela só podia
+virar categoria, e texto longo em campo de categoria fica ilegível.
+
+No modal de mapeamento há um papel novo: **Memo do documento**. Marque **uma ou várias** colunas.
+Com várias, o memo é **costurado**: um bloco por coluna, na ordem em que elas aparecem na
+planilha, separados por linha em branco — do mesmo jeito que a importação do Zotero monta o memo
+com a referência, o resumo e as notas.
+
+Cada bloco é identificado pelo **título da coluna** (numa planilha, o cabeçalho é a única coisa
+que diz o que aquele texto é). Dá para desligar isso numa caixa de seleção, e o modal mostra uma
+**prévia** do memo que vai sair, montada com a primeira linha preenchida — a costura fica visível
+antes de importar, não depois.
+
+Célula vazia não vira bloco vazio nem título órfão, e linha sem nenhuma das colunas preenchida
+simplesmente não ganha memo. O resumo do import diz quantos memos entraram.
+
+O memo cai na aba **Memos**, em **Documentos**, e é editável como qualquer outro.
+
+## 1.4.10 (04/08/2026)
+
+### Importar uma coleção do Zotero
+
+Quem organiza a bibliografia no Zotero levava o corpus para o QualiLab um PDF de cada vez, e
+redigitava autor, ano e periódico como categoria. Agora a coleção inteira entra de uma vez.
+
+No Zotero: clique com o botão direito na coleção → **Exportar coleção…** → formato **Zotero RDF**,
+com **Exportar arquivos** marcado. Ele cria uma pasta. No QualiLab, em **importar ▾ → pasta do
+Zotero**, escolha essa pasta.
+
+Cada referência com PDF anexado vira um **documento**, com o texto extraído do PDF do mesmo jeito
+que no `＋ enviar`: "ver original", o número da página nos trechos e o OCR de páginas escaneadas
+funcionam normalmente.
+
+Você escolhe quais metadados viram **categorias** (autor, ano, periódico, idioma, tipo). A
+**referência completa, o resumo e as notas** que você escreveu no Zotero vão para o **memo do
+documento**, não para uma categoria: são texto seu *sobre* a fonte, e resumo em campo de categoria
+fica ilegível.
+
+O **ano** vira uma categoria de **Data**, então a aba **Tempo** dos Gráficos passa a funcionar.
+Quando a data da referência é ambígua (`11/13/2014` pode ser 13 de novembro ou 11 de dezembro), o
+QualiLab guarda **só o ano** em vez de chutar o dia.
+
+O que fica de fora é dito pelo nome, antes e depois de importar: referência sem PDF, snapshot de
+página web e notas avulsas sem referência. **Não vêm códigos nem trechos codificados** — uma
+biblioteca de referências não tem isso, e as marcações feitas no leitor de PDF do Zotero não saem
+na exportação dele.
+
 ## 1.4.9 (03/08/2026)
 
 ### Melhorias internas de produção do código do app

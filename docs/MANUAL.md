@@ -769,15 +769,32 @@ Os menus **exportar ▾** e **importar ▾** ficam no cabeçalho (aparecem quand
 | **.sqlite3 (Taguette)** | Projeto nativo do Taguette: documentos, tags (hierarquia por `/` ou `.`) e trechos. Sem atributos nem autor por trecho |
 | **.qdc (codebook REFI-QDA)** | Só o livro de códigos |
 | **planilha (.csv / .xlsx)** | **Cada linha vira um documento**, veja abaixo |
+| **pasta do Zotero (Zotero RDF)** | **Cada referência com PDF vira um documento**; os metadados viram categorias e a referência vira memo, veja abaixo |
 
 > Em projeto **coletivo na nuvem**, **importar é uma ação de administrador** (o import cria dados compartilhados e pode escrever o gabarito). Em rascunho, arquivo ou projeto individual, qualquer usuário importa.
 
+#### Importar uma coleção do Zotero (passo a passo)
+1. **No Zotero**: botão direito na coleção → **Exportar coleção…** → formato **Zotero RDF**, com **Exportar arquivos** marcado. Ele cria uma **pasta** (um `.rdf` mais uma subpasta `files/`).
+2. **No QualiLab**: **importar ▾ → pasta do Zotero** e escolha **a pasta inteira** (não o `.rdf` sozinho: sem os arquivos não há texto para codificar).
+3. A tela de mapeamento mostra quantas referências têm PDF e deixa você decidir três coisas:
+   - **quais metadados viram categorias.** Tipo de item, ano, autores, publicação e palavras-chave vêm marcados; idioma, DOI, URL e páginas vêm desmarcados. Você muda o tipo de cada um ou deixa de fora, e só aparecem os campos que alguma referência preencheu;
+   - **o nome do documento**: "Autor (ano) · título" ou só o título. Como a lista de documentos é ordenada por nome, a primeira forma deixa o corpus na ordem de uma bibliografia;
+   - **se o PDF original fica guardado** (é o que habilita "ver original", o número da página nos trechos e o OCR).
+4. Antes de confirmar, abra **"O que não vai entrar"**: ali estão, pelo nome, as referências sem PDF, as com anexo que é página salva em vez de PDF, e as cujo arquivo não está na pasta.
+
+- O texto sai do PDF do mesmo jeito que no `＋ enviar`, então tudo o que depende do PDF funciona igual. **PDF sem camada de texto (escaneado) entra vazio de propósito**: abra o documento e use **⋯ → ler com OCR**.
+- A **referência completa, o resumo e as notas que você escreveu no Zotero** vão para o **memo do documento** (aba [Memos](#11-memos)), não para uma categoria: são texto seu *sobre* a fonte, e resumo em campo de categoria fica ilegível.
+- O **ano** vira uma categoria de **Data**, então a aba **Tempo** dos [Gráficos](#10-gráficos) passa a funcionar. Quando a data da referência é ambígua (`11/13/2014` pode ser 13 de novembro ou 11 de dezembro), o QualiLab guarda **só o ano** em vez de chutar o dia.
+- **Não vêm códigos nem trechos codificados**: uma biblioteca de referências não tem isso, e as marcações feitas no leitor de PDF do Zotero não saem na exportação dele.
+
 #### Importar uma planilha (passo a passo)
 1. **importar ▾ → planilha (.csv / .xlsx)** e escolha o arquivo.
-2. No **modal de mapeamento**, para cada coluna escolha o papel: *Ignorar*, **Texto (conteúdo)**, **Nome do documento**, ou **Categoria · <tipo>**.
+2. No **modal de mapeamento**, para cada coluna escolha o papel: *Ignorar*, **Texto (conteúdo)**, **Nome do documento**, **Memo do documento**, ou **Categoria · <tipo>**.
 3. É obrigatório marcar **exatamente uma** coluna como **Texto**.
 4. Para categorias fechadas, as opções são deduzidas dos valores observados. Confirme em **Importar**.
 - Linhas sem texto na coluna de conteúdo são ignoradas (o resumo informa quantas). O `.csv` detecta o separador (`,`/`;`/tab); o Excel importa a **primeira aba**.
+
+> **Colunas que viram memo.** A coluna "Observações", "Parecer" ou "Resumo do caso" não é dado nem atributo: é o que **você** anotou sobre aquela linha, e texto longo em campo de categoria fica ilegível. Marque-a como **Memo do documento** e ela vai para a aba [Memos](#11-memos). Dá para marcar **várias**: o memo é então **costurado**, um bloco por coluna, na ordem em que elas aparecem na planilha. Cada bloco é identificado pelo **título da coluna** (numa planilha, o cabeçalho é a única coisa que diz o que aquele texto é) — dá para desligar numa caixa de seleção, e o modal mostra uma **prévia** do resultado antes de importar. Célula vazia não vira bloco vazio, e linha sem nenhuma dessas colunas preenchida não ganha memo.
 
 > Depois de importar de outra ferramenta, vale revisar o esquema de categorias (os tipos podem ter sido inferidos).
 
