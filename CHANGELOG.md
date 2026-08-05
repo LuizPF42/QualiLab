@@ -14,6 +14,36 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.12 (05/08/2026)
+
+### As telas de IA aceitam muito mais material
+
+Até agora, cada documento entrava na análise por no máximo **dez páginas**, e o total de tudo que
+você selecionasse não passava de **trinta e três**. O que excedia era cortado, com aviso na tela —
+mas cortado.
+
+Dois problemas nisso. O primeiro é o tamanho: um acórdão de sessenta páginas entrava pela sexta
+parte. O segundo é pior, e era invisível: **o corte pega o começo do documento**, e num acórdão o
+começo é o relatório, quem pediu o quê. A parte que decide fica no fim. Ou seja, o corte jogava
+fora justamente o pedaço que responde à maior parte das perguntas, e errava sempre para o mesmo
+lado.
+
+Agora cada documento pode entrar com até **cerca de 130 páginas**, e o total chega a **200**. Um
+documento longo cabe inteiro; uma seleção de vários cabe sem picotar.
+
+Vale nas quatro telas de IA: Analisar com IA, Sugerir Codificação, Sugerir Categorização e
+Organizar Códigos.
+
+### O que isso custa
+
+Material maior custa mais, e quem paga é você (a chave é sua). A estimativa continua aparecendo
+**antes** de enviar, no ⚙ Configurar Prompt — vale olhar antes de mandar duzentas páginas. Os
+avisos de corte continuam lá para quando o novo limite for atingido.
+
+Um aviso honesto: cada modelo tem uma capacidade máxima própria, menor nos modelos locais
+(Ollama) e nos mais antigos. Se você mandar material demais para um modelo pequeno, o erro virá
+do provedor, não do QualiLab. Em caso de dúvida, selecione menos documentos.
+
 ## 1.4.11 (04/08/2026)
 
 ### Colunas da planilha podem virar o memo do documento

@@ -762,7 +762,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.11';
+const QUALILAB_VERSION = '1.4.12';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -13843,14 +13843,22 @@ const IA_MODES_DOCSCODES = [
     instr:'se os documentos trouxerem categorias atribuídas (entre colchetes), use-as como dimensões de comparação: agrupe os casos pelos valores de uma categoria relevante e descreva como a codificação varia entre os grupos. Diga qual categoria usou para agrupar e por quê, e ancore cada contraste em trecho e documento. Se as categorias não estiverem presentes ou não forem informativas para a pergunta, compare pelo próprio conteúdo e diga que fez isso.' },
   IA_MODE_CUSTOM,
 ];
-// travas de tamanho do material enviado (~1 token ≈ 4 caracteres). Limites do APP, NAO dos modelos:
-// a janela de contexto real e muito maior (Gemini ~1M, Claude ~200k tokens etc.), mas material grande
-// custa mais (BYOK, e reenviado a cada turno da conversa) e o teto PRATICO na nuvem e o wall-clock de
-// ~150s da Edge Function (erro 546), dirigido pela GERACAO/modelo, nao pelo input. Por-doc subiu de 8k
-// (cortava ~1/6 de uma entrevista de 1h) para 30k (~10 paginas); total de 40k para 100k (~25k tokens):
-// cabe ~3 entrevistas ou os trechos de um codigo inteiro, ainda claramente "uma selecao" e nao o corpus.
-const IA_DOC_CHAR_LIMIT = 30000; // por documento
-const IA_TOTAL_CHAR_LIMIT = 100000; // total do material empírico, somando todos os itens selecionados
+// travas de tamanho do material enviado (~1 token ≈ 4 caracteres). Limites do APP, NAO dos modelos.
+// AGO/2026 — SOLTOS (30k/100k -> 400k/600k) por decisao do autor, e as DUAS razoes do numero antigo
+// tinham envelhecido:
+//  - o teto PRATICO era o wall-clock de ~150s da Edge Function (erro 546). Ele nao existe no caminho
+//    BYOK CLIENTE-DIRETO, que e o padrao desde jul/2026 — sobrou so no fallback de custom/azure;
+//  - o resto era intencao de produto ("ainda claramente uma selecao, nao o corpus"). Ela custava caro
+//    no caso mais comum: um acordao de 60 paginas (~180k) entrava pela SEXTA parte, e o corte pega o
+//    COMECO — ou seja, jogava fora o dispositivo e guardava o relatorio. Errava sempre na mesma direcao.
+// O teto agora e a JANELA DO MODELO, nao a prudencia: 600k chars ~ 150k tokens deixa folga sob os
+// ~200k da familia Claude (a mais apertada dos quatro provedores) para instrucoes, conversa e saida.
+// Gemini aguenta muito mais; um limite por provedor exigiria tabela de janela por modelo no
+// AI_PROVIDERS — pendencia real, nao feita aqui. Quem paga e o pesquisador (BYOK) e a estimativa de
+// custo aparece antes de enviar, entao material grande e escolha informada, nao surpresa.
+// NAO baixe estes numeros "por prudencia" sem um caso real de falha: o corte silencioso custava mais.
+const IA_DOC_CHAR_LIMIT = 400000; // por documento (~133 paginas)
+const IA_TOTAL_CHAR_LIMIT = 600000; // total do material empírico, somando todos os itens selecionados (~200 paginas)
 // exibicao em unidade humana (NAO afeta o corte): "pagina comum" ~3000 caracteres (~500 palavras).
 const IA_CHARS_PER_PAGE = 3000;
 const iaPages = (chars)=> Math.round((chars||0)/IA_CHARS_PER_PAGE);
