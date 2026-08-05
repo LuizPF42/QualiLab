@@ -14,6 +14,26 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.13 (05/08/2026)
+
+### Trecho codificado por várias pessoas deixa de ir repetido para a IA
+
+Em pesquisa coletiva, é normal que o mesmo trecho seja marcado com o mesmo código por dois ou três
+codificadores — e mais uma vez pelo gabarito, quando a equipe reconcilia. Isso são várias
+codificações, mas **um pedaço de texto só**.
+
+Na tela **Sugerir Codificação**, a lista de "trechos já codificados" que ia no prompt repetia a
+mesma citação uma vez por codificador. Num projeto de três pessoas, essa parte do material saía
+com o triplo do tamanho, sem acrescentar nada: você pagava por texto repetido e gastava com ele a
+capacidade do modelo.
+
+Agora cada pedaço de texto aparece **uma vez**. Dois códigos diferentes no mesmo trecho continuam
+sendo duas entradas (são duas decisões de análise), e dois trechos com o mesmo texto em posições
+diferentes continuam separados (são duas ocorrências).
+
+A tela **Analisar com IA** e a amostra do **Organizar Códigos** já faziam isso; o que muda é que
+agora as três telas — e a lista de trechos da **Leitura** — usam exatamente a mesma regra.
+
 ## 1.4.12 (05/08/2026)
 
 ### As telas de IA aceitam muito mais material

@@ -762,7 +762,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.12';
+const QUALILAB_VERSION = '1.4.13';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -2193,6 +2193,36 @@ function aggCounts(codings, codes){
   const agg={...direct};
   Object.entries(direct).forEach(([codeId,n])=>{ let p=parentOf[codeId]; while(p){ agg[p]=(agg[p]||0)+n; p=parentOf[p]; } });
   return agg;
+}
+
+/* consolida codificações do MESMO pedaço de texto — (documento, código, span exato) — numa
+   entrada só, listando quem aplicou. É a outra ponta do aggCounts acima: ele conta CODIFICAÇÃO
+   (a unidade da árvore e dos Gráficos), este agrupa por PEDAÇO DE TEXTO (a unidade de quem LÊ ou
+   ENVIA o trecho). Em projeto coletivo, 3 pesquisadores marcando a mesma frase com o mesmo código
+   são 3 codificações e 1 pedaço; repetir a citação por codificador não acrescenta nada a quem lê
+   e, no prompt da IA, multiplica o material pelo tamanho da equipe.
+   Só funde span EXATO: dois trechos com texto igual em posições diferentes são ocorrências
+   distintas e ficam ambos. A ordem de inserção é preservada (o Map garante), então a lista
+   consolidada sai na mesma ordem em que a original entrou.
+   O code_id ENTRA na chave porque há chamador que mistura códigos na mesma lista (o material do
+   painel Sugerir Codificação); onde a lista já é de um código só, ele é inofensivo. */
+function groupCodingSpans(list){
+  const groups = new Map();
+  (list||[]).forEach(c=>{
+    const key = c.document_id+'|'+c.code_id+'|'+c.span_start+'|'+c.span_end;
+    let g = groups.get(key);
+    if(!g){
+      g = { key, rep:c, items:[], authors:[], hasFinal:false,
+            document_id:c.document_id, code_id:c.code_id,
+            span_start:c.span_start, span_end:c.span_end, quote:c.quote };
+      groups.set(key, g);
+    }
+    g.items.push(c);
+    const a = c.author_name || 'anônimo';
+    if(!g.authors.includes(a)) g.authors.push(a);
+    if(c.layer==='final') g.hasFinal = true;
+  });
+  return [...groups.values()];
 }
 
 const swatchStyle = (col, isFamily)=> isFamily
@@ -10417,22 +10447,12 @@ function VizExcerpts({ docs, codes, codeById, codePath, allCodings, allValues, m
 
   // agrupa codings de MESMO span+codigo no mesmo documento numa unidade so: um trecho identico
   // grifado por varios codificadores aparece uma vez, com um balao por pessoa (mesmo padrao da
-  // Reconciliacao). So funde span EXATO (o quote e o mesmo) — spans parecidos mas diferentes
-  // continuam separados. A lista ja vem ordenada e o Map preserva a ordem de insercao.
-  const groupSpans = (cods)=>{
-    const groups = new Map();
-    cods.forEach(c=>{
-      const k = c.code_id+'|'+c.span_start+'|'+c.span_end;
-      let grp = groups.get(k);
-      if(!grp){ grp = { key:k, code_id:c.code_id, span_start:c.span_start, span_end:c.span_end, quote:c.quote, items:[] }; groups.set(k, grp); }
-      grp.items.push(c);
-    });
-    return [...groups.values()];
-  };
+  // Reconciliacao). Quem funde e o groupCodingSpans (top-level), a mesma peca que consolida o
+  // material das telas de IA — a lista ja vem ordenada e o agrupamento preserva a ordem.
   const byDoc = useMemo(()=>{
     const g={};
     excerpts.forEach(c=>{ (g[c.document_id]=g[c.document_id]||[]).push(c); });
-    return Object.entries(g).map(([docId, cods])=>[docId, groupSpans(cods)]);
+    return Object.entries(g).map(([docId, cods])=>[docId, groupCodingSpans(cods)]);
   }, [excerpts]);
 
   // as DUAS unidades do cabeçalho: pedaços de texto distintos (= cards, = soma dos subtotais
@@ -12367,17 +12387,15 @@ function IAOrganizarPanel({ project, docs, codes, codeById, codePath, store, all
       if(rs && q === co.quote) q = maskQuoteByRanges(q, co.span_start, co.span_end, rs, '[trecho de OCR omitido]');
       return q.slice(0,240);
     };
-    // escolhe ate N trechos ILUSTRATIVOS e DISTINTOS por codigo (O(n), so um Set):
-    //  1) dedup por span EXATO (documento+offsets) — varios pesquisadores codificando o MESMO
-    //     trecho viram 1 (era o desperdicio: os 3 slots gastos com a mesma frase repetida);
+    // escolhe ate N trechos ILUSTRATIVOS e DISTINTOS por codigo:
+    //  1) consolida por PEDACO DE TEXTO (groupCodingSpans, top-level) — varios pesquisadores
+    //     codificando o MESMO trecho viram 1 (era o desperdicio: os 3 slots gastos com a mesma
+    //     frase repetida);
     //  2) round-robin por documento — alterna as fontes pra mostrar variacao entre casos, em
-    //     vez de 3 trechos do mesmo documento. (Mesmo span/texto identico = mesma chave; dois
-    //     trechos com texto igual mas spans diferentes sao ocorrencias distintas, ficam ambos.)
+    //     vez de 3 trechos do mesmo documento.
     const pick = (list, n)=>{
-      const seen = new Set(); const docBuckets = new Map();
-      for(const co of list){
-        const key = co.document_id+'|'+co.span_start+'|'+co.span_end;
-        if(seen.has(key)) continue; seen.add(key);
+      const docBuckets = new Map();
+      for(const { rep:co } of groupCodingSpans(list)){
         if(!docBuckets.has(co.document_id)) docBuckets.set(co.document_id, []);
         docBuckets.get(co.document_id).push(co);
       }
@@ -13489,8 +13507,13 @@ function IACodificacaoPanel({ project, docs, codes, codeById, codePath, store, a
     for(const d of selDocObjs){
       const inDoc = (allCodings||[]).filter(c=>c.document_id===d.id);
       const ocrR = ocrT.maskByDoc && ocrT.maskByDoc[d.id];
-      const already = inDoc.filter(c=>selCodes.includes(c.code_id))
-        .map(c=>{
+      // consolida por PEDAÇO DE TEXTO (groupCodingSpans, top-level): em coletivo, o mesmo trecho
+      // marcado com o mesmo código por 3 pessoas — ou por alguém e pelo gabarito — produzia 3
+      // linhas IDÊNTICAS aqui, inflando o material pelo tamanho da equipe. Esta lista só diz "não
+      // repita", então autoria não muda a tarefa e fica de fora (diferente do Analisar, onde o
+      // trecho é a evidência e os codificadores são citados).
+      const already = groupCodingSpans(inDoc.filter(c=>selCodes.includes(c.code_id)))
+        .map(({ rep:c })=>{
           let q = maskQuoteSpans(c, inDoc, redactionIds);
           // §4: omissão de OCR na citação — só quando a censura não mexeu (privacidade exata; qualidade best-effort)
           if(ocrR && q === c.quote) q = maskQuoteByRanges(q, c.span_start, c.span_end, ocrR, '[trecho de OCR omitido]');
@@ -14208,29 +14231,16 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
     return q;
   };
 
-  // colapsa codings pelo MESMO span (documento+offsets): em projeto coletivo, varios
-  // pesquisadores codificando o trecho EXATO viram UMA entrada, listando quem aplicou — em vez
-  // de repetir a citacao por codificador (o que inflava frequencia/saturacao e gastava tokens).
-  // Dois trechos com texto igual mas spans diferentes sao ocorrencias distintas, ficam ambos.
-  const collapseSpans = (list)=>{
-    const map = new Map();
-    for(const c of list){
-      const key = c.document_id+'|'+c.span_start+'|'+c.span_end;
-      let g = map.get(key);
-      if(!g){ g = { rep:c, authors:[], hasFinal:false }; map.set(key, g); }
-      const a = c.author_name||'anônimo';
-      if(!g.authors.includes(a)) g.authors.push(a);
-      if(c.layer==='final') g.hasFinal = true;
-    }
-    return [...map.values()];
-  };
+  // colapsa codings pelo MESMO pedaco de texto (groupCodingSpans, top-level): em projeto coletivo,
+  // varios pesquisadores codificando o trecho EXATO viram UMA entrada, listando quem aplicou — em
+  // vez de repetir a citacao por codificador (o que inflava frequencia/saturacao e gastava tokens).
   const spanCoders = (g)=> [...g.authors, ...(g.hasFinal?['final']:[])].join(', ');
 
   const codesBlock = ()=>{
     const chosen = (allCodings||[]).filter(c=>selCodes.includes(c.code_id));
     return selCodes.map(codeId=>{
       const memo = codeMemoLine(codeId);
-      const quotes = collapseSpans(chosen.filter(c=>c.code_id===codeId))
+      const quotes = groupCodingSpans(chosen.filter(c=>c.code_id===codeId))
         .map(g=>`"${maskQuoteText(g.rep)}" (documento: ${docNameOf(g.rep.document_id)} [${spanCoders(g)}]`);
       return `--- Código: ${codePath(codeId).join(' ▸ ')}${memo?`\nMemo do código: ${memo}`:''} (${quotes.length} trechos) ---\n${quotes.join('\n')}`;
     }).join('\n\n');
@@ -14246,7 +14256,7 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
         .forEach(c=>{ (codingsByCode[c.code_id]=codingsByCode[c.code_id]||[]).push(c); });
       const codeBlocks = Object.entries(codingsByCode).map(([codeId,cs])=>{
         const memo = codeMemoLine(codeId);
-        const quotes = collapseSpans(cs).map(g=>`"${maskQuoteText(g.rep)}" (${spanCoders(g)})`);
+        const quotes = groupCodingSpans(cs).map(g=>`"${maskQuoteText(g.rep)}" (${spanCoders(g)})`);
         return `${codePath(codeId).join(' ▸ ')}${memo?` (memo: ${memo})`:''}:\n${quotes.join('\n')}`;
       });
       // rotulo filtro-ciente: quando ha filtro, "(nenhum)" significaria so "nenhum DOS SELECIONADOS",
