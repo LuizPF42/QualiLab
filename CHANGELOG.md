@@ -14,6 +14,23 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.18 (06/08/2026)
+
+### O QualiLab abre sem internet
+
+Sem conexão, abrir o QualiLab dava **tela em branco** — nem o aplicativo, nem uma mensagem
+dizendo o que houve. O motivo: três bibliotecas pequenas, de que o app precisa antes de
+desenhar qualquer coisa, eram buscadas na internet logo no começo. Sem elas, nada acontecia.
+
+Agora elas vêm dentro do próprio arquivo. Sem conexão, a tela inicial aparece normalmente e
+você pode criar um projeto em arquivo, abrir um `.qualilab` que já tenha ou usar o rascunho —
+com um aviso de que o servidor não respondeu, em vez do vazio. Se você salvou a página no seu
+computador, ela passa a funcionar de verdade offline.
+
+Continuam exigindo internet, e avisam quando não conseguem: entrar na nuvem e as funções que
+carregam bibliotecas maiores sob demanda — abrir PDF, Word e planilhas, reconhecer texto em
+imagem (OCR) e a busca por sentido.
+
 ## 1.4.17 (06/08/2026)
 
 Nada muda no aplicativo publicado aqui. Esta versão corrige a leitura assistida do corpus por um

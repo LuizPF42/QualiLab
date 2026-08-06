@@ -46,31 +46,41 @@ def checar(texto: str, bruto: bytes):
             f"({m.group(2)!r}) — use aspas retas."
         )
 
-    # 3. </script> literal a mais. O gerador do leitor de transparencia embute uma pagina
-    #    HTML inteira num template literal e PRECISA escrever <\/script>: um </script>
-    #    literal ali encerra o <script type="module"> do app no parser do navegador
-    #    (que nao entende string JS) e derruba tudo. Esperado: exatamente 2 (o bloco do
-    #    <head> e o do modulo).
-    fechamentos = [m.start() for m in re.finditer(re.escape(FECHA), texto)]
-    if len(fechamentos) != 2:
-        onde = ", ".join(str(linha_de(texto, p)) for p in fechamentos)
+    # 3. O bloco do modulo tem de existir, ser UNICO e ser o ultimo a fechar.
+    if texto.count(ABRE_MODULO) != 1:
         erros.append(
-            f"esperava 2 ocorrencias de {FECHA} (head + modulo), achei {len(fechamentos)} "
-            f"nas linhas {onde} — dentro de template literal escreva <\\/script>."
+            f"esperava exatamente 1 {ABRE_MODULO}, achei {texto.count(ABRE_MODULO)} — "
+            f"o app inteiro vive num bloco so."
         )
-
-    # 4. O bloco do modulo tem de existir e ser o ultimo a fechar.
-    ini = texto.find(ABRE_MODULO)
-    if ini < 0:
-        erros.append(f"nao achei {ABRE_MODULO} — o app inteiro vive nesse bloco.")
         return erros, None
+    ini = texto.find(ABRE_MODULO)
     corpo_ini = ini + len(ABRE_MODULO)
     fim = texto.rfind(FECHA)
     if fim <= corpo_ini:
         erros.append(f"{FECHA} final aparece antes do inicio do modulo — arquivo truncado?")
         return erros, None
+    modulo = texto[corpo_ini:fim]
 
-    return erros, texto[corpo_ini:fim]
+    # 4. </script> literal DENTRO do modulo. O gerador do leitor de transparencia embute uma
+    #    pagina HTML inteira num template literal e PRECISA escrever <\/script>: um </script>
+    #    literal ali encerra o <script type="module"> do app no parser do navegador (que nao
+    #    entende string JS) e derruba tudo.
+    #    A checagem CONTA DENTRO DO MODULO, nao no arquivo inteiro. Ela ja foi "esperava
+    #    exatamente 2 (head + modulo)", o que era um proxy valido enquanto so existiam esses
+    #    dois blocos; o vendor-core.py passou a embutir preact/hooks/htm em <script> classico
+    #    antes do modulo e a contagem total virou 5. Trocar 2 por 5 amarraria o guarda a
+    #    QUANTAS bibliotecas estao embutidas — numero sem significado, que quebraria de novo na
+    #    proxima. Contar dentro do modulo mede o que o guarda de fato protege, e nao e mais
+    #    frouxo: e exatamente ali que o template literal mora.
+    dentro = [m.start() for m in re.finditer(re.escape(FECHA), modulo)]
+    if dentro:
+        onde = ", ".join(str(linha_de(texto, corpo_ini + p)) for p in dentro)
+        erros.append(
+            f"achei {len(dentro)} {FECHA} literal DENTRO do modulo, nas linhas {onde} — "
+            f"dentro de template literal escreva <\\/script>."
+        )
+
+    return erros, modulo
 
 
 def main():
