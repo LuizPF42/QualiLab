@@ -14,6 +14,40 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.14 (06/08/2026)
+
+### Preencher categorias no Excel e trazer de volta
+
+O CSV de **atributos por documento** (menu *exportar*) agora tem caminho de volta: preencha as
+colunas na planilha e reimporte por **importar ▾ → planilha (.csv / .xlsx → atualizar categorias)**.
+É o mesmo arquivo na ida e na volta — não há formato novo para aprender.
+
+Serve para o que a tela faz mal: responder o mesmo atributo em 200 documentos. Na planilha isso é
+arrastar uma coluna; no app, 200 cliques.
+
+Antes de gravar, o QualiLab mostra **exatamente o que vai mudar**: quantas respostas serão
+preenchidas, quantas alteradas (com o valor atual ao lado do novo), quantas já estão iguais, e
+quais linhas não corresponderam a nenhum documento. Nada é aplicado antes de você aprovar.
+
+Como ele se comporta, para você não ter surpresa:
+
+- **Cada linha casa com o documento de mesmo nome.** Nome que não existe no projeto, ou que
+  aparece em dois documentos, é ignorado e listado — o QualiLab não escolhe por você.
+- **Nenhum documento é criado, renomeado ou excluído.** Para criar documentos a partir de uma
+  planilha, o caminho continua sendo o outro item do menu.
+- **Célula em branco não apaga nada**, porque o arquivo exportado vem em branco no que nunca foi
+  preenchido. Há uma opção para quem quer mesmo esvaziar respostas.
+- **Valor que ainda não está na lista de opções é acrescentado à categoria**, e a tela diz quais
+  são antes — é onde você percebe um erro de digitação.
+- **Coluna que não é uma categoria (como `n_trechos`) nasce ignorada**, e qualquer coluna pode
+  virar uma categoria nova, escolhendo o tipo.
+
+Em projeto coletivo, você escolhe se está preenchendo o **gabarito da equipe** (administrador) ou
+a **sua resposta**.
+
+Também nesta versão: botão desabilitado agora *parece* desabilitado (antes o "Aplicar" ficava
+sólido mesmo quando não havia nada a aplicar).
+
 ## 1.4.13 (05/08/2026)
 
 ### Trecho codificado por várias pessoas deixa de ir repetido para a IA

@@ -123,6 +123,13 @@
   [data-theme="dark"] .btn.accent:hover{background:#002B5C;}
   .btn.ghost{background:transparent;}
   .btn.sm{font-size:12px;padding:5px 9px;border-radius:7px;}
+  /* botao desabilitado tinha a MESMA aparencia do habilitado (inclusive o primary, azul cheio):
+     quem via "Aplicar" solido clicava e nada acontecia, sem entender que faltava preencher algo.
+     Vale pra todos os modais que ja usavam disabled (mapeamento de planilha, Zotero). */
+  .btn:disabled{opacity:.45;cursor:default;}
+  .btn:disabled:hover{background:var(--surface);}
+  .btn.primary:disabled:hover{background:var(--teal);}
+  .btn.ghost:disabled:hover{background:transparent;}
   /* dois botoes colados num controle so (usado por "pesquisar" + o "+" da busca global): a
      emenda diz que sao a MESMA acao em escopo maior, e economiza a largura de um botao inteiro.
      :first/:last-child cobrem o caso de um filho so (leva os dois cantos, vira botao normal). */
@@ -762,7 +769,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.13';
+const QUALILAB_VERSION = '1.4.14';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -3708,6 +3715,214 @@ async function importCSV(parsed, mapping, store, projectId, projectMode, onProgr
   return { documentos:docDefs.length, categorias:catDefs.length, memos:memoRows.length, ignoradas, linhasRecusadas };
 }
 
+/* ============ ATUALIZAR CATEGORIAS POR PLANILHA (o caminho de VOLTA do CSV de documentos) ============
+   O export "CSV (atributos por documento)" sai como `documento | <uma coluna por categoria> |
+   n_trechos`. Este import e o caminho de volta do MESMO arquivo: o pesquisador preenche as celulas
+   no Excel — que e onde responder 200 documentos custa minutos em vez de horas — e reimporta. Nao
+   cria nem apaga documento nenhum, nao mexe em codigo nem em codificacao: so grava valor de
+   categoria. E irmao do importCSV, nao uma variante dele: la cada linha NASCE documento (e a
+   coluna de texto e obrigatoria); aqui toda linha aponta para um documento que ja existe.
+
+   DECISOES (autor, ago/2026) — o porque de cada uma, porque todas tem um caminho oposto plausivel:
+   - CASA PELO NOME EXATO do documento; nome AMBIGUO e recusado, nunca chutado (mesma regra do
+     casamento de anexos do Zotero: pegar o primeiro daria o valor certo no documento errado, em
+     silencio). O export NAO ganhou coluna de id: uuid na cara de quem abre a planilha custa mais
+     do que resolve, e renomear documento e raro. Se um dia doer, e acrescentar a coluna e casar
+     por ela quando existir — o `planAttrImport` ja recebe os documentos inteiros.
+   - CELULA VAZIA NAO APAGA por padrao. O export traz vazio no que nunca foi preenchido, entao
+     "vazio = apague" transformaria uma reimportacao distraida em perda de trabalho. Quem quer
+     apagar marca a opcao no modal, e a previa diz exatamente quantos valores somem.
+   - VALOR FORA DAS OPCOES de categoria fechada ACRESCENTA a opcao, avisando quais e onde. Recusar
+     obrigaria a ir ao Esquema antes de cada planilha; o risco real (erro de digitacao virando
+     opcao nova, "Sim " com espaco) e justamente o que a previa mostra ANTES de gravar. Excecao
+     que nao e excecao: categoria com a opcao "Outros" ja aceita valor livre por desenho, entao
+     ali o valor nao casado e normal e NAO vira opcao nova.
+   - COLUNA SEM CATEGORIA correspondente nasce "(ignorar)" — e o que faz `n_trechos`, que e
+     derivado, voltar sem estrago — e pode virar categoria nova pelo select, como no import de
+     planilha que cria documentos. */
+
+/* chave de casamento tolerante (nome de documento, cabecalho de coluna, opcao de categoria): so
+   entra em acao DEPOIS que a comparacao exata falha. Reusa o foldText (sem acento, sem caixa) e
+   acrescenta o que planilha exige: espacos colapsados e aparados — ida e volta pelo Excel come
+   espaco a torto e a direito, e "Data da decisao" x "Data da decisão" nao pode virar coluna nova.
+   NAO serve para comparar VALOR (ver a nota de comparacao estrita no planAttrImport). */
+function attrKey(s){ return foldText(String(s==null?'':s)).replace(/\s+/g,' ').trim(); }
+
+/* data vinda de planilha -> a string que o DateInput guarda ("dd/mm/aaaa", parte vazia = nao
+   informada). O Excel devolve o MESMO campo como AAAA-MM-DD, DD/MM/AAAA ou so o ano, conforme a
+   formatacao da celula, e nenhuma dessas formas e erro de quem preencheu. O que nao da pra
+   desambiguar devolve null: inventar data e pior que recusar, e o modal mostra o valor recusado. */
+function attrDateValue(s){
+  const p2 = (x)=> String(x).padStart(2,'0');
+  const t = String(s==null?'':s).trim();
+  if(!t) return '';
+  let m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(t);   if(m) return p2(m[3])+'/'+p2(m[2])+'/'+m[1];
+  m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(t);     if(m) return p2(m[1])+'/'+p2(m[2])+'/'+m[3];
+  m = /^(\d{1,2})\/(\d{4})$/.exec(t);                if(m) return '/'+p2(m[1])+'/'+m[2];   // MM/AAAA
+  m = /^(\d{4})$/.exec(t);                           if(m) return '//'+m[1];               // so o ano (como no Zotero)
+  if(/^\d{0,2}\/\d{0,2}\/\d{0,4}$/.test(t)) return t;   // ja no formato, com partes em branco
+  return null;
+}
+
+/* celula -> valor gravavel naquela categoria. Devolve {value, novas, erro}: `novas` sao as opcoes
+   que ainda nao existem (ja INCLUIDAS no value — a decisao e acrescentar, e o modal avisa antes),
+   `erro` marca o que nao foi entendido (hoje so data). checkbox separa por | ou ; e junta com
+   CAT_MULTI_SEP, a mesma normalizacao do importCSV. O casamento com a opcao existente ignora
+   caixa e acento, senao "sim" nasceria como opcao nova ao lado de "Sim". */
+function attrCellValue(raw, cat){
+  const s = String(raw==null?'':raw).trim();
+  if(!s) return { value:'', novas:[], erro:null };
+  if(cat.kind==='date'){ const v = attrDateValue(s); return v===null ? { value:'', novas:[], erro:'data' } : { value:v, novas:[], erro:null }; }
+  if(!CAT_HAS_OPTIONS(cat.kind)) return { value:s, novas:[], erro:null };
+  const opts = cat.options||[];
+  const livre = opts.includes(OUTROS);   // categoria com "Outros" ja aceita valor fora da lista
+  const hit = (o)=> opts.find(x=> attrKey(x)===attrKey(o));
+  const parts = cat.kind==='checkbox' ? s.split(/\s*[|;]\s*/).map(x=>x.trim()).filter(Boolean) : [s];
+  const novas = [], out = [];
+  for(const p of parts){
+    const m = hit(p);
+    if(m){ out.push(m); continue; }
+    out.push(p);
+    if(!livre && !novas.some(n=> attrKey(n)===attrKey(p))) novas.push(p);
+  }
+  const uniq = [...new Set(out)];
+  return { value: cat.kind==='checkbox' ? uniq.join(CAT_MULTI_SEP) : uniq[0], novas, erro:null };
+}
+
+/* PLANO do import: puro e deterministico (nenhuma chamada de store, nenhum uid) — e o MESMO objeto
+   que a previa do modal exibe e que o applyAttrImport executa, para que o que se aprova seja
+   exatamente o que se grava.
+     mapping = { docCol, cols:[{col,catId}], novas:[{col,name,kind}] }
+     valueOf(docId,catId) = valor ATUAL na camada de DESTINO (o chamador fecha sobre allValues +
+       a camada escolhida). Comparar com a camada de destino, e nao com "o que o export mostrou",
+       e o que faz a contagem ser verdadeira quando o destino e o gabarito e o que existe hoje e
+       resposta individual: ali a linha e "preencher" (vai NASCER gabarito), e nao "igual".
+   Categoria nova recebe o id sintetico 'novo:<col>'; quem o troca por uuid e o apply.
+   A comparacao de valor e ESTRITA (===): se difere em um caractere, e mudanca e aparece na previa
+   como "de -> para". Normalizar aqui esconderia justamente a correcao de caixa ou de acento que a
+   pessoa foi ao Excel fazer. */
+function planAttrImport(parsed, mapping, docs, cats, valueOf, opts){
+  const { headers, rows } = parsed;
+  const limparVazias = !!(opts && opts.limparVazias);
+  const byId = Object.fromEntries((cats||[]).map(c=>[c.id,c]));
+  // indice nome -> documentos, exato e normalizado. O normalizado so vale quando UM documento
+  // responde por ele; com dois, e ambiguo tanto quanto o nome cru.
+  const exato = new Map(), norm = new Map();
+  for(const d of docs||[]){
+    const push = (m,k)=>{ const a=m.get(k); if(a) a.push(d); else m.set(k,[d]); };
+    push(exato, String(d.name||'')); push(norm, attrKey(d.name));
+  }
+  const alvos = [
+    ...(mapping.cols||[]).map(c=>({ col:c.col, cat:byId[c.catId] })).filter(x=>x.cat),
+    ...(mapping.novas||[]).map(n=>({ col:n.col, cat:{ id:'novo:'+n.col, name:n.name, kind:n.kind, options:[], nova:true } })),
+  ];
+  const mudancas=[], invalidos=[], naoCasadas=[];
+  let iguais=0, vazias=0, casadas=0;
+  const novasOpt = new Map();      // catId existente -> opcoes novas
+  const optsNovaCat = new Map();   // coluna de categoria nova -> opcoes derivadas dos valores
+  const jaVisto = new Set();
+  (rows||[]).forEach((r,i)=>{
+    const linha = i+2;   // a planilha conta a partir do cabecalho, que e a linha 1
+    const nome = String((r||[])[mapping.docCol]==null ? '' : r[mapping.docCol]).trim();
+    if(!nome){ naoCasadas.push({ linha, nome:'', motivo:'linha sem nome de documento' }); return; }
+    const cand = exato.get(nome) || norm.get(attrKey(nome)) || [];
+    if(!cand.length){ naoCasadas.push({ linha, nome, motivo:'nenhum documento com este nome' }); return; }
+    if(cand.length>1){ naoCasadas.push({ linha, nome, motivo:cand.length+' documentos com este nome (ambiguo)' }); return; }
+    const doc = cand[0];
+    // duas linhas apontando o mesmo documento: a 2a e recusada, nao aplicada por cima. Sem isso o
+    // lote repetiria a chave de conflito (document_id,category_id) e o Postgres recusaria o chunk
+    // INTEIRO ("affect row a second time") — o mesmo cuidado do dedup do importQDPX.
+    if(jaVisto.has(doc.id)){ naoCasadas.push({ linha, nome, motivo:'outra linha ja aponta este documento' }); return; }
+    jaVisto.add(doc.id); casadas++;
+    for(const a of alvos){
+      const bruto = String((r||[])[a.col]==null ? '' : r[a.col]).trim();
+      const atual = String(valueOf(doc.id, a.cat.id) || '');
+      const base = { docId:doc.id, docName:doc.name, catId:a.cat.id, catName:a.cat.name, col:a.col, linha };
+      if(!bruto){
+        if(limparVazias && atual) mudancas.push({ ...base, de:atual, para:'', tipo:'apagar' });
+        else vazias++;
+        continue;
+      }
+      // a categoria cresce DENTRO da planilha: uma opcao nova aberta pela linha 3 ja e opcao
+      // existente para a linha 4. Sem isso, "TRF3" e "trf3" no mesmo arquivo virariam dois valores
+      // diferentes gravados (e so um deles entraria em options) — a lista fecharia com um valor
+      // orfao, e a tela mostraria a categoria "vazia" naquele documento.
+      const vivas = a.cat.nova ? optsNovaCat.get(a.col) : novasOpt.get(a.cat.id);
+      const catViva = vivas && vivas.length ? { ...a.cat, options:[...(a.cat.options||[]), ...vivas] } : a.cat;
+      const { value, novas, erro } = attrCellValue(bruto, catViva);
+      if(erro){ invalidos.push({ linha, coluna:(headers||[])[a.col]||'', valor:bruto, motivo:erro }); continue; }
+      if(novas.length){
+        const m = a.cat.nova ? optsNovaCat : novasOpt;
+        const k = a.cat.nova ? a.col : a.cat.id;
+        if(!m.has(k)) m.set(k, []);
+        const arr = m.get(k);
+        for(const n of novas) if(!arr.some(x=> attrKey(x)===attrKey(n))) arr.push(n);
+      }
+      if(value===atual){ iguais++; continue; }
+      mudancas.push({ ...base, de:atual, para:value, tipo: atual ? 'alterar' : 'preencher' });
+    }
+  });
+  return {
+    linhas:(rows||[]).length, casadas, naoCasadas, mudancas, iguais, vazias, invalidos,
+    novasOpcoes: [...novasOpt].map(([catId,valores])=>({ catId, catName:(byId[catId]||{}).name||'', valores })),
+    novasCats: (mapping.novas||[]).map(n=>({ ...n, options: CAT_HAS_OPTIONS(n.kind) ? (optsNovaCat.get(n.col)||[]) : undefined })),
+  };
+}
+
+/* executa o plano. E aqui que nasce uid (o plano e puro), que as opcoes novas entram nas
+   categorias existentes e que os valores sao gravados. Lote onde o store tem lote — cada par
+   (documento,categoria) aparece UMA vez por construcao do plano, entao nao ha chave de conflito
+   repetida e o dedup do importQDPX nao e necessario. APAGAR e sempre em serie: nenhum *Bulk sabe
+   apagar, e o caminho e raro por construcao (so com a opcao marcada, e so onde ja havia valor).
+   `layer` escolhe entre gabarito ('final') e resposta individual do usuario atual. */
+async function applyAttrImport(plan, store, projectId, cats, layer, onProgress){
+  const setVal = layer==='final' ? store.setFinalValue.bind(store) : store.setDocValue.bind(store);
+  const valBulk = layer==='final' ? store.setFinalValuesBulk : store.setDocValuesBulk;
+  const grava = plan.mudancas.filter(m=>m.tipo!=='apagar');
+  const apaga = plan.mudancas.filter(m=>m.tipo==='apagar');
+  const total = plan.novasCats.length + plan.novasOpcoes.length + grava.length + apaga.length;
+  const tick = makeProgressTicker(onProgress, total);
+  const idMap = {};   // 'novo:<col>' -> uuid da categoria recem-criada
+  let linhasRecusadas = 0;
+  if(store.beginBatch) store.beginBatch();
+  try{
+    for(let i=0;i<plan.novasCats.length;i++){
+      const n = plan.novasCats[i];
+      const id = uid(); idMap['novo:'+n.col] = id;
+      await store.addCategory(projectId, { id, name:n.name, kind:n.kind, options:n.options, position:(cats||[]).length + i });
+      await tick();
+    }
+    for(const o of plan.novasOpcoes){
+      const cat = (cats||[]).find(c=>c.id===o.catId);
+      if(!cat){ await tick(); continue; }
+      // "Nao informado"/"Outros" ficam no FIM da lista, que e onde a UI os mostra — as opcoes
+      // novas entram antes deles, no lugar em que a pessoa esperaria ver um valor de verdade.
+      const base = (cat.options||[]).filter(x=>!isSpecialOpt(x));
+      const esp  = (cat.options||[]).filter(isSpecialOpt);
+      await store.updateCategory(o.catId, { options:[...base, ...o.valores, ...esp] });
+      await tick();
+    }
+    const rows = grava.map(m=>({ document_id:m.docId, category_id: idMap[m.catId] || m.catId, value:m.para }));
+    if(valBulk && rows.length){
+      linhasRecusadas += bulkFails(await valBulk.call(store, projectId, rows));
+      for(let i=0;i<rows.length;i++) await tick();
+    } else {
+      for(const r of rows){ await setVal(projectId, r.document_id, r.category_id, r.value); await tick(); }
+    }
+    for(const m of apaga){ await setVal(projectId, m.docId, idMap[m.catId] || m.catId, ''); await tick(); }
+  } finally {
+    if(store.endBatch) await store.endBatch();
+  }
+  return {
+    preenchidos: grava.filter(m=>m.tipo==='preencher').length,
+    alterados:   grava.filter(m=>m.tipo==='alterar').length,
+    apagados:    apaga.length,
+    categorias:  plan.novasCats.length,
+    opcoes:      plan.novasOpcoes.reduce((s,o)=>s+o.valores.length,0),
+    linhasRecusadas,
+  };
+}
+
 /* ============ IMPORT .sqlite3 do TAGUETTE ============
    O Taguette nao usa QDPX/REFI-QDA para o projeto completo (so o codebook, em .qdc) —
    o projeto inteiro (documentos + tags + trechos) e um banco SQLite proprio. Lemos esse
@@ -5571,8 +5786,10 @@ function App(){
   const taguetteInputRef = useRef(null);
   const qdcInputRef = useRef(null);
   const csvInputRef = useRef(null);
+  const attrInputRef = useRef(null);                  // planilha que ATUALIZA categorias (nao cria documento)
   const zoteroInputRef = useRef(null);                // pasta exportada em "Zotero RDF" (webkitdirectory)
   const [csvPending, setCsvPending] = useState(null); // {parsed,fileName} aguardando mapeamento
+  const [attrPending, setAttrPending] = useState(null); // {parsed,fileName,valores} aguardando mapeamento
   const [zoteroPending, setZoteroPending] = useState(null); // {items,fileOf,notasAvulsas,pasta,...} aguardando mapeamento
   const undoStackRef = useRef([]);
   const [busy, setBusy] = useState(null);
@@ -7029,6 +7246,56 @@ function App(){
     }catch(e){ setBusy(null); setProgress(null); setErr('Falha ao importar planilha: '+(e.message||e)); }
   }
 
+  /* ATUALIZAR CATEGORIAS POR PLANILHA — 1a etapa: le a planilha e, junto, os valores ATUAIS de
+     todos os documentos. Ler tudo aqui e o que permite ao modal mostrar "de -> para" antes de
+     gravar; e o mesmo custo (e o mesmo mapPool) do export, que ja faz essa varredura. Nao usa o
+     `allValues` do estado de proposito: ele so e carregado nas AGG_VIEWS, e este menu esta no
+     cabecalho, disponivel em QUALQUER tela — inclusive a Codificacao, onde allValues e []. */
+  async function openAttrMapping(file){
+    const ext = (file.name||'').toLowerCase();
+    const isExcel = ext.endsWith('.xlsx') || ext.endsWith('.xls');
+    setBusy('Lendo planilha...');
+    setProgress({ done:0, total:docs.length, label:'lendo respostas atuais' });
+    try{
+      const parsed = isExcel ? await parseXLSX(file) : parseCSV(await file.text());
+      if(!parsed.headers.length || !parsed.rows.length) throw new Error('arquivo vazio ou sem dados.');
+      const valores = [];
+      await mapPool(docs, 8, async (d)=>{ const v = await store.getDocValues(d.id); (v||[]).forEach(x=>valores.push(x)); },
+        (done,total)=>setProgress({ done, total, label:'lendo respostas atuais' }));
+      setProgress(null); setBusy(null);
+      setAttrPending({ parsed, fileName:file.name, valores });
+    }catch(e){ setBusy(null); setProgress(null); setErr(`Falha ao ler ${isExcel?'a planilha':'o .csv'}: `+(e.message||e)); }
+  }
+  // 2a etapa: o modal ja montou e aprovou o PLANO; aqui so executamos e recarregamos.
+  async function doImportAttrs(plan, layer){
+    setAttrPending(null);
+    setBusy('Atualizando categorias...');
+    setProgress({done:0,total:0});
+    try{
+      const r = await applyAttrImport(plan, store, project.id, cats, layer, (done,total)=>setProgress({done,total}));
+      setProgress(null);
+      const cats2 = await store.listCategories(project.id);
+      setCats(cats2);
+      if(activeId){
+        const vals = await store.getDocValues(activeId);
+        setValues(vals);
+      }
+      if(AGG_VIEWS.includes(mainView)) await loadAll();
+      setErr(null);
+      setBusy(null);
+      const partes = [];
+      if(r.preenchidos) partes.push(`${r.preenchidos} resposta(s) preenchida(s)`);
+      if(r.alterados)   partes.push(`${r.alterados} alterada(s)`);
+      if(r.apagados)    partes.push(`${r.apagados} apagada(s)`);
+      if(r.categorias)  partes.push(`${r.categorias} categoria(s) criada(s)`);
+      if(r.opcoes)      partes.push(`${r.opcoes} opção(ões) nova(s)`);
+      const naoAplicadas = plan.naoCasadas.length
+        ? ` ${plan.naoCasadas.length} linha(s) não corresponderam a nenhum documento e foram ignoradas.` : '';
+      const camada = layer==='final' ? 'no gabarito' : 'na sua camada individual';
+      setImportMsg(`Planilha aplicada ${camada}: ${partes.join(', ') || 'nada a mudar'}.${naoAplicadas}${r.linhasRecusadas?` ATENÇÃO: ${r.linhasRecusadas} linha(s) foram recusadas pelo servidor (permissão/RLS ou dado inválido) e NÃO foram gravadas. Detalhes no console do navegador.`:''}`);
+    }catch(e){ setBusy(null); setProgress(null); setErr('Falha ao atualizar categorias: '+(e.message||e)); }
+  }
+
   /* ZOTERO — 1a etapa: le o .rdf da PASTA escolhida e resolve os anexos contra os arquivos que o
      navegador entregou. Tudo aqui e barato (XML de metadados + casamento de caminho); o custo
      real (extrair o texto dos PDFs) so acontece depois do modal, quando o pesquisador confirmou. */
@@ -7511,6 +7778,7 @@ function App(){
               <button title="Importa o projeto completo do Taguette (documentos, tags e trechos codificados)" onClick=${()=>{ setImpOpen(false); taguetteInputRef.current.click(); }}>.sqlite3 (Taguette)</button>
               <button title="Importa só o livro de códigos (.qdc), sem documentos nem codificações" onClick=${()=>{ setImpOpen(false); qdcInputRef.current.click(); }}>.qdc (codebook REFI-QDA)</button>
               <button title="Importa uma planilha (.csv ou Excel .xlsx): cada linha vira um documento; você escolhe qual coluna é o texto e quais viram categorias" onClick=${()=>{ setImpOpen(false); csvInputRef.current.click(); }}>planilha (.csv / .xlsx → documentos + categorias)</button>
+              ${docs.length>0 && html`<button title="O caminho de volta do CSV de atributos: preencha as categorias na planilha e reimporte aqui. Casa cada linha com o documento de mesmo nome; não cria nem apaga documento, e mostra o que vai mudar antes de gravar." onClick=${()=>{ setImpOpen(false); attrInputRef.current.click(); }}>planilha (.csv / .xlsx → atualizar categorias)</button>`}
               <button title="Importa uma coleção do Zotero exportada em Zotero RDF (com arquivos): cada referência com PDF vira um documento, os metadados viram categorias e a referência/resumo/notas viram o memo" onClick=${()=>{ setImpOpen(false); zoteroInputRef.current.click(); }}>pasta do Zotero (Zotero RDF → documentos + categorias)</button>
             </div>
           </div>`}
@@ -7538,6 +7806,7 @@ function App(){
       <input ref=${taguetteInputRef} type="file" accept=".sqlite3,.sqlite,.db" style="display:none" onChange=${e=>{ if(e.target.files[0]) doImportTaguette(e.target.files[0]); e.target.value=''; }} />
       <input ref=${qdcInputRef} type="file" accept=".qdc" style="display:none" onChange=${e=>{ if(e.target.files[0]) doImportQDC(e.target.files[0]); e.target.value=''; }} />
       <input ref=${csvInputRef} type="file" accept=".csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" style="display:none" onChange=${e=>{ if(e.target.files[0]) openCsvMapping(e.target.files[0]); e.target.value=''; }} />
+      <input ref=${attrInputRef} type="file" accept=".csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" style="display:none" onChange=${e=>{ if(e.target.files[0]) openAttrMapping(e.target.files[0]); e.target.value=''; }} />
       ${/* ZOTERO: a exportacao "Zotero RDF" e uma PASTA (.rdf + files/), nao um arquivo — por isso
             webkitdirectory. Precisa do ${true} explicito: htm daria string vazia num atributo solto,
             e Preact escreveria dom.webkitdirectory='' (falso), abrindo o seletor de ARQUIVO.
@@ -8212,6 +8481,9 @@ function App(){
     onCancel=${()=>setZoteroPending(null)} onConfirm=${doImportZotero} />`}
   ${csvPending && html`<${CsvImportModal} parsed=${csvPending.parsed} fileName=${csvPending.fileName}
     onCancel=${()=>setCsvPending(null)} onConfirm=${doImportCSV} />`}
+  ${attrPending && html`<${AttrImportModal} parsed=${attrPending.parsed} fileName=${attrPending.fileName}
+    docs=${docs} cats=${cats} valores=${attrPending.valores} projectMode=${projectMode} isAdmin=${isAdmin} userId=${user?.id}
+    onCancel=${()=>setAttrPending(null)} onConfirm=${doImportAttrs} />`}
   `;
 }
 
@@ -8309,6 +8581,189 @@ function CsvImportModal({ parsed, fileName, onCancel, onConfirm }){
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
         <button class="btn ghost" onClick=${onCancel}>Cancelar</button>
         <button class="btn primary" disabled=${!valid} onClick=${confirm}>Importar</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ============ MODAL: ATUALIZAR CATEGORIAS POR PLANILHA ============
+   Mesma gramatica do CsvImportModal (um <select> de papel por coluna), com uma diferenca que
+   define a tela: aqui NADA e criado a partir das linhas, entao da pra dizer exatamente o que vai
+   mudar ANTES de gravar — e e o que a previa faz. Reimportar por engano a planilha de outro
+   projeto tem de terminar em "0 mudancas, 37 linhas sem documento correspondente", nao num banco
+   remexido. O plano vem inteiro do `planAttrImport` (puro): o que se ve aqui e literalmente o
+   objeto que o apply executa. */
+function AttrImportModal({ parsed, fileName, docs, cats, valores, projectMode, isAdmin, userId, onCancel, onConfirm }){
+  const { headers, rows } = parsed;
+  const individual = projectMode==='individual';
+  // camada de destino: em projeto individual tudo e gabarito por desenho (nao ha o que escolher);
+  // em coletivo, gabarito e ato de consolidacao e so admin escreve nele (RLS), entao membro so ve
+  // a propria camada. Default = gabarito para o admin, porque e o que o export mostrou na coluna.
+  const [layer, setLayer] = useState(()=> (individual || isAdmin) ? 'final' : 'individual');
+  const [limparVazias, setLimparVazias] = useState(false);
+  const [verTudo, setVerTudo] = useState(false);
+
+  // chute da coluna do documento: a que mais casa nomes de documento (o cabecalho "documento" do
+  // nosso export cai nisso naturalmente, e planilha de terceiro tambem, sem depender do titulo).
+  const guessDocCol = useMemo(()=>{
+    const nomes = new Set((docs||[]).map(d=>attrKey(d.name)));
+    let best = 0, bestHits = -1;
+    headers.forEach((_,c)=>{
+      let hits = 0;
+      for(const r of rows.slice(0,200)) if(nomes.has(attrKey((r||[])[c]||''))) hits++;
+      if(hits > bestHits){ bestHits = hits; best = c; }
+    });
+    return { col:best, hits:bestHits };
+  }, [headers, rows, docs]);
+
+  // chute do papel de cada coluna: cabecalho que casa o nome de uma categoria vira aquela
+  // categoria; o resto nasce ignorado — e o que faz `n_trechos`, que e derivado, voltar sem estrago.
+  const [roles, setRoles] = useState(()=> headers.map((h,c)=>{
+    if(c===guessDocCol.col) return 'doc';
+    const cat = (cats||[]).find(x=> attrKey(x.name)===attrKey(h));
+    return cat ? 'cat:'+cat.id : 'ignore';
+  }));
+  const setRole = (c,v)=> setRoles(rs=> rs.map((x,i)=> i===c ? v : x));
+
+  const roleOpts = [
+    {v:'ignore', l:'(ignorar)'},
+    {v:'doc', l:'Nome do documento (casar)'},
+    ...(cats||[]).map(c=>({ v:'cat:'+c.id, l:'Categoria · '+c.name })),
+    ...CAT_KINDS.map(k=>({ v:'new:'+k.id, l:'Criar categoria · '+k.label })),
+  ];
+
+  const docCol = roles.indexOf('doc');
+  const mapping = useMemo(()=>({
+    docCol,
+    cols: roles.map((r,c)=> r.startsWith('cat:') ? { col:c, catId:r.slice(4) } : null).filter(Boolean),
+    novas: roles.map((r,c)=> r.startsWith('new:') ? { col:c, name:headers[c], kind:r.slice(4) } : null).filter(Boolean),
+  }), [roles, headers, docCol]);
+
+  // valor ATUAL na camada de destino — o mesmo recorte que o "Ver:" da tela usa, para que o
+  // "de -> para" da previa case com o que a pessoa enxerga no app.
+  const plan = useMemo(()=>{
+    const valueOf = (docId,catId)=> valuesForView(valores||[], docId, catId, layer==='final'?'final':'mine', userId, projectMode)[0] || '';
+    return planAttrImport(parsed, mapping, docs, cats, valueOf, { limparVazias });
+  }, [parsed, mapping, docs, cats, valores, layer, limparVazias, userId, projectMode]);
+
+  // erros de mapeamento (nao de dado): duas colunas na mesma categoria repetiriam a chave de
+  // conflito (documento,categoria) no lote, e duas categorias novas de mesmo nome nasceriam
+  // indistinguiveis na tela de Esquema.
+  const erros = [];
+  if(roles.filter(r=>r==='doc').length===0) erros.push('Escolha a coluna que traz o nome do documento.');
+  if(roles.filter(r=>r==='doc').length>1)   erros.push('Só uma coluna pode ser o nome do documento.');
+  {
+    const usadas = mapping.cols.map(c=>c.catId);
+    if(new Set(usadas).size !== usadas.length) erros.push('Duas colunas apontam para a mesma categoria.');
+    const novos = mapping.novas.map(n=>attrKey(n.name));
+    if(new Set(novos).size !== novos.length) erros.push('Duas colunas novas com o mesmo nome de categoria.');
+    const colide = mapping.novas.find(n=> (cats||[]).some(c=> attrKey(c.name)===attrKey(n.name)));
+    if(colide) erros.push(`Já existe uma categoria chamada "${colide.name}": escolha-a na lista em vez de criar outra.`);
+  }
+  const nada = !plan.mudancas.length && !plan.novasCats.length;
+  const podeAplicar = !erros.length && !nada;
+
+  const MOSTRA = 12;
+  const visiveis = verTudo ? plan.mudancas : plan.mudancas.slice(0, MOSTRA);
+  const tipoLabel = { preencher:'preencher', alterar:'alterar', apagar:'apagar' };
+  const colSamples = headers.map((_,c)=>{
+    const seen=new Set(); const out=[];
+    for(const r of rows){ const v=((r||[])[c]||'').trim(); if(!v||seen.has(v)) continue; seen.add(v); out.push(v); if(out.length>=3) break; }
+    return out;
+  });
+
+  return html`<div class="modal-bg" onClick=${onCancel}>
+    <div class="modal" onClick=${e=>e.stopPropagation()} style="max-width:720px">
+      <h3 style="margin:0 0 4px">Atualizar categorias pela planilha</h3>
+      <p class="hint" style="margin:0 0 12px">
+        <b>${fileName}</b> · ${rows.length} linha(s). Cada linha atualiza o documento de mesmo nome.
+        Nenhum documento é criado, renomeado ou excluído aqui.
+      </p>
+
+      <div style="max-height:34vh;overflow:auto;display:flex;flex-direction:column;gap:8px">
+        ${headers.map((h,c)=> html`<div key=${c} class="card" style="padding:8px 10px;display:flex;align-items:center;gap:10px">
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${h}</div>
+            <div class="hint" style="font-family:var(--mono);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title=${colSamples[c].join(' · ')}>
+              ${colSamples[c].length ? 'ex.: '+colSamples[c].join(' · ') : '(coluna vazia)'}
+            </div>
+          </div>
+          <select value=${roles[c]} onChange=${e=>setRole(c, e.target.value)} style="flex-shrink:0;max-width:250px">
+            ${roleOpts.map(o=> html`<option key=${o.v} value=${o.v}>${o.l}</option>`)}
+          </select>
+        </div>`)}
+      </div>
+
+      <div class="row" style="gap:14px;align-items:center;margin-top:12px;flex-wrap:wrap">
+        ${!individual && html`<label class="row" style="gap:6px;align-items:center">
+          <span class="field-label" style="margin:0">Gravar em</span>
+          <select class="opt" value=${layer} onChange=${e=>setLayer(e.target.value)}>
+            ${isAdmin && html`<option value="final">Gabarito da equipe</option>`}
+            <option value="individual">Minha resposta</option>
+          </select>
+        </label>`}
+        <label class="row" style="gap:6px;align-items:center" title="Por padrão, célula em branco não mexe no valor que já existe: o CSV exportado traz vazio no que nunca foi preenchido.">
+          <input type="checkbox" checked=${limparVazias} onChange=${e=>setLimparVazias(e.target.checked)} />
+          <span>Célula em branco apaga a resposta</span>
+        </label>
+      </div>
+
+      ${/* PREVIA — o que a pessoa aprova. Contadores primeiro (respondem "reimportei o arquivo
+            errado?" de relance), depois a lista do que muda de fato. */''}
+      <div class="card" style="padding:10px;margin-top:12px">
+        <div class="row" style="gap:12px;flex-wrap:wrap;font-size:12px">
+          <span><b>${plan.casadas}</b> de ${plan.linhas} linha(s) casaram um documento</span>
+          <span>·</span>
+          <span><b>${plan.mudancas.filter(m=>m.tipo==='preencher').length}</b> a preencher</span>
+          <span><b>${plan.mudancas.filter(m=>m.tipo==='alterar').length}</b> a alterar</span>
+          ${limparVazias && html`<span><b>${plan.mudancas.filter(m=>m.tipo==='apagar').length}</b> a apagar</span>`}
+          <span class="meta">${plan.iguais} já igual(is)</span>
+        </div>
+        ${plan.novasCats.length>0 && html`<p class="hint" style="margin:8px 0 0">
+          Cria ${plan.novasCats.length} categoria(s): ${plan.novasCats.map(n=>n.name).join(', ')}.
+        </p>`}
+        ${plan.novasOpcoes.length>0 && html`<p class="hint" style="margin:8px 0 0;color:var(--amber)">
+          Valores que ainda não existem e serão acrescentados às opções:
+          ${plan.novasOpcoes.map(o=> html`<span> <b>${o.catName}</b>: ${o.valores.join(', ')};</span>`)}
+          <span style="display:block">Confira antes: erro de digitação vira opção nova.</span>
+        </p>`}
+        ${plan.invalidos.length>0 && html`<p class="hint" style="margin:8px 0 0;color:var(--danger)">
+          ${plan.invalidos.length} valor(es) de data não entendido(s) e ignorado(s) — ex.: linha ${plan.invalidos[0].linha}, coluna "${plan.invalidos[0].coluna}": "${plan.invalidos[0].valor}".
+        </p>`}
+      </div>
+
+      ${plan.mudancas.length>0 && html`<div style="margin-top:10px">
+        <div class="field-label">O que vai mudar</div>
+        <div style="max-height:24vh;overflow:auto;font-size:12px">
+          ${visiveis.map((m,i)=> html`<div key=${i} class="row" style="gap:8px;padding:3px 0;border-bottom:1px solid var(--line-soft)">
+            <span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title=${m.docName}>${m.docName}</span>
+            <span class="meta" style="flex:0 0 auto">${m.catName}</span>
+            <span style="flex:0 0 auto;font-family:var(--mono)">
+              ${m.de ? html`<span class="meta">${m.de}</span> → ` : ''}${m.para ? m.para : html`<span class="meta">(vazio)</span>`}
+            </span>
+            <span class="meta" style="flex:0 0 auto">${tipoLabel[m.tipo]}</span>
+          </div>`)}
+        </div>
+        ${plan.mudancas.length>MOSTRA && html`<button class="btn sm ghost" style="margin-top:6px" onClick=${()=>setVerTudo(v=>!v)}>
+          ${verTudo ? 'mostrar menos' : `+ ${plan.mudancas.length-MOSTRA} restantes`}</button>`}
+      </div>`}
+
+      ${plan.naoCasadas.length>0 && html`<div style="margin-top:10px">
+        <div class="field-label">Linhas sem documento correspondente <span class="meta">· ${plan.naoCasadas.length}</span></div>
+        <div class="hint" style="max-height:14vh;overflow:auto;font-size:12px">
+          ${plan.naoCasadas.slice(0,20).map((n,i)=> html`<div key=${i}>linha ${n.linha}: ${n.nome ? `"${n.nome}"` : '(sem nome)'} — ${n.motivo}</div>`)}
+          ${plan.naoCasadas.length>20 && html`<div>...e mais ${plan.naoCasadas.length-20}.</div>`}
+        </div>
+      </div>`}
+
+      ${erros.length>0 && html`<p class="hint" style="color:var(--danger);margin:10px 0 0">${erros.join(' ')}</p>`}
+      ${!erros.length && nada && html`<p class="hint" style="margin:10px 0 0">
+        Nada a mudar: os valores da planilha já são os que estão no projeto.
+      </p>`}
+
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+        <button class="btn ghost" onClick=${onCancel}>Cancelar</button>
+        <button class="btn primary" disabled=${!podeAplicar} onClick=${()=>onConfirm(plan, layer)}>Aplicar</button>
       </div>
     </div>
   </div>`;

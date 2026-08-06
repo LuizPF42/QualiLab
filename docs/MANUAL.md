@@ -751,7 +751,7 @@ Os menus **exportar ▾** e **importar ▾** ficam no cabeçalho (aparecem quand
 | **.qualilab (projeto completo, nativo)** | Tudo (documentos, categorias, valores, códigos, codificações, memos) para reabrir no QualiLab. É o backup completo do projeto |
 | **JSON (projeto)** | Projeto completo com camadas e autores |
 | **CSV (trechos codificados)** | Um trecho por linha (documento, código, camada, autor) |
-| **CSV (atributos por documento)** | Um documento por linha, com os valores de categoria |
+| **CSV (atributos por documento)** | Um documento por linha, com os valores de categoria. **Tem caminho de volta**: preencha na planilha e reimporte, ver [abaixo](#preencher-categorias-numa-planilha-e-trazer-de-volta-passo-a-passo) |
 | **QDPX (ATLAS.ti / MAXQDA / NVivo)** | Padrão REFI-QDA; prefere a camada final quando consolidada |
 | **QDC (codebook REFI-QDA)** | Só o livro de códigos |
 
@@ -768,7 +768,8 @@ Os menus **exportar ▾** e **importar ▾** ficam no cabeçalho (aparecem quand
 | **QDPX** | Projeto REFI-QDA de outras ferramentas. Tipos de categoria são **inferidos** (revise no esquema). Inclui importação reforçada de `.qdpx` do **ATLAS.ti** com PDFs |
 | **.sqlite3 (Taguette)** | Projeto nativo do Taguette: documentos, tags (hierarquia por `/` ou `.`) e trechos. Sem atributos nem autor por trecho |
 | **.qdc (codebook REFI-QDA)** | Só o livro de códigos |
-| **planilha (.csv / .xlsx)** | **Cada linha vira um documento**, veja abaixo |
+| **planilha (.csv / .xlsx → documentos + categorias)** | **Cada linha vira um documento**, veja abaixo |
+| **planilha (.csv / .xlsx → atualizar categorias)** | **Preenche categorias de documentos que já existem**, casando pelo nome. Não cria documento nenhum, veja abaixo |
 | **pasta do Zotero (Zotero RDF)** | **Cada referência com PDF vira um documento**; os metadados viram categorias e a referência vira memo, veja abaixo |
 
 > Em projeto **coletivo na nuvem**, **importar é uma ação de administrador** (o import cria dados compartilhados e pode escrever o gabarito). Em rascunho, arquivo ou projeto individual, qualquer usuário importa.
@@ -795,6 +796,39 @@ Os menus **exportar ▾** e **importar ▾** ficam no cabeçalho (aparecem quand
 - Linhas sem texto na coluna de conteúdo são ignoradas (o resumo informa quantas). O `.csv` detecta o separador (`,`/`;`/tab); o Excel importa a **primeira aba**.
 
 > **Colunas que viram memo.** A coluna "Observações", "Parecer" ou "Resumo do caso" não é dado nem atributo: é o que **você** anotou sobre aquela linha, e texto longo em campo de categoria fica ilegível. Marque-a como **Memo do documento** e ela vai para a aba [Memos](#11-memos). Dá para marcar **várias**: o memo é então **costurado**, um bloco por coluna, na ordem em que elas aparecem na planilha. Cada bloco é identificado pelo **título da coluna** (numa planilha, o cabeçalho é a única coisa que diz o que aquele texto é) — dá para desligar numa caixa de seleção, e o modal mostra uma **prévia** do resultado antes de importar. Célula vazia não vira bloco vazio, e linha sem nenhuma dessas colunas preenchida não ganha memo.
+
+#### Preencher categorias numa planilha e trazer de volta (passo a passo)
+
+Responder o mesmo atributo em 200 documentos é onde a tela trabalha contra você: numa planilha, é
+arrastar uma coluna. Este caminho é o **de volta** do CSV de atributos — o arquivo da ida é o mesmo
+da volta, não há formato novo.
+
+1. **exportar ▾ → CSV (atributos por documento)**. Você recebe uma linha por documento, uma coluna
+   por categoria.
+2. Abra no Excel (ou no LibreOffice) e **preencha as células**. Não mexa na coluna `documento`: é
+   por ela que cada linha reencontra o seu documento.
+3. **importar ▾ → planilha (.csv / .xlsx → atualizar categorias)** e escolha o arquivo.
+4. A tela mostra **o que vai mudar antes de gravar**: quantas respostas serão preenchidas, quantas
+   alteradas (com o valor atual ao lado do novo), quantas já estão iguais, e quais linhas não
+   corresponderam a nenhum documento. Confirme em **Aplicar**.
+
+O que ele faz e o que não faz:
+
+- **Nenhum documento é criado, renomeado ou excluído.** Para criar documentos a partir de uma
+  planilha, use o outro item do menu.
+- **Cada linha casa com o documento de mesmo nome** (acento, caixa e espaço a mais não atrapalham).
+  Nome que não existe no projeto, ou que aparece em **dois** documentos, é ignorado e listado: o
+  QualiLab não escolhe por você. Se você renomeou documentos depois de exportar, exporte de novo.
+- **Célula em branco não apaga nada**, porque o arquivo exportado já vem em branco no que nunca foi
+  preenchido. Para esvaziar respostas de propósito, marque **"Célula em branco apaga a resposta"**.
+- **Valor que ainda não existe numa categoria fechada é acrescentado às opções**, e a tela diz
+  quais são antes de aplicar — é ali que se percebe um erro de digitação virando opção nova.
+- **Coluna que não corresponde a nenhuma categoria nasce ignorada** (é o caso do `n_trechos`, que é
+  calculado). Qualquer coluna pode virar uma **categoria nova**, escolhendo o tipo.
+- **Datas**: valem `04/07/2013`, `2013-07-04`, `07/2013` e `2013` (só o ano). O que não dá para
+  entender é recusado e informado, nunca chutado.
+- Em projeto **coletivo**, você escolhe se está preenchendo o **gabarito da equipe** (administrador)
+  ou a **sua resposta**.
 
 > Depois de importar de outra ferramenta, vale revisar o esquema de categorias (os tipos podem ter sido inferidos).
 
