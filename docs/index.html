@@ -786,7 +786,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.18';
+const QUALILAB_VERSION = '1.4.19';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -1611,6 +1611,15 @@ function humanizeError(raw){
   if(t.includes('invalid login credentials')) return 'E-mail ou senha incorretos.';
   if(t.includes('email not confirmed')) return 'E-mail ainda não confirmado. Verifique sua caixa de entrada (e o spam).';
   if(t.includes('already registered') || t.includes('already been registered')) return 'Este e-mail já tem cadastro. Use "Entrar".';
+  // codigo de confirmacao de cadastro (OTP) errado ou vencido. Vem ANTES da regra de 'token is
+  // expired' logo abaixo de proposito: o Supabase escreve "Token HAS expired or is invalid" aqui e
+  // "token IS expired" no JWT — duas letras separando duas telas diferentes. A frase precisa mandar
+  // pedir CODIGO novo (o botao esta na mesma tela), nao falar em sessao nem em link.
+  if(t.includes('token has expired or is invalid') || t.includes('otp_expired') || t.includes('invalid_otp'))
+    return 'Código inválido ou vencido. Confira os 6 dígitos do e-mail mais recente, ou peça um código novo.';
+  // e-mail ANTIGO, com link: quem guardou a mensagem de antes da v1.4.19 ainda pode clicar nela.
+  if(t.includes('email link is invalid or has expired'))
+    return 'Este link de confirmação já foi usado ou venceu. Crie a conta de novo para receber um código, ou entre se ela já estiver confirmada.';
   // "a alteracao NAO foi salva" (frase antiga) so valia pra ESCRITA: a mesma mensagem aparecia
   // ao falhar um login ou uma LEITURA de fundo, onde nao havia alteracao nenhuma pra salvar.
   // "a ação não foi concluída" e verdadeiro nos tres casos. Desde a fila (FILA-BLOCK, v1.4.7)
@@ -5337,6 +5346,34 @@ function SupabaseStore(sb){
       if(r.data.session){ user = r.data.session.user; name = nameOf(user, display); return { confirmed:true, user:{ id:user.id, name, email:user.email||null, anon:false } }; }
       return { confirmed:false };
     },
+    /* Confirmacao de cadastro por CODIGO DIGITADO, nao por link clicado (v1.4.19).
+       MOTIVO, medido no log de auth em 06/ago/2026: o /verify de um cadastro novo foi consumido
+       por um IP da AWS (35.95.32.14) 5s antes do clique da PESSOA (187.90.219.28), que levou
+       "403: Email link is invalid or has expired". Logo em seguida vieram um HEAD de 104.47.58.126
+       (Exchange Online Protection) e outro GET de 135.232.20.35 (Azure). Ou seja: o antivirus de
+       link do e-mail corporativo ABRE a mensagem antes do destinatario. A conta ficava confirmada
+       e o pesquisador via "link expirado" — e sem sessao. Reproduz pra qualquer caixa Microsoft 365
+       com Safe Links, que na FGV e a regra.
+       O token do link e o MESMO 6 digitos do `{{ .Token }}`: por isso mandar os dois no e-mail NAO
+       resolveria (o scanner queima o token e o codigo digitado morre junto). O template do painel
+       (Auth > Emails > Confirm signup) perdeu o `{{ .ConfirmationURL }}` DE PROPOSITO — voltar a
+       por o link ali reabre o bug inteiro. Um GET nao dispara sozinho, entao o scanner nao alcanca.
+       O caminho do LINK continua funcionando no cliente (detectSessionInUrl) pra quem tiver um
+       e-mail antigo na caixa; nao ha nada a remover aqui. */
+    async verifySignup(email, token, display){
+      const r = await sb.auth.verifyOtp({ email:String(email||'').trim(), token:String(token||'').replace(/\D/g,''), type:'signup' });
+      if(r.error) throw r.error;
+      const sess = r.data && r.data.session;
+      // verifyOtp sem sessao nao acontece no caminho feliz; se acontecer, e mais honesto pedir
+      // codigo novo do que devolver um usuario sem JWT (toda escrita seguinte cairia na RLS).
+      if(!sess) throw new Error('Não foi possível confirmar o cadastro. Peça um código novo.');
+      user = sess.user; name = nameOf(user, display);
+      return { id:user.id, name, email:user.email||null, anon:false };
+    },
+    async resendSignup(email){
+      const r = await sb.auth.resend({ type:'signup', email:String(email||'').trim() });
+      if(r.error) throw r.error;
+    },
     // Login com Google (OAuth). Redireciona pro Google e volta pra ESTA url; o supabase-js
     // (detectSessionInUrl, ligado por padrao) processa o retorno no boot e a sessao entra igual
     // a de e-mail/senha. Precisa, no painel do projeto: provider Google habilitado (Auth >
@@ -7832,6 +7869,8 @@ function App(){
     onSignUp=${async (email,pw,disp)=>{ try{ const r=await store.signUp(email,pw,disp); try{localStorage.setItem('qualilab:name',disp);}catch(e){} setErr(null); if(r.confirmed){ await afterAuth(store, disp); } return r; }catch(e){ setErr(String(e.message||e)); return { error:String(e.message||e) }; } }}
     onGoogle=${async ()=>{ try{ setErr(null); await store.signInWithGoogle(); }catch(e){ setErr(String(e.message||e)); } }}
     onForgot=${store?.resetPassword ? (async (email)=>{ try{ setErr(null); await store.resetPassword(email); return true; }catch(e){ setErr(String(e.message||e)); return false; } }) : undefined}
+    onVerifySignup=${store?.verifySignup ? (async (email,codigo,disp)=>{ try{ const u=await store.verifySignup(email,codigo,disp); try{localStorage.setItem('qualilab:name',u.name);}catch(e){} setErr(null); await afterAuth(store, u.name); }catch(e){ setErr(String(e.message||e)); } }) : undefined}
+    onResendSignup=${store?.resendSignup ? (async (email)=>{ try{ setErr(null); await store.resendSignup(email); return true; }catch(e){ setErr(String(e.message||e)); return false; } }) : undefined}
     onBack=${()=>{ setErr(null); setPhase('welcome'); }}
     onServer=${connectCustomCloud} onResetServer=${resetCustomCloud}
   />`;
@@ -9136,7 +9175,7 @@ function ServerConnect({ onConnect, onReset }){
   </div>`;
 }
 
-function Auth({ onSignIn, onSignUp, onGoogle, onBack, onServer, onResetServer, onForgot, err }){
+function Auth({ onSignIn, onSignUp, onGoogle, onBack, onServer, onResetServer, onForgot, onVerifySignup, onResendSignup, err }){
   const [tab,setTab]=useState('in');   // in = entrar | up = criar conta | forgot = redefinir senha
   const [name,setName]=useState('');
   const [email,setEmail]=useState('');
@@ -9144,13 +9183,69 @@ function Auth({ onSignIn, onSignUp, onGoogle, onBack, onServer, onResetServer, o
   const [busy,setBusy]=useState(false);
   const [confirmMsg,setConfirmMsg]=useState(false);
   const [sentMsg,setSentMsg]=useState(false);
+  /* CONFIRMACAO POR CODIGO (v1.4.19). `otpFor` guarda o e-mail recem-cadastrado e vira a TELA
+     INTEIRA, nao um aviso dentro do formulario como era antes ("Conta criada. Verifique seu
+     e-mail para confirmar o cadastro e depois entre."). O aviso servia quando a acao acontecia
+     fora do app, no clique do link; o codigo digitado precisa de um campo, e deixar o formulario
+     de cadastro por baixo convidaria a se cadastrar de novo. O aviso antigo SOBREVIVE como
+     fallback pra store sem `verifySignup` (Supabase pessoal de terceiro, cliente antigo em cache).
+     Ver `verifySignup` no SupabaseStore pro motivo de nao ser mais um link. */
+  const [otpFor,setOtpFor]=useState(null);
+  const [code,setCode]=useState('');
+  const [resentMsg,setResentMsg]=useState(false);
+  const [cooldown,setCooldown]=useState(0);
+  // o contador existe pra pessoa nao esmurrar "Reenviar" e levar 429: a cota de e-mail e do
+  // PROJETO e compartilhada com a recuperacao de senha (ver humanizeError e a regra de ouro #10).
+  useEffect(()=>{ if(cooldown<=0) return; const t=setTimeout(()=>setCooldown(c=>c-1),1000); return ()=>clearTimeout(t); },[cooldown]);
   const submit = async ()=>{
     setBusy(true); setConfirmMsg(false);
     if(tab==='in'){ await onSignIn(email, pw); }
     else if(tab==='forgot'){ const ok = await onForgot(email); if(ok) setSentMsg(true); }
-    else { const r = await onSignUp(email, pw, name||'pesquisador'); if(r && r.confirmed===false) setConfirmMsg(true); }
+    else {
+      const r = await onSignUp(email, pw, name||'pesquisador');
+      // confirmed:false = o servidor exige confirmacao e o codigo ja foi enviado
+      if(r && r.confirmed===false){
+        if(onVerifySignup){ setCode(''); setResentMsg(false); setCooldown(60); setOtpFor(email.trim()); }
+        else setConfirmMsg(true);
+      }
+    }
     setBusy(false);
   };
+  const confirmCode = async ()=>{
+    if(busy || code.length!==6) return;
+    setBusy(true); setResentMsg(false);
+    await onVerifySignup(otpFor, code, name||'pesquisador');   // sucesso desmonta esta tela (afterAuth)
+    setBusy(false);
+  };
+  const resend = async ()=>{
+    setBusy(true); setResentMsg(false);
+    const ok = await onResendSignup(otpFor);
+    if(ok){ setResentMsg(true); setCooldown(60); }   // erro (ex.: 429) chega pelo banner de `err`
+    setBusy(false);
+  };
+  if(otpFor) return html`<div class="modal-bg"><div class="modal">
+    <h2>Confirme seu cadastro</h2>
+    <p class="hint">Enviamos um código de 6 dígitos para <strong>${otpFor}</strong>. Digite-o aqui para entrar. Se não achar, veja a caixa de spam. O código vale por uma hora.</p>
+    ${err && html`<div class="banner err" style="margin:0 0 12px">${humanizeError(err)||err}</div>`}
+    ${resentMsg && html`<div class="banner warn" style="margin:0 0 12px">Código novo enviado. Use o do e-mail <strong>mais recente</strong> — o anterior deixou de valer.</div>`}
+    <div class="field"><div class="field-label">Código do e-mail</div>
+      <input class="txtin" inputmode="numeric" autocomplete="one-time-code" maxlength="6" value=${code}
+        style="font-size:22px;letter-spacing:8px;text-align:center;font-variant-numeric:tabular-nums"
+        placeholder="000000" aria-label="código de seis dígitos"
+        onInput=${e=>{ setCode(e.target.value.replace(/\D/g,'').slice(0,6)); setResentMsg(false); }}
+        onKeyDown=${e=>{ if(e.key==='Enter') confirmCode(); }} /></div>
+    <button class="btn primary" style="width:100%;justify-content:center" disabled=${busy||code.length!==6} onClick=${confirmCode}>
+      ${busy?'...':'Confirmar e entrar'}</button>
+    <div style="text-align:center;margin-top:9px">
+      <button class="btn sm ghost" style="font-size:12px" disabled=${busy||cooldown>0} onClick=${resend}>
+        ${cooldown>0?`Reenviar código (${cooldown}s)`:'Reenviar código'}</button>
+    </div>
+    <button class="btn ghost" style="width:100%;justify-content:center;margin-top:10px"
+      onClick=${()=>{ setOtpFor(null); setCode(''); setTab('in'); }}>Já confirmei — quero entrar</button>
+    <div style="text-align:center;margin-top:14px">
+      <button class="btn sm ghost" style="font-size:12px" onClick=${()=>{ setOtpFor(null); setCode(''); setTab('up'); }}>← Usar outro e-mail</button>
+    </div>
+  </div></div>`;
   // na aba "esqueci minha senha" so o e-mail e exigido (nao ha senha a digitar ainda)
   const canSubmit = !busy && !!email && (tab==='forgot' || pw.length>=6);
   return html`<div class="modal-bg"><div class="modal">
@@ -16893,10 +16988,11 @@ function ProjectModal({ mode, user, project, projectMode, isAdmin, members, hasD
    e sua propria instancia de SupabaseStore, sem tocar no store/sessao principal do App — entrar
    de fato no projeto criado continua sendo "trocar projeto" depois, fluxo ja existente. */
 function SendToCloudModal({ defaultName, onBuildDb, onGatherPdfs, onGatherPdfIndexes, hasPdfs, onEnter, onClose }){
-  const [step, setStep] = useState('auth'); // auth | project | running | done
+  const [step, setStep] = useState('auth'); // auth | otp | project | running | done
   const [includePdfs, setIncludePdfs] = useState(false); // enviar tb os PDFs originais? (opt-in — privacidade)
   const [authTab, setAuthTab] = useState('in'); // in | up
   const [email, setEmail] = useState(''); const [pw, setPw] = useState(''); const [dispName, setDispName] = useState('');
+  const [otpCode, setOtpCode] = useState(''); // codigo de confirmacao do cadastro (v1.4.19)
   const [pname, setPname] = useState(defaultName || 'Projeto');
   const [pmode, setPmode] = useState('collective');
   const [busy, setBusy] = useState(false);
@@ -16915,11 +17011,31 @@ function SendToCloudModal({ defaultName, onBuildDb, onGatherPdfs, onGatherPdfInd
       if(authTab==='in') await st.signIn(email, pw);
       else {
         const r = await st.signUp(email, pw, dispName.trim()||'pesquisador');
+        // Confirmacao por CODIGO (v1.4.19): antes daqui saia um "confirme seu e-mail e depois
+        // entre com Já tenho conta", que jogava fora o modal inteiro e obrigava a recomecar o
+        // envio. O cliente ja fica guardado; falta so o JWT, que o verifyOtp traz sem sair da tela.
+        if(r && r.confirmed===false && st.verifySignup){
+          cloudRef.current = st; sbRef.current = sb; setOtpCode(''); setStep('otp'); setBusy(false); return;
+        }
         if(r && r.confirmed===false){ setErr('Conta criada. Confirme seu e-mail e depois entre com "Já tenho conta".'); setBusy(false); return; }
       }
       cloudRef.current = st; sbRef.current = sb;
       setStep('project');
     }catch(e){ setErr(String(e.message||e)); }
+    setBusy(false);
+  };
+
+  const doVerify = async ()=>{
+    if(busy || otpCode.length!==6) return;
+    setErr(null); setBusy(true);
+    try{ await cloudRef.current.verifySignup(email, otpCode, dispName.trim()||'pesquisador'); setStep('project'); }
+    catch(e){ setErr(String(e.message||e)); }
+    setBusy(false);
+  };
+  const doResend = async ()=>{
+    setErr(null); setBusy(true);
+    try{ await cloudRef.current.resendSignup(email); }
+    catch(e){ setErr(String(e.message||e)); }
     setBusy(false);
   };
 
@@ -16940,7 +17056,7 @@ function SendToCloudModal({ defaultName, onBuildDb, onGatherPdfs, onGatherPdfInd
 
   return html`<div class="modal-bg"><div class="modal">
     <h2>Enviar para a nuvem</h2>
-    ${err && html`<div class="banner err" style="margin:0 0 12px">${err}</div>`}
+    ${err && html`<div class="banner err" style="margin:0 0 12px">${humanizeError(err)||err}</div>`}
 
     ${step==='auth' && html`<div>
       <p class="hint" style="margin:0 0 10px">Primeiro, entre (ou crie uma conta) na nuvem: é ali que o projeto novo vai ser criado.</p>
@@ -16957,6 +17073,23 @@ function SendToCloudModal({ defaultName, onBuildDb, onGatherPdfs, onGatherPdfInd
       <div class="row" style="justify-content:flex-end;gap:8px;margin-top:10px">
         <button class="btn ghost" onClick=${onClose}>Cancelar</button>
         <button class="btn primary" disabled=${busy||!email||!pw} onClick=${doAuth}>${busy?'…':'Continuar'}</button>
+      </div>
+    </div>`}
+
+    ${step==='otp' && html`<div>
+      <p class="hint" style="margin:0 0 10px">Enviamos um código de 6 dígitos para <strong>${email}</strong>. Digite-o para confirmar a conta e seguir com o envio. Se não achar, veja a caixa de spam.</p>
+      <div class="field"><div class="field-label">Código do e-mail</div>
+        <input class="txtin" inputmode="numeric" autocomplete="one-time-code" maxlength="6" value=${otpCode}
+          style="font-size:22px;letter-spacing:8px;text-align:center;font-variant-numeric:tabular-nums"
+          placeholder="000000" aria-label="código de seis dígitos"
+          onInput=${e=>setOtpCode(e.target.value.replace(/\D/g,'').slice(0,6))}
+          onKeyDown=${e=>{ if(e.key==='Enter') doVerify(); }} /></div>
+      <div class="row" style="justify-content:space-between;gap:8px;margin-top:10px">
+        <button class="btn sm ghost" style="font-size:12px" disabled=${busy} onClick=${doResend}>Reenviar código</button>
+        <div class="row" style="gap:8px">
+          <button class="btn ghost" onClick=${onClose}>Cancelar</button>
+          <button class="btn primary" disabled=${busy||otpCode.length!==6} onClick=${doVerify}>${busy?'…':'Confirmar'}</button>
+        </div>
       </div>
     </div>`}
 

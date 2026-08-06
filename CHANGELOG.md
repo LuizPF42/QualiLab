@@ -14,6 +14,29 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.19 (06/08/2026)
+
+### Confirmar o cadastro agora é um código digitado, não um link clicado
+
+Quem criava conta com e-mail institucional podia receber **"link inválido ou expirado"** ao
+clicar no e-mail de confirmação, mesmo tendo acabado de recebê-lo e sem ter clicado antes.
+
+O motivo não estava no QualiLab. Servidores de e-mail corporativos (o da FGV, entre eles)
+passam cada mensagem por um antivírus que **abre os links sozinho** para verificar se são
+seguros. O link de confirmação só vale uma vez: quando a pessoa clicava, o antivírus já o
+tinha gasto. A conta ficava confirmada, mas ela via um erro e não entrava.
+
+Agora o e-mail traz um **código de 6 dígitos** em vez de um link. Você cria a conta, o
+QualiLab abre uma tela pedindo o código, você digita e entra na hora. Um verificador
+automático não tem como digitar um código, então o problema não se repete. A tela também
+tem **"Reenviar código"**, para o caso de a mensagem demorar ou se perder.
+
+Isso vale para os dois lugares onde se cria conta: a tela de acesso e o "Enviar para a
+nuvem". Neste último, confirmar a conta deixou de descartar o envio pela metade — você
+digita o código e segue de onde parou.
+
+Se você guardou um e-mail de confirmação antigo, com link, ele continua funcionando.
+
 ## 1.4.18 (06/08/2026)
 
 ### O QualiLab abre sem internet
