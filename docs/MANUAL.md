@@ -138,7 +138,7 @@ No QualiLab a família mostra a **soma dos subcódigos** (o número inclui os fi
 > **Sobre a profundidade.** O QualiLab permite quantos níveis você quiser (`Adoção ▸ Ganhos ▸ Aceleração`). A literatura recomenda parcimônia: Bazeley sugere algo como 10 a 25 famílias no topo e **2 a 3 níveis** no total. Mais fundo que isso e os códigos tendem a se duplicar nos níveis baixos, o que atrapalha justamente a comparação que a codificação deveria permitir.
 
 ### Categoria (atributo do documento)
-Diferente do código: a categoria descreve o **documento inteiro**, não um trecho. "Ano", "Tribunal", "Tipo de fonte", "Gênero do entrevistado". É o que normalmente vira coluna numa planilha paralela; aqui fica integrado. Há cinco tipos (Texto Fechado, Texto Aberto, Data, Múltipla Escolha, Caixa de Seleção).
+Diferente do código: a categoria descreve o **documento inteiro**, não um trecho. "Ano", "Tribunal", "Tipo de fonte", "Gênero do entrevistado". É o que normalmente vira coluna numa planilha paralela; aqui fica integrado. Há sete tipos (Texto Fechado, Texto Aberto, Número, Data, Sim/Não, Múltipla Escolha, Caixa de Seleção).
 
 > **Código × Categoria, em uma frase:** *código* marca um **pedaço** do texto; *categoria* responde uma pergunta sobre o **documento todo**.
 
@@ -150,6 +150,8 @@ Diferente do código: a categoria descreve o **documento inteiro**, não um trec
 | **família** (código com subcódigos) | código e subcódigos | nó-pai e nós-filhos | **categoria** | **categoria** |
 
 O ATLAS.ti é o único dos quatro que não tem atributo de documento: o manual dele recomenda usar **grupos de documentos** no lugar ("document groups can be regarded as attributes or variables"). É por isso que, ao exportar para ele, cada valor de categoria vira um grupo separado, e uma categoria de texto livre acaba gerando um grupo por documento. Não é um defeito da exportação: é a única representação que o modelo dele admite.
+
+Na **volta** o caminho é o mesmo, invertido: ao importar um `.qdpx`, cada **grupo de documentos** vira valor de uma categoria do tipo *Caixa de Seleção* (um documento pode estar em vários grupos, e todos aparecem). Quando o grupo tem nome no formato `Categoria::Valor`, a categoria original é reconstruída com o nome dela. Já **grupo de códigos não vira família**, porque aqui a família é definida pela hierarquia do próprio código: o resumo do import lista pelo nome os grupos de códigos que ficaram de fora, para você recriá-los como subcódigos se quiser.
 
 ### Camadas e autoria
 Toda codificação e toda resposta de categoria registra **quem** fez. Há duas camadas:
@@ -432,14 +434,18 @@ Em projeto individual com mais de um autor importado, o seletor mostra **Todos o
 
 No painel **Categorias** (direita, na aba Codificação) você responde os atributos do **documento aberto**.
 
-### Os cinco tipos
+### Os sete tipos
 | Tipo | Como preenche |
 |---|---|
 | **Texto Fechado** | Lista suspensa, escolhe **um** |
 | **Texto Aberto** | Campo livre |
+| **Número** | Campo numérico (pode escrever `12,5`; o app guarda `12.5`) |
 | **Data** | DD / MM / AAAA, com partes opcionais (pode pôr só o ano) |
+| **Sim/Não** | Dois botões |
 | **Múltipla Escolha** | Botões, escolhe **um** |
 | **Caixa de Seleção** | Botões, escolhe **vários** |
+
+> **Por que Número e Sim/Não são tipos, e não texto.** O que você escreve num campo de texto o app não sabe ordenar nem somar, e ao exportar chega ao MAXQDA ou ao NVivo como texto — lá também sem ordenar. Como Número, o valor sai tipado no `.qdpx` (Integer ou Float, conforme os valores) e volta tipado; como Sim/Não, sai como Boolean. O que **não** for número não é aceito no campo (fica em vermelho): é isso que garante que a coluna inteira continue valendo como número.
 
 Cada categoria pode ter uma **descrição/instrução** e habilitar duas opções especiais: **"Não informado"** e **"Outros"** (com valor livre).
 
@@ -755,7 +761,7 @@ Os menus **exportar ▾** e **importar ▾** ficam no cabeçalho (aparecem quand
 | **QDPX (ATLAS.ti / MAXQDA / NVivo)** | Padrão REFI-QDA; prefere a camada final quando consolidada |
 | **QDC (codebook REFI-QDA)** | Só o livro de códigos |
 
-> **O que acontece com as categorias no QDPX.** O padrão REFI-QDA guarda **um valor por documento por atributo**, sem autor e sem tipo rico. Na prática: viaja o **gabarito** (as respostas individuais de cada pesquisador ficam só no `.qualilab`); todos os tipos saem como **texto**, com o tipo real numa descrição que só o próprio QualiLab lê de volta; e uma **Caixa de Seleção** com vários valores viaja como um texto único ("a | b"), porque nem o MAXQDA nem o NVivo têm atributo de múltiplos valores. Nada disso se perde no `.qualilab`, que é o único formato sem perda.
+> **O que acontece com as categorias no QDPX.** O padrão REFI-QDA guarda **um valor por documento por atributo**, sem autor e sem tipo rico. Na prática: viaja o **gabarito** (as respostas individuais de cada pesquisador ficam só no `.qualilab`); **Número**, **Sim/Não** e **Data** saem tipados (Integer/Float, Boolean, Date) e chegam ordenáveis do outro lado — mas só quando **todos** os valores daquela categoria cabem no tipo: basta um "Não informado", ou uma data sem o dia, para a categoria inteira sair como texto, porque um pacote com valor fora do tipo é recusado inteiro por importadores estritos. Os demais tipos saem como **texto**, com o tipo real numa descrição que só o próprio QualiLab lê de volta; e uma **Caixa de Seleção** com vários valores viaja como um texto único ("a | b"), porque nem o MAXQDA nem o NVivo têm atributo de múltiplos valores. Nada disso se perde no `.qualilab`, que é o único formato sem perda.
 
 > **Trechos com mais de um código no QDPX.** Quando **você** aplica dois códigos ao mesmo trecho, o QDPX leva **uma citação com os dois códigos** — que é como as outras ferramentas representam isso — e não duas citações idênticas sobrepostas. A **nota analítica** do trecho viaja junto e volta inteira na importação. O agrupamento é conservador de propósito em dois casos, e nos dois a citação continua repetida: quando o trecho foi codificado por **pessoas diferentes** (a outra ferramenta lê o codificador da citação, e juntar trocaria a autoria) e quando **dois códigos do mesmo trecho têm nota própria** (só cabe uma nota por citação).
 
@@ -765,7 +771,7 @@ Os menus **exportar ▾** e **importar ▾** ficam no cabeçalho (aparecem quand
 | Item | O que traz |
 |---|---|
 | **.qualilab** | Mescla um projeto exportado. Em destino **coletivo**, preserva a resposta de cada pesquisador de origem; o gabarito vira gabarito |
-| **QDPX** | Projeto REFI-QDA de outras ferramentas. Tipos de categoria são **inferidos** (revise no esquema). Inclui importação reforçada de `.qdpx` do **ATLAS.ti** com PDFs |
+| **QDPX** | Projeto REFI-QDA de outras ferramentas. O tipo de categoria que a origem **declara** (número, Sim/Não, data) é respeitado; o que ela declara só como texto é **inferido** (revise no esquema). Inclui importação reforçada de `.qdpx` do **ATLAS.ti** com PDFs |
 | **.sqlite3 (Taguette)** | Projeto nativo do Taguette: documentos, tags (hierarquia por `/` ou `.`) e trechos. Sem atributos nem autor por trecho |
 | **.qdc (codebook REFI-QDA)** | Só o livro de códigos |
 | **planilha (.csv / .xlsx → documentos + categorias)** | **Cada linha vira um documento**, veja abaixo |

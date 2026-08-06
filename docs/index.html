@@ -769,7 +769,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.14';
+const QUALILAB_VERSION = '1.4.17';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -901,21 +901,103 @@ function hexToHue(hex){
 /* ============ TIPOS DE CATEGORIA ============
    'single' (token legado) = Multipla Escolha. Os demais tokens sao novos.
    Os tipos com lista de valores: select, single, checkbox. Caixa de Selecao
-   guarda varios valores num unico campo, separados por CAT_MULTI_SEP. */
+   guarda varios valores num unico campo, separados por CAT_MULTI_SEP.
+   'number' e 'boolean' (ago/2026) fecham a paridade com MAXQDA/NVivo (que tem
+   integer+decimal+boolean) e com o REFI-QDA (Integer/Float/Boolean no XSD). NUMERO E UM
+   TIPO SO, de proposito: inteiro x decimal nao muda nada aqui (a ordenacao e a mesma) e a
+   distincao que o formato pede e DERIVADA dos valores na hora de exportar — mesma escolha
+   ja feita pro tipo declarado na Description. */
 const CAT_KINDS = [
   { id:'select',   label:'Texto Fechado' },
   { id:'text',     label:'Texto Aberto' },
+  { id:'number',   label:'Número' },
   { id:'date',     label:'Data' },
+  { id:'boolean',  label:'Sim/Não' },
   { id:'single',   label:'Múltipla Escolha' },
   { id:'checkbox', label:'Caixa de Seleção' },
 ];
 const CAT_HAS_OPTIONS = (k)=> k==='select' || k==='single' || k==='checkbox';
+/* FECHADA = tem um conjunto pequeno e CONHECIDO de valores, e por isso serve de filtro, de
+   agrupamento e de eixo categorico. Nao e o mesmo que "tem options": boolean nao tem lista
+   editavel (os dois valores sao fixos) e mesmo assim e fechada; number tem valores livres e
+   NAO e — num corpus real ele geraria um grupo por documento. Use CAT_HAS_OPTIONS so onde a
+   pergunta e "esta categoria tem uma lista que o pesquisador edita?" (o editor do esquema, a
+   deducao de opcoes no import). */
+const CAT_CLOSED = (k)=> CAT_HAS_OPTIONS(k) || k==='boolean';
 const CAT_MULTI_SEP = ' | ';
+// Sim/Nao guarda o ROTULO em portugues (a coluna value e text e o app inteiro compara string).
+// Um por linha: o extractDef do tests/extract.mjs so acha `const <nome>` no comeco da linha.
+const BOOL_SIM = 'Sim';
+const BOOL_NAO = 'Não';
 // valores especiais guardados dentro de options (sem precisar de colunas novas):
 // NAO_INFO = "o documento nao informa"; OUTROS = habilita um valor livre "Outros".
 const NAO_INFO = 'Não informado';
 const OUTROS = 'Outros';
 const isSpecialOpt = (o)=> o===NAO_INFO || o===OUTROS;
+
+/* Valor de uma categoria NUMERICA. Guardamos STRING (a coluna value e text em todo lugar) na
+   forma canonica com PONTO decimal — e o que o REFI-QDA, o CSV e o Number() do JS esperam. Na
+   ENTRADA aceitamos a forma brasileira ("1.234,56") e a inglesa ("1,234.56"), porque o teclado
+   do pesquisador e a planilha produzem as duas. Devolve null quando nao e numero; quem chama
+   decide se recusa (campo de valor, planilha) ou guarda cru.
+   AMBIGUIDADE RESOLVIDA A FAVOR DO PORTUGUES, que e a lingua do publico:
+   - os dois separadores presentes: o ULTIMO e o decimal ("1.234,56" e "1,234.56" dao 1234.56);
+   - so virgulas: uma e decimal ("12,5"), varias sao milhar;
+   - so pontos: varios sao milhar; UM seguido de exatamente 3 digitos tambem e milhar ("1.234"
+     e mil duzentos e trinta e quatro, nao 1,234); qualquer outro e decimal ("12.5", "1.2345").
+   O preco conhecido dessa ultima linha e "1,500" no formato ingles virar 1.5 — trocar mil e
+   quinhentos por um e meio e o erro menos provavel aqui, e o campo mostra o que gravou. */
+function catNumberValue(s){
+  if(s==null) return null;
+  let t = String(s).trim().replace(/[\s ]/g,'');   // NBSP: planilha usa como separador de milhar
+  if(!t) return null;
+  const nC = (t.match(/,/g)||[]).length, nP = (t.match(/\./g)||[]).length;
+  if(nC && nP) t = t.lastIndexOf(',') > t.lastIndexOf('.') ? t.replace(/\./g,'').replace(',','.') : t.replace(/,/g,'');
+  else if(nC) t = nC===1 ? t.replace(',','.') : t.replace(/,/g,'');
+  else if(nP>1 || (nP===1 && /\d\.\d{3}$/.test(t))) t = t.replace(/\./g,'');
+  if(!/^[+-]?(\d+\.?\d*|\.\d+)$/.test(t)) return null;
+  const n = Number(t);
+  if(!Number.isFinite(n)) return null;
+  const out = String(n);
+  return /e/i.test(out) ? t : out;   // numero gigante: preserva os digitos em vez de virar 1e+21
+}
+/* Valor de uma categoria SIM/NAO -> o rotulo canonico, ou null se nao for entendido. Aceita as
+   formas que planilha, CSV e .qdpx produzem (true/false, 1/0, x, yes/no). */
+const BOOL_SIM_IN = ['sim','s','yes','y','true','verdadeiro','1','x'];
+const BOOL_NAO_IN = ['nao','n','no','false','falso','0'];
+function catBoolValue(s){
+  const t = foldText(String(s==null?'':s)).trim();
+  if(!t) return null;
+  if(BOOL_SIM_IN.includes(t)) return BOOL_SIM;
+  if(BOOL_NAO_IN.includes(t)) return BOOL_NAO;
+  return null;
+}
+/* Data COMPLETA -> ISO (AAAA-MM-DD), ou null. Nossa data pode ser parcial ("//2013"), e data
+   parcial nao e xsd:date — e por isso que o export so declara Date quando TODOS os valores
+   da categoria passam por aqui. */
+function catDateISO(v){
+  const p = parseDate(v);
+  if(!p.d || !p.mo || p.y.length!==4) return null;
+  const d=+p.d, m=+p.mo;
+  if(!(d>=1 && d<=31 && m>=1 && m<=12)) return null;
+  return `${p.y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
+/* ISO (com ou sem hora) -> DD/MM/AAAA. Volta null se nao for uma data ISO. */
+function catDateBR(s){
+  const m = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(String(s==null?'':s).trim());
+  return m ? `${String(+m[3]).padStart(2,'0')}/${String(+m[2]).padStart(2,'0')}/${m[1]}` : null;
+}
+/* Comparador de valores de uma categoria: numerico quando o tipo e numerico, senao alfabetico
+   com numeric:true (que ja resolve "Doc 10" depois de "Doc 2"). Valor vazio sempre por ultimo. */
+function catValueCmp(kind){
+  const alpha = (a,b)=> String(a).localeCompare(String(b),'pt',{numeric:true,sensitivity:'base'});
+  if(kind!=='number') return (a,b)=> !a ? (!b?0:1) : !b ? -1 : alpha(a,b);
+  return (a,b)=>{
+    const na = catNumberValue(a), nb = catNumberValue(b);
+    if(na===null || nb===null) return na===nb ? 0 : na===null ? 1 : -1;   // nao-numero por ultimo
+    return Number(na)-Number(nb);
+  };
+}
 
 /* ============ EXTRACAO DE TEXTO ============ */
 
@@ -1568,6 +1650,55 @@ function buildCodeXml(code, byParent, memoByCode){
     + `</Code>`;
 }
 
+/* ===== TIPO DE VARIAVEL NO REFI-QDA =====
+   O XSD aceita Text | Boolean | Integer | Float | Date | DateTime, e o <VariableValue> tem um
+   elemento proprio pra cada um. Ate ago/2026 exportavamos TUDO como Text/<TextValue>: o
+   MAXQDA e o NVivo, que tem tipos numerico e booleano, recebiam "42" como texto e nao
+   ordenavam nem calculavam. Regra unica, e conservadora de proposito: so declara um tipo
+   ESTRITO quando TODO valor presente e compativel com ele. Basta um "Não informado" (token
+   que qualquer tipo daqui aceita) ou uma data parcial pra categoria inteira cair pra Text —
+   melhor perder o tipo do que emitir um pacote que um importador estrito recusa inteiro.
+   Categoria sem valor nenhum declara o tipo puro: nao ha o que invalidar. */
+function qdpxVarType(kind, values){
+  const vals = (values||[]).map(v=>String(v==null?'':v).trim()).filter(Boolean);
+  const puro = kind==='boolean' ? 'Boolean' : kind==='number' ? 'Float' : kind==='date' ? 'Date' : 'Text';
+  if(puro==='Text') return 'Text';
+  if(!vals.length) return puro;
+  if(kind==='boolean') return vals.every(v=>catBoolValue(v)!==null) ? 'Boolean' : 'Text';
+  if(kind==='date')    return vals.every(v=>catDateISO(v)!==null) ? 'Date' : 'Text';
+  const nums = vals.map(catNumberValue);
+  if(nums.some(n=>n===null)) return 'Text';
+  return nums.every(n=>Number.isInteger(Number(n))) ? 'Integer' : 'Float';
+}
+/* o elemento de valor que corresponde ao tipo declarado. O fallback pra <TextValue> nunca
+   dispara pelo caminho normal (qdpxVarType so declara tipo estrito quando todos os valores
+   passam) — esta ali pra que uma divergencia futura degrade em texto em vez de gerar XML
+   invalido em silencio. */
+function qdpxValueXml(type, value){
+  const s = String(value==null?'':value);
+  if(type==='Boolean'){ const b=catBoolValue(s); if(b!==null) return `<BooleanValue>${b===BOOL_SIM?'true':'false'}</BooleanValue>`; }
+  if(type==='Integer'){ const n=catNumberValue(s); if(n!==null && Number.isInteger(Number(n))) return `<IntegerValue>${n}</IntegerValue>`; }
+  if(type==='Float'){   const n=catNumberValue(s); if(n!==null) return `<FloatValue>${n}</FloatValue>`; }
+  if(type==='Date'){    const iso=catDateISO(s);   if(iso) return `<DateValue>${iso}</DateValue>`; }
+  return `<TextValue>${xmlEsc(s)}</TextValue>`;
+}
+/* typeOfVariable declarado -> nosso kind. Numero cobre Integer e Float (temos um tipo so) e
+   DateTime cai em data (a hora nao tem onde morar aqui, e o dia e o que interessa). 'text'
+   fica FORA do mapa de proposito: e o valor default do formato, entao um Text declarado nao
+   e evidencia de tipo nenhum e o campo continua indo pra heuristica de cardinalidade. */
+const QDPX_KIND_OF_TYPE = { boolean:'boolean', integer:'number', float:'number', date:'date', datetime:'date' };
+/* valor lido de um <VariableValue> -> a forma que o QualiLab guarda. O REFI grava booleano
+   como true/false e data como ISO; aqui sao "Sim"/"Não" e DD/MM/AAAA. O que nao for entendido
+   volta CRU: perder o valor seria pior que guardar um texto que o pesquisador ainda ve. */
+function qdpxValueIn(kind, tag, raw){
+  const s = String(raw==null?'':raw).trim();
+  if(!s) return '';
+  if(kind==='boolean' || tag==='BooleanValue') return catBoolValue(s) || s;
+  if(kind==='date' || tag==='DateValue' || tag==='DateTimeValue') return catDateBR(s) || s;
+  if(kind==='number') return catNumberValue(s) || s;
+  return s;
+}
+
 /* exporta so o livro de codigos (sem documentos/codificacoes — .qdc nao tem isso),
    reusando o mesmo <Code> recursivo do QDPX. Util pra compartilhar/padronizar o esquema
    de codigos com outra ferramenta REFI-QDA sem expor os dados do projeto. */
@@ -1923,11 +2054,19 @@ async function exportQDPX(docs, cats, allV, codes, allC, project, memos, pdfByte
 
   // variaveis (categorias do documento). o tipo e a lista de valores entram na
   // Description em texto legivel; o proprio QualiLab reconstroi tudo na importacao.
+  // O typeOfVariable declarado e DERIVADO dos valores reais (qdpxVarType) e nao do kind
+  // sozinho: um unico "Não informado" numa categoria numerica faz a categoria inteira sair
+  // como Text, porque <IntegerValue>Não informado</IntegerValue> nao e schema-valido e um
+  // importador estrito recusaria o pacote. Ate ago/2026 tudo saia como Text.
+  const valsByCat = {};
+  allV.forEach(v=>{ (valsByCat[v.category_id] = valsByCat[v.category_id] || []).push(v.value); });
+  const varTypeOf = {};
   const variablesXml = cats.map(c=>{
     const bits = [`tipo: ${c.kind||'text'}`];
     if((c.options||[]).length) bits.push(`valores: ${c.options.join(', ')}`);
-    // sempre Text: nossas datas podem ser parciais (DD/MM/AAAA), invalidas como Date ISO
-    return `<Variable guid="${stripGuid(c.id)}" name="${xmlEsc(c.name)}" typeOfVariable="Text"><Description>${xmlEsc(bits.join(' | '))}</Description></Variable>`;
+    const t = qdpxVarType(c.kind, valsByCat[c.id]);
+    varTypeOf[c.id] = t;
+    return `<Variable guid="${stripGuid(c.id)}" name="${xmlEsc(c.name)}" typeOfVariable="${t}"><Description>${xmlEsc(bits.join(' | '))}</Description></Variable>`;
   }).join('');
 
   // sources (um TextSource por documento, conteudo gravado em sources/<guid>.txt)
@@ -2001,7 +2140,7 @@ async function exportQDPX(docs, cats, allV, codes, allC, project, memos, pdfByte
   // cases (um por documento, com os valores de categoria daquele documento)
   const casesXml = docs.map(d=>{
     const vv = allV.filter(v=>v.document_id===d.id).map(v=>
-      `<VariableValue><VariableRef targetGUID="${stripGuid(v.category_id)}"/><TextValue>${xmlEsc(v.value)}</TextValue></VariableValue>`).join('');
+      `<VariableValue><VariableRef targetGUID="${stripGuid(v.category_id)}"/>${qdpxValueXml(varTypeOf[v.category_id], v.value)}</VariableValue>`).join('');
     // ordem dos filhos do <Case> segue o XSD do REFI-QDA: CodeRef, VariableValue, SourceRef,
     // SelectionRef. VariableValue ANTES de SourceRef — senao importadores estritos (MAXQDA/
     // ATLAS.ti) recusam o .qdpx por invalidez de schema (confirmado pelo harness de round-trip).
@@ -2262,7 +2401,7 @@ function docValueOf(allValues, docId, catId){
    - grupo sem valor vai por último, sempre — é a lista de pendências de metadado. */
 function docsNavGroups(docs, opts, ctx){
   const { q='', sort='nome', groupBy='' } = opts||{};
-  const { counts=null, valueOf=null } = ctx||{};
+  const { counts=null, valueOf=null, groupKind='' } = ctx||{};
   const ordem = new Map(); (docs||[]).forEach((d,i)=>ordem.set(d.id,i));
   const fq = foldText(q).trim();
   const byImport = (a,b)=> ordem.get(a.id)-ordem.get(b.id);
@@ -2281,8 +2420,11 @@ function docsNavGroups(docs, opts, ctx){
       groups.get(v).push(d);
     });
   });
+  // ordem dos grupos por catValueCmp: numerica quando a categoria e numerica (senao "10" viria
+  // antes de "9" em decimais), alfabetica com numeric:true no resto. Vazio sempre por ultimo.
+  const cmpVal = catValueCmp(groupKind);
   return [...groups.entries()]
-    .sort((a,b)=> a[0]===b[0] ? 0 : !a[0] ? 1 : !b[0] ? -1 : a[0].localeCompare(b[0],'pt',{numeric:true,sensitivity:'base'}))
+    .sort((a,b)=> cmpVal(a[0], b[0]))
     .map(([v,ds])=>({ key:v||'(sem valor)', label:v||'(sem valor)', docs:ds }));
 }
 
@@ -2508,10 +2650,14 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
     const mVals = /(?:valores|Valores fechados):\s*(.+)/i.exec(desc||'');
     const options = mVals ? mVals[1].split(',').map(s=>s.trim()).filter(Boolean) : [];
     const mTipo = /tipo:\s*([a-z]+)/i.exec(desc||'');
+    // typeOfVariable DECLARADO pela ferramenta de origem. Ate ago/2026 so 'Date' era lido, e
+    // Integer/Float/Boolean caiam na heuristica de cardinalidade: um atributo numerico do NVivo
+    // com valores 1, 2 e 3 virava "Texto Fechado" de tres opcoes, em silencio.
+    const declarado = QDPX_KIND_OF_TYPE[(v.getAttribute('typeOfVariable')||'').toLowerCase()];
     let kind;
     if(mTipo && KNOWN_KINDS.has(mTipo[1].toLowerCase())) kind = mTipo[1].toLowerCase();
+    else if(declarado) kind = declarado;   // tipo declarado vence a lista: quem diz Boolean nao quer um select de 2 opcoes
     else if(mVals) kind = 'single';
-    else if((v.getAttribute('typeOfVariable')||'').toLowerCase()==='date') kind = 'date';
     else { kind = 'text'; foreignCatIds.add(id); }
     newCats.push({ id, name, kind, options });
   });
@@ -2695,6 +2841,7 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
 
   // casos -> valores de categoria por documento
   const newValues = [];
+  const kindByCat = Object.fromEntries(newCats.map(c=>[c.id, c.kind]));
   xml.querySelectorAll('Cases > Case').forEach(caseEl=>{
     const srcRefs = directChildren(caseEl, 'SourceRef').map(r=>stripGuid(r.getAttribute('targetGUID')));
     const vvs = directChildren(caseEl, 'VariableValue');
@@ -2702,10 +2849,89 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
       const ref = vv.querySelector('VariableRef'); if(!ref) return;
       const catId = stripGuid(ref.getAttribute('targetGUID'));
       const valEl = vv.querySelector('TextValue,BooleanValue,IntegerValue,FloatValue,DateValue,DateTimeValue');
-      const value = valEl ? valEl.textContent : '';
+      // normaliza pela forma DAQUI: <BooleanValue>true</BooleanValue> vira "Sim",
+      // <DateValue>2013-05-02</DateValue> vira 02/05/2013. Sem isso o tipo vinha certo e o
+      // valor vinha na forma da outra ferramenta — e o campo aparecia vazio na tela.
+      const value = valEl ? qdpxValueIn(kindByCat[catId], valEl.tagName, valEl.textContent) : '';
       srcRefs.forEach(docId=>newValues.push({ document_id:docId, category_id:catId, value }));
     });
   });
+
+  // <Sets> -> grupos do arquivo de origem. E o UNICO lugar do REFI-QDA onde cabe agrupamento
+  // paralelo, e o ATLAS.ti poe ali TANTO grupo de documento (MemberSource) quanto grupo de
+  // codigo (MemberCode): quem tipa o set e o MEMBRO, nao um atributo. Medido nos dois .qdpx
+  // reais exportados do ATLAS.ti 26 (ago/2026): ZERO <Case> e ZERO <Variable>, 20 sets, 118
+  // MemberSource. Ou seja, a ida e a volta usam portas diferentes — nossa categoria SAI em
+  // <Cases>/<VariableValue> e VOLTA de la em <Sets> —, e antes disto o import descartava o
+  // <Sets> inteiro: a categoria sumia no round-trip com a propria ferramenta sem uma linha no
+  // resumo, que e o pior modo de falhar.
+  // Grupo de DOCUMENTO -> categoria 'checkbox'. Grupo NAO e exclusivo (medido no mesmo
+  // arquivo: 23 documentos em 1 grupo, 33 em 2, 7 em 3 e 2 em 4), entao 'select' estaria
+  // errado por construcao; 'checkbox' ja existe e junta com CAT_MULTI_SEP. De quebra alimenta
+  // o agrupar-por-categoria do DocsNav sem modelo de dados novo.
+  // Nome com '::' fecha o NOSSO round-trip: o ATLAS.ti batiza "Categoria::Valor" o grupo
+  // nascido de uma <Variable> nossa, e o split devolve a categoria original em vez de despejar
+  // tudo na generica.
+  // Grupo de CODIGO fica de fora DE PROPOSITO (set e plano e nao exclusivo; familia aqui e
+  // estrutural, de pai unico, e familia com filhos nao recebe trechos — converter so seria sem
+  // perda quando a associacao fosse uma particao), mas e contado e DITO no resumo.
+  const GRUPO_CAT = 'Grupo';   // categoria generica dos grupos sem "Categoria::Valor" no nome
+  const gruposCodigo = [];
+  let gruposDocumento = 0;
+  {
+    const docIdsVivos = new Set(newDocs.map(d=>d.id));
+    const catDeGrupo = {};        // nome da categoria -> id (pre-remap)
+    const optsPorCat = {};        // id da categoria -> Set de valores
+    const valsPorDoc = new Map(); // docId -> Map(catId -> [valores, na ordem de aparicao])
+    xml.querySelectorAll('Sets > Set').forEach(setEl=>{
+      const nome = (setEl.getAttribute('name')||'').trim();
+      if(directChildren(setEl,'MemberCode').length) gruposCodigo.push(nome || 'sem nome');
+      // fonte pulada na leitura acima (imagem/audio/externa) nao pode virar valor: o
+      // document_id nao existiria no destino.
+      const alvos = directChildren(setEl,'MemberSource')
+        .map(m=>stripGuid(m.getAttribute('targetGUID')))
+        .filter(id=>docIdsVivos.has(id));
+      if(!alvos.length) return;
+      const i = nome.indexOf('::');
+      const catNome = i>0 ? nome.slice(0,i).trim() : GRUPO_CAT;
+      const valor = (i>0 ? nome.slice(i+2) : nome).trim();
+      if(!catNome || !valor) return;
+      if(!catDeGrupo[catNome]){
+        catDeGrupo[catNome] = uid();
+        // categoria PROPRIA, nunca mesclada com uma <Variable> de mesmo nome: mesclar faria
+        // duas respostas disputarem a mesma chave (documento, categoria) no upsert e uma
+        // sumiria em silencio (o mesmo motivo do dedup mais abaixo).
+        newCats.push({ id: catDeGrupo[catNome], name: catNome, kind:'checkbox', options: [] });
+      }
+      const catId = catDeGrupo[catNome];
+      (optsPorCat[catId] = optsPorCat[catId] || new Set()).add(valor);
+      for(const docId of alvos){
+        if(!valsPorDoc.has(docId)) valsPorDoc.set(docId, new Map());
+        const porCat = valsPorDoc.get(docId);
+        const lista = porCat.get(catId) || [];
+        if(!lista.includes(valor)) lista.push(valor);   // set repetido nao duplica o valor
+        porCat.set(catId, lista);
+      }
+    });
+    // as OPCOES da categoria saem em ordem alfabetica (a ordem dos sets no arquivo nao
+    // significa nada); ja o VALOR de cada documento preserva a ordem de aparicao, que e a que
+    // o pesquisador ve na ferramenta de origem.
+    newCats.forEach(c=>{
+      const s = optsPorCat[c.id];
+      if(s) c.options = [...s].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+    });
+    // conta GRUPOS DISTINTOS que entraram, nao elementos <Set>: dois sets de mesmo nome sao um
+    // grupo so e gravam um valor so — um contador de elementos anunciaria no resumo um numero
+    // que a tela de categorias desmente.
+    gruposDocumento = Object.values(optsPorCat).reduce((n,s)=>n+s.size, 0);
+    // UMA linha por (documento, categoria), com os grupos juntados por CAT_MULTI_SEP — uma
+    // linha por grupo colidiria na chave de conflito do setDocValuesBulk.
+    valsPorDoc.forEach((porCat, docId)=>{
+      porCat.forEach((lista, catId)=>{
+        newValues.push({ document_id: docId, category_id: catId, value: lista.join(CAT_MULTI_SEP) });
+      });
+    });
+  }
 
   // heuristica de interoperabilidade (.qdpx estrangeiro, sem a convencao tipo:/valores:
   // do QualiLab): poucas respostas distintas E REPETIDAS entre documentos sugerem lista
@@ -2841,6 +3067,7 @@ async function importQDPX(file, store, projectId, projectMode, onProgress){
     trechos:newCodings.length, trechosAproximados: approxCount, trechosGeometricos: geomCount,
     memos:newMemos.length, notasProjeto: projectNotesCount,
     casos: xml.querySelectorAll('Cases > Case').length,
+    gruposDocumento, gruposCodigo,
     descartados: skipped, categoriasFechadasDetectadas: catsFechadasDetectadas, linhasRecusadas
   };
 }
@@ -3679,10 +3906,18 @@ async function importCSV(parsed, mapping, store, projectId, projectMode, onProgr
     }
     // categorias 1-a-1 (poucas, e addCategory tem o fallback da coluna 'description')
     for(let i=0;i<catDefs.length;i++){ const c=catDefs[i]; await store.addCategory(projectId, { id:c.id, name:c.name, kind:c.kind, options:c.options, position:i }); await tick(); }
-    // valor da celula: mesma normalizacao dos dois caminhos (checkbox multi-valor -> CAT_MULTI_SEP)
+    // valor da celula: mesma normalizacao dos dois caminhos (checkbox multi-valor ->
+    // CAT_MULTI_SEP; numero -> forma canonica com ponto; sim/nao -> o rotulo). Celula que nao
+    // corresponde ao tipo escolhido fica VAZIA em vez de entrar crua: aqui a categoria esta
+    // NASCENDO com o tipo que a pessoa acabou de escolher no modal, entao guardar "doze" numa
+    // categoria numerica so criaria um valor que nenhuma tela sabe ordenar.
     const cellVal = (d,c)=>{
       const raw=(d.row[c.col]||'').trim();
-      return (c.kind==='checkbox' && raw) ? raw.split(/\s*[|;]\s*/).filter(Boolean).join(CAT_MULTI_SEP) : raw;
+      if(!raw) return raw;
+      if(c.kind==='checkbox') return raw.split(/\s*[|;]\s*/).filter(Boolean).join(CAT_MULTI_SEP);
+      if(c.kind==='number')   return catNumberValue(raw) || '';
+      if(c.kind==='boolean')  return catBoolValue(raw) || '';
+      return raw;
     };
     const valBulk = projectMode==='individual' ? store.setFinalValuesBulk : store.setDocValuesBulk;
     if(valBulk){
@@ -3766,13 +4001,15 @@ function attrDateValue(s){
 
 /* celula -> valor gravavel naquela categoria. Devolve {value, novas, erro}: `novas` sao as opcoes
    que ainda nao existem (ja INCLUIDAS no value — a decisao e acrescentar, e o modal avisa antes),
-   `erro` marca o que nao foi entendido (hoje so data). checkbox separa por | ou ; e junta com
+   `erro` marca o que nao foi entendido (data, numero, sim/nao). checkbox separa por | ou ; e junta com
    CAT_MULTI_SEP, a mesma normalizacao do importCSV. O casamento com a opcao existente ignora
    caixa e acento, senao "sim" nasceria como opcao nova ao lado de "Sim". */
 function attrCellValue(raw, cat){
   const s = String(raw==null?'':raw).trim();
   if(!s) return { value:'', novas:[], erro:null };
   if(cat.kind==='date'){ const v = attrDateValue(s); return v===null ? { value:'', novas:[], erro:'data' } : { value:v, novas:[], erro:null }; }
+  if(cat.kind==='number'){ const v = catNumberValue(s); return v===null ? { value:'', novas:[], erro:'número' } : { value:v, novas:[], erro:null }; }
+  if(cat.kind==='boolean'){ const v = catBoolValue(s); return v===null ? { value:'', novas:[], erro:'sim/não' } : { value:v, novas:[], erro:null }; }
   if(!CAT_HAS_OPTIONS(cat.kind)) return { value:s, novas:[], erro:null };
   const opts = cat.options||[];
   const livre = opts.includes(OUTROS);   // categoria com "Outros" ja aceita valor fora da lista
@@ -7149,7 +7386,16 @@ function App(){
       setBusy(null);
       const memosMsg = r.memos>0 ? ` ${r.memos} memo(s) (comentários de documento/código).` : '';
       const notasMsg = r.notasProjeto>0 ? ` ${r.notasProjeto} nota(s) livre(s) reunida(s) no memo do projeto.` : '';
-      setImportMsg(`Importado: ${r.documentos} documento(s), ${r.categorias} categoria(s), ${r.codigos} código(s), ${r.trechos} trecho(s) codificado(s)${aproxMsg}.${memosMsg}${notasMsg}${skippedMsg}${fechadasMsg}${r.linhasRecusadas?` ATENÇÃO: ${r.linhasRecusadas} linha(s) foram recusadas pelo servidor (permissão/RLS ou dado inválido) e NÃO foram gravadas. Detalhes no console do navegador.`:''}`);
+      // grupos (<Sets>): o de DOCUMENTOS entra como categoria; o de CÓDIGOS não entra, e por
+      // isso é dito PELO NOME. Antes o arquivo trazia os dois e o resumo não dizia nada dos
+      // dois: perda muda é o pior modo de falhar.
+      const gruposMsg = r.gruposDocumento>0
+        ? ` ${r.gruposDocumento} grupo(s) de documentos viraram valores de categoria (marcação múltipla). Revise em "Gerenciar esquema de categorias".`
+        : '';
+      const gruposCodMsg = (r.gruposCodigo||[]).length>0
+        ? ` ${r.gruposCodigo.length} grupo(s) de códigos NÃO foram importados (aqui a família é definida pela hierarquia do código): ${r.gruposCodigo.slice(0,4).map(n=>'"'+n+'"').join(', ')}${r.gruposCodigo.length>4?` e mais ${r.gruposCodigo.length-4}`:''}.`
+        : '';
+      setImportMsg(`Importado: ${r.documentos} documento(s), ${r.categorias} categoria(s), ${r.codigos} código(s), ${r.trechos} trecho(s) codificado(s)${aproxMsg}.${memosMsg}${notasMsg}${gruposMsg}${gruposCodMsg}${skippedMsg}${fechadasMsg}${r.linhasRecusadas?` ATENÇÃO: ${r.linhasRecusadas} linha(s) foram recusadas pelo servidor (permissão/RLS ou dado inválido) e NÃO foram gravadas. Detalhes no console do navegador.`:''}`);
     }catch(e){ setBusy(null); setProgress(null); setErr('Falha ao importar: '+(e.message||e)); }
   }
 
@@ -9222,6 +9468,22 @@ function CategoryValue({ cat, v, onSet, readOnly }){
 
   if(cat.kind==='date') return html`<${DateInput} value=${value} onCommit=${onSet} disabled=${readOnly} />`;
 
+  if(cat.kind==='number'){
+    return html`<div>
+      ${hasNA && html`<button class="opt ${isNA?'on':''}" disabled=${readOnly} style="margin-bottom:6px" onClick=${()=>onSet(isNA?'':NAO_INFO)}>Não informado</button>`}
+      ${!isNA && (readOnly
+        ? html`<span class="opt" style="display:inline-block;cursor:default">${value||html`<span class="meta" style="font-style:italic">sem resposta</span>`}</span>`
+        : html`<${NumberInput} value=${value} onCommit=${onSet} />`)}
+    </div>`;
+  }
+
+  if(cat.kind==='boolean'){
+    return html`<div class="row" style="flex-wrap:wrap;gap:6px;align-items:center">
+      ${[BOOL_SIM,BOOL_NAO].map(o=>html`<button class="opt ${(!isNA && value===o)?'on':''}" disabled=${readOnly} onClick=${()=>onSet(value===o?'':o)}>${o}</button>`)}
+      ${hasNA && html`<button class="opt ${isNA?'on':''}" disabled=${readOnly} onClick=${()=>onSet(isNA?'':NAO_INFO)}>Não informado</button>`}
+    </div>`;
+  }
+
   if(cat.kind==='text'){
     return html`<div>
       ${hasNA && html`<button class="opt ${isNA?'on':''}" disabled=${readOnly} style="margin-bottom:6px" onClick=${()=>onSet(isNA?'':NAO_INFO)}>Não informado</button>`}
@@ -10542,7 +10804,10 @@ function DocsNav({ docs, activeId, onPick, health, counts, pageCount, cats, allV
   useEffect(()=>{ if(autoFocus) inputRef.current?.focus(); }, [autoFocus]);
   const sort = (prefs?.sort==='trechos' && !counts) ? 'nome' : (prefs?.sort || 'nome');
   const groupBy = prefs?.groupBy || '';
-  // "pasta" aqui é categoria fechada (ou data): o mesmo recorte que o filtro do VizNav usa.
+  // "pasta" aqui é toda categoria cujo valor é discreto o bastante pra virar seção: fechada,
+  // data ou número. Só o texto livre fica de fora (agrupar por ele daria um grupo por
+  // documento). Número entra apesar de NÃO ser filtro nos Gráficos — são perguntas
+  // diferentes: aqui a pessoa escolhe agrupar e vê o resultado na hora.
   // Só entram as que TÊM valor preenchido no que o chamador passou — e isso resolve dois casos
   // com a mesma regra: categoria que ninguém respondeu (agrupar jogaria tudo em "(sem valor)")
   // e a Codificação, onde allValues é [] porque a tela não está em AGG_VIEWS. Oferecer ali um
@@ -10550,12 +10815,13 @@ function DocsNav({ docs, activeId, onPick, health, counts, pageCount, cats, allV
   const catsComValor = useMemo(()=>{
     const s=new Set(); (allValues||[]).forEach(v=>{ if(v.value!=null && String(v.value)!=='') s.add(v.category_id); }); return s;
   }, [allValues]);
-  const groupCats = (cats||[]).filter(c=>(CAT_HAS_OPTIONS(c.kind)||c.kind==='date') && catsComValor.has(c.id));
+  const groupCats = (cats||[]).filter(c=>c.kind!=='text' && catsComValor.has(c.id));
   const groupOk = groupCats.some(c=>c.id===groupBy) ? groupBy : '';
 
+  const groupKind = (groupCats.find(c=>c.id===groupOk)||{}).kind || '';
   const groups = useMemo(()=>docsNavGroups(docs, { q, sort, groupBy:groupOk },
-    { counts, valueOf:(docId,catId)=>docValueOf(allValues, docId, catId) }),
-    [docs, q, sort, groupOk, counts, allValues]);
+    { counts, groupKind, valueOf:(docId,catId)=>docValueOf(allValues, docId, catId) }),
+    [docs, q, sort, groupOk, groupKind, counts, allValues]);
   // lista achatada dos VISÍVEIS (grupo fechado não entra): é sobre ela que as setas andam
   const flat = useMemo(()=>groups.flatMap(g=>closed.has(g.key)?[]:g.docs), [groups, closed]);
   const uniq = useMemo(()=>new Set(groups.flatMap(g=>g.docs.map(d=>d.id))).size, [groups]);
@@ -10711,7 +10977,7 @@ function VizNav({ cats, codes, allCodings, allValues, docs, view, catFilter, sel
   // COLAPSADA por padrão: são até N selects empurrando a árvore de códigos — que é o assunto do
   // painel — pra baixo da dobra. Quem tem filtro ativo vê a pílula no cabeçalho da seção.
   const [catsOpen, setCatsOpen] = useState(false);
-  const closedCats = cats.filter(c=>CAT_HAS_OPTIONS(c.kind)||c.kind==='date');
+  const closedCats = cats.filter(c=>CAT_CLOSED(c.kind)||c.kind==='date');
   const tops = codes.filter(c=>!c.parent_id);
   const childrenOf = (id)=>codes.filter(c=>c.parent_id===id);
 
@@ -11770,9 +12036,14 @@ async function aiPostWithTempFallback(post, tempOK, label){
    NEUTRA e cada adaptador traduz nos dois sentidos:
 
      definicao de tool   { name, description, parameters }     parameters = JSON Schema de objeto
-     turno do modelo     { role:'assistant', content, tool_calls:[{ id, name, args }] }
+     turno do modelo     { role:'assistant', content, tool_calls:[{ id, name, args, sig }] }
      resultado do tool   { role:'tool', tool_call_id, name, content }    content = string (JSON)
-     retorno do adapter  { text, toolCalls:[{ id, name, args, argsError }], raw }
+     retorno do adapter  { text, toolCalls:[{ id, name, args, argsError, sig }], raw }
+
+   `sig` e metadado OPACO do provedor que tem de sobreviver ao round-trip (hoje so o Gemini o usa:
+   thoughtSignature, obrigatoria de volta na part do functionCall). Fica na forma neutra em vez de
+   num canal paralelo porque quem o guarda e o HISTORICO, e os outros tres adaptadores simplesmente
+   ignoram um campo a mais. Provedor novo com metadado equivalente reusa este campo.
 
    TOOLS SO VAO PELO CAMINHO DIRETO. A ai-ask nao aceita `tools` no corpo — e mesmo que aceitasse,
    cair no proxy num laco agentico mandaria pedaco do corpus pro operador do servidor A CADA
@@ -11810,7 +12081,9 @@ function aiGeminiContents(contents){
     } else if(m.role === 'assistant'){
       const parts = [];
       if(m.content) parts.push({ text:String(m.content) });
-      for(const c of (m.tool_calls||[])) parts.push({ functionCall:{ name:c.name, args:c.args||{} } });
+      // a assinatura volta na MESMA part do functionCall (ver `sig` no aiCallGemini). Conversa
+      // antiga, de antes deste campo existir, simplesmente nao tem `sig` e segue como antes.
+      for(const c of (m.tool_calls||[])) parts.push({ functionCall:{ name:c.name, args:c.args||{} }, ...(c.sig ? { thoughtSignature:c.sig } : {}) });
       out.push({ role:'model', parts: parts.length ? parts : [{ text:'' }] });
     } else {
       out.push({ role:'user', parts:[{ text:String(m.content||'') }] });
@@ -11845,8 +12118,13 @@ async function aiCallGemini(apiKey, model, systemParts, contents, opts, signal){
   const data = await res.json();
   const parts = data.candidates?.[0]?.content?.parts || [];
   const text = parts.map(p=>p.text).join('') || '';
+  // `sig` (thoughtSignature) e metadado OPACO do provedor e PRECISA voltar na proxima requisicao,
+  // na mesma part do functionCall: os modelos Gemini com raciocinio recusam com 400 sem ela. Nao
+  // interprete nem gere esse valor; so carregue. Descartar aqui quebrava o laco de tools do Gemini
+  // (a 400 aponta a POSICAO da part, nao o turno, e so aparece depois de alguns passos).
   const toolCalls = parts.filter(p=>p.functionCall).map((p,i)=>({
     id: aiToolId(p.functionCall.name, i), name: p.functionCall.name, args: p.functionCall.args || {},
+    ...(p.thoughtSignature ? { sig: p.thoughtSignature } : {}),
   }));
   return { text, toolCalls, raw: data };
 }
@@ -12386,7 +12664,7 @@ function ReportView({ project, projectMode, docs, cats, codes, codeById, codePat
 
   // distribuição por categoria fechada: contagem de documentos por valor (usa gabarito quando há)
   const catDist = useMemo(()=>{
-    const closed = cats.filter(c=>CAT_HAS_OPTIONS(c.kind)||c.kind==='date');
+    const closed = cats.filter(c=>CAT_CLOSED(c.kind)||c.kind==='date');
     return closed.map(cat=>{
       const counts={};
       docs.forEach(d=>{
@@ -13583,6 +13861,8 @@ function IACategorizarPanel({ project, docs, cats, codePath, allValues, store, i
       let spec;
       if(CAT_HAS_OPTIONS(c.kind)) spec = 'uma das opções: ' + (c.options||[]).map(o=>`"${o}"`).join(', ') + (c.kind==='checkbox'?' (pode marcar VÁRIAS, separadas por " | ")':'');
       else if(c.kind==='date') spec = 'uma data DD/MM/AAAA';
+      else if(c.kind==='number') spec = 'um número, só os dígitos (use "." para decimal)';
+      else if(c.kind==='boolean') spec = `exatamente "${BOOL_SIM}" ou "${BOOL_NAO}"`;
       else spec = 'texto livre curto';
       return `#${tShort(c.id)} | "${c.name}"${c.description?` (${c.description})`:''} | ${kindLabel(c.kind)} | valor esperado: ${spec}`;
     });
@@ -13661,6 +13941,11 @@ function IACategorizarPanel({ project, docs, cats, codePath, allValues, store, i
         if(cat.kind==='checkbox'){ const picked=value.split(/\s*[|;]\s*/).map(match).filter(Boolean); if(!picked.length){ bad++; continue; } value=[...new Set(picked)].join(CAT_MULTI_SEP); }
         else { const m=match(value); if(!m){ bad++; continue; } value=m; }
       }
+      // tipos sem lista: o valor tambem tem de caber no tipo, senao a sugestao aprovada gravaria
+      // "cerca de 40" numa categoria numerica — que e exatamente o que o tipo existe pra impedir.
+      // Normaliza em vez de recusar quando da (a IA responde "12,5" ou "true" com frequencia).
+      else if(cat.kind==='number'){ const n=catNumberValue(value); if(n===null){ bad++; continue; } value=n; }
+      else if(cat.kind==='boolean'){ const b=catBoolValue(value); if(b===null){ bad++; continue; } value=b; }
       if(sameVal(value, curVal(docId,catId))){ continue; } // concorda com o já preenchido: ignora (não é mudança)
       seen.add(key); out.push({ docId, catId, value, reason });
     }
@@ -14568,7 +14853,7 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
   // inclui no material só os trechos aplicados DIRETAMENTE nele (selCodes.includes(c.code_id)),
   // não os dos subcódigos. Mostrar o agregado aqui enganaria (pareceria que os filhos entram).
   const codeCounts = useMemo(()=>{ const m={}; (allCodings||[]).forEach(c=>{ m[c.code_id]=(m[c.code_id]||0)+1; }); return m; }, [allCodings]);
-  const closedCats = (cats||[]).filter(c=>CAT_HAS_OPTIONS(c.kind));
+  const closedCats = (cats||[]).filter(c=>CAT_CLOSED(c.kind));
   const hasDocFilter = Object.values(docFilter).some(Boolean);
   const matchingDocIds = useMemo(()=>{
     const s = new Set();
@@ -15310,7 +15595,7 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
                        view, onView, coders, userId, mode, isAdmin, onDelCoding, onAccept, onJump, darkMode, onOpenCode,
                        project, memos, onSetMemo }){
   const isIndividual = projectMode==='individual';
-  const closedCats = (cats||[]).filter(c=>CAT_HAS_OPTIONS(c.kind));
+  const closedCats = (cats||[]).filter(c=>CAT_CLOSED(c.kind));
   const dateCats   = (cats||[]).filter(c=>c.kind==='date');
   const [tab,setTab] = useState('freq');
   const [topN,setTopN] = useState(25);
@@ -16044,6 +16329,27 @@ function DebInput({ value, onCommit, placeholder, disabled }){
   return html`<input class="txtin" placeholder=${placeholder} value=${v} disabled=${!!disabled}
     onInput=${e=>{ const val=e.target.value; vRef.current=val; setV(val); clearTimeout(t.current); t.current=setTimeout(()=>onCommit(val),600); }}
     onBlur=${()=>{ clearTimeout(t.current); onCommit(vRef.current); }} />`;
+}
+
+/* numero: deixa digitar como se escreve em portugues ("12,5") e GRAVA a forma canonica com
+   ponto, que e a que o REFI-QDA, o CSV e o Number() do JS entendem. O que nao e numero NAO e
+   gravado — o campo fica vermelho e diz por que. Guardar cru pareceria funcionar e quebraria
+   em silencio o que o tipo promete: a categoria deixaria de ordenar por valor e a exportacao
+   inteira cairia pra Text por causa de uma celula (ver qdpxVarType). Nao usa DebInput porque
+   precisa do estado local pra manter na tela o que a pessoa digitou enquanto ainda esta errado. */
+function NumberInput({ value, onCommit, disabled }){
+  const [v,setV]=useState(value==null?'':String(value)); const t=useRef(null); const vRef=useRef(value==null?'':String(value));
+  useEffect(()=>{ const s = value==null?'':String(value); vRef.current=s; setV(s); },[value]);
+  const invalido = v.trim()!=='' && catNumberValue(v)===null;
+  const commit = (val)=>{ const s=String(val).trim(); if(!s) onCommit(''); else { const n=catNumberValue(s); if(n!==null) onCommit(n); } };
+  const flush = ()=>{ clearTimeout(t.current); commit(vRef.current); };
+  return html`<div>
+    <input class="txtin" inputmode="decimal" placeholder="número" disabled=${!!disabled}
+      style=${invalido?'border-color:var(--danger)':''}
+      value=${v} onBlur=${flush}
+      onInput=${e=>{ const val=e.target.value; vRef.current=val; setV(val); clearTimeout(t.current); t.current=setTimeout(()=>commit(val),600); }} />
+    ${invalido && html`<div class="meta" style="color:var(--danger);margin-top:4px">não é um número — escreva 12 ou 12,5</div>`}
+  </div>`;
 }
 
 /* data possivelmente parcial: DD/MM/AAAA com partes em branco quando o documento nao informa.

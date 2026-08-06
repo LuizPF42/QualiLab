@@ -65,7 +65,10 @@ create table if not exists public.categories (
   id          uuid primary key default gen_random_uuid(),
   project_id  uuid not null references public.projects(id) on delete cascade,
   name        text not null,
-  kind        text not null default 'single',     -- single | text | select | date | checkbox
+  kind        text not null default 'single',     -- single | text | select | date | checkbox | number | boolean
+                                                  -- (number/boolean desde ago/2026; sem check constraint de proposito:
+                                                  --  o cliente e a autoridade sobre o vocabulario de tipos, e uma
+                                                  --  constraint aqui exigiria migracao a cada tipo novo)
   options     jsonb not null default '[]'::jsonb,
   description text not null default '',
   color       int  not null default 0,

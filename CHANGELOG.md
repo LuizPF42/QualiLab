@@ -14,6 +14,74 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.17 (06/08/2026)
+
+Nada muda no aplicativo publicado aqui. Esta versão corrige a leitura assistida do corpus por um
+agente, que é uma superfície do QualiLab **fora** deste app (ela vive no repositório do
+assistente). O número sobe assim mesmo para que a versão mostrada no cabeçalho corresponda à
+fonte de onde este arquivo foi gerado — se você estiver relatando um problema, é esse número que
+identifica o build que o seu navegador carregou.
+
+## 1.4.16 (06/08/2026)
+
+### Categorias de número e de Sim/Não
+
+Até agora, "número de páginas", "idade" e "valor da causa" só podiam ser **Texto Aberto**: o app
+não ordenava por eles, e ao exportar chegavam ao MAXQDA e ao NVivo como texto — lá também sem
+ordenar. Um "tem voto vencido?" virava uma lista de duas opções.
+
+Agora há dois tipos novos no esquema de categorias:
+
+- **Número** — campo numérico. Escreva como se escreve em português (`12,5`, `1.234`); o app guarda
+  a forma canônica. O que não for número **não é aceito** (o campo fica vermelho e diz por quê) —
+  é isso que mantém a categoria inteira valendo como número.
+- **Sim/Não** — dois botões. Funciona como filtro e como eixo nos Gráficos, igual às outras
+  categorias fechadas.
+
+Os dois aceitam **"Não informado"**, como os demais tipos.
+
+Na aba **Documentos** da Leitura dá para agrupar por uma categoria numérica, e as seções saem em
+ordem de valor (9 antes de 10, e não o contrário).
+
+### O tipo das categorias agora atravessa a exportação
+
+Na exportação **QDPX**, número, Sim/Não e data saem **tipados** (Integer/Float, Boolean, Date) e
+chegam ordenáveis nas outras ferramentas — antes tudo saía como texto. Uma ressalva importante:
+isso só vale quando **todos** os valores daquela categoria cabem no tipo. Basta um "Não informado",
+ou uma data sem o dia, para a categoria inteira voltar a sair como texto; um pacote com valor fora
+do tipo declarado é recusado inteiro por importadores mais estritos, e perder o tipo é melhor do
+que entregar um arquivo que não abre.
+
+Na **importação**, o tipo declarado pela ferramenta de origem passou a ser respeitado. Antes, um
+atributo numérico do NVivo com valores 1, 2 e 3 virava uma lista fechada de três opções, sem aviso.
+
+### Também nesta versão
+
+- Ao importar planilha ou atualizar categorias por planilha, a célula que não corresponde ao tipo
+  escolhido é apontada na prévia ("número", "sim/não") em vez de entrar como texto.
+- O **Sugerir Categorização** com IA passa a validar o valor contra o tipo: uma sugestão como
+  "cerca de 40" não é mais aplicável a uma categoria numérica.
+
+## 1.4.15 (06/08/2026)
+
+### Grupos de documentos do ATLAS.ti chegam ao importar um `.qdpx`
+
+Um projeto exportado do ATLAS.ti traz os **grupos de documentos** (e os de códigos) numa parte do
+arquivo que o QualiLab ignorava. Eles sumiam sem aviso: quem importava um corpus organizado em
+"Governo Lula I", "EIXO ENERGIA" e "Acordos sobre vistos" recebia os documentos soltos, e nada na
+tela dizia que aquela organização tinha ficado para trás.
+
+Agora **cada grupo de documentos vira valor de uma categoria** do tipo Caixa de Seleção, então um
+documento que está em três grupos aparece com os três. Isso liga de graça o *agrupar por
+categoria* na tela de Leitura e o filtro dos Gráficos. Se o grupo tiver o nome no formato
+`Categoria::Valor` (que é como o ATLAS.ti batiza os grupos nascidos de uma categoria do QualiLab),
+a categoria original é reconstruída com o nome dela: ida e volta sem perda.
+
+**Grupo de códigos continua não virando família**, porque aqui a família é definida pela
+hierarquia do próprio código (um código tem um pai só), e um grupo é uma lista solta em que o
+mesmo código pode estar em vários. A diferença é que agora o resumo do import **diz pelo nome**
+quais grupos de códigos ficaram de fora, em vez de silenciar.
+
 ## 1.4.14 (06/08/2026)
 
 ### Preencher categorias no Excel e trazer de volta
