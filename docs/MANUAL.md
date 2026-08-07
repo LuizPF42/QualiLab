@@ -956,7 +956,9 @@ Para cada trecho proposto, a IA **copia o trecho do texto**, e o QualiLab o **lo
 
 #### 17.2.2 Sugerir Categorização: preencher categorias já existentes
 
-A IA **não cria categorias**: ela ajuda a **preencher o valor** das categorias que você já definiu (no Esquema), documento por documento. Selecione à esquerda quais **documentos** e quais **categorias** entram; a IA lê o texto e, para tipos de opção fechada, sugere **exatamente uma das opções** válidas.
+A IA **não cria categorias**: ela ajuda a **preencher o valor** das categorias que você já definiu (no Esquema), documento por documento. Selecione à esquerda quais **categorias** e quais **documentos** entram; a IA lê o texto e, para tipos de opção fechada, sugere **exatamente uma das opções** válidas.
+
+As categorias vêm **antes** dos documentos porque a escolha delas alimenta o filtro **"sem valor (N)"**, ao lado de "todos" e "limpar": um clique seleciona só os documentos em que ao menos uma das categorias marcadas ainda está vazia — que costuma ser o trabalho que resta. Cada documento da lista mostra quantas categorias faltam ali, ou **"completo"** quando não falta nenhuma.
 
 O detalhe importante: a IA recebe o que **já está preenchido** e só devolve **diferenças** ou **campos vazios**: se concorda com o valor atual, não propõe nada. Cada sugestão mostra um selo: **"já aplicada"** (com o valor atual → o sugerido) ou **"vazia"** (preenchimento novo). Aprove as que quiser e aplique: os valores entram na sua camada de respostas (ou no gabarito, em projeto individual), como se você os tivesse digitado na aba Codificação.
 

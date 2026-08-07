@@ -14,6 +14,21 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.20 (07/08/2026)
+
+### Sugerir Categorização: filtrar os documentos que ainda não têm a categoria
+
+Ao pedir à IA que preencha categorias, o trabalho de verdade está nos documentos em que o campo
+ainda está **vazio** — mas a lista mostrava os documentos todos, e achar quais faltavam era
+conferir um a um na aba Codificação.
+
+Agora, ao lado de "todos" e "limpar", há **"sem valor (N)"**: um clique seleciona apenas os
+documentos em que ao menos uma das categorias marcadas está vazia. Cada linha da lista também
+diz quantas faltam ali, ou "completo" quando não falta nenhuma.
+
+Por isso as **categorias agora vêm antes dos documentos** no painel: é a escolha delas que
+define o que conta como "sem valor". Enquanto nenhuma estiver marcada, o botão fica desligado.
+
 ## 1.4.19 (06/08/2026)
 
 ### Confirmar o cadastro agora é um código digitado, não um link clicado

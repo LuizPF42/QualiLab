@@ -832,7 +832,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.19';
+const QUALILAB_VERSION = '1.4.20';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -2478,6 +2478,24 @@ function docValueOf(allValues, docId, catId){
   const fin = rows.find(r=>r.layer==='final');
   const v = fin ? fin.value : rows[0].value;
   return v==null ? '' : String(v);
+}
+
+/* Quantas das categorias `catIds` estão SEM valor em cada documento — o filtro "sem valor" do
+   Sugerir Categorização. Puro; `valueOf(docId,catId)` é injetado porque a regra de "já preenchido"
+   é do chamador (lá o gabarito vence a resposta do próprio usuário, que vence qualquer outra).
+   Devolve a contagem POR DOCUMENTO e `ids` (os que têm ao menos uma vazia, na ordem de `docs`).
+   O critério é ALGUMA vazia, não todas: o painel existe pra preencher o que falta, e documento
+   com 3 de 4 categorias respondidas ainda tem trabalho. Sem categoria selecionada não há pergunta
+   a fazer — tudo zerado, e é o chamador que desabilita o botão. */
+function catGaps(docs, catIds, valueOf){
+  const byDoc = {}, ids = [];
+  for(const d of (docs||[])){
+    let n = 0;
+    for(const cid of (catIds||[])){ const v = valueOf(d.id, cid); if(v==null || String(v).trim()==='') n++; }
+    byDoc[d.id] = n;
+    if(n>0) ids.push(d.id);
+  }
+  return { byDoc, ids };
 }
 
 /* Ordena/filtra/agrupa a lista de documentos do DocsNav. Devolve SEMPRE uma lista de seções
@@ -14051,6 +14069,11 @@ function IACategorizarPanel({ project, docs, cats, codePath, allValues, store, i
     return v?.value ?? null; };
   const sameVal = (a,b)=> String(a??'').trim().toLowerCase() === String(b??'').trim().toLowerCase();
 
+  // quantas das categorias MARCADAS estão vazias em cada documento — alimenta o filtro "sem valor"
+  // e o rótulo de cada linha da lista. É por depender da seleção de categorias que elas vêm ANTES
+  // dos documentos no painel: sem categoria marcada não há pergunta a responder.
+  const gaps = useMemo(()=> catGaps(docs, selCats, curVal), [docs, selCats, allValues, user, projectMode]);
+
   // ---- MATERIAL ----
   const catBlock = useMemo(()=>{
     const lines = selCatObjs.map(c=>{
@@ -14266,19 +14289,6 @@ function IACategorizarPanel({ project, docs, cats, codePath, allValues, store, i
         ${cats.length===0 && html`<div class="banner warn" style="margin-bottom:10px">Nenhuma categoria no projeto. Crie categorias na aba <b>Esquema ▸ Categorias</b> primeiro.</div>`}
         ${projectMode==='individual' && !isAdmin && html`<div class="banner warn" style="margin-bottom:10px">Em projeto individual, gravar o valor exige permissão de administrador.</div>`}
         <details class="collap field" open>
-          <summary class="field-label">Documentos${selDocs.length?` (${selDocs.length})`:''}</summary>
-          <div class="row" style="margin:6px 0;gap:8px">
-            <button class="btn sm ghost" onClick=${()=>setSelDocs(docs.map(d=>d.id))}>todos</button>
-            <button class="btn sm ghost" onClick=${()=>setSelDocs([])}>limpar</button>
-          </div>
-          <div class="card" style="margin-bottom:10px;max-height:220px;overflow:auto">
-            ${docs.length===0 && html`<span class="meta">Nenhum documento.</span>`}
-            ${docs.map(d=>html`<button key=${d.id} class="opt ${selDocs.includes(d.id)?'on':''}" style="display:flex;gap:6px;align-items:flex-start;width:100%;margin-bottom:4px;font-size:11px;line-height:1.35"
-              onClick=${()=>toggle(selDocs,setSelDocs,d.id)}>${selDocs.includes(d.id)?'☑':'☐'}<span style="flex:1;text-align:justify">${d.name}</span></button>`)}
-          </div>
-        </details>
-        ${ocrT.card}
-        <details class="collap field" open>
           <summary class="field-label">Categorias${selCats.length?` (${selCats.length})`:''}</summary>
           <div class="row" style="margin:6px 0;gap:8px">
             <button class="btn sm ghost" onClick=${()=>setSelCats(cats.map(c=>c.id))}>todas</button>
@@ -14290,6 +14300,25 @@ function IACategorizarPanel({ project, docs, cats, codePath, allValues, store, i
               onClick=${()=>toggle(selCats,setSelCats,c.id)}>${selCats.includes(c.id)?'☑':'☐'}<span style="flex:1;text-align:left">${c.name} <span class="meta">· ${kindLabel(c.kind)}</span></span></button>`)}
           </div>
         </details>
+        <details class="collap field" open>
+          <summary class="field-label">Documentos${selDocs.length?` (${selDocs.length})`:''}</summary>
+          <div class="row" style="margin:6px 0;gap:8px;flex-wrap:wrap">
+            <button class="btn sm ghost" onClick=${()=>setSelDocs(docs.map(d=>d.id))}>todos</button>
+            <!-- o title vai no WRAPPER: botao desabilitado nao recebe evento de mouse no Chrome,
+                 e o tooltip e justamente o que explica por que ele esta desabilitado. -->
+            <span style="display:inline-flex" title=${!selCats.length ? 'Marque ao menos uma categoria acima' : 'Selecionar só os documentos em que ao menos uma das categorias marcadas está vazia'}>
+              <button class="btn sm ghost" disabled=${!selCats.length || !gaps.ids.length}
+                onClick=${()=>setSelDocs(gaps.ids)}>sem valor${selCats.length?` (${gaps.ids.length})`:''}</button>
+            </span>
+            <button class="btn sm ghost" onClick=${()=>setSelDocs([])}>limpar</button>
+          </div>
+          <div class="card" style="margin-bottom:10px;max-height:220px;overflow:auto">
+            ${docs.length===0 && html`<span class="meta">Nenhum documento.</span>`}
+            ${docs.map(d=>html`<button key=${d.id} class="opt ${selDocs.includes(d.id)?'on':''}" style="display:flex;gap:6px;align-items:flex-start;width:100%;margin-bottom:4px;font-size:11px;line-height:1.35"
+              onClick=${()=>toggle(selDocs,setSelDocs,d.id)}>${selDocs.includes(d.id)?'☑':'☐'}<span style="flex:1;text-align:justify">${d.name}</span>${selCats.length>0 && html`<span class="meta" style="flex:none;white-space:nowrap">${gaps.byDoc[d.id] ? `${gaps.byDoc[d.id]} sem valor` : 'completo'}</span>`}</button>`)}
+          </div>
+        </details>
+        ${ocrT.card}
         ${(docBlock.omitidos>0 || docBlock.cortados>0) && html`<div class="banner warn" style="margin-bottom:10px">
           ${docBlock.omitidos>0 && html`<div>A seleção passa do que a IA lê de uma vez (o limite é ~${iaPages(IA_TOTAL_CHAR_LIMIT)} páginas): ${docBlock.omitidos} documento(s) do fim da lista ficam de fora e não receberão sugestão. Selecione menos documentos de cada vez.</div>`}
           ${docBlock.cortados>0 && html`<div style=${docBlock.omitidos>0?'margin-top:6px':''}>${iaCutDocMsg(docBlock.cortados)}</div>`}
