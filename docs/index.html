@@ -358,7 +358,7 @@
     "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.7.76/build/pdf.min.mjs": "sha384-qgyx6GmMWoI003drRr62DU41/67b3n7M2G0EXu2WhaOsBqONtHyay9Vw4aIivyOX",
     "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/+esm": "sha384-etUa4WPvZAkiqiEyPL03H/dT0I5+EQKeJP1z9x5WVhTjrV0CpXDa2r5QqG/6nMUB",
     "https://esm.sh/tesseract.js@5.1.1": "sha384-mYgZCFV9+x91d8GxdbeQ35xEE6kppTj+Ucrf2x5cnrkfEXcB6rtm9QFNp1qq7COa",
-    "https://cdn.jsdelivr.net/npm/mammoth@1.8.0/+esm": "sha384-KJybIhRKN6ngjKCHu++IqLFsBq9rlvf1Sd7cRtnAO+fMXa5AzLOa+Un9pNS6FJ87",
+    "https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js/+esm": "sha384-wtwvdMS1JgCP1vOwrlZbnZ+zgEocmPXY4Est/SLi4UEDmw+nMuHBKz7XFYibfbYq",
     "https://esm.sh/mammoth@1.8.0": "sha384-N0OGosMwLhDuwQt2lCwOwB+qQaz8/1/0MdNHEUZPfVUuOmkbnqGWU3Hl9tRz9qYl",
     "https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm": "sha384-OSp98fIRIYwty4DETvqY7M0rvhQw+CY25QIqosdLpftgORqvKSbwL7/YKlvsLgt4",
     "https://esm.sh/jszip@3.10.1": "sha384-5yu53KesTlgYyfWOxjtPG0ma7N94YLbqMrj+ly/X+29t3zR/VnsuroiXiNxwlXZL",
@@ -439,7 +439,11 @@ async function getOcrWorker(){
   return _ocrWorker;
 }
 function terminateOcrWorker(){ const w=_ocrWorker; _ocrWorker=null; _ocrProg=null; if(w){ try{ w.terminate(); }catch(e){} } }
-async function getMammoth(){ if(!_mammoth){ const m=await importRetry(['https://cdn.jsdelivr.net/npm/mammoth@1.8.0/+esm','https://esm.sh/mammoth@1.8.0']); _mammoth=m.default||m; } return _mammoth; }
+/* EXCECAO do mammoth: o `+esm` de PACOTE do jsdelivr quebra na avaliacao do modulo no navegador
+   ("Cannot read properties of undefined (reading 'split')" — medido ago/2026, pego pelo
+   cdn.spec.mjs). A primaria e o `/+esm` sobre o ARQUIVO mammoth.browser.min.js — o build de
+   navegador do proprio pacote, bundle unico (zero saltos, SRI cobre tudo), docx real conferido. */
+async function getMammoth(){ if(!_mammoth){ const m=await importRetry(['https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js/+esm','https://esm.sh/mammoth@1.8.0']); _mammoth=m.default||m; } return _mammoth; }
 async function getJSZip(){ if(!_JSZip){ const m=await importRetry(['https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm','https://esm.sh/jszip@3.10.1']); _JSZip=m.default||m; } return _JSZip; }  // caminho de DADO (le/escreve o .qualilab-zip): jsdelivr (bundle unico, 1 salto = robusto) 1o; esm.sh (shim de 2 saltos, fragil) como fallback
 /* UNICO loader que depende de export NOMEADO (os outros usam `m.default||m`). Se um dos CDNs
    servir um bundle que exponha so o default, `m.createClient` viria undefined e o sintoma
