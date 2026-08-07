@@ -12,6 +12,7 @@ desktop.ini
 # Logs e temporários
 *.log
 *.tmp
+__pycache__/
 
 # Dados de exportação e pesquisa — não versionar (privados / grandes p/ GitHub)
 *.qdpx

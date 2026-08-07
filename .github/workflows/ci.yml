@@ -38,6 +38,25 @@ jobs:
       - name: Sintaxe do modulo (node --check)
         run: node --check build/_module.mjs
 
+      # scripts/sri.py e sri_selftest.py sao COPIA do ai-lab, sincronizada pelo
+      # gen-estavel.sh (mesma convencao do check_index.py: estao no SYNC_TEXT de la —
+      # nao edite aqui). O autoteste roda offline, com um CDN falso.
+      - name: Autoteste do sri.py
+        run: python scripts/sri_selftest.py
+
+      # SRI das 7 dependencias de CDN do arquivo PUBLICADO — e este o arquivo que o navegador
+      # do pesquisador carrega. O bloco nao se escreve aqui: o docs/index.html e GERADO, entao
+      # ele nasce no ai-lab (`py -3 scripts/sri.py --update`) e chega pelo gen-estavel.sh.
+      # Enquanto nao chegar, o passo ANUNCIA a lacuna em toda execucao em vez de passar calado,
+      # e vira bloqueante sozinho assim que o bloco entrar.
+      - name: SRI das dependencias de CDN
+        run: |
+          if grep -q 'SRI:BEGIN' docs/index.html; then
+            python scripts/sri.py --index docs/index.html --check --online
+          else
+            echo "::warning title=SRI pendente::docs/index.html ainda nao tem o bloco SRI. Gere no ai-lab com 'py -3 scripts/sri.py --update' e regenere com gen-estavel.sh. Ate la as 7 dependencias de CDN carregam sem verificacao de integridade."
+          fi
+
       # A regeneracao troca DUAS linhas: url e anon key do projeto publico. Se o arquivo
       # publicado apontar pro Supabase do ai-lab (experimental), os dados dos pesquisadores
       # iriam pro projeto errado — falha silenciosa e cara. Barato conferir.
