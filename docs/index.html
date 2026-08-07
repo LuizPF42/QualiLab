@@ -376,7 +376,17 @@ async function importRetry(urls, attempts=3){
   throw lastErr;
 }
 async function getPdfjs(){ if(!_pdfjs){ _pdfjs=await importRetry('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.7.76/build/pdf.min.mjs'); try{ _pdfjs.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.7.76/build/pdf.worker.min.mjs'; }catch(e){} } return _pdfjs; }
-async function getTesseract(){ if(!_tesseract){ const m=await importRetry('https://esm.sh/tesseract.js@5'); _tesseract=m.default||m; } return _tesseract; }  // PDF-BLOCK: OCR
+/* CDN: jsdelivr `+esm` PRIMEIRO, esm.sh como reserva — e por que a ordem importa (ago/2026).
+   O `+esm` do jsdelivr e um BUNDLE DE ARQUIVO UNICO (esbuild): um salto, e o hash de SRI cobre
+   a dependencia inteira. O esm.sh serve um SHIM que reexporta de um segundo salto, entao pinar
+   a URL de topo dele pina duas linhas e deixa o codigo de verdade sem verificacao. Como o
+   `importRetry` tenta a lista em ordem e so cai pra proxima quando a anterior REJEITA, inverter
+   a ordem nao tira robustez: queda do jsdelivr (ou hash que nao bate, que tambem rejeita) volta
+   ao comportamento de antes. O esm.sh FICA — tirar a reserva trocaria supply chain por
+   disponibilidade, e o app roda na mao de pesquisador no meio de um estudo.
+   VERSAO EXATA, sem faixa: `@5` flutua, e pino de SRI sobre alvo movel quebra o app no dia em
+   que o CDN publica a proxima 5.x. Confira com `tests/cdn.spec.mjs` antes de publicar. */
+async function getTesseract(){ if(!_tesseract){ const m=await importRetry(['https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/+esm','https://esm.sh/tesseract.js@5.1.1']); _tesseract=m.default||m; } return _tesseract; }  // PDF-BLOCK: OCR
 // PDF-BLOCK: OCR LOCAL-FIRST — se os assets do tesseract estiverem vendorizados em ./tesseract/
 // (worker + core wasm + <lang>.traineddata.gz, via spikes-style tesseract/fetch.sh), usa-os
 // (offline, sem a fragilidade do fetch de CDN); senao cai no default do tesseract.js (CDN).
@@ -406,14 +416,23 @@ async function getOcrWorker(){
   return _ocrWorker;
 }
 function terminateOcrWorker(){ const w=_ocrWorker; _ocrWorker=null; _ocrProg=null; if(w){ try{ w.terminate(); }catch(e){} } }
-async function getMammoth(){ if(!_mammoth){ const m=await importRetry('https://esm.sh/mammoth@1.8.0'); _mammoth=m.default||m; } return _mammoth; }
+async function getMammoth(){ if(!_mammoth){ const m=await importRetry(['https://cdn.jsdelivr.net/npm/mammoth@1.8.0/+esm','https://esm.sh/mammoth@1.8.0']); _mammoth=m.default||m; } return _mammoth; }
 async function getJSZip(){ if(!_JSZip){ const m=await importRetry(['https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm','https://esm.sh/jszip@3.10.1']); _JSZip=m.default||m; } return _JSZip; }  // caminho de DADO (le/escreve o .qualilab-zip): jsdelivr (bundle unico, 1 salto = robusto) 1o; esm.sh (shim de 2 saltos, fragil) como fallback
-async function getCreateClient(){ if(!_createClient){ const m=await importRetry('https://esm.sh/@supabase/supabase-js@2.110.0'); _createClient=m.createClient; } return _createClient; }
+/* UNICO loader que depende de export NOMEADO (os outros usam `m.default||m`). Se um dos CDNs
+   servir um bundle que exponha so o default, `m.createClient` viria undefined e o sintoma
+   apareceria muito depois, como "createClient is not a function" no meio do login. Aceita as
+   duas formas e, nao achando nenhuma, falha AQUI, dizendo o motivo. */
+async function getCreateClient(){ if(!_createClient){
+  const m=await importRetry(['https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.0/+esm','https://esm.sh/@supabase/supabase-js@2.110.0']);
+  const cc = m.createClient || m.default?.createClient;
+  if(typeof cc!=='function') throw new Error('supabase-js carregou sem createClient — o CDN serviu um bundle em formato inesperado');
+  _createClient = cc;
+} return _createClient; }
 // SheetJS: le .xlsx/.xls no navegador (para o import de planilha Excel, mesmo fluxo do .csv)
-async function getXLSX(){ if(!_XLSX){ const m=await importRetry('https://esm.sh/xlsx@0.18.5'); _XLSX=m.default||m; } return _XLSX; }
+async function getXLSX(){ if(!_XLSX){ const m=await importRetry(['https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm','https://esm.sh/xlsx@0.18.5']); _XLSX=m.default||m; } return _XLSX; }
 // sql.js: SQLite compilado para WASM, p/ ler o .sqlite3 nativo do Taguette no navegador
 async function getSqlJs(){
-  if(!_SQL){ const m=await importRetry('https://esm.sh/sql.js@1.14.0'); const initSqlJs=m.default||m;
+  if(!_SQL){ const m=await importRetry(['https://cdn.jsdelivr.net/npm/sql.js@1.14.0/+esm','https://esm.sh/sql.js@1.14.0']); const initSqlJs=m.default||m;
     _SQL = await initSqlJs({ locateFile: f=>`https://cdn.jsdelivr.net/npm/sql.js@1.14.0/dist/${f}` }); }
   return _SQL;
 }
@@ -451,7 +470,7 @@ async function getSqlJs(){
    fragmentos; a centragem tira a direcao comum que fazia alguns termos ficarem perto de TUDO (na
    1a medicao "receio" saia em 4 de 5 consultas). */
 let _transformers;
-async function getTransformers(){ if(!_transformers){ _transformers = await importRetry(['https://esm.sh/@huggingface/transformers@3.7.5','https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.5/+esm']); } return _transformers; }
+async function getTransformers(){ if(!_transformers){ _transformers = await importRetry(['https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.5/+esm','https://esm.sh/@huggingface/transformers@3.7.5']); } return _transformers; }
 
 const SEM_MODEL = 'Xenova/paraphrase-multilingual-MiniLM-L12-v2';
 const SEM_DIM = 384;
@@ -1799,10 +1818,30 @@ function maskSlice(content, start, end, ranges){
    citacao inteira e sensivel -> "[trecho censurado]". codingsInDoc = todos os codings do mesmo
    documento (qualquer camada — conservador). Usado por IACodificarPanel, IAAnalisarPanel e
    ReportView, pra censura nunca vazar via quote de codigo analitico que cobre o mesmo trecho. */
-function maskQuoteSpans(coding, codingsInDoc, maskedIds){
+function maskQuoteSpans(coding, codingsInDoc, maskedIds, content){
   let q = coding.quote || '';
   if(!maskedIds || !maskedIds.size) return q;
   if(maskedIds.has(coding.code_id)) return '[trecho censurado]';
+  /* FAIL CLOSED — ANCORA CONFERIDA (achado por tests/censura.property.test.mjs, ago/2026).
+     Esta funcao trabalha sobre o TEXTO DO QUOTE usando faixas em offsets do DOCUMENTO. Os dois
+     so falam a mesma lingua enquanto valer quote === content.slice(span_start, span_end). Com
+     o quote fora de sincronia (.qdpx de outra ferramenta cujos offsets nao batem com o texto
+     dela, ancora perdida, quote antigo que o remapSpans nao alcancou) aparecem DOIS vazamentos,
+     e o segundo foi o que derrubou a primeira versao desta correcao:
+       (a) o quote sobrepoe censura e a mascara cai DESLOCADA — medido: 3 chars de deslocamento
+           deixam passar 3 chars da faixa;
+       (b) o quote NAO sobrepoe censura pelos offsets, mas o TEXTO guardado nele veio de outro
+           ponto do documento e carrega material censurado. Nenhuma mascara chega a rodar.
+     Conferir o comprimento nao pega nem (a) — deslocar sem truncar preserva o comprimento.
+     Entao a regra e anterior a qualquer faixa: havendo censura NESTE documento, so segue quem
+     bate com o texto do documento. Sem `content` para conferir, mascara inteira.
+     Custo: num documento com censura, citacao cuja ancora derivou vira rotulo. Perde contexto
+     legitimo num caso que ja e defeito de dado — e o pesquisador VE que perdeu. O contrario
+     vaza em silencio, que e o modo de falha que nao tem volta.
+     QUEM CHAMA PASSA O content (os quatro pontos tem o documento a mao). Chamador novo que
+     esqueca de passar nao vaza: cai aqui e mascara demais — erro barulhento. */
+  const temCensuraNoDoc = (codingsInDoc||[]).some(o=> maskedIds.has(o.code_id) && o.span_start>=0 && o.span_end>o.span_start);
+  if(temCensuraNoDoc && (typeof content !== 'string' || content.slice(coding.span_start, coding.span_end) !== q)) return '[trecho censurado]';
   const base = coding.span_start;
   const ov = (bS,bE)=> bS>=0 && bE>bS && coding.span_start>=0 && coding.span_end>coding.span_start && coding.span_start<bE && bS<coding.span_end;
   const ranges = (codingsInDoc||[])
@@ -4205,6 +4244,9 @@ async function importTaguette(file, store, projectId, projectMode, onProgress){
   // usa Statement.getAsObject() (nao db.exec()[0].columns) — em alguns builds via CDN
   // (esm.sh) a propriedade "columns" do resultado de exec() vem com o nome minificado,
   // entao ler por ali falha silenciosamente; getAsObject() ja devolve linha->objeto.
+  // O primario virou o bundle do jsdelivr em ago/2026, mas a precaucao FICA: o esm.sh
+  // continua como reserva do importRetry, e este e o unico caso ja MEDIDO neste projeto de
+  // build de CDN que muda o formato do retorno sem erro nenhum.
   const all = (sql)=>{
     const stmt = sdb.prepare(sql);
     const rows = [];
@@ -9956,6 +9998,29 @@ function SplitCodeView({ code, codings, store, project, onAdd, isAdmin, onCancel
   </section>`;
 }
 
+/* CENSURA na reorganizacao — a REGRA, isolada como funcao pura de topo (era um `patchFor`
+   aninhado dentro do reparentSubtree). Ela decide o patch de UM no ao ser reparentado, e as
+   duas invariantes que ela carrega sao as que ja vazaram em producao:
+     v1.1.1 — subcodigo de familia de censura precisa NASCER censurado (la e o addCode; aqui e
+              o markRedaction, a mesma heranca aplicada a subarvore MOVIDA);
+     v1.4.3 — reorganizar o esquema NAO pode descobrir trecho censurado: `is_redaction` nunca
+              volta a false por reparent, e o adoptColor nunca sobrescreve o preto (-2) de quem
+              JA e censura.
+   Estava aninhada, entao nao havia como exercita-la sem bootar o app inteiro — e uma regra
+   cuja falha e IRREVERSIVEL (o codificador que viu o trecho nao desve). Subida ao topo pra
+   entrar no tests/extract.mjs; a semantica e byte a byte a de antes. Ver
+   tests/censura.property.test.mjs. */
+function reparentPatch(node, base, adoptColor, markRedaction){
+  const p = { ...base };
+  const jaCensura = !!node?.is_redaction;
+  if(adoptColor){
+    p.hue = adoptColor.hue; p.sat = adoptColor.sat ?? null;
+    if(!jaCensura && !markRedaction) p.hue_deg = adoptColor.hue_deg ?? null;
+  }
+  if(markRedaction && !jaCensura){ p.is_redaction = true; p.hue_deg = -2; }
+  return p;
+}
+
 /* ============ ESQUEMA > CODIGOS — reorganizacao em lote ============
    Tela cheia dedicada (sem documento aberto), pensada pra quem fez codificacao aberta
    (grounded theory) e termina com centenas de codigos soltos, todos no mesmo nivel.
@@ -10029,16 +10094,8 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
   //   parecer). O preto acompanha a censura, nao o pai. Sobrescrever so pra CIMA tambem evita
   //   que promover um codigo censurado esbarre no codes_color_guard (mudanca de cor no nivel 0).
   async function reparentSubtree(codeId, newParentId, newDepth, adoptColor, markRedaction){
-    const patchFor = (node, base)=>{
-      const p = { ...base };
-      const jaCensura = !!node?.is_redaction;
-      if(adoptColor){
-        p.hue = adoptColor.hue; p.sat = adoptColor.sat ?? null;
-        if(!jaCensura && !markRedaction) p.hue_deg = adoptColor.hue_deg ?? null;
-      }
-      if(markRedaction && !jaCensura){ p.is_redaction = true; p.hue_deg = -2; }
-      return p;
-    };
+    // a regra vive no reparentPatch (topo do arquivo), pra poder ser testada sem bootar o app
+    const patchFor = (node, base)=> reparentPatch(node, base, adoptColor, markRedaction);
     await store.updateCode(codeId, patchFor(codeById[codeId], { parent_id:newParentId, depth:newDepth }));
     const stack=[{id:codeId,depth:newDepth}];
     while(stack.length){
@@ -12749,7 +12806,7 @@ function ReportView({ project, projectMode, docs, cats, codes, codeById, codePat
   // censurado por um codificador nao vaza via quote de codigo analitico (ou da propria censura).
   const redactionIds = useMemo(()=> new Set(codes.filter(c=>c.is_redaction).map(c=>c.id)), [codes]);
   const codingsByDoc = useMemo(()=>{ const m={}; (allCodings||[]).forEach(c=>{ (m[c.document_id]=m[c.document_id]||[]).push(c); }); return m; }, [allCodings]);
-  const maskQuote = (c)=> maskQuoteSpans(c, codingsByDoc[c.document_id], redactionIds);
+  const maskQuote = (c)=> maskQuoteSpans(c, codingsByDoc[c.document_id], redactionIds, docById[c.document_id]?.content);
   const pathOf = (id)=> codePath ? codePath(id).join(' ▸ ') : (codeById[id]?.name||id);
   const swatch = (c)=> html`<span class="swatch" style=${`display:inline-block;vertical-align:middle;background:${codeColor(c.hue,c.depth,c.hue_deg,false,c.sat).solid}`}></span>`;
   const kindLabel = (k)=> (CAT_KINDS.find(x=>x.id===k)||{}).label || k;
@@ -13226,7 +13283,7 @@ function IAOrganizarPanel({ project, docs, codes, codeById, codePath, store, all
     // censura). maskQuoteSpans (top-level) mascara so a porcao sobreposta, preservando o resto como
     // contexto de organizacao; depois corta em 240 chars.
     const maskQuote = (co)=>{
-      let q = maskQuoteSpans(co, byDoc[co.document_id], redactionIds);
+      let q = maskQuoteSpans(co, byDoc[co.document_id], redactionIds, docById[co.document_id]?.content);
       // §4: omissão de OCR na citação — só quando a censura não mexeu (privacidade exata; qualidade best-effort)
       const rs = ocrT.maskByDoc && ocrT.maskByDoc[co.document_id];
       if(rs && q === co.quote) q = maskQuoteByRanges(q, co.span_start, co.span_end, rs, '[trecho de OCR omitido]');
@@ -14366,7 +14423,7 @@ function IACodificacaoPanel({ project, docs, codes, codeById, codePath, store, a
       // trecho é a evidência e os codificadores são citados).
       const already = groupCodingSpans(inDoc.filter(c=>selCodes.includes(c.code_id)))
         .map(({ rep:c })=>{
-          let q = maskQuoteSpans(c, inDoc, redactionIds);
+          let q = maskQuoteSpans(c, inDoc, redactionIds, d.content);
           // §4: omissão de OCR na citação — só quando a censura não mexeu (privacidade exata; qualidade best-effort)
           if(ocrR && q === c.quote) q = maskQuoteByRanges(q, c.span_start, c.span_end, ocrR, '[trecho de OCR omitido]');
           return `  - [#${cShort(c.code_id)} "${codeById[c.code_id]?.name||''}"] "${q}"`;
@@ -15075,7 +15132,8 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
   // liberado), o trecho inteiro vira "[trecho censurado]"; senao mascara so as porcoes cobertas por
   // codings de censura de OUTROS codificadores sobrepostos. Respeita allowRedact (via maskedCodeIds).
   const maskQuoteText = (c)=>{
-    let q = maskQuoteSpans(c, codingsByDoc[c.document_id], maskedCodeIds);
+    // o content vai junto: sem ele o maskQuoteSpans nao consegue conferir o quote e fecha (mascara inteira)
+    let q = maskQuoteSpans(c, codingsByDoc[c.document_id], maskedCodeIds, (docs||[]).find(d=>d.id===c.document_id)?.content);
     // §4: omissao de OCR na citacao — SO quando a censura nao mexeu no texto (a censura e
     // exata por posicao e tem prioridade; a omissao de OCR e qualidade, best-effort)
     const ocrR = ocrMaskByDoc && ocrMaskByDoc[c.document_id];
