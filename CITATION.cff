@@ -23,6 +23,14 @@ authors:
 license: MIT
 repository-code: "https://github.com/LuizPF42/QualiLab"
 url: "https://luizpf42.github.io/QualiLab"
+identifiers:
+  # DOI de CONCEITO: representa o projeto inteiro e sempre resolve para a versao mais
+  # recente. E este que se cita. Cada release ganha um DOI de VERSAO proprio, mintado
+  # pelo Zenodo (a v1.4.25 e 10.5281/zenodo.21935683); eles nao entram aqui, senao
+  # este arquivo viraria uma lista a manter a mao.
+  - type: doi
+    value: 10.5281/zenodo.21935682
+    description: "DOI de conceito (todas as versoes)"
 keywords:
   - caqdas
   - qda

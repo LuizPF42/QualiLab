@@ -6,6 +6,8 @@
 
 **o seu laboratório de pesquisa qualitativa / your own lab for qualitative research**
 
+[![DOI](https://zenodo.org/badge/1274527946.svg)](https://doi.org/10.5281/zenodo.21935682)
+
 QualiLab é uma ferramenta **gratuita e de código aberto** para análise qualitativa de dados. Roda inteira em um único arquivo `index.html`, sem instalação, sem servidor próprio, sem assinatura.
 
 > Inspirado pelo excelente trabalho do **[Taguette](https://www.taguette.org/about.html)**, do **[Magnolia](https://www.caledavis.eu/magnolia.html)**, do **[QualCoder](https://github.com/ccbogel/qualcoder)** e do **[OpenQDA](https://openqda.org/)**, projetos que merecem todo o seu reconhecimento. Se você usa ou aprecia ferramentas abertas para pesquisa qualitativa, visite os projetos deles e considere usar ou contribuir: são as referências que tornaram o QualiLab possível.
@@ -206,7 +208,7 @@ Comparação direta com os achados de [Küster & Wolf (2025)](#motivação) sobr
 | **Trilha de auditoria do processo** | 7 | ❌ ainda não |
 | Metadado de citação (`CITATION.cff`) | 3 | ✅ |
 | Política de segurança pública | 2 | ✅ [`SECURITY.md`](SECURITY.md) |
-| Arquivado com DOI (Zenodo) | 4 | ⏳ em preparação |
+| Arquivado com DOI (Zenodo) | 4 | ✅ [`10.5281/zenodo.21935682`](https://doi.org/10.5281/zenodo.21935682) |
 | Arquitetura de plugins · scripts | 1 · 3 | ❌ por decisão (abaixo) |
 
 **O que fica de fora por escopo, e não por acaso.** O QualiLab é uma ferramenta de **texto e PDF**. Áudio, vídeo e imagem exigem anotação sobre linha do tempo ou sobre pixels, que é outro produto e não uma funcionalidade a mais. Para isso, veja o [ELAN](https://archive.mpi.nl/tla/elan/), o [Transana](https://www.transana.com/), o [dicto](https://dictoapp.github.io/dicto/) ou o [QualCoder](https://github.com/ccbogel/qualcoder).
