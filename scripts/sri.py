@@ -46,6 +46,8 @@ from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
 INDEX = RAIZ / "index.html"
+# O index.html e gerado; a FONTE deste bloco e o fragmento abaixo (ver src/manifesto.txt).
+BLOCO_FONTE = RAIZ / "src" / "pagina" / "importmap.html"
 
 INICIO = "<!-- SRI:BEGIN — gerado por scripts/sri.py --update. NAO EDITE A MAO. -->"
 FIM = "<!-- SRI:END -->"
@@ -136,7 +138,7 @@ def montar_bloco(mapa):
     )
 
 
-def cmd_update(caminho, texto):
+def cmd_update(caminho, texto, saida_bloco=None):
     urls = [u for u in urls_usadas(texto) if u not in NAO_COBERTO]
     mapa, i, j = {}, *ler_bloco(texto)[1:]
     novo, falhas, relatorio = {}, [], []
@@ -157,15 +159,29 @@ def cmd_update(caminho, texto):
         return 1
 
     bloco = montar_bloco(novo)
-    if i >= 0:
-        saida = texto[:i] + bloco + texto[j:]
+    # DESTINO: o index.html e GERADO (src/manifesto.txt + scripts/build_index.py), entao
+    # escrever nele seria trabalho perdido no build seguinte. Por isso a leitura e a
+    # ESCRITA se separaram: as URLs sao descobertas no arquivo MONTADO (elas moram nos
+    # loaders, espalhadas pelo modulo) e o bloco vai para o fragmento de FONTE, cujo
+    # conteudo inteiro e justamente este bloco. Sem --saida, o comportamento e o de antes.
+    if saida_bloco:
+        alvo = Path(saida_bloco)
+        antigo = alvo.read_bytes() if alvo.exists() else b""
+        fim_linha = "\r\n" if b"\r\n" in antigo else "\n"
+        conteudo = (bloco + "\n").replace("\r\n", "\n").replace("\n", fim_linha)
+        with alvo.open("w", encoding="utf-8", newline="") as fh:
+            fh.write(conteudo)
+        caminho = alvo
     else:
-        k = texto.find(ABRE_MODULO)
-        saida = texto[:k] + bloco + "\n" + texto[k:]
-    # newline='' e obrigatorio: o arquivo pode vir com CRLF (autocrlf no Windows) e a traducao
-    # do write_text viraria cada \r\n em \r\r\n. Mesma armadilha do check_index.py.
-    with Path(caminho).open("w", encoding="utf-8", newline="") as fh:
-        fh.write(saida)
+        if i >= 0:
+            saida = texto[:i] + bloco + texto[j:]
+        else:
+            k = texto.find(ABRE_MODULO)
+            saida = texto[:k] + bloco + "\n" + texto[k:]
+        # newline='' e obrigatorio: o arquivo pode vir com CRLF (autocrlf no Windows) e a traducao
+        # do write_text viraria cada \r\n em \r\r\n. Mesma armadilha do check_index.py.
+        with Path(caminho).open("w", encoding="utf-8", newline="") as fh:
+            fh.write(saida)
 
     print(f"ok — {len(novo)} dependencia(s) pinada(s) em {Path(caminho).name}\n")
     print("COBERTURA REAL (o hash cobre so o modulo de topo):")
@@ -221,7 +237,12 @@ def cmd_check(texto, online):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--index", default=str(INDEX))
+    ap.add_argument("--index", default=str(INDEX),
+                    help="arquivo MONTADO onde as URLs sao descobertas")
+    ap.add_argument("--saida", default=str(BLOCO_FONTE),
+                    help="fragmento de FONTE que recebe o bloco (todo o conteudo "
+                         "dele e o bloco). Passe vazio para escrever no --index, "
+                         "como era antes de a fonte virar modular.")
     ap.add_argument("--update", action="store_true", help="rebaixa, calcula e (re)escreve o bloco")
     ap.add_argument("--check", action="store_true", help="confere (padrao)")
     ap.add_argument("--online", action="store_true", help="no --check, rebaixa e compara os hashes")
@@ -231,7 +252,7 @@ def main():
     texto = caminho.read_bytes().decode("utf-8")
 
     if args.update:
-        return cmd_update(caminho, texto)
+        return cmd_update(caminho, texto, args.saida or None)
 
     codigo, erros = cmd_check(texto, args.online)
     if erros:

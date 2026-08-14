@@ -1,0 +1,42 @@
+cff-version: 1.2.0
+message: "Se o QualiLab foi usado na sua pesquisa, cite-o como abaixo."
+title: "QualiLab"
+abstract: >-
+  Ferramenta livre de análise qualitativa de dados (CAQDAS) que roda inteira no
+  navegador, a partir de um único arquivo HTML, sem instalação e sem servidor
+  próprio. Codificação hierárquica de trechos em texto e PDF, esquema de
+  categorias por documento, pesquisa coletiva em camadas com reconciliação,
+  interoperabilidade REFI-QDA (QDPX/QDC) e W3C Web Annotation, e análise
+  assistida por IA em modo BYOK com o prompt inteiro visível ao pesquisador.
+type: software
+authors:
+  # Nome grafado como no ORCID (given/family), para a citação sair "PIMENTA FILHO, L. C.".
+  # A afiliação repete a cadeia do emprego registrado no ORCID (ROR 02qze4e34). Ela declara
+  # ONDE o autor trabalha; NAO implica responsabilidade nem endosso institucional — isso está
+  # dito no README e na isenção da licença. Para desvincular, apague a linha `affiliation`;
+  # note que o vínculo continua resolvível via ORCID, então a omissão esconde pouco.
+  - family-names: "Pimenta Filho"
+    given-names: "Luiz Cláudio"
+    orcid: "https://orcid.org/0000-0002-5165-6232"
+    affiliation: "Fundação Getulio Vargas Law School, São Paulo"
+    website: "http://lattes.cnpq.br/1096752907228813"
+license: MIT
+repository-code: "https://github.com/LuizPF42/QualiLab"
+url: "https://luizpf42.github.io/QualiLab"
+keywords:
+  - caqdas
+  - qda
+  - qualitative data analysis
+  - qualitative research
+  - refi-qda
+  - open science
+  - web annotation
+# Sem `version` e `date-released` de propósito: a versão do app vive em
+# src/base/config.js (e aparece no cabeçalho e no rodapé da tela de entrada).
+# Repeti-la aqui criaria uma cópia que nada confere e que derivaria em silêncio.
+# Ao publicar um release no GitHub, a tag já carrega o número, e é dela que o
+# Zenodo tira a versão do registro arquivado.
+#
+# A autoria é POR VERSÃO: quem contribuir numa release futura entra aqui (ou como
+# `contributor` num .zenodo.json, se um dia a distinção de papéis for necessária)
+# e passa a constar daquele registro em diante, sem mexer nos anteriores.

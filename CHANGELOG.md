@@ -14,6 +14,175 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.25 (13/08/2026)
+
+### O QDPX passou a dizer três coisas que o padrão manda dizer
+
+Uma leitura da especificação REFI-QDA (a mesma que define o `.qdpx` e o `.qdc`) encontrou três
+pontos em que o arquivo exportado estava certo, válido, e mesmo assim calado. Nenhum deles
+quebrava nada aqui: o efeito aparecia **na outra ferramenta**, ou na volta.
+
+- **Família vira pasta de verdade.** No QualiLab, código com subcódigos agrupa e não recebe
+  trechos. O padrão tem exatamente esse conceito, e ele viaja num atributo que o QualiLab
+  escrevia sempre igual, então todas as famílias chegavam ao ATLAS.ti, ao MAXQDA e ao QualCoder
+  como códigos comuns, prontas para receber trecho. Agora saem marcadas como pasta. (Se uma
+  família tiver trecho próprio, coisa que só acontece com projeto vindo de fora, ela continua
+  saindo como código: marcá-la como pasta produziria um arquivo internamente contraditório, que
+  algumas ferramentas recusam inteiro.)
+
+- **A marca de censura vai e volta.** Até agora o `.qdpx` levava os trechos censurados (ele é
+  formato de trabalho e sai completo, isso não mudou), mas perdia a informação de *quais códigos
+  são de censura*: reimportando o arquivo aqui, o trabalho de marcação tinha que ser refeito à
+  mão. A marca agora viaja num conjunto de códigos, que é o mecanismo que o padrão oferece para
+  isso, e a importação a restaura e diz quantos códigos voltaram marcados. Ferramenta que não
+  preserva conjunto de códigos perde a marca, nunca o trecho.
+
+- **O memo do projeto deixa de ficar solto.** Ele já saía no pacote, mas sem nada declarando a
+  quem pertencia. Agora vai ancorado no projeto.
+
+### O aviso de perda aparece na hora de exportar
+
+O padrão pede que o software avise no momento da exportação quando o formato não carrega tudo,
+"com o máximo de detalhe possível". O aviso que existia no menu era sobre privacidade (a censura
+sai em claro), não sobre perda. Agora, ao exportar um `.qdpx`, o QualiLab lista o que fica para
+trás **naquele projeto**: as codificações individuais quando já existe gabarito, as respostas de
+categoria preenchidas por mais de uma pessoa, e as categorias de caixa de seleção (que viram
+texto único, porque o formato não tem múltipla escolha). Projeto que não tem nenhuma dessas
+situações não vê aviso nenhum. O `.qualilab` continua preservando os três casos.
+
+### Também
+
+O README passou a declarar, como o padrão pede, a que partes dele o QualiLab reivindica
+conformidade: as duas, projeto (`.qdpx`) e livro de códigos (`.qdc`).
+
+## 1.4.24 (11/08/2026)
+
+### Definir Categoria: "Não informado" deixa de ser tratado como resposta suspeita
+
+No **Definir Categoria**, antes de escrever o verbete a IA faz uma passada que procura, em cada
+caso de treino, o trecho do documento que sustenta a resposta que você deu. Para um documento
+respondido **"Não informado"** essa pergunta não tem resposta possível: a evidência ali é
+justamente a *ausência* de trecho. A IA dizia isso corretamente, e o app então listava o caso em
+**"Casos sem nada no texto que sustente a resposta"**, cuja explicação sugere engano de
+preenchimento, resposta vinda de fora do documento ou extração ruim do texto. Nenhuma das três
+era o caso, e você aparecia errado onde tinha acertado.
+
+Agora esses documentos não vão para a passada de localização (o que também poupa uma chamada
+paga por caso) e o cartão volta a listar só o que promete: resposta afirmativa sem respaldo no
+texto. Eles **continuam** no material da indução, e com um papel próprio: são os casos negativos,
+os que ensinam a regra a dizer *quando* marcar "Não informado" — a fronteira entre "o documento
+não traz a informação" e "eu não encontrei". Antes eles chegavam à indução rotulados como
+suspeitos, e era exatamente esse critério que o verbete tendia a não escrever.
+
+Resposta de múltipla escolha que combina "Não informado" com algum outro valor segue indo para a
+localização normalmente: ali ainda há o que procurar.
+
+## 1.4.23 (11/08/2026)
+
+### A tela de entrada diz que a nuvem padrão é lida por quem a mantém
+
+Sob o cartão **Entrar na nuvem** agora aparece **"Dados visíveis para o desenvolvedor"**, com link
+para o repositório do projeto. Quem sobe material para a nuvem padrão do QualiLab está confiando
+esse material a quem administra aquele servidor, e isso precisava estar na tela onde a escolha é
+feita, não só no manual. O aviso **não** aparece quando você conectou o seu próprio Supabase: ali
+a frase seria falsa.
+
+### Erro de servidor sem mensagem deixa de virar um símbolo sem sentido
+
+Quando o servidor recusava uma operação sem dizer por quê, a tela mostrava `{}`. Aconteceu de
+verdade no cadastro: duas falhas completamente diferentes do envio de e-mail chegaram como esse
+mesmo símbolo, sem indicar se o problema era da sua conta ou do servidor. Agora aparece uma frase
+que diz o que se sabe, que a ação não foi concluída e a quem recorrer.
+
+## 1.4.22 (09/08/2026)
+
+### A censura passa a falhar fechada quando perde a âncora
+
+Uma revisão adversarial da 1.4.21 encontrou dois caminhos em que a censura podia deixar escapar
+parte do conteúdo marcado, e os dois foram fechados:
+
+- **Censura cuja posição gravada não corresponde mais ao texto** (por exemplo, o documento mudou
+  por baixo da marcação sem o remapeamento acontecer): antes a máscara era aplicada na posição
+  antiga e podia deixar visível parte do trecho sensível. Agora, quando o QualiLab detecta que
+  uma censura não bate mais com o texto, ele **mascara o documento inteiro** nas superfícies que
+  mascaram (prompt da IA, leitor de transparência, JSON W3C) e diz por quê — é barulhento de propósito: reaplique a censura naquele documento
+  para voltar ao normal. O trabalho no leitor não é afetado.
+- **Citação sem âncora válida**: um trecho codificado que perdeu a posição no texto podia sair
+  com a citação gravada **crua** no JSON W3C, mesmo cobrindo conteúdo censurado. Agora a
+  citação sem âncora sai como rótulo de censura.
+
+### A avaliação às cegas fica cega de verdade
+
+O prompt do modo cego (Sugerir Categorização e o teste da definição no Definir Categoria) não
+leva mais a **memória do projeto** nem os **memos injetados**: são campos livres que podem
+conter respostas humanas — inclusive memórias propostas pela própria IA numa rodada que viu os
+valores preenchidos. O ⚙ Configurar Prompt mostra as duas seções como omitidas, com o motivo.
+
+### Rodada de indução malsucedida não devolve documentos ao sorteio
+
+No Definir Categoria, os documentos de treino passam a ser registrados como "já vistos" no
+momento em que são **enviados**, e não só quando a indução termina bem. Antes, uma rodada em
+que o modelo recusava a ferramenta de saída (ou uma falha no fim) deixava aqueles documentos
+voltarem como **guardados** da rodada seguinte — e o placar media a definição em casos que já
+tinham entrado num prompt dela.
+
+## 1.4.21 (09/08/2026)
+
+### A definição da categoria virou um verbete, e agora cabe escrevê-lo
+
+O campo de descrição de uma categoria era de **uma linha só**, e a quebra de linha sumia na
+exibição. Agora ele é um campo que cresce, e o texto aparece como você escreveu — no painel de
+atributos, no Esquema e na Reconciliação.
+
+Não é detalhe de conforto: esse campo é a **instrução de codificação**. É o mesmo texto que o
+codificador humano lê e que a IA recebe no prompt. Uma definição só governando os dois.
+
+### Avaliação às cegas: saber se a sua definição funciona
+
+Na aba **Sugerir Categorização** há uma caixa nova, *Avaliação às cegas*.
+
+No modo de sempre, a IA vê as respostas que você já preencheu e devolve só as diferenças. É
+ótimo para completar corpus — e não serve para medir, porque o avaliador está vendo o seu
+gabarito antes de responder.
+
+Marcando a caixa, ela recebe **só o documento**, responde todas as categorias marcadas, e a
+comparação é feita depois, aqui. Você recebe um **placar de concordância** com o seu gabarito,
+separado por categoria. As divergências continuam disponíveis para aprovar uma a uma, só que
+agora vindas de uma segunda opinião que não estava ancorada na sua.
+
+O placar conta apenas os pares em que **os dois** responderam: onde a IA não respondeu não vira
+erro, e onde você ainda não tinha respondido não entra na conta (vira sugestão de preenchimento).
+Cada documento vira uma conversa separada, para que todos sejam avaliados nas mesmas condições —
+por isso este modo custa mais que o normal, e a estimativa aparece no botão *Configurar Prompt*.
+
+### Definir Categoria: escrever a instrução a partir do que você já respondeu
+
+Aba nova em **Codificar Automaticamente**. Se você já respondeu uma categoria em algumas dezenas
+de documentos, o critério que você aplicou está nessas respostas — o que falta é escrevê-lo.
+
+A IA lê uma amostra **equilibrada** dos documentos já respondidos (com 90 "Não" e 10 "Sim", uma
+amostra ao acaso ensinaria "quase sempre Não"), procura em cada um a passagem que sustenta a sua
+resposta, e propõe o texto da definição, que você edita antes de aplicar.
+
+Junto vêm três coisas que costumam valer mais que o texto: **os casos em que a regra proposta
+discordaria de você** (ou a sua codificação está inconsistente ali, ou existe um critério que
+você aplica sem ter percebido), **os pontos que os seus exemplos não decidem**, e **os documentos
+em que nada no texto sustentava a resposta dada**.
+
+Um punhado de documentos fica **separado desde o início** e não é mostrado à IA. Com um clique
+você testa a definição neles e vê em quantos ela reproduziu a sua resposta; um botão refaz a
+proposta incluindo os casos em que errou. Testar nos mesmos documentos que escreveram a regra
+não diria nada — seria dar o gabarito antes da prova.
+
+Requer chave própria de IA (**Minha conta**). Nada é gravado sem você clicar em aplicar, e o
+teste roda sobre o texto que está no campo, não sobre o que está salvo.
+
+### O endereço acompanha a tela: link para compartilhar, e o "voltar" funciona
+
+O endereço da página passou a registrar a **tela**, o **documento aberto** e a **sub-aba**. Dá
+para copiar o link e mandar a um colega, que abre no mesmo lugar, e o botão *voltar* do navegador
+faz o que se espera dele.
+
 ## 1.4.20 (07/08/2026)
 
 ### Sugerir Categorização: filtrar os documentos que ainda não têm a categoria

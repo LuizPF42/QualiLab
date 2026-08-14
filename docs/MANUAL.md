@@ -247,7 +247,7 @@ Depois de abrir um projeto, o **cabeçalho** tem duas linhas:
 | **Gráficos** | Frequências, nuvem, co-ocorrência etc. |
 | **Memos** | Notas analíticas |
 | **Esquema** | Organizar códigos e categorias em lote |
-| **Codificar Automaticamente** | Repetir codificação (sem IA) e, *(opcional, BYOK)*, IA propondo codificação/categorização/organização; você aprova |
+| **Codificar Automaticamente** | Repetir codificação (sem IA) e, *(opcional, BYOK)*, IA propondo codificação/categorização/organização e induzindo a definição de uma categoria; você aprova |
 | **Analisar com IA** | *(opcional, BYOK)* conversa analítica sobre o material selecionado |
 | **Relatório** | Exportar relatórios e pacotes de transparência |
 
@@ -381,7 +381,7 @@ Um código pode ser marcado como **censura** (no [Esquema](#7-esquema), por um a
 
 **Onde a censura NÃO se aplica, e por quê.** Os formatos de **trabalho e migração** (`.qualilab`, QDPX, QDC, CSV, JSON) saem **completos**, com os trechos censurados em claro. Não é esquecimento: é por esses arquivos que você leva o **seu próprio** material para o ATLAS.ti, o MAXQDA ou o NVivo e traz de volta, e mascarar ali destruiria o texto original de forma irreversível, além de fazer você **perder o próprio trabalho de censura** na migração. O menu **exportar ▾** avisa isso na hora, em âmbar, quando o projeto usa código de censura. Para material que sai da equipe, use a aba **Relatório**.
 
-**A censura protege o que você marcou, não o termo.** Marcar "Banca Exemplo Advogados" num parágrafo não protege as outras cinco menções ao mesmo escritório. Para isso existe a aba **Repetir Codificação** (em [Codificar Automaticamente](#172-codificar-automaticamente-quatro-assistentes-em-abas)): ela pega os trechos que o código já tem e mostra as demais ocorrências **idênticas** no corpus, para você aprovar uma a uma. Ela não acha **variantes**: "Banca Exemplo" sozinha, ou "a banca", continuam sendo caso de [pesquisar +](#57-buscar-no-documento-e-no-projeto-inteiro), onde o julgamento é seu. Antes de publicar, veja [12.4](#124-antes-de-publicar-trabalhe-no-laboratório-publique-de-uma-cópia).
+**A censura protege o que você marcou, não o termo.** Marcar "Banca Exemplo Advogados" num parágrafo não protege as outras cinco menções ao mesmo escritório. Para isso existe a aba **Repetir Codificação** (em [Codificar Automaticamente](#172-codificar-automaticamente-cinco-assistentes-em-abas)): ela pega os trechos que o código já tem e mostra as demais ocorrências **idênticas** no corpus, para você aprovar uma a uma. Ela não acha **variantes**: "Banca Exemplo" sozinha, ou "a banca", continuam sendo caso de [pesquisar +](#57-buscar-no-documento-e-no-projeto-inteiro), onde o julgamento é seu. Antes de publicar, veja [12.4](#124-antes-de-publicar-trabalhe-no-laboratório-publique-de-uma-cópia).
 
 ### 5.6. Controles de leitura
 A barra no topo do leitor ajusta **só a leitura** (preferência salva no navegador):
@@ -448,6 +448,8 @@ No painel **Categorias** (direita, na aba Codificação) você responde os atrib
 > **Por que Número e Sim/Não são tipos, e não texto.** O que você escreve num campo de texto o app não sabe ordenar nem somar, e ao exportar chega ao MAXQDA ou ao NVivo como texto — lá também sem ordenar. Como Número, o valor sai tipado no `.qdpx` (Integer ou Float, conforme os valores) e volta tipado; como Sim/Não, sai como Boolean. O que **não** for número não é aceito no campo (fica em vermelho): é isso que garante que a coluna inteira continue valendo como número.
 
 Cada categoria pode ter uma **descrição/instrução** e habilitar duas opções especiais: **"Não informado"** e **"Outros"** (com valor livre).
+
+> **A descrição é a instrução de codificação, e cabe um verbete inteiro.** O campo é multilinha e as quebras de linha são preservadas onde ele aparece, então vale escrever ali o que de fato governa o preenchimento: a definição numa frase, o que conta como cada valor, as fronteiras e desempates, o que ignorar. Vale a pena porque é **um texto só para os dois avaliadores**: é o que o codificador humano lê ao responder e é o que entra no prompt das telas de IA. Se você já respondeu alguns documentos e não sabe como escrever esse verbete, a aba [Definir Categoria](#1723-definir-categoria-escrever-a-instrução-a-partir-do-que-você-já-respondeu) propõe um a partir das suas próprias respostas.
 
 > **Dica de pesquisa.** Crie uma categoria só se você for **comparar ou contar** por ela depois (ano, tribunal, perfil do entrevistado). É isso que alimenta os filtros e os [Gráficos](#10-gráficos). Categoria que nunca entra numa comparação vira peso morto. Pense nelas como as **colunas** que você quereria numa planilha para cruzar com os temas (que são os códigos).
 
@@ -927,22 +929,22 @@ A IA do QualiLab não "codifica sozinha" nem escreve no seu projeto sem permiss�
 - **Provedores suportados** (com chave própria): **Gemini**, **OpenAI**, **Anthropic**, **Azure OpenAI**, **Personalizado** (qualquer API compatível com o formato OpenAI `/chat/completions`: DeepSeek, Mistral, Qwen hospedado, ou um servidor próprio Ollama/vLLM exposto numa URL pública) e **Ollama local** (modelo na sua própria máquina, chamado **direto pelo navegador**, sem passar pelo servidor, veja [17.5](#175-para-onde-vão-os-seus-dados-provedores-e-configuração)).
 - **Censura sempre antes do envio.** Trechos de códigos marcados como **censura** ([5.5](#55-censura-mascarar-trechos-sensíveis)) são substituídos por `[trecho censurado]` **antes** de o material sair do navegador. Em *Analisar com IA*, você pode optar por incluir um código de censura específico naquela análise (opt-in explícito, por código).
 - **Ajuste das respostas.** A IA vem calibrada para respostas focadas e consistentes (não "criativas"), adequadas à análise. Você não precisa configurar nada.
-- **Limites de tamanho (e o aviso quando o material é cortado).** Há um teto por envio: cerca de **30.000 caracteres (~10 páginas) por documento** e **100.000 no total (~33 páginas)**. Cabe uma seleção generosa (algumas entrevistas, ou os trechos de um código inteiro), mas não o corpus todo de uma vez. O que passa disso é **cortado para caber**, e o corte é de dois tipos, com efeitos bem diferentes:
+- **Limites de tamanho (e o aviso quando o material é cortado).** Há um teto por envio: cerca de **400.000 caracteres (~133 páginas) por documento** e **600.000 no total (~200 páginas)**. Cabe uma seleção generosa (várias entrevistas, um acórdão inteiro, os trechos de um código inteiro), mas não o corpus todo de uma vez. O que passa disso é **cortado para caber**, e o corte é de dois tipos, com efeitos bem diferentes:
   - **a seleção inteira passou do total**: os **últimos itens da lista ficam de fora por completo** (num assistente de codificação, os documentos que ficaram de fora não recebem sugestão nenhuma). Em *Organizar Códigos* o corte é outro: a **lista de códigos vai sempre inteira** e quem encolhe é a amostra de trechos;
-  - **um documento passou do teto por documento**: ele entra, mas **só pelas primeiras ~10 páginas**. O resto do texto não vai à IA. Aqui a saída não é selecionar menos: é **dividir o documento** em documentos menores.
+  - **um documento passou do teto por documento**: ele entra, mas **só pelas primeiras ~133 páginas**. O resto do texto não vai à IA. Aqui a saída não é selecionar menos: é **dividir o documento** em documentos menores.
 
   **Sempre que algo é cortado, uma faixa amarela aparece na tela**, na coluna de configuração, dizendo quantos documentos ficaram de fora e quantos entraram só pelo começo. A prévia do **⚙ Configurar Prompt** mostra o tamanho em páginas e marca no texto o ponto exato do corte. Vale confiar no aviso e não no silêncio: sem ele, um resultado montado sobre metade do material se parece com um resultado completo.
 - **Estimativa de custo.** Com a **sua própria** chave paga, o **⚙ Configurar Prompt** mostra, **antes de enviar**, o custo aproximado do envio (**≈ R$**, ao lado da estimativa de tokens), e assim você sabe o preço estimado *antes* de rodar. E, no *Analisar com IA*, **cada resposta** traz o **custo estimado** (em R$, com o total acumulado da conversa). As duas são **estimativas de teto** (não descontam cache); a de antes do envio ainda **presume um tamanho de resposta** (a saída real varia). O câmbio e, para provedores sem tabela de preços, a sua tarifa se ajustam em **Minha conta**. Com o **Ollama local** o custo é zero.
 
 > ⚠️ **A IA pode errar e inventar.** Trate toda saída como hipótese a conferir contra o trecho citado. É exatamente por isso que a regra é "a IA propõe, você decide".
 
-### 17.2 Codificar Automaticamente: quatro assistentes em abas
+### 17.2 Codificar Automaticamente: cinco assistentes em abas
 
-![Codificar Automaticamente: os assistentes em abas (Sugerir Codificação, Repetir Codificação, Sugerir Categorização, Organizar Códigos). À esquerda, a seleção de documentos e códigos; no topo, o botão "Configurar Prompt" com a estimativa de tokens e de custo (≈ R$) do envio.](manual-img/09-ia-codificar.png)
+![Codificar Automaticamente: os assistentes em abas, no topo. À esquerda, a seleção de documentos e códigos; no topo, o botão "Configurar Prompt" com a estimativa de tokens e de custo (≈ R$) do envio.](manual-img/09-ia-codificar.png)
 
-A tela **Codificar Automaticamente** reúne **quatro assistentes** em abas, no topo: **Sugerir Codificação** (que abre por padrão), **Repetir Codificação**, **Sugerir Categorização** e **Organizar Códigos**. Todos seguem o mesmo padrão: o assistente **propõe**, você **aprova ou recusa item a item**, e **nada é gravado sem a sua confirmação**.
+A tela **Codificar Automaticamente** reúne **cinco assistentes** em abas, no topo: **Sugerir Codificação** (que abre por padrão), **Repetir Codificação**, **Sugerir Categorização**, **Definir Categoria** e **Organizar Códigos**. Todos seguem o mesmo padrão: o assistente **propõe**, você **aprova ou recusa item a item**, e **nada é gravado sem a sua confirmação**.
 
-> **Uma das quatro não usa IA.** A **Repetir Codificação** ([17.2.4](#1724-repetir-codificação-sem-ia)) é mecânica: não precisa de chave, não manda nada para fora e funciona offline. É por isso que a tela se chama "Codificar Automaticamente" e não "Codificar com IA". As outras três são as que conversam com o provedor, e o que segue abaixo (prompt, custo, censura) vale para elas. O **Memo para a IA** e a memória do projeto entram como contexto ([seção 11](#11-memos)), a censura é mascarada, e o botão **⚙ Configurar Prompt** mostra o prompt inteiro e deixa ajustar as *instruções próprias à IA*, os *memos injetados* e a *memória do projeto* (veja [17.1](#171-como-a-ia-funciona-aqui)). Se a resposta for muito longa e vier cortada, o QualiLab aproveita os itens completos e descarta só o último (incompleto).
+> **Uma das cinco não usa IA.** A **Repetir Codificação** ([17.2.5](#1725-repetir-codificação-sem-ia)) é mecânica: não precisa de chave, não manda nada para fora e funciona offline. É por isso que a tela se chama "Codificar Automaticamente" e não "Codificar com IA". As outras quatro são as que conversam com o provedor, e o que segue abaixo (prompt, custo, censura) vale para elas. O **Memo para a IA** e a memória do projeto entram como contexto ([seção 11](#11-memos)), a censura é mascarada, e o botão **⚙ Configurar Prompt** mostra o prompt inteiro e deixa ajustar as *instruções próprias à IA*, os *memos injetados* e a *memória do projeto* (veja [17.1](#171-como-a-ia-funciona-aqui)). Se a resposta for muito longa e vier cortada, o QualiLab aproveita os itens completos e descarta só o último (incompleto).
 
 O botão **⚙ Configurar Prompt** (no topo de cada assistente) abre a janela abaixo. Em cima ficam os **controles**: **Instruções próprias à IA** (guias que entram em todo prompt, compartilhadas com o Analisar com IA), **Memos injetados** (por padrão o *Memo para a IA*; dá para incluir outros) e a **Memória do projeto** (liga/desliga quais insights entram no contexto). Embaixo, a **prévia exata do que será enviado**: o modelo ativo, a contagem de material (em **páginas**), **quantos códigos de censura foram mascarados**, a **estimativa de tokens e de custo (≈ R$)** e o prompt **seção por seção** (papel e princípios, memos, memória do projeto, material), com o ponto do corte marcado no texto quando o material não coube. Um botão **copiar prompt** leva tudo para a área de transferência. **Nada sai do navegador sem passar por aqui**: é a face concreta da regra de transparência.
 
@@ -962,7 +964,42 @@ As categorias vêm **antes** dos documentos porque a escolha delas alimenta o fi
 
 O detalhe importante: a IA recebe o que **já está preenchido** e só devolve **diferenças** ou **campos vazios**: se concorda com o valor atual, não propõe nada. Cada sugestão mostra um selo: **"já aplicada"** (com o valor atual → o sugerido) ou **"vazia"** (preenchimento novo). Aprove as que quiser e aplique: os valores entram na sua camada de respostas (ou no gabarito, em projeto individual), como se você os tivesse digitado na aba Codificação.
 
-#### 17.2.3 Organizar Códigos: arrumar o livro de códigos
+**A caixa "Avaliação às cegas" muda o que esta aba é.** No uso descrito acima a IA **vê** o que você já preencheu: é ótimo como conferente barato e não serve como medida, porque quem enxerga o gabarito antes de responder não está sendo avaliado. Marcando a caixa, a IA responde **todas** as categorias selecionadas **sem ver nenhuma resposta sua**, e a comparação com o seu gabarito é feita **aqui, depois** — não por ela. É **uma chamada por documento** (para que o documento que caísse no fim de uma lista longa não respondesse num contexto diferente do que caísse no começo), e por isso a barra de progresso conta documentos.
+
+O resultado é um **placar de concordância**, categoria por categoria, com quatro colunas separadas de propósito: **concorda**, **diverge**, **a IA não respondeu** e **sem gabarito**. Só as duas primeiras entram na conta. "A IA não respondeu" é falha de rede, resposta sem formato ou valor que não cabia no tipo/nas opções — contar isso como erro rebaixaria o número pelo motivo errado; **"sem gabarito"** é documento que você ainda não respondeu, onde não há com o que comparar (essas respostas aparecem logo abaixo como sugestão de preenchimento, como no modo normal).
+
+Como ler o número, e isto também está dito na tela: ele mede **concordância com aquele gabarito**, não acerto — onde os dois divergem, quem pode estar incompleto é a **definição da categoria**, mas a sua resposta também pode ser; e, com poucos casos, ele não distingue 27 de 28. Leia como ordem de grandeza, não como nota. No modo cego **não há conversa de acompanhamento**, de propósito: não se refina uma medida conversando com quem está sendo medido. O que se refina é a **definição** da categoria — e é para isso que serve a aba seguinte. Trocar de modo **limpa a conversa**, porque as duas respondem perguntas diferentes.
+
+Uma última diferença, visível no **⚙ Configurar Prompt**: no modo cego o prompt **não** leva o *Memo para a IA* nem a *memória do projeto*. São campos de texto livre onde uma resposta sua pode estar escrita, e uma entrada de memória pode até ter sido proposta pela IA numa rodada em que ela via os valores preenchidos — bastaria isso para o placar medir a lembrança do vazamento em vez da definição. As duas seções aparecem na prévia **declaradas como omitidas**, em vez de sumirem sem explicação.
+
+#### 17.2.3 Definir Categoria: escrever a instrução a partir do que você já respondeu
+
+*As respostas que você já deu **contêm** a regra que você aplicou; o que falta é escrevê-la.* Esta aba lê uma amostra dos documentos que você já respondeu numa categoria e propõe a **definição** dela — o mesmo campo **descrição/instrução** do [Esquema](#7-esquema) que o codificador humano lê e que entra no prompt das telas de IA. Serve principalmente para o **começo do zero**: sem nenhuma definição escrita não há o que refinar, e é aí que um laço de "conferir e ajustar" não ajuda.
+
+Como funciona, na ordem:
+
+1. **Escolha a categoria.** Ao lado dela a aba diz quantos documentos já foram respondidos. Com menos de **seis** ela se recusa a rodar, e explica por quê: com tão poucos casos qualquer texto sairia conjectura com aparência de critério.
+2. **Defina a amostra:** quantos casos de **treino** e quantos **guardados**. Os guardados são separados **antes de qualquer chamada** e **não entram no prompt** — é neles que a regra pode ser testada depois, porque decorar um caso que a IA já viu aparece como acerto. A amostra é **equilibrada por valor** (com 90 "Não" e 10 "Sim", uma amostra ao acaso ensinaria "quase sempre Não"), e um cartão mostra a repartição que de fato saiu, valor por valor.
+3. **Propor definição.** Roda em dois tempos: primeiro uma **passada de localização** — uma chamada curta por caso de treino, que **não decide nada**, só copia do documento o trecho literal que sustenta a resposta que **você** já deu (é o que faz um corpus longo caber numa indução) — e depois a chamada que escreve o verbete.
+4. **Edite e aplique.** O texto vem num campo editável; **Aplicar à categoria** grava. Como a definição faz parte do esquema, gravá-la exige permissão de **administrador**.
+
+Junto da definição vêm três listas, e a primeira é a que paga a feature:
+
+- **Casos que a regra não explica.** A IA é obrigada a aplicar a própria regra a cada caso recebido e a listar aqueles em que ela daria uma resposta **diferente da sua** — sem ajustar a regra para explicar todos. Ou a sua codificação está inconsistente nesses pontos, ou existe um critério que você aplica sem ter percebido: nos dois casos, é aí que está o trabalho. **Lista vazia é motivo de desconfiança, não elogio**: uma regra que explica 100 de 100 quase sempre decorou os exemplos.
+- **Pontos que os exemplos não decidem.** Onde os casos não bastam, a IA é proibida de completar com o que soa razoável; o ponto fica declarado em aberto, e escrever a escolha é seu.
+- **Casos sem nada no texto que sustente a resposta.** Sai de graça da passada de localização, que não julga nada. Pode ser resposta vinda de fora do documento, engano de preenchimento ou extração ruim do texto.
+
+**O teste nos guardados, e o laço.** Com a definição no campo, o botão **Testar a definição** responde os documentos guardados **às cegas** e compara com o que você respondeu. É o **mesmo motor e o mesmo placar** da avaliação cega da aba anterior, de propósito: os dois números medem a mesma coisa e podem ser comparados. Ele testa o **texto do campo** (o rascunho), não o que está gravado — a graça é saber antes de aplicar —, e avisa se você editar o texto depois do teste. Onde a definição errou, cada caso aparece com a sua resposta ao lado da resposta da IA, e um botão **refaz a indução incluindo esses casos**: eles entram no treino da volta seguinte, e os novos guardados saem só de documentos que **nunca entraram em prompt nenhum**.
+
+Três limites que convém saber antes de confiar no número:
+
+- **Esta aba precisa da sua própria chave** (Minha conta). A saída é estruturada por ferramenta e conversa direto com o provedor, sem passar pela função do servidor.
+- **Depois de várias voltas o número tende a ficar otimista**: o conjunto guardado é novo a cada volta, mas as suas escolhas passaram a depender do que você viu. Para uma medida limpa, separe documentos que você não vai usar em volta nenhuma — isso é método, não botão.
+- **O controle de "quem já entrou em prompt" vale para a sessão**: trocar de categoria ou sair da tela recomeça a contagem.
+
+As **cinco regras da indução** (escrever instrução e não descrição; a regra vale para o caso 101; só escrever critério que os casos sustentam; declarar o que não conseguiu explicar; a anatomia do verbete) são fixas e vão em todo prompt. Elas aparecem inteiras no **⚙ Configurar Prompt** e podem ser editadas ali: são o piso, não algema — regra que não sirva ao seu estudo se edita. A edição vale **para a sessão** e não fica guardada no projeto.
+
+#### 17.2.4 Organizar Códigos: arrumar o livro de códigos
 
 Ajuda quem terminou uma codificação aberta com **dezenas ou centenas de códigos soltos** a arrumar o esquema, no espírito da *grounded theory* (a teoria que se constrói a partir dos próprios dados). A IA lê a **lista completa de códigos** (com hierarquia e contagem de trechos) e, opcionalmente, uma **amostra de até 3 trechos por código**, e propõe **operações**, cada uma com sua justificativa:
 
@@ -976,7 +1013,7 @@ Ajuda quem terminou uma codificação aberta com **dezenas ou centenas de códig
 
 As operações aparecem **dentro da resposta da IA** (no chat), cada uma com aprovar/recusar; aplique as aprovadas para mudar o esquema. Refine pedindo ajustes num follow-up. Códigos de **censura** ficam de fora desta reorganização (não são categoria analítica).
 
-#### 17.2.4 Repetir Codificação (sem IA)
+#### 17.2.5 Repetir Codificação (sem IA)
 
 ![A aba Repetir Codificação: à esquerda, os códigos do projeto com quantos termos cada um tem, os botões de comparação (com "palavra inteira" ligada) e o botão Procurar ocorrências; à direita, três ocorrências idênticas do termo censurado, cada uma com o documento, o texto em volta e os botões aprovar/recusar, e no rodapé "Aplicar 3 codificação(ões)" com o aviso de que nada é gravado sem esse clique.](manual-img/17-ia-repetir.png)
 
@@ -1094,7 +1131,7 @@ recuperações de senha, e ela se esgotou. Espere alguns minutos e tente outra v
 quem administra o servidor (a cota sobe configurando um SMTP próprio).
 
 **A IA não falou de alguns documentos que eu selecionei (ou parou no meio de um).**
-A seleção passou do que cabe num envio e foi cortada. Volte à coluna de configuração e procure a **faixa amarela**: ela diz quantos documentos ficaram **de fora** (esses não recebem sugestão nenhuma) e quantos entraram **só pelas primeiras ~10 páginas**. Para os que ficaram de fora, selecione menos documentos e rode outra vez; para um documento longo demais, divida-o em documentos menores. Os limites e o que cada corte significa estão em [17.1](#171-como-a-ia-funciona-aqui).
+A seleção passou do que cabe num envio e foi cortada. Volte à coluna de configuração e procure a **faixa amarela**: ela diz quantos documentos ficaram **de fora** (esses não recebem sugestão nenhuma) e quantos entraram **só pelas primeiras ~133 páginas**. Para os que ficaram de fora, selecione menos documentos e rode outra vez; para um documento longo demais, divida-o em documentos menores. Os limites e o que cada corte significa estão em [17.1](#171-como-a-ia-funciona-aqui).
 
 **O PDF importou com o texto bagunçado.**
 PDFs muito visuais (colunas, tabelas, digitalizações) podem extrair mal. Tabelas não são reconstruídas. Quando possível, prefira `.docx`/`.txt`, ou cole o texto limpo.
