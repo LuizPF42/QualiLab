@@ -14,6 +14,21 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.26 (14/08/2026)
+
+### A aba "Organizar Códigos" voltou a abrir
+
+Desde a 1.4.22, abrir *Codificar Automaticamente ▸ Organizar Códigos* num projeto que já tem
+trechos codificados derrubava a tela: no lugar do painel aparecia a faixa vermelha "Algo falhou
+de forma inesperada". Não havia contorno, porque a falha acontecia ao montar a aba, antes de
+qualquer botão. Nada se perdeu — a aba simplesmente não abria — e as outras quatro abas de
+Codificar Automaticamente nunca foram afetadas.
+
+A causa entrou junto com a correção de censura da 1.4.22, que passou a conferir cada citação
+contra o texto do documento antes de mascará-la. Nesta aba o texto do documento não chegava à
+conferência. A conferência continua valendo, e a amostra de trechos que a aba envia à IA sai
+como sempre: mascarada onde há censura, inteira onde não há.
+
 ## 1.4.25 (13/08/2026)
 
 ### O QDPX passou a dizer três coisas que o padrão manda dizer

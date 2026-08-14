@@ -497,7 +497,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.25';
+const QUALILAB_VERSION = '1.4.26';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -16544,6 +16544,11 @@ function IAOrganizarPanel({ project, docs, codes, codeById, codePath, store, all
   }, [withSamples, organizable, allCodings]);
   const ocrT = useOcrToggle(store, docs, ocrDocIds);
 
+  // documents by id: maskQuoteSpans checks the quote against the document text and fails CLOSED
+  // without it (v1.4.22). It must be in this memo's deps too, or a late `docs` would leave the
+  // whole sample masked with nothing to show for it.
+  const docById = useMemo(()=>Object.fromEntries((docs||[]).map(d=>[d.id,d])), [docs]);
+
   const excerptBlock = useMemo(()=>{
     if(!withSamples) return '';
     const byCode = {}, byDoc = {};
@@ -16586,7 +16591,7 @@ function IAOrganizarPanel({ project, docs, codes, codeById, codePath, store, all
     }).filter(Boolean);
     if(!blocks.length) return '';
     return '\n\nAMOSTRA DE TRECHOS POR CÓDIGO (até 3 por código, distintos e ilustrativos; NÃO são todos os trechos):\n' + blocks.join('\n\n');
-  }, [organizable, allCodings, withSamples, idToShort, redactionIds, ocrT.maskByDoc]);
+  }, [organizable, allCodings, withSamples, idToShort, redactionIds, ocrT.maskByDoc, docById]);
 
   // material com truncamento (preserva a lista de codigos inteira; corta a amostra primeiro).
   // matCut diz ao PAINEL o que foi cortado — sem isso o corte só aparecia como marcador dentro
