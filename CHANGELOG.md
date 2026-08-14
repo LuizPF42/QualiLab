@@ -14,6 +14,29 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.27 (14/08/2026)
+
+### O código de confirmação do cadastro é aceito com o tamanho que tiver
+
+Ao criar uma conta, o QualiLab pede o código que chega por e-mail. Esse código é gerado pelo
+servidor, e o **número de dígitos dele é uma configuração do servidor**, não do aplicativo: pode
+ser seis, pode ser mais. A tela supunha que eram sempre seis, e o estrago disso era silencioso.
+
+Com um código mais longo, o campo **descartava os números que passassem do sexto, sem avisar**.
+Como o botão "Confirmar e entrar" acendia assim que o sexto número entrava, parecia que faltava
+só clicar — e a mensagem de erro que vinha depois ainda mandava conferir "os 6 dígitos", ou
+seja, culpava você por um código que tinha digitado certo. Quem esbarrava nisso não tinha como
+terminar o cadastro. Colar o código também podia falhar: se ele viesse com espaços no meio
+(`294 709 20`), o campo cortava junto com os espaços e sobravam cinco números, com o botão
+desabilitado e nenhuma explicação.
+
+Agora a tela aceita o código do e-mail **com o tamanho que ele tiver**, ignora espaços colados
+junto e só habilita o botão quando o que você digitou puder ser um código. Vale nos dois lugares
+que pedem o código: a tela de cadastro e o passo de confirmação dentro de *Enviar para a nuvem*.
+
+Se você tinha um cadastro parado nesse ponto, peça um código novo e digite todos os números
+dele. Nada precisa ser refeito: as contas que ficaram pendentes continuam válidas.
+
 ## 1.4.26 (14/08/2026)
 
 ### A aba "Organizar Códigos" voltou a abrir

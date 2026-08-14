@@ -497,7 +497,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.26';
+const QUALILAB_VERSION = '1.4.27';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -2173,6 +2173,27 @@ function sameJson(a,b){ return a===b || (Array.isArray(a) && Array.isArray(b) &&
 // telas que dependem do agregado do projeto inteiro (allCodings/allValues via loadAll)
 const AGG_VIEWS = ['visualizar','graficos','ia_analisar','ia_codificar','esquema','relatorio','reconciliar','memos','mcp'];
 
+/* OTP LENGTH IS THE SERVER'S CALL, NOT OURS (v1.4.27). The app used to hard-code 6 in three
+   layers: maxlength+slice on the field, a `length!==6` gate on the button, and "confira os 6
+   dígitos" in humanizeError. Supabase's email OTP length is a PER-PROJECT setting ranging from
+   6 to 10, and once it was raised to 8 the field SWALLOWED the last two digits with no sign —
+   the button lit up at six characters, so the gesture looked finished, and the rejection then
+   told the person to check "the 6 digits" they had typed correctly and we had truncated. The
+   fixed length itself was the bug: we do not control that number, so we no longer promise it
+   anywhere the pesquisador can read. Only floor and ceiling remain — under 6 cannot be a code,
+   and 10 is the top the setting allows. Both screens that ask for the code (Auth and
+   SendToCloudModal) go through these two helpers; that is the point, since a second copy of
+   the rule is exactly how the two screens would drift apart again. */
+const OTP_MIN_LEN = 6;
+const OTP_MAX_LEN = 10;
+// digits only (a pasted code carries spaces often enough) and never longer than the ceiling
+function otpDigits(v){
+  return String(v==null?'':v).replace(/\D/g,'').slice(0, OTP_MAX_LEN);
+}
+function otpReady(v){
+  return otpDigits(v).length >= OTP_MIN_LEN;
+}
+
 /* traduz os erros técnicos mais frequentes (em inglês, vindos do Supabase/rede/navegador)
    pra uma mensagem acionável em português. Devolve null quando não reconhece — o chamador
    mostra o texto original. O banner principal do App mostra a tradução + o cru em .meta. */
@@ -2186,7 +2207,7 @@ function humanizeError(raw){
   // "token IS expired" no JWT — duas letras separando duas telas diferentes. A frase precisa mandar
   // pedir CODIGO novo (o botao esta na mesma tela), nao falar em sessao nem em link.
   if(t.includes('token has expired or is invalid') || t.includes('otp_expired') || t.includes('invalid_otp'))
-    return 'Código inválido ou vencido. Confira os 6 dígitos do e-mail mais recente, ou peça um código novo.';
+    return 'Código inválido ou vencido. Confira o código do e-mail mais recente, copiando TODOS os dígitos dele, ou peça um código novo.';
   // e-mail ANTIGO, com link: quem guardou a mensagem de antes da v1.4.19 ainda pode clicar nela.
   if(t.includes('email link is invalid or has expired'))
     return 'Este link de confirmação já foi usado ou venceu. Crie a conta de novo para receber um código, ou entre se ela já estiver confirmada.';
@@ -5632,7 +5653,7 @@ function SupabaseStore(sb){
        link do e-mail corporativo ABRE a mensagem antes do destinatario. A conta ficava confirmada
        e o pesquisador via "link expirado" — e sem sessao. Reproduz pra qualquer caixa Microsoft 365
        com Safe Links, que na FGV e a regra.
-       O token do link e o MESMO 6 digitos do `{{ .Token }}`: por isso mandar os dois no e-mail NAO
+       O token do link e o MESMO do `{{ .Token }}`: por isso mandar os dois no e-mail NAO
        resolveria (o scanner queima o token e o codigo digitado morre junto). O template do painel
        (Auth > Emails > Confirm signup) perdeu o `{{ .ConfirmationURL }}` DE PROPOSITO — voltar a
        por o link ali reabre o bug inteiro. Um GET nao dispara sozinho, entao o scanner nao alcanca.
@@ -9436,7 +9457,7 @@ function Auth({ onSignIn, onSignUp, onGoogle, onBack, onServer, onResetServer, o
     setBusy(false);
   };
   const confirmCode = async ()=>{
-    if(busy || code.length!==6) return;
+    if(busy || !otpReady(code)) return;
     setBusy(true); setResentMsg(false);
     await onVerifySignup(otpFor, code, name||'pesquisador');   // sucesso desmonta esta tela (afterAuth)
     setBusy(false);
@@ -9449,16 +9470,16 @@ function Auth({ onSignIn, onSignUp, onGoogle, onBack, onServer, onResetServer, o
   };
   if(otpFor) return html`<div class="modal-bg"><div class="modal">
     <h2>Confirme seu cadastro</h2>
-    <p class="hint">Enviamos um código de 6 dígitos para <strong>${otpFor}</strong>. Digite-o aqui para entrar. Se não achar, veja a caixa de spam. O código vale por uma hora.</p>
+    <p class="hint">Enviamos um código para <strong>${otpFor}</strong>. Digite aqui todos os números dele para entrar. Se não achar, veja a caixa de spam. O código vale por uma hora.</p>
     ${err && html`<div class="banner err" style="margin:0 0 12px">${humanizeError(err)||err}</div>`}
     ${resentMsg && html`<div class="banner warn" style="margin:0 0 12px">Código novo enviado. Use o do e-mail <strong>mais recente</strong> — o anterior deixou de valer.</div>`}
     <div class="field"><div class="field-label">Código do e-mail</div>
-      <input class="txtin" inputmode="numeric" autocomplete="one-time-code" maxlength="6" value=${code}
+      <input class="txtin" inputmode="numeric" autocomplete="one-time-code" maxlength=${OTP_MAX_LEN} value=${code}
         style="font-size:22px;letter-spacing:8px;text-align:center;font-variant-numeric:tabular-nums"
-        placeholder="000000" aria-label="código de seis dígitos"
-        onInput=${e=>{ setCode(e.target.value.replace(/\D/g,'').slice(0,6)); setResentMsg(false); }}
+        aria-label="código do e-mail, somente números"
+        onInput=${e=>{ setCode(otpDigits(e.target.value)); setResentMsg(false); }}
         onKeyDown=${e=>{ if(e.key==='Enter') confirmCode(); }} /></div>
-    <button class="btn primary" style="width:100%;justify-content:center" disabled=${busy||code.length!==6} onClick=${confirmCode}>
+    <button class="btn primary" style="width:100%;justify-content:center" disabled=${busy||!otpReady(code)} onClick=${confirmCode}>
       ${busy?'...':'Confirmar e entrar'}</button>
     <div style="text-align:center;margin-top:9px">
       <button class="btn sm ghost" style="font-size:12px" disabled=${busy||cooldown>0} onClick=${resend}>
@@ -9671,7 +9692,7 @@ function SendToCloudModal({ defaultName, onBuildDb, onGatherPdfs, onGatherPdfInd
   };
 
   const doVerify = async ()=>{
-    if(busy || otpCode.length!==6) return;
+    if(busy || !otpReady(otpCode)) return;
     setErr(null); setBusy(true);
     try{ await cloudRef.current.verifySignup(email, otpCode, dispName.trim()||'pesquisador'); setStep('project'); }
     catch(e){ setErr(String(e.message||e)); }
@@ -9722,18 +9743,18 @@ function SendToCloudModal({ defaultName, onBuildDb, onGatherPdfs, onGatherPdfInd
     </div>`}
 
     ${step==='otp' && html`<div>
-      <p class="hint" style="margin:0 0 10px">Enviamos um código de 6 dígitos para <strong>${email}</strong>. Digite-o para confirmar a conta e seguir com o envio. Se não achar, veja a caixa de spam.</p>
+      <p class="hint" style="margin:0 0 10px">Enviamos um código para <strong>${email}</strong>. Digite todos os números dele para confirmar a conta e seguir com o envio. Se não achar, veja a caixa de spam.</p>
       <div class="field"><div class="field-label">Código do e-mail</div>
-        <input class="txtin" inputmode="numeric" autocomplete="one-time-code" maxlength="6" value=${otpCode}
+        <input class="txtin" inputmode="numeric" autocomplete="one-time-code" maxlength=${OTP_MAX_LEN} value=${otpCode}
           style="font-size:22px;letter-spacing:8px;text-align:center;font-variant-numeric:tabular-nums"
-          placeholder="000000" aria-label="código de seis dígitos"
-          onInput=${e=>setOtpCode(e.target.value.replace(/\D/g,'').slice(0,6))}
+          aria-label="código do e-mail, somente números"
+          onInput=${e=>setOtpCode(otpDigits(e.target.value))}
           onKeyDown=${e=>{ if(e.key==='Enter') doVerify(); }} /></div>
       <div class="row" style="justify-content:space-between;gap:8px;margin-top:10px">
         <button class="btn sm ghost" style="font-size:12px" disabled=${busy} onClick=${doResend}>Reenviar código</button>
         <div class="row" style="gap:8px">
           <button class="btn ghost" onClick=${onClose}>Cancelar</button>
-          <button class="btn primary" disabled=${busy||otpCode.length!==6} onClick=${doVerify}>${busy?'…':'Confirmar'}</button>
+          <button class="btn primary" disabled=${busy||!otpReady(otpCode)} onClick=${doVerify}>${busy?'…':'Confirmar'}</button>
         </div>
       </div>
     </div>`}
