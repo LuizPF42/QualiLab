@@ -10,38 +10,21 @@
 
 QualiLab é uma ferramenta **gratuita e de código aberto** para análise qualitativa de dados. Roda inteira em um único arquivo `index.html`, sem instalação, sem servidor próprio, sem assinatura.
 
-> Inspirado pelo excelente trabalho do **[Taguette](https://www.taguette.org/about.html)**, do **[Magnolia](https://www.caledavis.eu/magnolia.html)**, do **[QualCoder](https://github.com/ccbogel/qualcoder)** e do **[OpenQDA](https://openqda.org/)**, projetos que merecem todo o seu reconhecimento. Se você usa ou aprecia ferramentas abertas para pesquisa qualitativa, visite os projetos deles e considere usar ou contribuir: são as referências que tornaram o QualiLab possível.
+> Inspirado por **[Taguette](https://www.taguette.org/about.html)**, **[Magnolia](https://www.caledavis.eu/magnolia.html)**, **[QualCoder](https://github.com/ccbogel/qualcoder)** e **[OpenQDA](https://openqda.org/)** — projetos que merecem o seu apoio; os créditos estão [no fim](#créditos-referência-e-licença).
 
 Acesse a ferramenta **[aqui](https://luizpf42.github.io/QualiLab)** / Baixe a ferramenta **[aqui](https://github.com/LuizPF42/QualiLab/releases/download/alpha/index.html)**
 
 📖 **Novo por aqui?** Comece pelo **[Manual de uso](https://luizpf42.github.io/QualiLab/manual.html)**: guia completo, passo a passo, de todas as telas. · 📝 **O que mudou em cada versão:** [`CHANGELOG.md`](CHANGELOG.md)
 
-> A **versão em uso** aparece no cabeçalho e no rodapé do próprio app. Cite esse número ao relatar um problema: sem ele não há como saber qual build o seu navegador carregou.
+*A **versão em uso** aparece no cabeçalho e no rodapé do próprio app. Cite esse número ao relatar um problema: sem ele não há como saber qual build o seu navegador carregou.*
 
----
-
-## ⚠️ Aviso importante: privacidade, segurança e responsabilidade
-
-**Leia antes de usar o QualiLab com dados reais.**
-
-O QualiLab é um **projeto pessoal, experimental e em desenvolvimento ativo**, distribuído sob licença **MIT, SEM QUALQUER GARANTIA** de correção, disponibilidade ou segurança. **Bugs são esperados.** O software **não passou por auditoria de segurança** e não deve ser tratado como um cofre de dados.
-
-**Para onde vão os seus dados** depende do modo de uso:
-
-- **Arquivo / Rascunho**: ficam **no seu dispositivo** e não saem dele.
-- **Nuvem**: são enviados a um **servidor de terceiros** (Supabase), ficam sujeitos aos termos desse provedor e saem do seu controle direto.
-- **IA de nuvem**: os trechos que você analisar são enviados ao **provedor de IA** que você usar (Gemini/OpenAI/Anthropic/Azure…), sob a política dele; o **Ollama local** é a exceção (roda na sua máquina, nada sai dela). A censura é mascarada antes do envio.
-- **Publicação** (Relatório Interativo / Web Annotation): o que você divulgar fica **público**.
-
-**O QualiLab NÃO anonimiza nem identifica dados pessoais** (nomes, CPF, dados de saúde) no conteúdo dos documentos. A **censura** mascara apenas os trechos que **você** marcou à mão, **não** detecta sozinha o que é sensível e **não** cobre as exportações (QDPX/CSV/JSON saem com o texto cru). **Não há rede de segurança automática.**
-
-**A responsabilidade pelo tratamento dos dados é inteiramente sua.** Trabalhando com dados pessoais, sigilosos ou protegidos (LGPD, aprovação de comitê de ética/CEP, segredo de justiça, dados de saúde), cabe a você anonimizar, obter consentimento e escolher o modo adequado. **Para material sensível, use o modo Arquivo local, offline, e não o coloque na nuvem.**
-
+> ⚠️ **Leia antes de usar com dados reais.** O QualiLab é um projeto **pessoal e experimental**, sob licença **MIT, SEM QUALQUER GARANTIA**, que **não passou por auditoria de segurança**; **bugs são esperados**. E ele **não anonimiza** o seu material: a censura mascara só o que **você** marcou à mão, e só em algumas saídas. Para onde cada modo de uso leva os seus dados está em **[Onde os seus dados ficam](#onde-os-seus-dados-ficam)**; o que a ferramenta não faz por você, em **[Limites e responsabilidade](#limites-e-responsabilidade)**.
+>
 > **Isenção.** O QualiLab é um projeto pessoal de Luiz Pimenta Filho. **Não representa posição nem implica responsabilidade de qualquer instituição (incluindo a FGV).** O autor **não se responsabiliza** por perda de dados, vazamento, uso indevido ou quaisquer consequências do uso do software. Use por sua conta e risco, com as cautelas éticas e legais que a sua pesquisa exige.
 
 ---
 
-## Motivação
+## Por que existe
 
 Um levantamento sistemático de 28 ferramentas de análise qualitativa, publicado em 2025 por Jan Küster e Karsten D. Wolf (Universidade de Bremen), conclui que **"o estado atual do CAQDAS é inadequado para sustentar plenamente práticas de pesquisa qualitativa de ciência aberta"**. Entre os achados: o campo é dominado por software proprietário (13 das 28 ferramentas examinadas), com licenças de **€95 a €430 por usuário/ano**; colaboração em tempo real existe em **5** das 28; trilha de auditoria do processo de análise, em **7**; política de segurança pública, em **2**; e, das 9 ferramentas com IA integrada, **nenhuma revela ao usuário o *system prompt*** que antecede as chamadas, enquanto apenas **2** permitem usar um modelo local ou próprio. Os autores registram ainda que as ferramentas veteranas "evoluíram para aplicações grandes, complexas e pesadas, com interfaces por vezes confusas".
 
@@ -53,9 +36,39 @@ As ferramentas disponíveis, pagas ou gratuitas, também não têm colaboração
 
 > Küster, J.; Wolf, K. D. **The Current State of CAQDAS is Insufficient for Open Science Qualitative Research.** *Electronic Communications of the EASST*, v. 85 (deRSE25), 2025. DOI [10.14279/eceasst.v85.2709](https://doi.org/10.14279/eceasst.v85.2709), licença CC-BY 4.0. Os autores desenvolvem o [OpenQDA](https://openqda.org/), que integra a amostra examinada. Os números acima descrevem as 28 ferramentas que **eles** examinaram (o QualiLab não estava entre elas) e valem para o levantamento de 2025.
 
+### Onde o QualiLab está nessa régua
+
+Comparação direta com os achados de Küster & Wolf (2025) sobre 28 ferramentas de análise qualitativa. O número do meio é quantas das 28 atendem ao critério, segundo o levantamento deles.
+
+| Critério | Levantamento (n=28) | QualiLab |
+|---|---|---|
+| Licença livre | 12 livres, 13 proprietárias, 3 sem licença | ✅ MIT |
+| Custo por usuário/ano | €95 a €430 nas proprietárias | ✅ €0 |
+| Roda sem competência técnica para instalar | apontado como **o** gargalo do software aberto do campo | ✅ é uma URL, sem instalação e sem build |
+| Windows · macOS · Linux · Web | 13 · 12 · 7 · 18 | ✅ os quatro |
+| Interoperabilidade REFI-QDA completa | 9 (sendo 7 proprietárias) | ✅ QDPX + QDC, validados contra o `Project.xsd` oficial |
+| Colaboração em tempo real | 5 | ✅ |
+| Sem servidor obrigatório | 20 oferecem alguma forma de *on-premise* | ✅ o modo Arquivo não tem servidor nenhum; a nuvem pode ser a sua |
+| Exportação sem perda para revisão | "a perda de dados na exportação impossibilita a reprodução" | ✅ o `.qualilab` é *round-trip* completo |
+| **`system prompt` da IA visível ao usuário** | **0** | ✅ o prompt inteiro é exibido antes de enviar |
+| **`system prompt` editável** | 0 | ✅ postura, instruções e memos injetados |
+| Modelo de IA local ou próprio | 2 | ✅ Ollama local, endpoint próprio, Azure |
+| Análise de IA sem passar por servidor do fornecedor | 0 entre as proprietárias | ✅ BYOK, o navegador chama o provedor direto |
+| Codificar texto · PDF | 26 · 6 | ✅ os dois (no PDF, texto **e** região) |
+| Codificar áudio · vídeo · imagem · planilha | 11 · 12 · 11 · 2 | ❌ fora de escopo (abaixo) |
+| **Trilha de auditoria do processo** | 7 | ❌ ainda não |
+| Metadado de citação (`CITATION.cff`) | 3 | ✅ |
+| Política de segurança pública | 2 | ✅ [`SECURITY.md`](SECURITY.md) |
+| Arquivado com DOI (Zenodo) | 4 | ✅ [`10.5281/zenodo.21935682`](https://doi.org/10.5281/zenodo.21935682) |
+| Arquitetura de plugins · scripts | 1 · 3 | ❌ por decisão (abaixo) |
+
+**O que fica de fora por escopo, e não por acaso.** O QualiLab é uma ferramenta de **texto e PDF**. Áudio, vídeo e imagem exigem anotação sobre linha do tempo ou sobre pixels, que é outro produto e não uma funcionalidade a mais. Para isso, veja o [ELAN](https://archive.mpi.nl/tla/elan/), o [Transana](https://www.transana.com/), o [dicto](https://dictoapp.github.io/dicto/) ou o [QualCoder](https://github.com/ccbogel/qualcoder).
+
+**Extensibilidade por dados, não por plugins.** O QualiLab não tem arquitetura de plugins, e não pretende ter: ela briga de frente com o desenho de arquivo único que faz o app rodar sem instalação e sem build. O que ele oferece no lugar são três superfícies abertas: o formato **`.qualilab`** (sem perda, documentado), e a exportação em **REFI-QDA** e **W3C Web Annotation**, para que qualquer outra ferramenta possa ler o que foi produzido aqui.
+
 ---
 
-## Recursos
+## O que ele faz
 
 Uma linha por recurso: aqui é o inventário. O **passo a passo** de cada um está no [manual do usuário](docs/MANUAL.md).
 
@@ -137,104 +150,16 @@ Uma linha por recurso: aqui é o inventário. O **passo a passo** de cada um est
 
 Em projeto coletivo as três respeitam a camada escolhida; em todas, os trechos de **censura** saem mascarados, e ATI e W3C ainda oferecem **anonimizar a autoria**.
 
-### Importação e exportação
-
-| Formato | Importa | Exporta | Notas |
-|---|:---:|:---:|---|
-| **`.qualilab`** (nativo) | ✅ | ✅ | O projeto inteiro, sem perda, em qualquer modo. Ao importar num projeto coletivo, **preserva a resposta de cada pesquisador** de origem. Formato aberto e documentado ([abaixo](#o-qualilab-não-é-um-formato-mágico)) |
-| **QDPX** (REFI-QDA) | ✅ | ✅ | Intercâmbio com ATLAS.ti, MAXQDA, NVivo, Quirkos, QualCoder. O pacote gerado é **validado contra o `Project.xsd` oficial (v1.0)** por um harness de round-trip mantido no repositório de desenvolvimento — o que é **tentativa de intercompatibilidade, não garantia**. Importa `.qdpx` do ATLAS.ti com os PDFs |
-| **QDC** (codebook REFI-QDA) | ✅ | ✅ | Só o livro de códigos (é o que o formato tem). Compatível com o codebook do Taguette |
-| **`.sqlite3`** (Taguette) | ✅ | ✕ | O projeto nativo do Taguette lido direto no navegador, via [sql.js](https://github.com/sql-js/sql.js): documentos, tags com hierarquia e trechos |
-| **Zotero RDF** (pasta) | ✅ | ✕ | Coleção exportada com arquivos. Você escolhe quais metadados viram categorias e o que é listado, pelo nome, antes de entrar |
-| **Planilha** (`.csv`/`.xlsx`) | ✅ | ✅ | Uma linha por documento na ida; e o **CSV de atributos tem caminho de volta** — preencha na planilha e reimporte, com prévia do que muda antes de gravar |
-| **Web Annotation (W3C)** · **Leitor ATI** | ✕ | ✅ | Na aba Relatório. Censura mascarada |
-| **CSV de trechos** · **JSON** | ✕ | ✅ | Um trecho por linha (documento, código, camada, autor); ou o projeto completo com camadas e autores |
-
-> Os formatos de **trabalho e migração** saem **crus, censura inclusive**: é por eles que você leva o seu material para outra ferramenta e o traz de volta, e mascarar ali seria perda irreversível. Quem mascara são as saídas de **transparência**. O menu de exportação avisa isso na hora.
-
 ---
 
-## Onde o QualiLab está nessa régua
+## Onde os seus dados ficam
 
-Comparação direta com os achados de [Küster & Wolf (2025)](#motivação) sobre 28 ferramentas de análise qualitativa. O número do meio é quantas das 28 atendem ao critério, segundo o levantamento deles.
+É a pergunta que decide o quanto da ferramenta você pode usar, e a resposta depende do modo. A regra de ouro: **o material só sai do seu dispositivo se você deixar.**
 
-| Critério | Levantamento (n=28) | QualiLab |
-|---|---|---|
-| Licença livre | 12 livres, 13 proprietárias, 3 sem licença | ✅ MIT |
-| Custo por usuário/ano | €95 a €430 nas proprietárias | ✅ €0 |
-| Roda sem competência técnica para instalar | apontado como **o** gargalo do software aberto do campo | ✅ é uma URL, sem instalação e sem build |
-| Windows · macOS · Linux · Web | 13 · 12 · 7 · 18 | ✅ os quatro |
-| Interoperabilidade REFI-QDA completa | 9 (sendo 7 proprietárias) | ✅ QDPX + QDC, validados contra o `Project.xsd` oficial |
-| Colaboração em tempo real | 5 | ✅ |
-| Sem servidor obrigatório | 20 oferecem alguma forma de *on-premise* | ✅ o modo Arquivo não tem servidor nenhum; a nuvem pode ser a sua |
-| Exportação sem perda para revisão | "a perda de dados na exportação impossibilita a reprodução" | ✅ o `.qualilab` é *round-trip* completo |
-| **`system prompt` da IA visível ao usuário** | **0** | ✅ o prompt inteiro é exibido antes de enviar |
-| **`system prompt` editável** | 0 | ✅ postura, instruções e memos injetados |
-| Modelo de IA local ou próprio | 2 | ✅ Ollama local, endpoint próprio, Azure |
-| Análise de IA sem passar por servidor do fornecedor | 0 entre as proprietárias | ✅ BYOK, o navegador chama o provedor direto |
-| Codificar texto · PDF | 26 · 6 | ✅ os dois (no PDF, texto **e** região) |
-| Codificar áudio · vídeo · imagem · planilha | 11 · 12 · 11 · 2 | ❌ fora de escopo (abaixo) |
-| **Trilha de auditoria do processo** | 7 | ❌ ainda não |
-| Metadado de citação (`CITATION.cff`) | 3 | ✅ |
-| Política de segurança pública | 2 | ✅ [`SECURITY.md`](SECURITY.md) |
-| Arquivado com DOI (Zenodo) | 4 | ✅ [`10.5281/zenodo.21935682`](https://doi.org/10.5281/zenodo.21935682) |
-| Arquitetura de plugins · scripts | 1 · 3 | ❌ por decisão (abaixo) |
-
-**O que fica de fora por escopo, e não por acaso.** O QualiLab é uma ferramenta de **texto e PDF**. Áudio, vídeo e imagem exigem anotação sobre linha do tempo ou sobre pixels, que é outro produto e não uma funcionalidade a mais. Para isso, veja o [ELAN](https://archive.mpi.nl/tla/elan/), o [Transana](https://www.transana.com/), o [dicto](https://dictoapp.github.io/dicto/) ou o [QualCoder](https://github.com/ccbogel/qualcoder).
-
-**Extensibilidade por dados, não por plugins.** O QualiLab não tem arquitetura de plugins, e não pretende ter: ela briga de frente com o desenho de arquivo único que faz o app rodar sem instalação e sem build. O que ele oferece no lugar são três superfícies abertas: o formato **`.qualilab`** (sem perda, documentado), e a exportação em **REFI-QDA** e **W3C Web Annotation**, para que qualquer outra ferramenta possa ler o que foi produzido aqui.
-
-### O `.qualilab` não é um formato mágico
-
-O formato nativo é **deliberadamente legível por máquina**, e isso é resposta direta à queixa do levantamento contra formatos de projeto fechados que viram silos de dados. Não há binário proprietário, não há esquema secreto, e **não é preciso ter o QualiLab para ler um `.qualilab`**.
-
-São duas formas, escolhidas pelo conteúdo:
-
-- **Sem PDF: JSON puro.** Um projeto só-texto abre em qualquer editor de texto. Os arquivos em [`examples/`](examples/) são assim.
-- **Com PDF: um zip** com `project.json`, `pdfs/<docId>.pdf` (guardados sem recompressão) e `pdfindex/<docId>.json` (a correspondência trecho ↔ página ↔ retângulo, que é o que faz "ver original", o número de página e o OCR sobreviverem à ida e volta).
-
-A leitura decide pelo **primeiro byte** (`PK` = zip), então arquivos antigos, anteriores ao contêiner, continuam abrindo. O `project.json` tem nove chaves de topo: `_meta`, `documents`, `categories`, `doc_values`, `codes`, `codings`, `memos`, `ia_results` e `ia_memory`.
-
-Ler é isto, sem dependência nenhuma além da biblioteca padrão:
-
-```python
-import json, zipfile
-
-def abrir(caminho):
-    with open(caminho, "rb") as f:
-        zipado = f.read(2) == b"PK"
-    if zipado:
-        with zipfile.ZipFile(caminho) as z:
-            return json.loads(z.read("project.json"))
-    with open(caminho, encoding="utf-8") as f:
-        return json.load(f)
-
-db = abrir("meu_projeto.qualilab")
-nome = {c["id"]: c["name"] for c in db["codes"]}
-texto = {d["id"]: d["content"] for d in db["documents"]}
-
-for t in db["codings"]:
-    print(nome[t["code_id"]], "|", t["layer"], "|", t["author_name"], "|", t["quote"])
-```
-
-**Tudo se ancora em posição de caractere.** Cada trecho é `(document_id, span_start, span_end)` sobre o `content` do documento, que é texto puro. Ou seja, você pode recortar por conta própria e **conferir a promessa**:
-
-```python
-assert all(t["quote"] == texto[t["document_id"]][t["span_start"]:t["span_end"]]
-           for t in db["codings"])
-```
-
-Nos exemplos do repositório isso vale para todos os trechos. É a mesma invariante que os testes de censura verificam, e é ela que permite reprocessar o corpus fora do app sem depender de nada nosso.
-
-Duas coisas que **não** estão no arquivo, e é bom saber: a **distribuição de documentos** (ela depende de identificadores de usuário que só existem na nuvem) e os **caches derivados**, como o índice da busca semântica, que é refeito quando o corpus muda. E uma que **está**: o `.qualilab` é formato de **trabalho**, então carrega o texto **cru, censura inclusive** — mascarar aqui destruiria dado de forma irreversível. Quem mascara são as saídas de transparência (ATI, W3C) e o prompt da IA.
-
-**Sustentabilidade, com franqueza.** O QualiLab é mantido por uma pessoa, sem financiamento, e **a maior parte do código foi escrita por um modelo de linguagem** ([Claude Code](https://claude.com/claude-code)), sob direção e revisão do autor. Pese isso antes de adotar a ferramenta num projeto importante. A favor: um projeto deste tamanho não existiria de outra forma; cada decisão de desenho fica registrada por escrito, porque documentá-la é parte do método de trabalho e não um extra; e há testes automatizados e verificações rodando no CI a cada mudança. Contra: o código **não** passou por revisão por pares nem por auditoria de segurança independente. Vale notar que o levantamento citado acima excluiu qualidade de código do seu escopo por exigir inspeção profunda, ou seja, esse aspecto não foi medido em nenhuma das 28 ferramentas comparadas, nem nesta.
-
-O risco de abandono é mitigado pelo desenho, não por uma promessa: licença MIT, um arquivo HTML que roda offline, e todos os dados exportáveis a qualquer momento em formatos abertos (`.qualilab`, REFI-QDA, W3C, CSV, JSON). Se o projeto parar amanhã, o seu material não fica preso nele.
-
----
-
-## Como funciona
+- **Arquivo / Rascunho**: ficam **no seu dispositivo** e não saem dele.
+- **Nuvem**: são enviados a um **servidor de terceiros** (Supabase), ficam sujeitos aos termos desse provedor e saem do seu controle direto.
+- **IA de nuvem**: os trechos que você analisar são enviados ao **provedor de IA** que você usar (Gemini/OpenAI/Anthropic/Azure…), sob a política dele; o **Ollama local** é a exceção (roda na sua máquina, nada sai dela). A censura é mascarada antes do envio.
+- **Publicação** (Relatório Interativo / Web Annotation): o que você divulgar fica **público**.
 
 O QualiLab opera em três modos, escolhidos na **tela de entrada** (ou reabertos automaticamente):
 
@@ -268,6 +193,8 @@ No modo rascunho (`localStorage`, limite de 5-10MB), você pode ativar um **back
 - **Escrita que falha por motivo passageiro entra numa fila e sobe sozinha** (desde a v1.4.7). Vale para o trabalho do dia a dia: codificações, respostas de categoria, notas, conversas salvas da IA e memórias. A alteração continua aparecendo na tela enquanto espera, o cabeçalho mostra quantas estão pendentes (clique para tentar na hora) e **fechar a aba não perde a fila** — ela volta ao reabrir o projeto.
 - Mudanças **estruturais** ficam de fora da fila de propósito e avisam na hora se falharem: criar/excluir documento, mexer no esquema de códigos, gestão do projeto e importações. Numa pesquisa coletiva, reaplicar esse tipo de mudança minutos depois produziria um estado que ninguém pediu.
 - Se a nuvem **recusar** de vez uma alteração (seu papel no projeto mudou, ou outra pessoa excluiu o alvo), ela não some calada: aparece um aviso do que foi recusado, com atalho para baixar um `.qualilab` antes de refazer.
+
+**O QualiLab NÃO anonimiza nem identifica dados pessoais** (nomes, CPF, dados de saúde) no conteúdo dos documentos. A **censura** mascara apenas os trechos que **você** marcou à mão, **não** detecta sozinha o que é sensível e **não** cobre as exportações (QDPX/CSV/JSON saem com o texto cru). **Não há rede de segurança automática.**
 
 ---
 
@@ -332,7 +259,84 @@ Sem nenhuma chave configurada, as telas de IA retornam um erro claro; o restante
 
 ---
 
-## Stack
+## Formatos e interoperabilidade
+
+Nada do que você produz aqui fica preso aqui. Esta seção reúne o que entra, o que sai, e o que cada formato preserva ou perde.
+
+### Importação e exportação
+
+| Formato | Importa | Exporta | Notas |
+|---|:---:|:---:|---|
+| **`.qualilab`** (nativo) | ✅ | ✅ | O projeto inteiro, sem perda, em qualquer modo. Ao importar num projeto coletivo, **preserva a resposta de cada pesquisador** de origem. Formato aberto e documentado ([abaixo](#o-qualilab-não-é-um-formato-mágico)) |
+| **QDPX** (REFI-QDA) | ✅ | ✅ | Intercâmbio com ATLAS.ti, MAXQDA, NVivo, Quirkos, QualCoder. O pacote gerado é **validado contra o `Project.xsd` oficial (v1.0)** por um harness de round-trip mantido no repositório de desenvolvimento — o que é **tentativa de intercompatibilidade, não garantia**. Importa `.qdpx` do ATLAS.ti com os PDFs |
+| **QDC** (codebook REFI-QDA) | ✅ | ✅ | Só o livro de códigos (é o que o formato tem). Compatível com o codebook do Taguette |
+| **`.sqlite3`** (Taguette) | ✅ | ✕ | O projeto nativo do Taguette lido direto no navegador, via [sql.js](https://github.com/sql-js/sql.js): documentos, tags com hierarquia e trechos |
+| **Zotero RDF** (pasta) | ✅ | ✕ | Coleção exportada com arquivos. Você escolhe quais metadados viram categorias e o que é listado, pelo nome, antes de entrar |
+| **Planilha** (`.csv`/`.xlsx`) | ✅ | ✅ | Uma linha por documento na ida; e o **CSV de atributos tem caminho de volta** — preencha na planilha e reimporte, com prévia do que muda antes de gravar |
+| **Web Annotation (W3C)** · **Leitor ATI** | ✕ | ✅ | Na aba Relatório. Censura mascarada |
+| **CSV de trechos** · **JSON** | ✕ | ✅ | Um trecho por linha (documento, código, camada, autor); ou o projeto completo com camadas e autores |
+
+> Os formatos de **trabalho e migração** saem **crus, censura inclusive**: é por eles que você leva o seu material para outra ferramenta e o traz de volta, e mascarar ali seria perda irreversível. Quem mascara são as saídas de **transparência**. O menu de exportação avisa isso na hora.
+
+### O `.qualilab` não é um formato mágico
+
+O formato nativo é **deliberadamente legível por máquina**, e isso é resposta direta à queixa do levantamento contra formatos de projeto fechados que viram silos de dados. Não há binário proprietário, não há esquema secreto, e **não é preciso ter o QualiLab para ler um `.qualilab`**.
+
+São duas formas, escolhidas pelo conteúdo:
+
+- **Sem PDF: JSON puro.** Um projeto só-texto abre em qualquer editor de texto. Os arquivos em [`examples/`](examples/) são assim.
+- **Com PDF: um zip** com `project.json`, `pdfs/<docId>.pdf` (guardados sem recompressão) e `pdfindex/<docId>.json` (a correspondência trecho ↔ página ↔ retângulo, que é o que faz "ver original", o número de página e o OCR sobreviverem à ida e volta).
+
+A leitura decide pelo **primeiro byte** (`PK` = zip), então arquivos antigos, anteriores ao contêiner, continuam abrindo. O `project.json` tem nove chaves de topo: `_meta`, `documents`, `categories`, `doc_values`, `codes`, `codings`, `memos`, `ia_results` e `ia_memory`.
+
+Ler é isto, sem dependência nenhuma além da biblioteca padrão:
+
+```python
+import json, zipfile
+
+def abrir(caminho):
+    with open(caminho, "rb") as f:
+        zipado = f.read(2) == b"PK"
+    if zipado:
+        with zipfile.ZipFile(caminho) as z:
+            return json.loads(z.read("project.json"))
+    with open(caminho, encoding="utf-8") as f:
+        return json.load(f)
+
+db = abrir("meu_projeto.qualilab")
+nome = {c["id"]: c["name"] for c in db["codes"]}
+texto = {d["id"]: d["content"] for d in db["documents"]}
+
+for t in db["codings"]:
+    print(nome[t["code_id"]], "|", t["layer"], "|", t["author_name"], "|", t["quote"])
+```
+
+**Tudo se ancora em posição de caractere.** Cada trecho é `(document_id, span_start, span_end)` sobre o `content` do documento, que é texto puro. Ou seja, você pode recortar por conta própria e **conferir a promessa**:
+
+```python
+assert all(t["quote"] == texto[t["document_id"]][t["span_start"]:t["span_end"]]
+           for t in db["codings"])
+```
+
+Nos exemplos do repositório isso vale para todos os trechos. É a mesma invariante que os testes de censura verificam, e é ela que permite reprocessar o corpus fora do app sem depender de nada nosso.
+
+Duas coisas que **não** estão no arquivo, e é bom saber: a **distribuição de documentos** (ela depende de identificadores de usuário que só existem na nuvem) e os **caches derivados**, como o índice da busca semântica, que é refeito quando o corpus muda. E uma que **está**: o `.qualilab` é formato de **trabalho**, então carrega o texto **cru, censura inclusive** — mascarar aqui destruiria dado de forma irreversível. Quem mascara são as saídas de transparência (ATI, W3C) e o prompt da IA.
+
+### Formato de intercâmbio
+
+Os formatos **QDPX** (projeto completo) e **QDC** (livro de códigos) são definidos pela **[REFI-QDA Standard](https://www.qdasoftware.org/)**, o padrão aberto criado pela *Rotterdam Exchange Format Initiative (REFI)* para permitir a troca de projetos entre ferramentas de análise qualitativa. A importação e exportação desses formatos no QualiLab seguem essa especificação; todo o crédito pelo formato é da iniciativa REFI-QDA. Conheça e apoie o padrão em [qdasoftware.org](https://www.qdasoftware.org/).
+
+**Declaração de conformidade** (a versão 1.0 do padrão, §6, pede que o software diga a que partes ele reivindica conformidade): o QualiLab **importa e exporta as duas** — *Project exchange* (`.qdpx`) e *Codebook exchange* (`.qdc`). Os pacotes gerados são validados contra o `Project.xsd` oficial (v1.0) por um harness de round-trip mantido no repositório de desenvolvimento. Duas ressalvas honestas, porque conformidade de schema não é compatibilidade: o padrão não tem onde guardar autoria de atributo por pesquisador nem camada de codificação, então o `.qdpx` sempre perde algo em relação ao `.qualilab` (o app diz o quê, no momento em que você exporta); e schema válido não substitui testar na ferramenta de destino real.
+
+### Transparência ativa (DA-RT / QDR / ATI)
+
+Além do intercâmbio entre ferramentas de QDA, o QualiLab mira o ecossistema de **transparência da pesquisa qualitativa** ligado ao movimento **DA-RT** (*Data Access and Research Transparency*) e ao **[Qualitative Data Repository (QDR)](https://qdr.syr.edu/)**. O método atual do QDR é a **Annotation for Transparent Inquiry (ATI)**: anotar passagens de um texto com notas analíticas, excertos e links para as fontes que sustentam cada afirmação.
+
+A camada técnica sob o ATI (e sob o [hypothes.is](https://web.hypothes.is/), o Anno-REP e o repositório Dataverse) é o **[W3C Web Annotation Data Model](https://www.w3.org/TR/annotation-model/)**, uma recomendação aberta do W3C. O QualiLab **mira nesse padrão**, não numa ferramenta específica: a aba **Relatório** gera tanto o **Relatório Interativo (ATI)** (uma página HTML auto-contida equivalente ao *overlay* do ATI, hospedável por você) quanto a exportação **Web Annotation (W3C)** em JSON-LD, interoperável com qualquer ferramenta que fale o padrão. Assim, a "nota analítica" de cada trecho (e dos códigos, documentos e do projeto) vira um apêndice de transparência publicável, sem depender de nenhum fornecedor.
+
+---
+
+## Como é feito, e como se verifica
 
 Sem build, sem bundler, sem framework pesado.
 
@@ -361,10 +365,6 @@ QualiLab/
 └── LICENSE           # MIT
 ```
 
----
-
-## Como se constrói, e como se verifica
-
 O `docs/index.html` deste repositório é o **artefato publicado**: um arquivo único, sem bundler, sem npm e sem etapa de compilação do seu lado. Ele é **gerado** a partir de uma fonte modular (dezenas de fragmentos concatenados em bytes, sem transformação nenhuma) mantida no repositório de desenvolvimento.
 
 A seção [Sustentabilidade](#o-qualilab-não-é-um-formato-mágico) diz que há verificação a cada mudança. **Neste repositório** ela roda a cada push, e você pode inspecionar o `ci.yml`:
@@ -379,44 +379,7 @@ O restante da bateria roda no repositório de desenvolvimento, a cada push, sobr
 
 ---
 
-## Créditos e inspirações
-
-O QualiLab foi desenvolvido por **Luiz Pimenta Filho** no âmbito do **LabDados / FGV Direito SP** como projeto pessoal. Não representa posição institucional da FGV, que não tem qualquer responsabilidade pelo software.
-
-A maior parte do código deste projeto foi escrita com assistência do [Claude Code](https://claude.com/claude-code) (Anthropic).
-
-As principais inspirações foram:
-
-- **[Taguette](https://www.taguette.org/about.html)**: ferramenta de QDA aberto, pioneira em simplicidade e funcionamento on-line, com suporte a múltiplos formatos de importação de documentos e exportação do codebook em REFI-QDA (`.qdc`).
-- **[Magnolia](https://www.caledavis.eu/magnolia.html)**: QDA com foco em poder e intuitividade, transcrição de áudio/vídeo e análise de surveys. Um projeto impressionante e totalmente gratuito que merece sua atenção.
-- **[QualCoder](https://github.com/ccbogel/qualcoder)**: QDA maduro e completo (codificação de texto, imagem, áudio e vídeo; relatórios e medidas de concordância), livre e de código aberto. Uma referência robusta para quem precisa de uma ferramenta de desktop full-featured.
-- **[OpenQDA](https://openqda.org/)** ([código](https://github.com/openqda/openqda), AGPL-3.0): QDA aberto e colaborativo, feito na Universidade de Bremen, com arquitetura pensada desde o começo para receber extensões da comunidade. É o projeto de Jan Küster e Karsten D. Wolf, os autores do levantamento que enquadra a [Motivação](#motivação) deste README: a crítica que abre o texto vem de quem também está construindo uma resposta para ela.
-
-Todos demonstram que é possível fazer ferramentas de qualidade sem cobrar das pessoas que mais precisam delas, e que vale a pena apoiá-las.
-
-### Referência
-
-O enquadramento da [Motivação](#motivação) e a tabela [Onde o QualiLab está nessa régua](#onde-o-qualilab-está-nessa-régua) se apoiam em:
-
-> Küster, J.; Wolf, K. D. *The Current State of CAQDAS is Insufficient for Open Science Qualitative Research.* **Electronic Communications of the EASST**, v. 85 (deRSE25: Selected Contributions of the 5th Conference for Research Software Engineering in Germany), 2025. DOI [10.14279/eceasst.v85.2709](https://doi.org/10.14279/eceasst.v85.2709). Licença CC-BY 4.0.
-
-Os dados do levantamento estão publicados em domínio público (CC-0) no Zenodo e no Harvard Dataverse, e a metodologia é mantida no repositório [zemki/state-of-caqdas](https://github.com/zemki/state-of-caqdas), que aceita contribuições da comunidade.
-
-### Formato de intercâmbio
-
-Os formatos **QDPX** (projeto completo) e **QDC** (livro de códigos) são definidos pela **[REFI-QDA Standard](https://www.qdasoftware.org/)**, o padrão aberto criado pela *Rotterdam Exchange Format Initiative (REFI)* para permitir a troca de projetos entre ferramentas de análise qualitativa. A importação e exportação desses formatos no QualiLab seguem essa especificação; todo o crédito pelo formato é da iniciativa REFI-QDA. Conheça e apoie o padrão em [qdasoftware.org](https://www.qdasoftware.org/).
-
-**Declaração de conformidade** (a versão 1.0 do padrão, §6, pede que o software diga a que partes ele reivindica conformidade): o QualiLab **importa e exporta as duas** — *Project exchange* (`.qdpx`) e *Codebook exchange* (`.qdc`). Os pacotes gerados são validados contra o `Project.xsd` oficial (v1.0) por um harness de round-trip mantido no repositório de desenvolvimento. Duas ressalvas honestas, porque conformidade de schema não é compatibilidade: o padrão não tem onde guardar autoria de atributo por pesquisador nem camada de codificação, então o `.qdpx` sempre perde algo em relação ao `.qualilab` (o app diz o quê, no momento em que você exporta); e schema válido não substitui testar na ferramenta de destino real.
-
-### Transparência ativa (DA-RT / QDR / ATI)
-
-Além do intercâmbio entre ferramentas de QDA, o QualiLab mira o ecossistema de **transparência da pesquisa qualitativa** ligado ao movimento **DA-RT** (*Data Access and Research Transparency*) e ao **[Qualitative Data Repository (QDR)](https://qdr.syr.edu/)**. O método atual do QDR é a **Annotation for Transparent Inquiry (ATI)**: anotar passagens de um texto com notas analíticas, excertos e links para as fontes que sustentam cada afirmação.
-
-A camada técnica sob o ATI (e sob o [hypothes.is](https://web.hypothes.is/), o Anno-REP e o repositório Dataverse) é o **[W3C Web Annotation Data Model](https://www.w3.org/TR/annotation-model/)**, uma recomendação aberta do W3C. O QualiLab **mira nesse padrão**, não numa ferramenta específica: a aba **Relatório** gera tanto o **Relatório Interativo (ATI)** (uma página HTML auto-contida equivalente ao *overlay* do ATI, hospedável por você) quanto a exportação **Web Annotation (W3C)** em JSON-LD, interoperável com qualquer ferramenta que fale o padrão. Assim, a "nota analítica" de cada trecho (e dos códigos, documentos e do projeto) vira um apêndice de transparência publicável, sem depender de nenhum fornecedor.
-
----
-
-## Restrições atuais
+## Limites e responsabilidade
 
 Projeto em desenvolvimento ativo. Vale conhecer os limites antes de adotar num trabalho importante.
 
@@ -434,15 +397,11 @@ Projeto em desenvolvimento ativo. Vale conhecer os limites antes de adotar num t
 - **E-mail da conta não pode ser trocado** no app; nome de exibição e senha, sim.
 - **Áudio, vídeo, imagem e planilha não são material codificável** — é escopo declarado, não pendência (veja acima).
 
----
+**A responsabilidade pelo tratamento dos dados é inteiramente sua.** Trabalhando com dados pessoais, sigilosos ou protegidos (LGPD, aprovação de comitê de ética/CEP, segredo de justiça, dados de saúde), cabe a você anonimizar, obter consentimento e escolher o modo adequado. **Para material sensível, use o modo Arquivo local, offline, e não o coloque na nuvem.**
 
-## Licença
+**Sustentabilidade, com franqueza.** O QualiLab é mantido por uma pessoa, sem financiamento, e **a maior parte do código foi escrita por um modelo de linguagem** ([Claude Code](https://claude.com/claude-code)), sob direção e revisão do autor. Pese isso antes de adotar a ferramenta num projeto importante. A favor: um projeto deste tamanho não existiria de outra forma; cada decisão de desenho fica registrada por escrito, porque documentá-la é parte do método de trabalho e não um extra; e há testes automatizados e verificações rodando no CI a cada mudança. Contra: o código **não** passou por revisão por pares nem por auditoria de segurança independente. Vale notar que o levantamento citado acima excluiu qualidade de código do seu escopo por exigir inspeção profunda, ou seja, esse aspecto não foi medido em nenhuma das 28 ferramentas comparadas, nem nesta.
 
-MIT License: livre para usar, modificar e distribuir, com ou sem fins comerciais, desde que o aviso de copyright seja mantido.
-
-```
-Copyright (c) 2026 Luiz Pimenta Filho
-```
+O risco de abandono é mitigado pelo desenho, não por uma promessa: licença MIT, um arquivo HTML que roda offline, e todos os dados exportáveis a qualquer momento em formatos abertos (`.qualilab`, REFI-QDA, W3C, CSV, JSON). Se o projeto parar amanhã, o seu material não fica preso nele.
 
 ---
 
@@ -454,3 +413,36 @@ O backlog completo é mantido no repositório de desenvolvimento, com o raciocí
 - **Relações nomeadas** entre códigos e entre trechos ("X contradiz Y", "X é causa de Y"), criadas pelo menu de contexto.
 - **Rastro e auditoria**: log de operações do projeto (imports, merges, exclusões, aplicações em lote) e desfazer em lote — o critério em que estamos abaixo da mediana do campo.
 - **Criptografia ponta a ponta** com passkey, para colaboração ao vivo sem que o operador do servidor possa ler o corpus: desenho pronto, nada decidido.
+
+---
+
+## Créditos, referência e licença
+
+O QualiLab foi desenvolvido por **Luiz Pimenta Filho** no âmbito do **LabDados / FGV Direito SP** como projeto pessoal. Não representa posição institucional da FGV, que não tem qualquer responsabilidade pelo software.
+
+A maior parte do código deste projeto foi escrita com assistência do [Claude Code](https://claude.com/claude-code) (Anthropic).
+
+As principais inspirações foram:
+
+- **[Taguette](https://www.taguette.org/about.html)**: ferramenta de QDA aberto, pioneira em simplicidade e funcionamento on-line, com suporte a múltiplos formatos de importação de documentos e exportação do codebook em REFI-QDA (`.qdc`).
+- **[Magnolia](https://www.caledavis.eu/magnolia.html)**: QDA com foco em poder e intuitividade, transcrição de áudio/vídeo e análise de surveys. Um projeto impressionante e totalmente gratuito que merece sua atenção.
+- **[QualCoder](https://github.com/ccbogel/qualcoder)**: QDA maduro e completo (codificação de texto, imagem, áudio e vídeo; relatórios e medidas de concordância), livre e de código aberto. Uma referência robusta para quem precisa de uma ferramenta de desktop full-featured.
+- **[OpenQDA](https://openqda.org/)** ([código](https://github.com/openqda/openqda), AGPL-3.0): QDA aberto e colaborativo, feito na Universidade de Bremen, com arquitetura pensada desde o começo para receber extensões da comunidade. É o projeto de Jan Küster e Karsten D. Wolf, os autores do levantamento que enquadra a [Motivação](#por-que-existe) deste README: a crítica que abre o texto vem de quem também está construindo uma resposta para ela.
+
+Todos demonstram que é possível fazer ferramentas de qualidade sem cobrar das pessoas que mais precisam delas, e que vale a pena apoiá-las.
+
+### Referência
+
+O enquadramento da [Motivação](#por-que-existe) e a tabela [Onde o QualiLab está nessa régua](#onde-o-qualilab-está-nessa-régua) se apoiam em:
+
+> Küster, J.; Wolf, K. D. *The Current State of CAQDAS is Insufficient for Open Science Qualitative Research.* **Electronic Communications of the EASST**, v. 85 (deRSE25: Selected Contributions of the 5th Conference for Research Software Engineering in Germany), 2025. DOI [10.14279/eceasst.v85.2709](https://doi.org/10.14279/eceasst.v85.2709). Licença CC-BY 4.0.
+
+Os dados do levantamento estão publicados em domínio público (CC-0) no Zenodo e no Harvard Dataverse, e a metodologia é mantida no repositório [zemki/state-of-caqdas](https://github.com/zemki/state-of-caqdas), que aceita contribuições da comunidade.
+
+### Licença
+
+MIT License: livre para usar, modificar e distribuir, com ou sem fins comerciais, desde que o aviso de copyright seja mantido.
+
+```
+Copyright (c) 2026 Luiz Pimenta Filho
+```
