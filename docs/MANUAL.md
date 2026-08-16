@@ -14,7 +14,7 @@ Este manual ensina a *usar* o QualiLab passo a passo. Para a lista de recursos e
 
 ## Índice
 
-> ⚡ **Com pressa?** Vá direto aos [**Primeiros 5 minutos**](#primeiros-5-minutos) e volte depois para aprofundar.
+> ⚡ **Com pressa?** Os [**Primeiros 5 minutos**](#primeiros-5-minutos), logo abaixo, colocam você a codificar antes de qualquer leitura. Volte depois para aprofundar.
 
 0. [A ideia do QualiLab](#0-a-ideia-do-qualilab): para que serve, que problemas ataca, como planejar o uso
 1. [Conceitos fundamentais](#1-conceitos-fundamentais): o modelo mental antes de tudo
@@ -37,6 +37,20 @@ Este manual ensina a *usar* o QualiLab passo a passo. Para a lista de recursos e
 18. [Solução de problemas](#18-solução-de-problemas)
 19. [Atalhos de teclado](#19-atalhos-de-teclado)
 20. [Glossário](#20-glossário)
+
+---
+
+## Primeiros 5 minutos
+
+*Quer sentir a ferramenta na mão antes de mergulhar no método? Este é o caminho mais curto até o seu primeiro código, sem criar conta nem instalar nada.*
+
+1. Abra **[luizpf42.github.io/QualiLab](https://luizpf42.github.io/QualiLab)** e clique em **Só testar (rascunho)**: um projeto abre na hora, só neste navegador.
+2. Na aba **Codificação**, clique em **colar texto** e cole um trecho: uma fala de entrevista, um parágrafo de decisão, uma notícia (ou use **＋ enviar** para um `.txt`, `.pdf` ou `.docx`).
+3. **Selecione** com o mouse uma frase que lhe chame atenção, clique com o **botão direito** e escolha **+ Criar novo código**. Dê um nome ao tema (ex.: *acesso à justiça*) e clique em **Criar e aplicar**. Pronto, seu primeiro trecho codificado.
+4. Codifique mais alguns trechos: **repita o mesmo código** onde o tema volta, **crie outros** onde surgem temas novos.
+5. Abra a aba **Leitura**, vá em **Trechos** e clique no seu código: todos os trechos que você marcou aparecem juntos, lado a lado. É a sua análise começando a tomar forma.
+
+> Gostou? Antes de ir longe, decida **onde salvar** o trabalho (o rascunho é efêmero, [seção 16](#16-salvamento-backup-e-modos-de-armazenamento)) e leia a **[seção 0](#0-a-ideia-do-qualilab)** para tirar o máximo da ferramenta. O resto do manual aprofunda cada um destes passos.
 
 ---
 
@@ -171,21 +185,9 @@ Em **projeto individual**, tudo já vai direto para o gabarito. Em **projeto col
 
 ---
 
-## Primeiros 5 minutos
-
-*Quer sentir a ferramenta na mão antes de mergulhar no método? Este é o caminho mais curto até o seu primeiro código, sem criar conta nem instalar nada.*
-
-1. Abra **[luizpf42.github.io/QualiLab](https://luizpf42.github.io/QualiLab)** e clique em **Só testar (rascunho)**: um projeto abre na hora, só neste navegador.
-2. Na aba **Codificação**, clique em **colar texto** e cole um trecho: uma fala de entrevista, um parágrafo de decisão, uma notícia (ou use **＋ enviar** para um `.txt`, `.pdf` ou `.docx`).
-3. **Selecione** com o mouse uma frase que lhe chame atenção, clique com o **botão direito** e escolha **+ Criar novo código**. Dê um nome ao tema (ex.: *acesso à justiça*) e clique em **Criar e aplicar**. Pronto, seu primeiro trecho codificado.
-4. Codifique mais alguns trechos: **repita o mesmo código** onde o tema volta, **crie outros** onde surgem temas novos.
-5. Abra a aba **Leitura**, vá em **Trechos** e clique no seu código: todos os trechos que você marcou aparecem juntos, lado a lado. É a sua análise começando a tomar forma.
-
-> Gostou? Antes de ir longe, decida **onde salvar** o trabalho (o rascunho é efêmero, [seção 16](#16-salvamento-backup-e-modos-de-armazenamento)) e leia a **[seção 0](#0-a-ideia-do-qualilab)** para tirar o máximo da ferramenta. O resto do manual aprofunda cada um destes passos.
-
----
-
 ## 2. Começando
+
+> **Antes de carregar material, uma escolha que não se desfaz de graça: onde os seus dados vão ficar.** Em resumo: **arquivo** e **rascunho** ficam no seu dispositivo e não saem dele; a **nuvem** sincroniza entre pessoas e aparelhos, e por isso o conteúdo passa a ser legível por quem administra o banco. A matriz completa, por sensibilidade do material, está na [seção 16](#16-salvamento-backup-e-modos-de-armazenamento) — e a regra é **na dúvida, trate o material como mais sensível**.
 
 ### 2.1. Como acessar
 
@@ -336,7 +338,7 @@ Para **PDF digitalizado** (escaneado, só imagem), use o **◫ OCR** (no menu **
 > **Números de página.** Como o QualiLab guarda a correspondência trecho ↔ página do PDF, o número da página (**p. N**) do original acompanha o trecho na **Leitura**, no **Relatório**, nos exports **CSV/JSON** e nas anotações **W3C**, e o **▤ original** abre já na página do trecho selecionado.
 
 ### Importar muitos documentos de uma vez
-Uma planilha (`.csv`/`.xlsx`) vira **um documento por linha**. Veja [Importar e exportar](#15-importar-e-exportar).
+Uma planilha (`.csv`/`.xlsx`) vira **um documento por linha**, e uma **pasta do Zotero** vira um documento por referência com PDF anexado. O passo a passo dos dois está em [Importar e exportar](#15-importar-e-exportar).
 
 ---
 
@@ -383,7 +385,7 @@ Você **não precisa selecionar de novo**:
 **Ctrl+Z** desfaz a **última codificação aplicada** na sessão atual (até as últimas 50). Funciona só na aba Codificação e fora de campos de texto. Não há desfazer para outras ações (excluir documento, categoria, código etc.). Essas são definitivas.
 
 ### 5.5. Censura (mascarar trechos sensíveis)
-Um código pode ser marcado como **censura** (no [Esquema](#7-esquema), por um admin). Trechos com esse código aparecem como uma caixa preta e saem mascarados como `[trecho censurado]` nas **saídas de transparência** ([Relatório](#12-relatório)) e no que vai para a **IA** ([seção 17](#17-codificar-e-analisar-com-ia)), útil para publicar mantendo nomes/dados sensíveis ocultos.
+Um código pode ser marcado como **censura** (no [Esquema](#7-esquema), por um admin). Trechos com esse código ganham no leitor uma **caixa fechada** (a cor da censura é o preto, e a borda é o que a distingue de um grifo comum) e saem mascarados como `[trecho censurado]` nas **saídas de transparência** ([Relatório](#12-relatório)) e no que vai para a **IA** ([seção 17](#17-codificar-e-analisar-com-ia)), útil para publicar mantendo nomes/dados sensíveis ocultos.
 
 **Onde a censura NÃO se aplica, e por quê.** Os formatos de **trabalho e migração** (`.qualilab`, QDPX, QDC, CSV, JSON) saem **completos**, com os trechos censurados em claro. Não é esquecimento: é por esses arquivos que você leva o **seu próprio** material para o ATLAS.ti, o MAXQDA ou o NVivo e traz de volta, e mascarar ali destruiria o texto original de forma irreversível, além de fazer você **perder o próprio trabalho de censura** na migração. O menu **exportar ▾** avisa isso na hora, em âmbar, quando o projeto usa código de censura. Para material que sai da equipe, use a aba **Relatório**.
 
@@ -532,7 +534,7 @@ Ao editar um código, o admin pode:
 
 ![Reconciliação, aba Códigos, documento ENT-01: cada grupo reúne as codificações que se sobrepõem num mesmo código (o caminho do código, quem codificou e o trecho). Aqui já estão todas "na camada final", com a opção de removê-las; quando ainda não estão, aparece "Consolidar no final".](manual-img/14-reconciliacao.png)
 
-*Só em projeto coletivo.* É onde a equipe consolida o **gabarito** a partir do trabalho individual de cada pesquisador. A coluna da esquerda escolhe entre **Categorias** e **Códigos**, e navega por documento, incluindo a opção **(Todos os documentos)**, que reconcilia o projeto inteiro de uma vez.
+*Só em projeto coletivo — se o seu é individual, pule para a [seção 9](#9-leitura).* É onde a equipe consolida o **gabarito** a partir do trabalho individual de cada pesquisador. A coluna da esquerda escolhe entre **Categorias** e **Códigos**, e navega por documento, incluindo a opção **(Todos os documentos)**, que reconcilia o projeto inteiro de uma vez.
 
 **Categorias.** Para cada documento e categoria, você vê o **Gabarito** (que o admin define) e, abaixo, a resposta de cada pesquisador com **✓** (igual ao gabarito) ou **✗** (diferente). No modo (Todos os documentos), escolhe-se uma categoria e ela é consolidada documento a documento.
 
@@ -953,6 +955,20 @@ O que **não** funciona sem rede é **ler** o que ainda não foi carregado: abri
 
 A IA do QualiLab não "codifica sozinha" nem escreve no seu projeto sem permissão. Ela aparece em três telas: *Codificar Automaticamente* (assistentes que **propõem** mudanças ao seu projeto, você revisa item a item), *Analisar com IA* (leitura e interpretação de um material que você recorta) e *MCP/RAG* (a IA busca o material sozinha; veja [17.6](#176-mcprag-a-ia-pede-o-material-em-vez-de-receber)). Em todas, o resultado é uma **proposta** ou um **texto** que você revisa. Aplicar qualquer mudança é sempre um ato seu.
 
+É o capítulo mais longo do manual, então vale o mapa:
+
+| | |
+|---|---|
+| [17.1](#171-como-a-ia-funciona-aqui) | **como funciona aqui** — por onde a chamada vai, de quem é a chave, o prompt visível, os limites de tamanho e o custo |
+| [17.2](#172-codificar-automaticamente-cinco-assistentes-em-abas) | **Codificar Automaticamente** — os cinco assistentes, um por sub-seção (17.2.1 a 17.2.5) |
+| [17.3](#173-analisar-com-ia-leitura-assistida-do-material) | **Analisar com IA** — a conversa sobre o material que você recorta |
+| [17.4](#174-configurar-a-sua-chave-opcional) | **configurar a sua chave** |
+| [17.5](#175-para-onde-vão-os-seus-dados-provedores-e-configuração) | **para onde vão os seus dados** — os provedores, e o que confiar em cada um |
+| [17.6](#176-mcprag-a-ia-pede-o-material-em-vez-de-receber) | **MCP/RAG** — a IA pede o material em vez de receber |
+| [17.7](#177-desligar-a-ia-neste-projeto) | **desligar a IA** neste projeto |
+
+> **Se você não vai usar IA**, o único trecho que interessa é o [17.7](#177-desligar-a-ia-neste-projeto), que desliga os painéis e faz o Relatório declarar isso. O resto do manual não depende deste capítulo.
+
 ### 17.1 Como a IA funciona aqui
 
 - **Onde a chamada vai.** Com a **sua** chave (o caso normal, veja o item seguinte), o **navegador fala direto com o provedor** que você escolheu: o material **não passa por nenhum servidor do QualiLab**. Duas exceções, uma em cada ponta: o **Ollama local** vai direto para a **sua máquina** (nada sai dela); e um endpoint **Personalizado**/**Azure** que não libere chamadas de navegador (a regra de CORS é de quem serve a API) faz a chamada ser **refeita** por uma função no servidor deste projeto (Supabase Edge Function `ai-ask`) — que então enxerga o material daquele envio. O card de IA em **Minha conta** diz, para a **sua** configuração, por qual caminho ela vai. Para onde **cada provedor** manda o dado, e o que isso implica para material sensível, veja [17.5](#175-para-onde-vão-os-seus-dados-provedores-e-configuração).
@@ -1131,6 +1147,8 @@ Para constar, o que as políticas *dizem* hoje (e pode mudar): camadas **gratuit
 
 ### 17.6 MCP/RAG: a IA pede o material, em vez de receber
 
+![A tela MCP/RAG respondendo "o que aparece no lugar dos nomes?": no topo, a pílula âmbar "experimental" e a contagem de documentos e de ferramentas. Entre os turnos aparece cada chamada que a IA fez (get_project, list_documents, get_document_content) com os argumentos e o que cada uma devolveu; na resposta, o trecho lido vem com os nomes em blocos pretos, porque a censura é aplicada antes de o texto sair para o modelo.](manual-img/19-mcp-rag.png)
+
 > **Esta tela é experimental**, e o app diz isso nela. Ela funciona e não altera nada, mas é a superfície mais nova do QualiLab: o formato das respostas e o conjunto de ferramentas ainda podem mudar entre versões. Não a use como o único registro de uma análise — o que você quiser guardar, guarde em memo ou no relatório.
 
 Nas outras telas de IA **você monta o recorte** antes de perguntar: escolhe documentos, códigos, escopo, e a IA recebe aquilo pronto. Aqui é o contrário: você pergunta, e **a IA busca o material sozinha**, pedindo o que precisa por meio de um conjunto de ferramentas de leitura — ler um documento, buscar um termo, listar os trechos de um código, ver os memos. **Cada pedido aparece na tela**, com a ferramenta, os argumentos e um resumo do que voltou.
@@ -1147,11 +1165,25 @@ Isso muda o tipo de pergunta que cabe. Nas outras telas você pergunta sobre um 
 
 **Quando preferir as outras telas.** Se você já sabe qual material quer analisar, *Analisar com IA* é mais direto e mais barato. Esta tela ganha quando a pergunta é de **busca**: quando achar o material é parte do problema.
 
+#### Sem pagar por token: as mesmas ferramentas dentro do assistente que você já assina
+
+Esta tela cobra da **sua chave de API**, por token. Se você já paga uma assinatura do **Claude** (Pro/Max) ou do **ChatGPT**, existe um caminho que **não custa nada além dela**: em vez de o QualiLab falar com o modelo, o **assistente que você já usa** lê o seu corpus.
+
+A razão de isso existir é uma limitação que não é nossa: **assinatura não é credencial de API**. Pagar o Claude ou o ChatGPT não lhe dá uma chave que um outro programa possa usar — são cobranças separadas. Então, para quem já assina, o caminho barato é o inverso: não trazer o modelo até o QualiLab, e sim **levar o corpus até o assistente**.
+
+Quem faz isso é um complemento que você instala no seu assistente, distribuído em **[LuizPF42/QualiLab-plugin](https://github.com/LuizPF42/QualiLab-plugin)** — repositório próprio, com as instruções de instalação de cada cliente. Ele **não faz parte do QualiLab**: é um programa separado que lê os arquivos `.qualilab` que você exporta ([seção 15](#15-importar-e-exportar)). Você aponta uma **pasta**, e o assistente lista os projetos que estão nela.
+
+Ele oferece **as mesmas ferramentas desta tela** — literalmente o mesmo código —, com o mesmo vocabulário e as mesmas regras: **só leitura**, nada é alterado no seu arquivo, e a censura chega mascarada igual.
+
+> **Uma ressalva honesta, e ela é diferente conforme o cliente.** No **chat** do Claude, a máscara é fronteira real: o complemento é o único caminho até o seu corpus. Num cliente **agêntico** (que executa tarefas e mexe em arquivos), o assistente tem ferramentas de arquivo próprias, e o `.qualilab` guarda o texto **cru** — se ele abrir o arquivo por fora, a censura não o alcança. Ali ela é convenção respeitada, não tranca.
+
 ### 17.7 Desligar a IA neste projeto
 
 Nem toda pesquisa quer IA por perto, e há dois motivos bem diferentes para isso: a pesquisa que precisa **declarar** que não usou (para o comitê de ética, para o parecerista, para o leitor do artigo), e a coordenação que teme **codificação de modelo entrando como julgamento humano** — o que contamina concordância entre codificadores, saturação, tudo. O QualiLab atende os dois com uma chave só, mudando o **alcance**.
 
-**A pergunta vem na criação.** Todo projeto novo — na nuvem, em arquivo ou rascunho — pergunta se os recursos de IA ficam disponíveis. Nenhuma opção vem marcada, e **não responder é não ativar**. No cabeçalho, **entre a pílula do projeto e o seu nome**, um selo mostra sempre o estado da IA neste projeto — vermelho quando está desativada, verde quando está ativada. Clicar nele oferece trocar, com confirmação. Você também muda em **Projeto → Recursos de IA** (clique na pílula do projeto):
+![A pergunta que todo projeto novo faz: a janela "Novo rascunho", com o bloco "Recursos de IA", os dois botões (Sem IA, que já vem marcado, e Ativar IA) e, no rodapé, "Continuar sem IA" ao lado de "Continuar".](manual-img/18-ativar-ia.png)
+
+**A pergunta vem na criação.** Todo projeto novo — na nuvem, em arquivo ou rascunho — pergunta se os recursos de IA ficam disponíveis. A opção que **já vem marcada é "Sem IA"**: ativar exige trocar a escolha, e sair da janela sem responder **mantém desligado**. No cabeçalho, **entre a pílula do projeto e o seu nome**, um selo mostra sempre o estado da IA neste projeto — vermelho quando está desativada, verde quando está ativada. Clicar nele oferece trocar, com confirmação. Você também muda em **Projeto → Recursos de IA** (clique na pílula do projeto):
 
 | escolha | quem fica com as telas de IA |
 |---|---|
@@ -1161,7 +1193,7 @@ Nem toda pesquisa quer IA por perto, e há dois motivos bem diferentes para isso
 
 *Desativados* inclui você de propósito: é o que permite dizer à equipe "ninguém aqui usa, eu inclusive", e é o que impede reabrir a porta na pressa de um prazo.
 
-**O que some, e o que fica.** Somem as telas de IA do cabeçalho e a configuração que só serve a elas (o **Memo para a IA** e os **Prompts salvos**, na tela Memos). **Fica** o registro do que já aconteceu: as **conversas salvas** e a **memória do projeto** continuam onde estavam. Esconder o registro seria o oposto da transparência que a declaração promete — e é ele que o relatório conta.
+**O que some, e o que fica.** Somem as telas de IA do cabeçalho e a configuração que só serve a elas (o **Memo para a IA** e os **Prompts salvos**, na tela Memos). ⚠️ **Some junto a aba [Repetir Codificação](#1725-repetir-codificação-sem-ia), que não usa IA nenhuma** — ela mora dentro da tela *Codificar Automaticamente*, e a tela sai inteira. É bom saber porque ela é a ferramenta que a [seção 5.5](#55-censura-mascarar-trechos-sensíveis) recomenda para fechar a censura (achar as outras ocorrências idênticas de um termo já censurado). Desligando a IA, esse trabalho volta a ser feito pelo [pesquisar +](#57-buscar-no-documento-e-no-projeto-inteiro), caso a caso. **Fica** o registro do que já aconteceu: as **conversas salvas** e a **memória do projeto** continuam onde estavam. Esconder o registro seria o oposto da transparência que a declaração promete — e é ele que o relatório conta.
 
 **A decisão acompanha o projeto.** Ela viaja dentro do `.qualilab`: salvar como arquivo, reabrir depois ou enviar para a nuvem preserva o que você escolheu. Importar material de um projeto sem IA para dentro de um projeto com IA ativa **não** muda a sua configuração (a decisão é do projeto que recebe, não do arquivo que chega), mas o resumo da importação avisa que aquele material vinha de um projeto assim. E conversas de IA guardadas num arquivo **não entram** num projeto que desativou a IA — o resumo diz quantas ficaram de fora, e por quê.
 
