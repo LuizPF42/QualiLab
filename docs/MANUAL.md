@@ -205,8 +205,10 @@ Ao baixar, o arquivo abre direto no navegador (`file://`) sem precisar de servid
 A primeira tela oferece três caminhos (com o logo no topo):
 
 1. **Novo em arquivo**: cria um projeto salvo como arquivo `.qualilab` no seu disco (Chrome/Edge): portátil, offline, sem nuvem. Ideal para dados sensíveis.
-2. **Entrar na nuvem**: leva ao **login** (**Continuar com Google**, ou e-mail e senha; ou **Criar conta** na mesma tela, informe um **nome de exibição**, e-mail e senha de no mínimo 6 caracteres), para trabalho colaborativo e sincronizado entre dispositivos. Há **Esqueci minha senha** para redefinir por e-mail. **← Voltar** retorna à tela de entrada.
+2. **Entrar na nuvem**: leva ao **login** (**Continuar com Google**, ou e-mail e senha; ou **Criar conta** na mesma tela, informe um **nome de exibição**, e-mail e senha de no mínimo 6 caracteres), para trabalho colaborativo e sincronizado entre dispositivos. Há **Esqueci minha senha** para redefinir por e-mail. **← Voltar** retorna à tela de entrada. Sob esse cartão, um aviso lembra que, no servidor padrão, o conteúdo fica **visível para quem administra o banco**: vale ler a [seção 16](#16-salvamento-backup-e-modos-de-armazenamento) antes de subir material sensível.
 3. **Só testar (rascunho)**: abre na hora um projeto de **rascunho** neste navegador, sem configurar nada. É efêmero (some se você limpar os dados do site), bom para experimentar; migre para arquivo ou nuvem quando quiser (um clique no hub do projeto).
+
+**Criou uma conta? O passo seguinte é um código.** Ao criar a conta, o QualiLab manda um **código por e-mail** e abre a tela **"Confirme seu cadastro"**: digite ali **todos os números** do código e clique em **Confirmar e entrar**. Não há link para clicar no e-mail, e isso é de propósito — filtros de segurança de caixas corporativas costumam abrir os links sozinhos e queimá-los antes de você, o que dava "link inválido ou expirado" em quem nunca tinha clicado. O código **vale por uma hora**. Se ele não chegar, veja o **spam** e use **Reenviar código**; tendo reenviado, vale o do e-mail **mais recente** (o anterior deixa de valer). Se a sua conta já estava confirmada, **"Já confirmei — quero entrar"** volta ao login.
 
 Um botão violeta **"Conectar ao meu Supabase"** (na tela de entrada e no login) aponta o app para o **seu próprio servidor Supabase** antes de logar: é onde ficam os seus projetos coletivos.
 
@@ -248,13 +250,15 @@ Depois de abrir um projeto, o **cabeçalho** tem duas linhas:
 | **Memos** | Notas analíticas |
 | **Esquema** | Organizar códigos e categorias em lote |
 | **Codificar Automaticamente** | Repetir codificação (sem IA) e, *(opcional, BYOK)*, IA propondo codificação/categorização/organização e induzindo a definição de uma categoria; você aprova |
-| **Analisar com IA** | *(opcional, BYOK)* conversa analítica sobre o material selecionado |
+| **Analisar com IA** | *(opcional, BYOK)* conversa analítica sobre o material que você seleciona |
+| **MCP/RAG** | *(opcional, BYOK; **experimental**)* conversa em que a IA **busca** o material sozinha, em vez de receber um recorte pronto |
 | **Relatório** | Exportar relatórios e pacotes de transparência |
 
-> As duas telas de **IA** são **opt-in**. Detalhes na [seção 17](#17-codificar-e-analisar-com-ia).
+> As três telas de **IA** são **opt-in**. Detalhes na [seção 17](#17-codificar-e-analisar-com-ia).
 
 **Segunda linha**
 - A **pílula do projeto**, ex.: `rascunho · Meu Projeto · individual ▾`. O prefixo mostra o modo de armazenamento (`arquivo`/`nuvem`/`nuvem pessoal`/`rascunho`) e a **cor** reforça onde os dados estão: neutra = rascunho (neste navegador), verde = arquivo no seu disco, azul = nuvem (servidor padrão), violeta = nuvem no seu próprio Supabase, âmbar = nuvem sem conexão. Passe o mouse para a explicação (em modo rascunho, inclui o % usado do armazenamento do navegador); clicar abre o **hub de gestão do projeto**.
+- O **selo de IA** do projeto, logo depois da pílula: **verde** quando os recursos de IA estão disponíveis aqui, **vermelho** quando estão desativados. Clicar nele oferece trocar, com confirmação (veja [17.7](#177-desligar-a-ia-neste-projeto)).
 - Seu **nome**, **clicável em todos os modos** (nuvem, rascunho e arquivo) → Minha conta. Em modo offline, é também a porta de entrada para configurar a sua chave/modelo de IA, inclusive o Ollama local (veja a [seção 17](#17-codificar-e-analisar-com-ia)).
 - **trocar projeto** / **sair** (modo nuvem).
 - **exportar ▾** e **importar ▾** (aparecem quando há documentos).
@@ -262,6 +266,8 @@ Depois de abrir um projeto, o **cabeçalho** tem duas linhas:
 - No canto direito, a **versão** em uso (ex.: `v1.0.0`). **Cite esse número ao relatar um problema:** sem ele não há como saber qual versão o seu navegador carregou, já que o app se atualiza sozinho ao recarregar. O que mudou em cada versão está no [`CHANGELOG.md`](../CHANGELOG.md).
 
 Logo abaixo do cabeçalho podem aparecer **faixas de aviso**: erro (vermelho), importação em andamento (com barra de progresso) e o aviso de falha de salvamento (veja a [seção 16](#16-salvamento-backup-e-modos-de-armazenamento)).
+
+> **A tela em que você está mora no endereço.** Trocar de aba muda o endereço do navegador, e o documento aberto e a sub-aba vão junto. Daí duas coisas úteis: o **"voltar" do navegador funciona** (leva à tela anterior, não sai do app), e dá para **copiar o endereço e mandar a alguém** — quem abrir o mesmo projeto cai na mesma tela, no mesmo documento. Em pesquisa coletiva é o jeito mais curto de dizer "olha este aqui".
 
 ### Redimensionar os painéis
 
@@ -413,7 +419,7 @@ As sugestões incluem **expressões de até cinco palavras**, não só palavras 
 
 > **Por que sugerir palavras em vez de mostrar trechos direto?** Porque o programa erra, e é melhor que ele erre à vista. Palavras raras ou muito abstratas às vezes produzem vizinhas sem sentido; vendo "perícia" na lista você simplesmente não clica, e perdeu um segundo. Se o erro viesse embutido numa lista de trechos, você perderia minutos lendo material que não tinha nada a ver, sem saber por quê.
 
-**Na primeira vez é preciso ler o vocabulário** do projeto: o botão aparece assim que você liga a opção. Isso baixa um modelo de linguagem (~220 MB, uma vez só, depois fica guardado no navegador) e percorre as palavras do corpus, com barra de progresso e opção de interromper. Quando você acrescenta ou edita documentos, o programa avisa que o corpus mudou e oferece ler de novo.
+**Na primeira vez é preciso ler o vocabulário** do projeto: o botão aparece assim que você liga a opção. Isso baixa um modelo de linguagem (de ~113 MB a ~220 MB, conforme o que o seu navegador suporta; uma vez só, depois fica guardado nele) e percorre as palavras do corpus, com barra de progresso e opção de interromper. Quando você acrescenta ou edita documentos, o programa avisa que o corpus mudou e oferece ler de novo.
 
 > **Nada sai do seu computador.** Diferente das telas de IA, isto não conversa com nenhum servidor: o modelo roda dentro do navegador e o vocabulário fica na sua máquina. Funciona offline depois do primeiro download e não precisa de chave de API.
 
@@ -935,7 +941,9 @@ Mantém um `backup-automatico.qualilab` sempre atualizado numa pasta sua, como e
 Se o navegador não conseguir gravar (`localStorage` cheio, permissão de pasta revogada, disco removido), aparece uma **faixa vermelha persistente** avisando que as últimas alterações **não** foram salvas, com um atalho para **baixar .qualilab** na hora. Ela só some quando um salvamento volta a funcionar. **Não ignore esse aviso**: baixe o backup antes de continuar.
 
 ### Modo nuvem offline
-O cabeçalho mostra `offline` (âmbar) quando a conexão cai. Escritas (codificar, preencher categoria) exigem rede; sem ela, a ação em andamento falha (mas os dados já salvos não são corrompidos). Por isso, **não conte com o modo nuvem sem conexão**: enquanto aparecer `offline`, evite codificar e volte a trabalhar ao reconectar, ou baixe um `.qualilab` como segurança.
+O cabeçalho mostra `offline` (âmbar) quando a conexão cai e, ao lado, **quantas alterações estão aguardando envio**. **Você pode continuar codificando**: o que você escreve fica guardado neste navegador e sobe sozinho quando a nuvem voltar a responder (é a fila descrita no quadro acima, e ela sobrevive a fechar a aba).
+
+O que **não** funciona sem rede é **ler** o que ainda não foi carregado: abrir um documento que você não abriu nesta sessão, ou trocar de projeto. Por isso o modo nuvem **não substitui o modo arquivo** para trabalhar de fato offline — e, se você vai passar um tempo longo sem conexão, baixe um `.qualilab` antes, como segurança.
 
 ---
 
@@ -1186,6 +1194,9 @@ Limitação do formato REFI-QDA, que não guarda autoria de atributos (só de tr
 **Apaguei um código/categoria/documento sem querer.**
 Não há desfazer para isso (Ctrl+Z só cobre a última *codificação de trecho*). Recupere de um backup `.qualilab`, se tiver.
 
+**Criei a conta e não consigo entrar / o código não é aceito.**
+A confirmação do cadastro é por **código digitado**, não por link: o e-mail traz um número, e você o digita na tela **"Confirme seu cadastro"**. Digite **todos** os números dele. Recusado, o motivo mais comum é ter **expirado** (vale por uma hora) ou você estar lendo um e-mail antigo depois de ter pedido **Reenviar código** — nesse caso só vale o do e-mail **mais recente**. Confira o **spam**. Se a conta já estiver confirmada, use **"Já confirmei — quero entrar"** e faça login normalmente.
+
 **Esqueci minha senha.**
 Na tela de acesso à nuvem, clique em **Esqueci minha senha**, informe o e-mail da conta e envie. Chega um link por e-mail que abre o QualiLab já na tela de **criar uma senha nova**. Feito isso, você entra direto. O link vale por pouco tempo e só pode ser usado uma vez; se der "Link expirado", peça outro na mesma tela. Confira o **spam**. Por segurança, a mensagem na tela é a mesma exista ou não uma conta com aquele e-mail (o app não confirma quem está cadastrado).
 
@@ -1226,7 +1237,7 @@ PDFs muito visuais (colunas, tabelas, digitalizações) podem extrair mal. Tabel
 ## 20. Glossário
 
 - **Código**: rótulo aplicado a um trecho; hierárquico (família → subcódigos).
-- **Categoria / atributo**: propriedade do documento inteiro (cinco tipos de campo).
+- **Categoria / atributo**: propriedade do documento inteiro (sete tipos de campo).
 - **Codificação**: uma aplicação de um código a um trecho específico (com autor e camada).
 - **Camada**: *individual* (de cada pesquisador) ou *final* (gabarito consolidado).
 - **Gabarito**: a camada final consolidada da equipe.
@@ -1242,6 +1253,7 @@ PDFs muito visuais (colunas, tabelas, digitalizações) podem extrair mal. Tabel
 - **W3C Web Annotation**: padrão aberto de dados de anotação (base do ATI, hypothes.is etc.).
 - **Opt-in**: recurso desligado por padrão que só age quando você o aciona (a regra da IA no QualiLab).
 - **BYO-key** (*bring your own key*): usar a sua própria chave de API de um provedor de IA (o padrão no QualiLab; guardada só no seu navegador).
+- **MCP/RAG**: a tela (experimental) em que a IA **pede** o material de que precisa, em vez de receber um recorte que você montou antes; cada pedido dela fica visível. Ver [17.6](#176-mcprag-a-ia-pede-o-material-em-vez-de-receber).
 - **Provedor / LLM**: o serviço de modelo de linguagem que a IA chama (Gemini, OpenAI, Anthropic, Azure, um compatível com OpenAI, ou o **Ollama local** na sua própria máquina).
 - **Ollama local**: modelo de linguagem rodando na sua máquina (via [Ollama](https://ollama.com/)), chamado **direto pelo navegador**, sem passar pelo servidor, a opção em que o material **não sai do seu computador**.
 
