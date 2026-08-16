@@ -64,7 +64,7 @@ Comparação direta com os achados de Küster & Wolf (2025) sobre 28 ferramentas
 
 **O que fica de fora por escopo, e não por acaso.** O QualiLab é uma ferramenta de **texto e PDF**. Áudio, vídeo e imagem exigem anotação sobre linha do tempo ou sobre pixels, que é outro produto e não uma funcionalidade a mais. Para isso, veja o [ELAN](https://archive.mpi.nl/tla/elan/), o [Transana](https://www.transana.com/), o [dicto](https://dictoapp.github.io/dicto/) ou o [QualCoder](https://github.com/ccbogel/qualcoder).
 
-**Extensibilidade por dados, não por plugins.** O QualiLab não tem arquitetura de plugins, e não pretende ter: ela briga de frente com o desenho de arquivo único que faz o app rodar sem instalação e sem build. O que ele oferece no lugar são três superfícies abertas: o formato **`.qualilab`** (sem perda, documentado), e a exportação em **REFI-QDA** e **W3C Web Annotation**, para que qualquer outra ferramenta possa ler o que foi produzido aqui.
+**Extensibilidade por dados, não por plugins.** O QualiLab não tem arquitetura de plugins, e não pretende ter: ela briga de frente com o desenho de arquivo único que faz o app rodar sem instalação e sem build. O que ele oferece no lugar são três superfícies abertas: o formato **`.qualilab`** (sem perda, documentado), a exportação em **REFI-QDA** e **W3C Web Annotation**, e um **servidor MCP de leitura** que deixa qualquer assistente ler o corpus com a censura já aplicada.
 
 ---
 
@@ -126,7 +126,7 @@ Uma linha por recurso: aqui é o inventário. O **passo a passo** de cada um est
 
 ### IA: desligada por padrão, e com a sua chave
 
-**Ela vem desligada, e ligar é um ato.** Todo projeto novo — na nuvem, em arquivo ou no rascunho — pergunta se os recursos de IA ficam disponíveis, **sem opção pré-marcada**: fechar sem responder mantém desligado. A escolha tem três alcances (**ninguém** · **só administradores** · **todos**), é **imposta no banco** e não só escondida na interface, e **viaja dentro do `.qualilab`**.
+**Ela vem desligada, e ligar é um ato.** Todo projeto novo — na nuvem, em arquivo ou no rascunho — pergunta se os recursos de IA ficam disponíveis, e a opção que **já vem marcada é "Sem IA"**: ativar exige trocar a escolha, e fechar sem responder mantém desligado. A escolha tem três alcances (**ninguém** · **só administradores** · **todos**), é **imposta no banco** e não só escondida na interface, e **viaja dentro do `.qualilab`**.
 
 Um selo no cabeçalho mostra o estado o tempo todo — **✔︎** ativada, **~~IA~~** desligada — e é por ele que se troca. Com a IA desligada as telas somem; com ela ligada, **nada é enviado a modelo nenhum sem você pedir**: toda chamada é um clique seu.
 
@@ -154,6 +154,14 @@ Um selo no cabeçalho mostra o estado o tempo todo — **✔︎** ativada, **~~I
 | **Web Annotation (W3C)** | as anotações no [padrão aberto do W3C](https://www.w3.org/TR/annotation-model/) (JSON-LD), a mesma língua de dados sob o ATI, o [hypothes.is](https://web.hypothes.is/), o Anno-REP e o Dataverse |
 
 Em projeto coletivo as três respeitam a camada escolhida; em todas, os trechos de **censura** saem mascarados, e ATI e W3C ainda oferecem **anonimizar a autoria**.
+
+### Apontar o seu assistente para o corpus
+
+*Experimental, e não faz parte do app: vive num repositório próprio, de onde qualquer pessoa instala.*
+
+Se você já paga uma assinatura de Claude ou de ChatGPT, dá para usá-la: em vez de o QualiLab falar com o modelo pela sua chave, **o cliente que você já usa** alcança o corpus. [**LuizPF42/QualiLab-plugin**](https://github.com/LuizPF42/QualiLab-plugin) empacota um servidor **MCP de só-leitura**, distribuído em [**LuizPF42/QualiLab-plugin**](https://github.com/LuizPF42/QualiLab-plugin). O assistente ganha as **mesmas ferramentas** da tela MCP/RAG — literalmente o mesmo código, extraído do `index.html` —, com o mesmo vocabulário e as mesmas regras de conduta.
+
+Você aponta uma **pasta**, não um arquivo: o assistente lista os projetos que estão lá e abre o que você pedir. **Nenhuma ferramenta escreve.** A censura vale igual, com uma ressalva honesta: no chat do Claude a máscara é fronteira real, porque o servidor é o único caminho até o corpus; num cliente **agêntico** ele tem ferramentas de arquivo próprias e o `.qualilab` carrega o texto cru, então ali ela é convenção respeitada, não tranca.
 
 ---
 
@@ -323,7 +331,7 @@ assert all(t["quote"] == texto[t["document_id"]][t["span_start"]:t["span_end"]]
            for t in db["codings"])
 ```
 
-Nos exemplos do repositório isso vale para todos os trechos. É a mesma invariante que os testes de censura verificam, e é ela que permite reprocessar o corpus fora do app sem depender de nada nosso.
+Nos exemplos do repositório isso vale para todos os trechos. É a mesma invariante que o servidor MCP e os testes de censura verificam, e é ela que permite reprocessar o corpus fora do app sem depender de nada nosso.
 
 Duas coisas que **não** estão no arquivo, e é bom saber: a **distribuição de documentos** (ela depende de identificadores de usuário que só existem na nuvem) e os **caches derivados**, como o índice da busca semântica, que é refeito quando o corpus muda. E uma que **está**: o `.qualilab` é formato de **trabalho**, então carrega o texto **cru, censura inclusive** — mascarar aqui destruiria dado de forma irreversível. Quem mascara são as saídas de transparência (ATI, W3C) e o prompt da IA.
 
