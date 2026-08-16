@@ -126,7 +126,9 @@ Uma linha por recurso: aqui é o inventário. O **passo a passo** de cada um est
 
 ### IA: desligada por padrão, e com a sua chave
 
-**Ela vem desligada, e ligar é um ato.** Todo projeto novo — na nuvem, em arquivo ou no rascunho — pergunta se os recursos de IA ficam disponíveis, **sem nenhuma opção pré-marcada**: fechar sem responder mantém desligado, porque caixa pré-marcada seria opt-out com outro nome. A escolha tem três alcances (**ninguém** · **só administradores** · **todos**), é **imposta no banco** e não só escondida na interface, **viaja dentro do `.qualilab`** e o Relatório passa a declarar o que o projeto registra. Com a IA desligada, as telas somem — e, com ela ligada, **nada é enviado a modelo nenhum sem você pedir**: toda chamada é um clique seu, não há rotina de fundo conversando com provedor.
+**Ela vem desligada, e ligar é um ato.** Todo projeto novo — na nuvem, em arquivo ou no rascunho — pergunta se os recursos de IA ficam disponíveis, **sem opção pré-marcada**: fechar sem responder mantém desligado. A escolha tem três alcances (**ninguém** · **só administradores** · **todos**), é **imposta no banco** e não só escondida na interface, e **viaja dentro do `.qualilab`**.
+
+Um selo no cabeçalho mostra o estado o tempo todo — **✔︎** ativada, **~~IA~~** desligada — e é por ele que se troca. Com a IA desligada as telas somem; com ela ligada, **nada é enviado a modelo nenhum sem você pedir**: toda chamada é um clique seu.
 
 **O padrão é o navegador chamar o provedor direto**: com a sua chave (guardada só no navegador), **nenhum servidor do QualiLab vê o material** da análise. A Edge Function `ai-ask` cobre só dois casos: um endpoint *Personalizado*/*Azure* que não libere chamadas de navegador (CORS) e uma eventual chave de servidor — que a instância pública não tem.
 
@@ -141,7 +143,7 @@ Uma linha por recurso: aqui é o inventário. O **passo a passo** de cada um est
 | **Provedores** | Gemini, OpenAI, Anthropic, Azure OpenAI, qualquer API no formato clássico da OpenAI (DeepSeek, Mistral, Qwen, vLLM) e **Ollama local** — o único em que nada sai da sua máquina |
 | **Corte de material avisado** | há teto por documento e por envio; sempre que algo é cortado, uma faixa diz **quantos documentos ficaram de fora** e quantos entraram só pelo começo |
 
-> **E uma ressalva honesta: desligar a IA não é uma fronteira técnica.** Qualquer pessoa copia um trecho e cola em outra ferramenta, e nenhum software impede isso. O que a chave faz é tirar do aplicativo o trabalho **em massa** — e é o volume que desloca uma análise, não uma consulta avulsa: três trechos copiados à mão não movem a concordância entre codificadores; duzentas sugestões aceitas numa varredura substituem o julgamento de um codificador inteiro. Quem desativa a IA não deve ler "100% manual" como prova de coisa alguma.
+> **Ressalva honesta:** desligar a IA **não é bloqueio técnico** — qualquer pessoa copia um trecho e cola noutra ferramenta. O que a chave tira do aplicativo é o trabalho **em massa**, que é o que de fato desloca uma análise. Por isso o Relatório **relata** o que passou pelo QualiLab, em vez de prometer que nada passou por fora.
 
 ### Publicação e transparência
 
