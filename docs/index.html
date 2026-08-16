@@ -113,6 +113,63 @@
   .pill.mode-custom{background:var(--violet-soft);border-color:rgba(91,60,150,.4);color:var(--violet);}
   .pill.mode-file{background:var(--ok-soft);border-color:rgba(37,107,67,.4);color:var(--ok);}
   .pill.mode-offline{background:var(--amber-soft);border-color:var(--amber);color:var(--amber);}
+  /* SELO "SEM IA" (S7) — tipografia + CSS, NUNCA glyph nem emoji, e a vantagem decisiva desse
+     caminho e que ele NAO PODE dar tofu em maquina nenhuma: sao duas letras e borda.
+     Cada peca responde por uma coisa, e nenhuma e decorativa:
+       - o ANEL carrega a leitura de proibicao (gramatica ISO 7010: circulo com barra e proibicao;
+         quadrado/retangulo sao informacao, e o testado leu como etiqueta, nao como veto);
+       - o MIOLO PREENCHIDO e o que torna as letras legiveis a 12px. MEDIDO: no contorno vazado as
+         letras cinza disputam os mesmos ~6px com o anel vermelho e viram borrao; branco sobre
+         escuro e contraste cheio. Foi isto que derrubou a conclusao anterior ("a 12px ninguem le
+         IA") — era defeito do contorno, nao do tamanho;
+       - o miolo e --teal-deep, o AZUL DA MARCA, e nao --ink: preto puro sob anel vermelho fica
+         duro demais no tema claro (achado do autor). CINZA foi tentado e e PIOR — no tamanho real
+         derruba o contraste das letras, que e onde o selo ja e fragil. A preocupacao legitima de
+         "um terceiro matiz competindo com o vermelho e o verde" nao se aplica a este azul: ele e
+         a cor de chrome do app inteiro, entao le como FUNDO, nao como sinal. De quebra o token
+         INVERTE com o tema (marinho + letra clara no claro; azul-claro + letra escura no escuro),
+         o que dispensou a regra separada que o dark precisava quando o miolo era --ink;
+       - a BARRA fica A FRENTE das letras (z-index 1 contra 0), e isto INVERTEU a decisao antiga
+         (que a punha atras "para nao cortar o IA"). O que mudou foi a PREMISSA: enquanto havia
+         rotulo em texto ao lado, cortar um pedaco das letras custava pouco; hoje o selo esta
+         SOZINHO no cabecalho, e barra interrompida faz o sinal parecer defeito, nao proibicao.
+         MEDIDO junto: o "halo" (contorno da barra na cor do miolo, a tecnica classica de
+         sinalizacao) PIORA a 20px — engrossa a barra para ~4px e come mais letra do que devolve;
+       - o anel fica VERMELHO nos dois temas (o token so muda de tom), e o par miolo/letras inverte
+         junto com --teal-deep/--paper, entao o tema escuro sai de graca e sem regra propria.
+     NUMEROS MEDIDOS (as cinco proporcoes testadas cabem na pilula sem estica-la): com
+     box-sizing:border-box a borda COME o espaco interno, e e por isso que a caixa e 1.7em e nao
+     1.5em (que aperta as letras contra o anel). Anel de 3px afoga as letras a 12px; de 1.5px some
+     dentro do miolo escuro. Quem quiser mais presenca sobe a caixa para 1.9em.
+     NAO HA MAIS ROTULO EM TEXTO ao lado (houve, enquanto o selo morava na barra de telas): hoje
+     ele fica sozinho entre a pilula do projeto e o nome, e o significado inteiro vai no
+     `aria-label` do BOTAO — o selo em si e aria-hidden. E por isso que a assercao do teste mede o
+     ATRIBUTO e nao o texto: sem ele, este botao seria anunciado como "IA" (as letras) ou, pior,
+     sem nome nenhum. */
+  .ia-off,.ia-on{position:relative;display:inline-flex;align-items:center;justify-content:center;
+    box-sizing:border-box;width:1.7em;height:1.7em;margin:-3px 0;border-radius:50%;
+    border:2px solid var(--danger);background:var(--teal-soft);color:var(--teal-deep);
+    font-weight:700;letter-spacing:.04em;line-height:1;flex:none;}
+  /* O ESTADO ATIVADO E O MESMO SELO, so trocando a cor do anel: os dois dizem "IA", e a UNICA
+     diferenca entre eles e a BARRA — que e exatamente o que um sinal de proibicao e, na gramatica
+     ISO. O anel verde carrega o "permitido" sozinho, sem um segundo simbolo.
+     UM CHECK POR CIMA DAS LETRAS FOI TENTADO E MEDIDO — com ✔, com ☑ e com ✓ — e nao sobrevive a
+     20px: a barra e uma LINHA que cruza (nega sem ocupar o miolo), enquanto o check e um SIMBOLO
+     CHEIO que disputa os mesmos ~12px com as letras, e os dois viram borrao. O ballot box e o pior
+     dos tres, porque ainda acrescenta um quadrado ao redor. Houve tambem uma versao com o check
+     SOZINHO (sem "IA"): funcionava, mas ai o selo do ativado nao dizia sobre o que ele fala.
+     PRECO ACEITO: sem check, o ativado e mais discreto — le-se "IA" e nota-se que o anel e verde e
+     que nao ha barra. Como o projeto nasce DESATIVADO, o ativado e o estado excepcional, e
+     discricao ali e acerto. */
+  .ia-on{border-color:var(--ok);}
+  /* NAO ha regra separada para o dark, e isso e consequencia da COR escolhida: --teal-deep ja
+     inverte sozinho. Houve uma, quando o miolo era --ink e virava a coisa mais clara da barra
+     no escuro; trocar a cor resolveu o mesmo problema sem excecao de tema. */
+  /* o .68em fica nas LETRAS, nao na caixa: posto no proprio .ia-off, o 1.7em passaria a resolver
+     contra a fonte ja reduzida e o selo saia com 14px em vez dos ~20 medidos (pego pelo teste). */
+  .ia-off > span{position:relative;z-index:0;font-size:.68em;}
+  .ia-off::after{content:"";position:absolute;z-index:1;left:50%;top:-1px;bottom:-1px;width:2px;
+    margin-left:-1px;background:var(--danger);transform:rotate(45deg);border-radius:1px;}
   /* nudge do rascunho: faixa fina e sobria abaixo do header (modo localStorage), com atalhos
      pra salvar como arquivo ou conectar a nuvem. Colapsavel por sessao (state nudgeHidden). */
   .nudge{display:flex;align-items:center;gap:10px;padding:6px 14px;font-size:12.5px;background:var(--amber-soft);border-bottom:1px solid var(--line);}
@@ -516,7 +573,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.31';
+const QUALILAB_VERSION = '1.4.32';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -3582,6 +3639,17 @@ function iaDupNotice(r){
   return p.length ? ` ${p.join(' e ')} de IA já estavam no projeto e não foram duplicadas.` : '';
 }
 
+/* S7 — a frase da DIVERGENCIA de declaracao (ver a nota no fim do mergeQualilabDb). Ela diz o que
+   ACONTECEU, nao o que a pessoa deveria fazer: o material entrou, e a chave do destino nao mudou.
+   Vizinha do iaDupNotice de proposito — as duas sao a mesma classe de aviso, "o numero da tela nao
+   conta a historia toda", e ficam juntas para ninguem escrever a terceira noutro canto. */
+function iaOrigemNotice(r){
+  const p = [];
+  if(r?.iaRecusadas) p.push(` ${r.iaRecusadas} registro(s) de IA do arquivo não entraram: os recursos de IA estão desativados neste projeto.`);
+  if(r?.iaOrigemSemIa) p.push(' Atenção: este material vinha de um projeto com os recursos de IA desativados, e neste projeto eles estão ativos.');
+  return p.join('');
+}
+
 async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pdfs, pdfIdx){
   const codLayer = projectMode==='individual' ? 'final' : 'individual';
   if(!db || !Array.isArray(db.documents)) throw new Error('Arquivo .qualilab sem o formato esperado');
@@ -3596,6 +3664,13 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
   const tick = makeProgressTicker(onProgress, total);
   let linhasRecusadas = 0;   // linhas recusadas pelo servidor num lote (ver bulkFails)
   let conversas = 0, memorias = 0, conversasRepetidas = 0, memoriasRepetidas = 0;
+  /* S7 — a chave do DESTINO, lida UMA vez e ANTES das escritas. Ela decide duas coisas: se as
+     conversas/memorias do arquivo entram (abaixo), e a frase de divergencia de declaracao (no
+     fim). Ler no fim serviria para a frase e chegaria tarde demais para o gate. */
+  let destinoAi = 'none';
+  try{ destinoAi = ((await store.getProjectFlags?.(projectId)) || {}).restrict_ai || 'none'; }catch(e){}
+  const iaBloqueada = destinoAi === 'all';
+  let iaRecusadas = 0;
 
   if(store.beginBatch) store.beginBatch();
   try{
@@ -3813,8 +3888,18 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
       }
     }
 
+    /* S7 — projeto com a IA desativada NAO recebe conversa nem memoria de IA, e o resumo diz o
+       motivo pelo nome. A RLS ja recusa isto no servidor (can_use_ai nas policies de insert), e
+       sem este gate o merge cairia no contador GENERICO de `linhasRecusadas` — "3 linha(s)
+       recusadas (permissao/RLS ou dado invalido)", que passa por bug e nao por regra. Vale nos
+       tres stores de proposito: rascunho e arquivo nao tem servidor pra recusar, e deixar o mesmo
+       gesto se comportar diferente por modo seria pior que a recusa. */
+    if(iaBloqueada){
+      iaRecusadas = (db.ia_results||[]).filter(r=>r && r.result).length
+                  + (db.ia_memory ||[]).filter(e=>e && e.content).length;
+    }
     // diário de insights da IA: preserva memórias (conteúdo/origem/modelo/autor) do arquivo
-    if(store.addMemory){
+    if(store.addMemory && !iaBloqueada){
       // PERF: as duas ultimas fases que ficaram 1-a-1 na conversao pra lote. Aqui era ate
       // 2 round-trips por memoria (addMemory + setMemoryActive nas desativadas); o
       // addMemoriesBulk grava `active` direto na linha, entao o segundo some.
@@ -3835,7 +3920,7 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
 
     // conversas salvas de IA: o buildQualilabDb exporta ia_results, então o merge precisa
     // reimportá-las — sem isto o round-trip .qualilab (e "Enviar para a nuvem") as descartava
-    if(store.addIaResult){
+    if(store.addIaResult && !iaBloqueada){
       const conv = dedupeByField(await readExisting(store, 'listIaResults', projectId),
         (db.ia_results||[]).filter(r=>r && r.result)
           .map(r=>({ scope:r.scope||'docs', mode_label:r.mode_label||'', result:r.result, author_name:r.author_name, created_at:r.created_at })),
@@ -3854,7 +3939,19 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
     if(store.endBatch) await store.endBatch();
   }
 
+  /* S7 — ABRIR NAO E MESCLAR, e esta e a metade "mesclar". A chave do DESTINO nao se mexe: a
+     decisao sobre usar IA e do PROJETO, nao do conteudo que entra nele — deixar um arquivo
+     importado desligar (ou ligar) a IA do projeto de quem importa seria o conteudo mandando na
+     configuracao do estudo alheio. Quem ABRE o .qualilab pega a chave junto, porque ali o projeto
+     E aquele; o createFileStore le o `_meta` e nao precisa de nada daqui.
+     O QUE NAO PODE PASSAR CALADO e a DIVERGENCIA: material que veio de um projeto que declarava
+     nao usar IA, entrando num projeto onde a IA esta ligada, e um evento metodologico — o texto
+     passa a poder ir a um modelo, e ninguem tomou essa decisao conscientemente. Mesma familia do
+     §7 do REFI: avisar no ponto do import, com o que de fato aconteceu. */
+  const iaOrigemSemIa = ((db._meta && db._meta.restrict_ai) || 'none') === 'all' && !iaBloqueada;
+
   return {
+    iaOrigemSemIa, iaRecusadas,
     documentos:(db.documents||[]).length, categorias:(db.categories||[]).length, codigos:(db.codes||[]).length,
     trechos:(db.codings||[]).length, memos:(db.memos||[]).length,
     // conversas/memorias contam o que FOI GRAVADO, nao o que veio no arquivo: sao as duas unicas
@@ -5042,7 +5139,64 @@ function maskQuoteSpans(coding, codingsInDoc, maskedIds, content){
   for(let i=merged.length-1;i>=0;i--) q = q.slice(0,merged[i][0]) + '[censurado]' + q.slice(merged[i][1]);
   return q;
 }
-function buildWebAnnotations(docs, codes, allC, memos, project, anonymize, pageOf){
+/* S7 — A DECLARACAO SOBRE USO DE IA. Ela RELATA, nunca PROMETE, e essa e a regra inteira.
+
+   O desenho anterior era uma frase datada ("declara nao usar IA generativa desde <data>") e o
+   defeito dela e o que esta funcao existe para nao repetir: **pressupunha uso anterior**, e o caso
+   comum e o projeto que nasceu sem IA — a data transformava t0 limpo em suspeita. E frase que
+   assusta convida o pesquisador a arranca-la, que e o oposto do que ela existe para fazer.
+
+   SAO DOIS FATOS, e FUNDI-LOS RECRIA O DEFEITO por outra porta:
+     - DISPONIBILIDADE, que vem do interruptor + da trava `ai_ever_enabled`;
+     - USO, que vem do que se CONTA no projeto (conversas salvas, memorias; com a S8, as
+       codificacoes de origem assistida).
+   Projeto que ativou a IA e nunca a usou nao pode ser lido como tendo usado. Por isso o estado do
+   meio existe e diz as duas coisas na mesma frase.
+
+   NADA AQUI DEPENDE DE HISTORIA QUE O PROJETO NAO ENXERGA — e por isso a frase nao tem como mentir
+   em sentido nenhum: nao pressupoe uso que nao houve, nao nega uso que houve, e nao confunde ter a
+   porta aberta com ter passado por ela. NAO ha data e NAO ha promessa.
+
+   O TETO HONESTO VAI JUNTO, no mesmo bloco: isto descreve o que passou PELO APP. Nao e garantia
+   tecnica e nao alcanca copiar-colar para outra aba — prometer mais seria falsa seguranca, que e
+   pior do que nao ter o recurso. */
+const AI_DECL_TETO = 'Esta declaração descreve o que passou pelo QualiLab. Não é uma garantia técnica: material pode ter sido levado a outras ferramentas por fora do aplicativo.';
+function aiUsageStatement({ restrictAi, aiEverEnabled, conversas, memorias, codificacoes } = {}){
+  const nConv = Number(conversas) || 0, nMem = Number(memorias) || 0, nCod = Number(codificacoes) || 0;
+  const houve = nConv + nMem + nCod > 0;
+  /* A CONTAGEM TAMBEM E PROVA DE DISPONIBILIDADE, e sem isto a frase NEGA USO QUE HOUVE — o outro
+     lado exato do defeito da versao datada. Nao e caso sintetico: dado LEGADO cai nele. Projeto
+     criado antes desta versao nao tem `ai_ever_enabled` (o `.qualilab` de entao nao carregava o
+     campo, e um rascunho antigo tambem nao), entao a trava chega apagada; se ele tiver conversas
+     salvas, a frase afirmaria que a IA nunca foi ativada num projeto que a usou. Na nuvem isto
+     nao acontece — o backfill acendeu a trava de todo projeto existente, e a RLS so deixa gravar
+     conversa onde a IA esta disponivel —, mas o cliente le arquivo, e arquivo velho existe.
+     Achado pelo tests/relatorio_ia.spec.mjs, que semeou exatamente esse estado. */
+  const disponivel = !!aiEverEnabled || houve;
+  let frase;
+  if(!disponivel){
+    // a trava nunca acendeu: os paineis nunca estiveram disponiveis neste projeto
+    frase = 'Os recursos de IA não foram ativados neste projeto.';
+  } else if(!houve){
+    frase = 'Os recursos de IA estiveram disponíveis neste projeto; não há conversas nem memórias de IA registradas.';
+  } else {
+    const p = [];
+    if(nConv) p.push(`${nConv} conversa(s) de IA`);
+    if(nMem)  p.push(`${nMem} memória(s) de IA`);
+    if(nCod)  p.push(`${nCod} codificação(ões) de origem assistida`);
+    frase = `Os recursos de IA estiveram disponíveis neste projeto; há ${p.join(', ')} registrada(s).`;
+  }
+  // o estado ATUAL do interruptor so entra quando ele de fato restringe: dizer "estao ativados"
+  // seria ruido, ja que e o padrao de quem tem a trava acesa.
+  if(restrictAi === 'all')          frase += ' Atualmente os recursos de IA estão desativados para todos os pesquisadores.';
+  else if(restrictAi === 'members') frase += ' Atualmente os recursos de IA estão disponíveis apenas para os administradores do projeto.';
+  return frase + ' ' + AI_DECL_TETO;
+}
+
+// `aiDecl` (S7) e a frase pronta do aiUsageStatement, ou null quando o pesquisador desmarcou a
+// caixa no Relatorio. Ela entra como extensao `qualilab:` porque nao ha campo normativo no W3C
+// para isto — mesmo lugar onde o memo de projeto ja mora.
+function buildWebAnnotations(docs, codes, allC, memos, project, anonymize, pageOf, aiDecl){
   const docById={}; docs.forEach(d=>docById[d.id]=d);
   const { codeMemo, docMemo, codingMemo, projectMemo } = indexMemos(memos);
   const redactionCodeIds = new Set(codes.filter(c=>c.is_redaction).map(c=>c.id));
@@ -5099,14 +5253,15 @@ function buildWebAnnotations(docs, codes, allC, memos, project, anonymize, pageO
     total: items.length,
     // metadados não-normativos (extensão QualiLab): visão geral + fontes referenciadas
     'qualilab:overview': projectMemo || undefined,
+    'qualilab:aiUsage': aiDecl || undefined,
     'qualilab:sources': docs.map(d=>({ id:'urn:qualilab:document:'+d.id, name:d.name, note: docMemo[d.id]||undefined })),
     first:{ id: pageId, type:'AnnotationPage', partOf: collId, startIndex: 0, items }
   };
   return collection;
 }
-function exportWebAnnotations(docs, codes, allC, memos, project, anonymize, pageOf){
+function exportWebAnnotations(docs, codes, allC, memos, project, anonymize, pageOf, aiDecl){
   download((project?.name||'projeto').replace(/[^\w\-]+/g,'_')+(anonymize?'_anon':'')+'_anotacoes.json',
-    JSON.stringify(buildWebAnnotations(docs, codes, allC, memos, project, anonymize, pageOf),null,2), 'application/ld+json');
+    JSON.stringify(buildWebAnnotations(docs, codes, allC, memos, project, anonymize, pageOf, aiDecl),null,2), 'application/ld+json');
 }
 
 /* Leitor de Transparência: página HTML auto-contida (sem rede, sem build) que mostra
@@ -5114,7 +5269,7 @@ function exportWebAnnotations(docs, codes, allC, memos, project, anonymize, page
    o excerto e a autoria — o equivalente ao overlay do ATI, mas hospedável por você (ex.:
    uma subpasta do GitHub Pages). Reaproveita buildRuns/codeColor; pré-renderiza os runs
    pra não precisar embarcar lógica do app. */
-function buildTransparencyReaderHTML(docs, codes, allC, memos, project, anonymize, pageOf){
+function buildTransparencyReaderHTML(docs, codes, allC, memos, project, anonymize, pageOf, aiDecl){
   const codeById={}; codes.forEach(c=>codeById[c.id]=c);
   const colorOf = (id)=>{ const c=codeById[id]; return c ? codeColor(c.hue, c.depth, c.hue_deg, false, c.sat) : {tint:'#eee',solid:'#888'}; };
   const { codeMemo, docMemo, codingMemo, projectMemo } = indexMemos(memos);
@@ -5176,6 +5331,10 @@ function buildTransparencyReaderHTML(docs, codes, allC, memos, project, anonymiz
   docs.forEach(d=>{ if(docMemo[d.id]) anns['doc:'+d.id]={ code:d.name, color:'#00427A', author:'', note:docMemo[d.id] }; });
   codes.filter(c=>showIds.has(c.id)).forEach(c=>{ if(codeMemo[c.id]) anns['code:'+c.id]={ code:codePathFor(codes,c.id).join(' › '), color:codeColor(c.hue,c.depth,c.hue_deg,false,c.sat).solid, author:'', note:codeMemo[c.id] }; });
   const overview = projectMemo ? `<div class="overview"><h3>Visão geral</h3><div>${xmlEsc(projectMemo).replace(/\n/g,'<br>')}</div></div>` : '';
+  /* S7 — a declaracao vai como PROSA, e o SELO nao vem junto: ele e chrome do app, para quem esta
+     sob a restricao. Aqui quem carrega o significado e a frase. Reusa a classe .overview para nao
+     inventar estilo novo dentro da pagina gerada. */
+  const aiBlock = aiDecl ? `<div class="overview"><h3>Uso de IA</h3><div>${xmlEsc(aiDecl)}</div></div>` : '';
   const docsCtrl = docs.length>1 ? `<div class="docctrl"><span>${docs.length} documentos</span><button onclick="allDocs(true)">expandir todos</button><button onclick="allDocs(false)">recolher todos</button></div>` : '';
   const dataJson = JSON.stringify(anns).replace(/</g,'\\u003c');
   const title = xmlEsc(project?.name || 'Projeto QualiLab');
@@ -5232,7 +5391,7 @@ footer a{color:var(--teal)}
 </style></head><body>
 <header><h1>${title}</h1><div class="sub">Apêndice de Transparência (gerado pelo QualiLab)</div></header>
 <div class="wrap">
-  <div class="main">${overview}${legend}${docsCtrl}${docsHtml}</div>
+  <div class="main">${overview}${aiBlock}${legend}${docsCtrl}${docsHtml}</div>
   <div class="aside"><div id="panel"><h3>Nota analítica</h3><p class="muted">Clique no título de um documento para abrir/fechar. Para ver uma nota, clique num trecho grifado, ou no ● do título (memo do documento) ou de um código na legenda.</p></div></div>
 </div>
 <footer>Gerado com <a href="https://luizpf42.github.io/QualiLab/">QualiLab</a> · padrão de anotação compatível com W3C Web Annotation / ATI</footer>
@@ -5269,8 +5428,8 @@ document.addEventListener('click',function(e){
 });
 <\/script></body></html>`;
 }
-function exportTransparencyReader(docs, codes, allC, memos, project, anonymize, pageOf){
-  const htmlStr = buildTransparencyReaderHTML(docs, codes, allC, memos, project, anonymize, pageOf);
+function exportTransparencyReader(docs, codes, allC, memos, project, anonymize, pageOf, aiDecl){
+  const htmlStr = buildTransparencyReaderHTML(docs, codes, allC, memos, project, anonymize, pageOf, aiDecl);
   download((project?.name||'projeto').replace(/[^\w\-]+/g,'_')+(anonymize?'_anon':'')+'_transparencia.html', htmlStr, 'text/html;charset=utf-8');
 }
 
@@ -5752,7 +5911,21 @@ function LocalStore(){
     async changePassword(){ throw new Error('Sem conta no modo local'); },
     async resetPassword(){ throw new Error('Sem conta no modo local'); },
     async changeDisplayName(newName){ name = newName || name; try{ localStorage.setItem('qualilab:name', name); }catch(e){} },
-    async createProject(pn,disp,pmode){ return { id:'local', name:pn||'Projeto local', code:'LOCAL', created_by:'local-user', mode:pmode||'individual' }; },
+    async createProject(pn,disp,pmode,restrictAi){
+      /* S7: a escolha do t0 vale no rascunho tambem, e mora DENTRO do db (o blob
+         'qualilab:local'), nunca numa chave de usuario — e decisao do ESTUDO, e por isso viaja no
+         .qualilab e sobrevive ao "Limpar conteudo" (clearProject so mexe no material).
+         SO ESCREVE SE VEIO VALOR, e isto NAO e defensividade: este metodo e chamado a cada
+         ENTRADA no rascunho (enterLocalOffline e o boot chamam `createProject()` seco para
+         reabrir o mesmo db), entao carimbar um default aqui apagaria a declaracao do projeto a
+         cada boot — em silencio, que e o pior modo. */
+      if(restrictAi!==undefined){
+        db.restrict_ai = (restrictAi==='members'||restrictAi==='all') ? restrictAi : 'none';
+        if(db.restrict_ai !== 'all') db.ai_ever_enabled = true;
+        save();
+      }
+      return { id:'local', name:pn||'Projeto local', code:'LOCAL', created_by:'local-user', mode:pmode||'individual', restrict_ai:db.restrict_ai||'none', ai_ever_enabled:!!db.ai_ever_enabled };
+    },
     async joinProject(){ return { id:'local', name:'Projeto local', code:'LOCAL', created_by:'local-user', mode:'collective' }; },
     async myRole(){ return 'admin'; },
     async listMembers(){ return [{ user_id:'local-user', display_name:name, role:'admin' }]; },
@@ -5766,8 +5939,29 @@ function LocalStore(){
     async listAssignments(){ return P([]); },
     async setAssignment(){ return P(); },
     async replaceAssignments(){ return P(); },
-    async setProjectFlags(){ return P(null); },
-    async getProjectFlags(){ return P(null); },
+    /* S7 — EXCECAO ANOTADA a regra de ouro #5 (stub inerte nos tres stores): `restrict_ai` NAO e
+       inerte aqui. blind/restrict_docs governam EQUIPE, que rascunho nao tem; este governa o
+       CORPUS, que viaja junto — sem isto, salvar como .qualilab e reabrir seria a rota de fuga da
+       declaracao, e o contrato de Ulisses duraria um clique.
+       ESCREVER SEM LER e a armadilha da casa: `_meta.mode` e gravado e nunca lido (setProjectMode
+       e no-op), e por isso semear modo coletivo num rascunho nao faz nada. Se estes dois
+       continuassem devolvendo null, a resposta do t0 ficaria gravada e nunca aplicada — a
+       pergunta viraria teatro e o arquivo sairia declarando o que o app nao honrou.
+       `ai_ever_enabled` e trava de uma via aqui tambem: so vai de false pra true. */
+    async setProjectFlags(pid, { restrictAi }={}){
+      if(restrictAi==='none'||restrictAi==='members'||restrictAi==='all'){
+        db.restrict_ai = restrictAi;
+        if(restrictAi !== 'all') db.ai_ever_enabled = true;
+        save();
+      }
+      return P({ blind:false, restrict_docs:false, restrict_ai:db.restrict_ai||'none', ai_ever_enabled:!!db.ai_ever_enabled });
+    },
+    /* AUSENCIA E PRESERVADA AQUI, e coalescida por quem consome (`restrict_ai || 'none'` no
+       useProjFlags). Nao e capricho: `null` e a UNICA forma de distinguir "nunca respondeu" de
+       "respondeu 'none'", e e disso que o enterLocalOffline precisa para nao refazer a pergunta
+       do t0 a cada reentrada no rascunho. Na nuvem a coluna e not null, entao null aqui nunca
+       colide com um valor legitimo de la. */
+    async getProjectFlags(){ return P({ blind:false, restrict_docs:false, restrict_ai:db.restrict_ai ?? null, ai_ever_enabled:!!db.ai_ever_enabled }); },
     listDocuments(){ return P(db.documents.slice()); },
     addDocument(pid,{id,name:dn,content}){ const d={id:id||uid(),name:dn,content,created_at:new Date().toISOString()}; db.documents.push(d); save(); return P(d); },
     renameDocument(id,dn){ const d=db.documents.find(x=>x.id===id); if(d) d.name=dn; save(); return P(); },
@@ -5785,7 +5979,10 @@ function LocalStore(){
     // "limpar projeto" apaga o material, NÃO o diário de insights nem as conversas salvas
     // de IA (a versão antiga recriava o db sem essas chaves e as destruía junto) — nem a
     // configuração do estudo, que mora em memos de projeto (ver MEMO_MATERIAL_SCOPES)
-    clearProject(){ const ids=db.documents.map(d=>d.id); const keepMemos=(db.memos||[]).filter(m=>!MEMO_MATERIAL_SCOPES.includes(m.scope)); db={ documents:[], categories:[], doc_values:[], codes:[], codings:[], memos:keepMemos, ia_results:db.ia_results||[], ia_memory:db.ia_memory||[] }; ids.forEach(id=>IDB.delBlob(id)); save(); return P(); },
+    // o db e RECONSTRUIDO por lista branca aqui, entao campo de CONFIGURACAO tem de ser repetido
+    // explicitamente ou some no "Limpar conteudo" — restrict_ai/ai_ever_enabled sao decisao do
+    // ESTUDO (como os memos de projeto e a config de IA), e sobrevivem a troca de corpus.
+    clearProject(){ const ids=db.documents.map(d=>d.id); const keepMemos=(db.memos||[]).filter(m=>!MEMO_MATERIAL_SCOPES.includes(m.scope)); db={ documents:[], categories:[], doc_values:[], codes:[], codings:[], memos:keepMemos, ia_results:db.ia_results||[], ia_memory:db.ia_memory||[], restrict_ai:db.restrict_ai||'none', ai_ever_enabled:!!db.ai_ever_enabled }; ids.forEach(id=>IDB.delBlob(id)); save(); return P(); },
     listCategories(){ return P(db.categories.slice().sort((a,b)=>a.position-b.position)); },
     addCategory(pid,cat){ const c={id:uid(),position:db.categories.length,...cat}; db.categories.push(c); save(); return P(c); },
     updateCategory(id,patch){ db.categories=db.categories.map(c=>c.id===id?{...c,...patch}:c); save(); return P(); },
@@ -5884,7 +6081,18 @@ async function createFileStore(fileHandle, isNew){
     async changePassword(){ throw new Error('Modo arquivo: sem conta de usuário'); },
     async resetPassword(){ throw new Error('Modo arquivo: sem conta de usuário'); },
     async changeDisplayName(n){ name=n||name; db._meta.displayName=name; await save(); },
-    async createProject(pn){ db._meta={...db._meta,id:'file-project',name:pn||fileHandle.name.replace(/\.qualilab$/i,''),code:'FILE',mode:'individual'}; await save(); return {id:'file-project',name:db._meta.name,code:'FILE',created_by:'file-user',mode:'individual'}; },
+    // S7: idem LocalStore — so escreve se veio valor, senao o _meta ja existente manda (este
+    // metodo tambem e chamado para ADOTAR um arquivo que ja tem projeto dentro).
+    async createProject(pn,disp,pmode,restrictAi){
+      const meta = {...db._meta, id:'file-project', name:pn||fileHandle.name.replace(/\.qualilab$/i,''), code:'FILE', mode:'individual'};
+      if(restrictAi!==undefined){
+        meta.restrict_ai = (restrictAi==='members'||restrictAi==='all') ? restrictAi : 'none';
+        if(meta.restrict_ai !== 'all') meta.ai_ever_enabled = true;
+      }
+      db._meta = meta; await save();
+      return { id:'file-project', name:meta.name, code:'FILE', created_by:'file-user', mode:'individual',
+               restrict_ai:meta.restrict_ai||'none', ai_ever_enabled:!!meta.ai_ever_enabled };
+    },
     async joinProject(){ return {id:'file-project',name:db._meta?.name||'Projeto',code:'FILE',created_by:'file-user',mode:db._meta?.mode||'individual'}; },
     async listMyProjects(){ return null; },
     async myRole(){ return 'admin'; },
@@ -5900,8 +6108,21 @@ async function createFileStore(fileHandle, isNew){
     async listAssignments(){ return []; },
     async setAssignment(){},
     async replaceAssignments(){},
-    async setProjectFlags(){ return null; },
-    async getProjectFlags(){ return null; },
+    /* S7 — ver a nota longa no LocalStore: `restrict_ai` NAO e stub inerte (excecao anotada a
+       regra de ouro #5). Aqui e o caso que a spec chama de rota de fuga: um projeto declarado,
+       salvo como .qualilab e reaberto neste store, voltava com os paineis abertos. */
+    async setProjectFlags(pid, { restrictAi }={}){
+      if(restrictAi==='none'||restrictAi==='members'||restrictAi==='all'){
+        db._meta = {...db._meta, restrict_ai:restrictAi,
+                    ai_ever_enabled: restrictAi!=='all' ? true : !!(db._meta&&db._meta.ai_ever_enabled)};
+        await save();
+      }
+      return { blind:false, restrict_docs:false, restrict_ai:(db._meta&&db._meta.restrict_ai)||'none',
+               ai_ever_enabled:!!(db._meta&&db._meta.ai_ever_enabled) };
+    },
+    async getProjectFlags(){ return { blind:false, restrict_docs:false,
+      restrict_ai:(db._meta&&db._meta.restrict_ai)||'none',
+      ai_ever_enabled:!!(db._meta&&db._meta.ai_ever_enabled) }; },
     realtime(){ return ()=>{}; },
     listDocuments(){ return P(db.documents.slice()); },
     async addDocument(pid,{id,name:dn,content}){ const d={id:id||uid(),name:dn,content,created_at:new Date().toISOString()}; db.documents.push(d); await save(); return d; },
@@ -6211,7 +6432,9 @@ function SupabaseStore(sb){
     async changeDisplayName(newName){ const nn = newName || name; const r = await sb.auth.updateUser({ data:{ name: nn } }); if(r.error) throw r.error; name = nn; if(r.data&&r.data.user) user = r.data.user; }, // #14: so muta o local apos confirmar
     // p_mode PRECISA ir na RPC: sem ele o banco grava 'collective' e o projeto "individual"
     // virava coletivo ao reabrir (bug real — o retorno local mentia o mode)
-    async createProject(pn, display, pmode){ name=display||name; const d=must(await sb.rpc('create_project',{p_name:pn,p_display:name,p_mode:pmode||'collective'})); return { id:d.id, name:d.name, code:d.code, created_by:d.created_by, mode:d.mode||pmode||'collective', blind:!!d.blind, restrict_docs:!!d.restrict_docs }; },
+    // p_restrict_ai idem (S7): a escolha do t0 morre na subida se ninguem a carregar, e o
+    // projeto que nasceu sem IA reapareceria com os paineis abertos, calado.
+    async createProject(pn, display, pmode, restrictAi){ name=display||name; const d=must(await sb.rpc('create_project',{p_name:pn,p_display:name,p_mode:pmode||'collective',p_restrict_ai:restrictAi||'none'})); return { id:d.id, name:d.name, code:d.code, created_by:d.created_by, mode:d.mode||pmode||'collective', blind:!!d.blind, restrict_docs:!!d.restrict_docs, restrict_ai:d.restrict_ai||'none', ai_ever_enabled:!!d.ai_ever_enabled }; },
     // codigo inexistente vem como NULL (a RPC nao usa raise pra nao desfazer o registro
     // do throttle de tentativas — ver join_project no schema.sql)
     async joinProject(code, display){ name=display||name; const d=must(await sb.rpc('join_project',{p_code:code,p_display:name})); if(!d || !d.id) throw new Error('Projeto não encontrado para este código'); return { id:d.id, name:d.name, code:d.code, created_by:d.created_by, mode:d.mode||'collective', blind:!!d.blind, restrict_docs:!!d.restrict_docs }; },
@@ -6234,17 +6457,21 @@ function SupabaseStore(sb){
        ORTOGONAIS: restrict_docs decide QUAIS DOCUMENTOS o membro enxerga; blind decide se ele
        enxerga a codificacao DOS OUTROS. O servidor e a autoridade (helpers can_see_doc/
        can_see_authored no schema.sql) — esconder o botao aqui nao protegeria nada. */
-    async setProjectFlags(pid, { blind, restrict }={}){
+    async setProjectFlags(pid, { blind, restrict, restrictAi }={}){
       const d = must(await sb.rpc('set_project_flags',{ p_project:pid,
         p_blind:    blind===undefined    ? null : !!blind,
-        p_restrict: restrict===undefined ? null : !!restrict }));
-      return d ? { blind:!!d.blind, restrict_docs:!!d.restrict_docs } : null;
+        p_restrict: restrict===undefined ? null : !!restrict,
+        p_restrict_ai: restrictAi===undefined ? null : String(restrictAi) }));
+      return d ? { blind:!!d.blind, restrict_docs:!!d.restrict_docs,
+                   restrict_ai:d.restrict_ai||'none', ai_ever_enabled:!!d.ai_ever_enabled } : null;
     },
     // as flags PRECISAM vir do servidor: o objeto `project` do cliente pode ter vindo do cache
-    // local de "Meus projetos", que guarda so id/name/code.
+    // local de "Meus projetos", que guarda so id/name/code. `ai_ever_enabled` e a trava de uma
+    // via: o cliente LE, nunca escreve (quem a forca e o trigger projects_ai_guard).
     async getProjectFlags(pid){
-      try{ const r = await sb.from('projects').select('blind,restrict_docs').eq('id',pid).maybeSingle();
-           return r.data ? { blind:!!r.data.blind, restrict_docs:!!r.data.restrict_docs } : null; }catch(e){ return null; }
+      try{ const r = await sb.from('projects').select('blind,restrict_docs,restrict_ai,ai_ever_enabled').eq('id',pid).maybeSingle();
+           return r.data ? { blind:!!r.data.blind, restrict_docs:!!r.data.restrict_docs,
+                             restrict_ai:r.data.restrict_ai||'none', ai_ever_enabled:!!r.data.ai_ever_enabled } : null; }catch(e){ return null; }
     },
     // o MEMBRO recebe so a propria distribuicao (policy assignments_select); o admin, o plano inteiro
     async listAssignments(pid){ try{ return must(await sb.from('assignments').select('document_id,user_id').eq('project_id',pid)); }catch(e){ return []; } },
@@ -6719,6 +6946,10 @@ function NavGroup({ title, children, defaultOpen=true }){
 // UMA LINHA de proposito: o tests/extract.mjs recorta por assinatura e nao segue array
 // multi-linha (mesma limitacao que deixa o ZOTERO_FIELDS de fora dos testes puros).
 const ROUTE_VIEWS = ['codificar','reconciliar','visualizar','graficos','memos','esquema','ia_codificar','ia_analisar','mcp','relatorio'];
+// S7 — as telas que mandam MATERIAL DO CORPUS para um modelo de terceiro, que e o eixo do
+// interruptor `restrict_ai`. A MCP/RAG entra por despejar corpus a cada turno do laco; a busca
+// semantica, o OCR e o reflow ficam de fora por rodarem 100% no navegador. UMA LINHA, idem acima.
+const AI_VIEWS = ['ia_codificar','ia_analisar','mcp'];
 
 /* '#/visualizar/abc?aba=trechos' -> { tela:'visualizar', doc:'abc', aba:'trechos' }.
 
@@ -6913,16 +7144,17 @@ function useStoreStatus(store){
    cosmético: membro em projeto cego não pode ficar na Reconciliação nem com "Ver: todos", e o
    servidor já nem manda o dado. O efeito gêmeo do `focusMode` fica na App() de propósito — aquele
    é preferência de UI do admin, não recorte imposto pelo servidor. */
+const FLAGS_INICIAIS = { blind:false, restrict_docs:false, restrict_ai:'none', ai_ever_enabled:false };
 function useProjFlags({ store, project, phase, isAdmin, setViewCoder, setMainView, onError, reloadProject }){
-  const [projFlags, setProjFlags] = useState({ blind:false, restrict_docs:false });
+  const [projFlags, setProjFlags] = useState(FLAGS_INICIAIS);
   const [assignments, setAssignments] = useState([]);  // membro recebe só a própria linha (RLS); admin, o plano inteiro
   const [assignOpen, setAssignOpen] = useState(false); // modal da matriz de distribuição
 
   /* flags + plano de distribuição, sempre do SERVIDOR (o `project` pode ter vindo do cache
      local de "Meus projetos", que guarda só id/name/code — não dá pra confiar nele aqui). */
   const loadDistribution = useCallback(async ()=>{
-    if(!store || !project){ setProjFlags({ blind:false, restrict_docs:false }); setAssignments([]); return; }
-    try{ setProjFlags((await store.getProjectFlags?.(project.id)) || { blind:false, restrict_docs:false }); }catch(e){}
+    if(!store || !project){ setProjFlags(FLAGS_INICIAIS); setAssignments([]); return; }
+    try{ setProjFlags((await store.getProjectFlags?.(project.id)) || FLAGS_INICIAIS); }catch(e){}
     try{ setAssignments((await store.listAssignments?.(project.id)) || []); }catch(e){ setAssignments([]); }
   }, [store, project]);
   useEffect(()=>{ if(phase==='work') loadDistribution(); }, [phase, loadDistribution]);
@@ -6931,6 +7163,22 @@ function useProjFlags({ store, project, phase, isAdmin, setViewCoder, setMainVie
   // Reusa a mesma máquina do focusMode, mas aqui NÃO é opcional nem só-UI: é o recorte real.
   const blindLock = projBlind && !isAdmin;
   useEffect(()=>{ if(blindLock){ setViewCoder('mine'); setMainView(v=>v==='reconciliar'?'codificar':v); } }, [blindLock]);
+  /* S7 — DESLIGAR A IA POR PROJETO. O eixo NÃO é "IA sim/não", é "material deste corpus sai para
+     modelo de terceiro?", e é ele que resolve as bordas sozinho: entram as telas de IA e a
+     MCP/RAG (laço que despeja corpus a cada turno); ficam fora a busca semântica, o OCR e o
+     reflow, que rodam 100% no navegador.
+     `aiLock` é "os painéis estão fechados PARA MIM" — em 'members' o admin segue com eles, que é
+     o caso (b) da spec (supervisão), enquanto 'all' inclui o admin de propósito, que é o
+     contrato de Ulisses do caso (a).
+     `aiEverEnabled` é a TRAVA DE UMA VIA, lida e nunca escrita pelo cliente: quem a força é o
+     trigger `projects_ai_guard`. Ela diz DISPONIBILIDADE, não uso — confundir os dois recria o
+     defeito da frase datada, que pressupunha uso anterior. */
+  const restrictAi = projFlags.restrict_ai || 'none';
+  const aiEverEnabled = !!projFlags.ai_ever_enabled;
+  const aiLock = restrictAi === 'all' || (restrictAi === 'members' && !isAdmin);
+  // sair da tela de IA em que a pessoa estava — o mesmo desvio do cego, e pelo mesmo motivo:
+  // não é cosmético, a tela deixou de existir para ela.
+  useEffect(()=>{ if(aiLock) setMainView(v=>AI_VIEWS.includes(v) ? 'codificar' : v); }, [aiLock]);
   async function changeProjectFlags(patch){
     if(!store?.setProjectFlags || !project) return;
     try{
@@ -6955,6 +7203,7 @@ function useProjFlags({ store, project, phase, isAdmin, setViewCoder, setMainVie
   }
 
   return { assignments, assignOpen, setAssignOpen, projBlind, projRestrict, blindLock,
+           restrictAi, aiLock, aiEverEnabled,
            changeProjectFlags, toggleAssignment, replaceAssignments };
 }
 
@@ -7369,6 +7618,33 @@ function App(){
   /* conexao + status de gravacao (offline, "✓ salvo", quota, backup em pasta) — ver useStoreStatus */
   const { online, saveError, lastSaved, localUsage, backupStatus, queue } = useStoreStatus(store);
   const [sendCloudOpen, setSendCloudOpen] = useState(false); // modal "Enviar para a nuvem" (projeto local/arquivo -> projeto novo na nuvem)
+  /* S7 — a pergunta do t0 nos caminhos SEM formulario. Guarda o `resolve` de uma promessa em vez
+     de um booleano: quem cria o projeto precisa ESPERAR a resposta antes de chamar createProject,
+     e com callback solto o fluxo teria de ser partido em dois (abre modal / continua depois),
+     espalhando a criacao por dois lugares. `askAiOptIn` e declaracao de funcao de proposito:
+     hoista, entao os criadores acima dela no arquivo podem chama-la. */
+  const [aiAsk, setAiAsk] = useState(null);
+  function askAiOptIn(contexto){
+    return new Promise(resolve => setAiAsk({ contexto, resolve: v => { setAiAsk(null); resolve(v); } }));
+  }
+  /* S7 — o caminho de VOLTA, atrás do selo do cabeçalho. Reativar é um ATO e por isso pede
+     confirmação explícita: sem ela, o botão que marca a ausência viraria um interruptor de um
+     clique, e o "fecha-se a porta para não poder abri-la sob pressa" deixaria de valer.
+     A frase é a mesma do cartão em Projeto → Recursos de IA (o texto vive nos dois porque são
+     dois gestos distintos para a mesma decisão), e diz o que ativar PRODUZ: um registro que gera
+     a declaração do relatório. Quem não pode alterar recebe explicação, nunca um diálogo que
+     terminaria em recusa do servidor. */
+  function reativarIa(){
+    if(!isAdmin) return setErr('O acesso à IA deste projeto é definido pelos administradores, em Projeto → Recursos de IA.');
+    if(restrictAi === 'none'){
+      // desativar tem a OUTRA frase, e ela responde a pergunta que se forma neste gesto: quem
+      // desliga supõe que apaga. Dizer isto ao ATIVAR seria abstrato.
+      if(!confirm('Desativar os recursos de IA para todos, você inclusive?\n\nOs registros de uso que já existem continuam no projeto.')) return;
+      return changeProjectFlags({ restrictAi:'all' });
+    }
+    if(!confirm('Ativar os recursos de IA neste projeto?\n\nAtivar fica registrado no projeto, e o registro gera uma declaração sobre o uso de IA — opcional — nos relatórios de pesquisa.')) return;
+    changeProjectFlags({ restrictAi:'none' });
+  }
   const [nudgeHidden, setNudgeHidden] = useState(false); // oculta o nudge do rascunho ATE recarregar (colapsavel por sessao)
   // aviso de tela pequena (.small-warn, so aparece <=720px por CSS — aqui so guardamos o "fechei")
   const [smallWarnHidden, setSmallWarnHidden] = useState(false);
@@ -7388,6 +7664,7 @@ function App(){
      antes daria TDZ. `reloadProject` é arrow de propósito: o `loadProject` só é declarado mais
      abaixo, e lê-lo aqui daria TDZ; dentro da arrow ele só é avaliado quando ela é chamada. */
   const { assignments, assignOpen, setAssignOpen, projBlind, projRestrict, blindLock,
+          restrictAi, aiLock, aiEverEnabled,
           changeProjectFlags, toggleAssignment, replaceAssignments } =
     useProjFlags({ store, project, phase, isAdmin, setViewCoder, setMainView,
                    onError: setErr, reloadProject: ()=>loadProject(store, project.id) });
@@ -7596,7 +7873,16 @@ function App(){
     try{ localStorage.setItem('qualilab:name', name); }catch(e){}
     await st.init(name);
     setUser(st.currentUser());
-    const p = await st.createProject();
+    /* S7 — a pergunta do t0 no rascunho, e ela so cabe quando o rascunho e NOVO: este caminho e
+       tambem o de REENTRADA (o botao "Só testar" reabre o mesmo db), e perguntar toda vez seria
+       cobrar a decisao a cada boot. Rascunho ANTIGO, com conteudo, herda 'none' — mesma decisao
+       do backfill do schema: quem ja usava sempre teve os paineis disponiveis, e deixa-lo
+       afirmar o contrario seria a primeira mentira do bloco do Relatorio. */
+    const f0 = await st.getProjectFlags();
+    let prai;
+    if(f0 && f0.restrict_ai == null)
+      prai = (await st.listDocuments()).length ? 'none' : await askAiOptIn('rascunho');
+    const p = await st.createProject(undefined, undefined, undefined, prai);
     openProject(p);
     setErr(null);
     setPhase('work');
@@ -7775,7 +8061,10 @@ function App(){
     if(!store || !project || !store.listIaResults){ setIaResults([]); return; }
     try{ setIaResults(await store.listIaResults(project.id) || []); }catch(e){ setIaResults([]); }
   }, [store, project]);
-  useEffect(()=>{ if(phase==='work' && (mainView==='ia_analisar'||mainView==='memos')) loadIaResults(); }, [phase, mainView, loadIaResults]);
+  // 'relatorio' entrou na lista (S7): o bloco de declaração de uso de IA CONTA as conversas
+  // salvas, e sem carregá-las aqui o número sairia zero — dizendo "não há conversas registradas"
+  // num projeto que tem, que é exatamente a mentira que a regra do bloco existe para impedir.
+  useEffect(()=>{ if(phase==='work' && (mainView==='ia_analisar'||mainView==='memos'||mainView==='relatorio')) loadIaResults(); }, [phase, mainView, loadIaResults]);
   async function saveIaResult(scope, modeLabel, result){
     await store.addIaResult(project.id, { scope, mode_label:modeLabel, result, author_name:user?.name||'anônimo' });
     await loadIaResults();
@@ -7791,7 +8080,7 @@ function App(){
     if(!store || !project || !store.listMemory){ setAiMemory([]); return; }
     try{ setAiMemory(await store.listMemory(project.id) || []); }catch(e){ setAiMemory([]); }
   }, [store, project]);
-  useEffect(()=>{ if(phase==='work' && (mainView==='ia_analisar'||mainView==='ia_codificar'||mainView==='memos')) loadMemory(); }, [phase, mainView, loadMemory]);
+  useEffect(()=>{ if(phase==='work' && (mainView==='ia_analisar'||mainView==='ia_codificar'||mainView==='memos'||mainView==='relatorio')) loadMemory(); }, [phase, mainView, loadMemory]);
   async function addMemory(entry){
     await store.addMemory(project.id, { ...entry, author_name:user?.name||'anônimo' });
     await loadMemory();
@@ -8387,7 +8676,11 @@ function App(){
     try{ memos = (await store.listMemos?.(project.id))||[]; }catch(e){}
     try{ ia_results = ((await store.listIaResults?.(project.id))||[]).slice().reverse(); }catch(e){}
     try{ ia_memory = ((await store.listMemory?.(project.id))||[]).slice().reverse(); }catch(e){}
-    return { _meta:{ id:'file-project', name:project.name||'Projeto', code:'FILE', mode:projectMode||'individual', displayName:user?.name||'pesquisador' },
+    /* S7: a declaracao viaja no `_meta`, que e de onde o createFileStore le — entao ABRIR este
+       arquivo ja honra a chave, sem codigo novo do lado de la. `ai_ever_enabled` vai junto porque
+       e trava: um projeto exportado e reaberto nao pode "esquecer" que a IA esteve disponivel. */
+    return { _meta:{ id:'file-project', name:project.name||'Projeto', code:'FILE', mode:projectMode||'individual', displayName:user?.name||'pesquisador',
+        restrict_ai: restrictAi||'none', ai_ever_enabled: !!aiEverEnabled },
       documents, categories, doc_values, codes:codesOut, codings, memos, ia_results, ia_memory };
   }
   // junta os bytes dos PDFs originais do store ativo, por docId (vazio se nenhum) — reusado pelo
@@ -8608,7 +8901,7 @@ function App(){
       await loadMemos();
       setErr(null);
       setBusy(null);
-      setImportMsg(`Importado: ${r.documentos} documento(s), ${r.categorias} categoria(s), ${r.codigos} código(s), ${r.trechos} trecho(s) codificado(s), ${r.memos} memo(s)${r.conversas?`, ${r.conversas} conversa(s) de IA`:''}${r.memorias?`, ${r.memorias} memória(s) de IA`:''}.${iaDupNotice(r)}${r.linhasRecusadas?` ATENÇÃO: ${r.linhasRecusadas} linha(s) foram recusadas pelo servidor (permissão/RLS ou dado inválido) e NÃO foram gravadas. Detalhes no console do navegador.`:''}`);
+      setImportMsg(`Importado: ${r.documentos} documento(s), ${r.categorias} categoria(s), ${r.codigos} código(s), ${r.trechos} trecho(s) codificado(s), ${r.memos} memo(s)${r.conversas?`, ${r.conversas} conversa(s) de IA`:''}${r.memorias?`, ${r.memorias} memória(s) de IA`:''}.${iaDupNotice(r)}${iaOrigemNotice(r)}${r.linhasRecusadas?` ATENÇÃO: ${r.linhasRecusadas} linha(s) foram recusadas pelo servidor (permissão/RLS ou dado inválido) e NÃO foram gravadas. Detalhes no console do navegador.`:''}`);
     }catch(e){ setBusy(null); setProgress(null); setErr('Falha ao importar .qualilab: '+(e.message||e)); }
   }
 
@@ -9008,7 +9301,10 @@ function App(){
       const st = await createFileStore(fh, isNew); setStore(st); setMode('file');
       const display = (()=>{ try{return localStorage.getItem('qualilab:name')||'pesquisador';}catch(e){return 'pesquisador';} })();
       const u = await st.init(display); setUser({...u,anon:false});
-      const p = isNew ? await st.createProject(fh.name.replace(/\.qualilab$/i,''), display) : await st.joinProject();
+      // S7: arquivo NOVO e criacao de verdade, entao pergunta; abrir um .qualilab existente nao
+      // pergunta nada — a decisao ja viajou dentro dele.
+      const p = isNew ? await st.createProject(fh.name.replace(/\.qualilab$/i,''), display, 'individual', await askAiOptIn('arquivo'))
+                      : await st.joinProject();
       openProject(p); setPhase('work');
     }catch(e){ if(e?.name!=='AbortError') setErr(String(e.message||e)); }
   };
@@ -9046,7 +9342,10 @@ function App(){
       const st = await createFileStore(fh, true);
       const display = user?.name || 'pesquisador';
       await st.init(display);
-      const p = await st.createProject(project?.name||fh.name.replace(/\.qualilab$/i,''), display);
+      // S7: a declaracao acompanha o projeto pro arquivo novo. Sem passa-la, "salvar como
+      // arquivo" seria a rota de fuga mais curta que existe — um clique, e o rascunho declarado
+      // reabre com os paineis de IA abertos.
+      const p = await st.createProject(project?.name||fh.name.replace(/\.qualilab$/i,''), display, 'individual', restrictAi);
       if(st.beginBatch) st.beginBatch();
       try{ await mergeQualilabDb(db, st, p.id, 'individual', (done,total)=>setProgress({done,total,label:'copiando'})); }
       finally{ if(st.endBatch) await st.endBatch(); }
@@ -9081,6 +9380,10 @@ function App(){
     }catch(e){ setSendCloudOpen(false); setErr(String(e.message||e)); }
   };
 
+  /* S7 — os dois caminhos de criacao SEM formulario (rascunho e arquivo novo) perguntam pelo
+     modal, que precisa render AQUI: a fase 'welcome' retorna cedo, e um modal so no return da
+     tela de trabalho nunca apareceria. Sao dois nos no topo (o htm devolve array e o Preact
+     aceita) em vez de um <div> em volta — envolver mexeria na centralizacao do Welcome. */
   if(phase==='welcome') return html`<${Welcome}
     err=${err}
     pendingFile=${pendingFile} onReopenFile=${reopenPendingFile}
@@ -9089,7 +9392,7 @@ function App(){
     onCloud=${()=>{ setErr(null); setPhase('auth'); }}
     onRascunho=${()=>enterLocalOffline()}
     onServer=${connectCustomCloud} onResetServer=${resetCustomCloud}
-  />`;
+  />${aiAsk && html`<${AiOptInModal} contexto=${aiAsk.contexto} onChoose=${aiAsk.resolve} />`}`;
 
   if(phase==='gate') return html`<div>
     <${Gate}
@@ -9097,7 +9400,7 @@ function App(){
       onOpenFile=${()=>openFileProject(false)} onNewFile=${()=>openFileProject(true)}
       onLogin=${async()=>{ try{ await store.signOut(); }catch(e){} setUser(null); setPhase('auth'); }}
       onOpen=${async (proj)=>{ try{ const p=await store.joinProject(proj.code, user?.name||''); try{localStorage.setItem('qualilab:project',JSON.stringify(p));}catch(e){} pushRecent(p); openProject(p); setPhase('work'); }catch(e){ setErr(String(e.message||e)); } }}
-      onCreate=${async (n,disp,pmode)=>{ try{ try{localStorage.setItem('qualilab:name',disp);}catch(e){} const p=await store.createProject(n,disp,pmode); try{localStorage.setItem('qualilab:project',JSON.stringify(p));}catch(e){} pushRecent(p); setUser(store.currentUser()); openProject(p); setPhase('work'); }catch(e){ setErr(String(e.message||e)); } }}
+      onCreate=${async (n,disp,pmode,prai)=>{ try{ try{localStorage.setItem('qualilab:name',disp);}catch(e){} const p=await store.createProject(n,disp,pmode,prai); try{localStorage.setItem('qualilab:project',JSON.stringify(p));}catch(e){} pushRecent(p); setUser(store.currentUser()); openProject(p); setPhase('work'); }catch(e){ setErr(String(e.message||e)); } }}
       onJoin=${async (code,disp)=>{ try{ try{localStorage.setItem('qualilab:name',disp);}catch(e){} const p=await store.joinProject(code,disp); try{localStorage.setItem('qualilab:project',JSON.stringify(p));}catch(e){} pushRecent(p); setUser(store.currentUser()); openProject(p); setPhase('work'); }catch(e){ setErr(String(e.message||e)); } }}
     />
     ${account && html`<${AccountModal} user=${user} projects=${myProjects}
@@ -9110,7 +9413,7 @@ function App(){
   <div class="app">
     <header class="top">
       <${TopNav} project=${project} mainView=${mainView} projectMode=${projectMode}
-        focusMode=${focusMode} blindLock=${blindLock} darkMode=${darkMode}
+        focusMode=${focusMode} blindLock=${blindLock} aiLock=${aiLock} darkMode=${darkMode}
         onView=${setMainView} onToggleTheme=${()=>setDarkMode(d=>!d)} />
       <div class="top-row">
         ${project && (()=>{ /* pilula do projeto: cor + rotulo + tooltip por estado de conexao */
@@ -9130,6 +9433,25 @@ function App(){
             ${csLabel} · ${project.name}${mode==='cloud'?` · ${project.code}`:''} · ${projectMode==='individual'?'individual':'coletivo'} ▾
           </button>`;
         })()}
+        ${/* S7 — O INDICADOR DE IA MORA AQUI, entre a pílula do projeto e o nome (decisão do
+              autor, 16/ago, depois de ver o render). Ele já esteve no `.seg`, e sair de lá
+              resolveu um custo MEDIDO: no estado ATIVADO ele acrescentava um 11º botão a uma
+              barra que já tem dez, ao lado de dois rótulos longos, e a ~1000px a barra quebrava
+              em duas linhas. Aqui é onde os outros estados do PROJETO já moram (o modo, a
+              distribuição, o offline), e o indicador fica sem palavra: o nome acessível vai no
+              aria-label, então o leitor de tela não perde nada e a barra não ganha texto.
+              Continua sendo o caminho de volta, e clicar continua pedindo confirmação. */''}
+        ${project && html`<button class="icon-btn" style="padding:2px 4px" onClick=${()=>reativarIa()}
+          aria-label=${restrictAi==='all' ? 'IA desativada neste projeto' : restrictAi==='members' ? 'IA restrita aos administradores' : 'IA ativada neste projeto'}
+          title=${restrictAi==='all'
+            ? 'Os recursos de IA estão desativados neste projeto, para todos. Clique para ativar. Isto não é um bloqueio técnico: o que muda é que o trabalho em massa deixa de caber dentro do QualiLab.'
+            : restrictAi==='members'
+            ? 'Os recursos de IA estão disponíveis apenas para os administradores deste projeto.'
+            : 'Os recursos de IA estão ativados neste projeto. Clique para desativar.'}>
+          ${/* os DOIS estados mostram "IA"; o que muda é o anel (verde/vermelho) e a barra, que só
+                o desativado tem — ver a nota longa no estilo.html sobre por que um check por cima
+                das letras não sobrevive a 20px. */''}
+          <span class=${restrictAi==='none' ? 'ia-on' : 'ia-off'} aria-hidden="true"><span>IA</span></span></button>`}
         ${user && html`<button class="btn sm ghost" title=${'Minha conta'+(user.email?' · '+user.email:'')} onClick=${()=>setAccount(true)}>${user.name}</button>`}
         ${projRestrict && !isAdmin && html`<span class="pill" style="background:var(--violet-soft);border-color:var(--violet);color:var(--violet)"
           title=${'Este projeto trabalha com distribuição: o administrador atribuiu '+docs.length+' documento(s) a você, e é só o que aparece aqui. Se faltar algum, peça ao administrador.'}>
@@ -9513,7 +9835,7 @@ function App(){
         <div class="pane-body scroll" style="padding:0">
           <${MemoNav} project=${project} docs=${docs} codes=${codes} codings=${allCodings} memos=${memos}
             sel=${memoSel} onSel=${setMemoSel} onRenameDoc=${renameDoc}
-            aiMemory=${aiMemory} iaResults=${iaResults} />
+            aiMemory=${aiMemory} iaResults=${iaResults} aiLock=${aiLock} />
         </div>
       </section>
       <${PaneResizer} which="side" />
@@ -9564,8 +9886,14 @@ function App(){
     : mainView==='relatorio' ? html`<${ReportView} project=${project} projectMode=${projectMode}
         docs=${docs} cats=${cats} codes=${codes} codeById=${codeById} codePath=${codePath}
         view=${viewCoder} onView=${setViewCoder} coders=${coders} userId=${user?.id} mode=${mode}
-        allCodings=${allCodings} allValues=${allValues} store=${store} memos=${memos} pdfIdx=${docPdfIdx} />`
-    : mainView==='ia_codificar' ? html`<div class="split">
+        allCodings=${allCodings} allValues=${allValues} store=${store} memos=${memos} pdfIdx=${docPdfIdx}
+        restrictAi=${restrictAi} aiEverEnabled=${aiEverEnabled} nConversasIa=${(iaResults||[]).length} nMemoriasIa=${(aiMemory||[]).length} />`
+    /* S7: os tres bracos de IA levam `&& !aiLock`. O efeito do hook ja tira a pessoa da tela, mas
+       ele roda DEPOIS do render — sem o gate aqui, um `#/ia_analisar` colado renderiza o painel
+       por um quadro antes de sair, e um quadro basta para ele montar e disparar o que dispara ao
+       montar. Cair no ULTIMO braco do ternario e o desvio SILENCIOSO que a spec pede (mesmo
+       precedente do 'mcp' no app publico). */
+    : mainView==='ia_codificar' && !aiLock ? html`<div class="split">
       <!-- CODIFICAR AUTOMATICAMENTE: tela inteira (config | resultado). 3 abas de IA (operações
            inline no turno da IA) + a aba "Repetir Codificação", que é mecânica e roda sem IA -->
       <${IACodificarPanel} project=${project} docs=${docs} codes=${codes} codeById=${codeById} codePath=${codePath}
@@ -9574,7 +9902,13 @@ function App(){
         reload=${reloadWrite} loadAll=${loadAll} onAdd=${addCode} memos=${memos} onSetMemo=${saveMemo}
         memory=${aiMemory} onAddMemory=${addMemory} onToggleMemory=${toggleMemoryActive} onDeleteMemory=${deleteMemory} />
     </div>`
-    : mainView==='ia_analisar' ? html`<div class="split">
+    : mainView==='mcp' && !aiLock ? html`<div class="split">
+      <!-- MCP/RAG: chat sobre o laco agentico. Sem painel de configuracao de proposito — o
+           material nao e escolhido antes da pergunta; o modelo pede o que precisa pelos tools -->
+      <${AgentPanel} project=${project} projectMode=${projectMode} docs=${docs} codes=${codes} cats=${cats}
+        allCodings=${allCodings} allValues=${allValues} memos=${memos} coders=${coders} pdfIdx=${docPdfIdx} />
+    </div>`
+    : mainView==='ia_analisar' && !aiLock ? html`<div class="split">
       <!-- ANALISAR COM IA: barra de Material no topo + duas telas (config | chat) -->
       <${IAAnalisarPanel} project=${project} docs=${docs} codes=${codes} codeById=${codeById} codePath=${codePath}
         activeDoc=${activeDoc} sel=${sel} store=${store} allCodings=${allCodings} memos=${memos} cats=${cats} allValues=${allValues}
@@ -9826,6 +10160,7 @@ function App(){
     isAdmin=${isAdmin} members=${members} hasDocs=${docs.length>0}
     canAssign=${mode==='cloud' && projectMode==='collective' && isAdmin}
     blind=${projBlind} restrict=${projRestrict} nAssignments=${assignments.length}
+    restrictAi=${restrictAi} onSetAi=${(v)=>changeProjectFlags({ restrictAi:v })}
     onOpenAssign=${()=>{ setProjEdit(false); loadAll(); setAssignOpen(true); }}
     onClose=${()=>setProjEdit(false)} onSetMode=${changeProjectMode}
     onSetRole=${changeMemberRole} onRemoveMember=${removeMember}
@@ -9842,7 +10177,7 @@ function App(){
 
   ${sendCloudOpen && html`<${SendToCloudModal} defaultName=${project?.name||'Projeto'}
     onBuildDb=${buildQualilabDb} onGatherPdfs=${gatherPdfs} onGatherPdfIndexes=${gatherPdfIndexes} hasPdfs=${docs.some(d=>d.has_pdf)}
-    onEnter=${enterCloudFromSend} onClose=${()=>setSendCloudOpen(false)} />`}
+    onEnter=${enterCloudFromSend} onClose=${()=>setSendCloudOpen(false)} restrictAi=${restrictAi} />`}
 
   ${pendDe('zotero') && html`<${ZoteroImportModal} pending=${pendDe('zotero')} localMode=${store?.mode==='local'}
     onCancel=${()=>setPendImport(null)} onConfirm=${doImportZotero} />`}
@@ -10112,6 +10447,7 @@ function Gate({ onCreate, onJoin, onOpen, onOpenFile, onNewFile, err, user, proj
   const [name,setName]=useState(user?.name||'');
   const [pname,setPname]=useState('');
   const [pmode,setPmode]=useState('individual'); // individual | collective
+  const [prai,setPrai]=useState('all');          // S7: nasce DESATIVADO — ativar e um ato
   const [code,setCode]=useState('');
   const list = projects||[];
   const num = (p)=>{ const bits=[];
@@ -10158,7 +10494,11 @@ function Gate({ onCreate, onJoin, onOpen, onOpenFile, onNewFile, err, user, proj
           ? 'Uso solo: cada codificação vai direto para o gabarito. Sem reconciliação.'
           : 'Múltiplos pesquisadores codificam independentemente; admin consolida o gabarito na Reconciliação.'}
       </p>
-      <button class="btn primary" style="width:100%" onClick=${()=>onCreate(pname,name,pmode)}>Criar</button>
+      ${/* S7 — a pergunta do t0, INLINE porque aqui ja existe formulario (nome e tipo); nos
+            outros dois caminhos de criacao ela vem no AiOptInModal. A redacao e a mesma nos
+            tres: mora no AiOptIn, nao aqui. */''}
+      <div style="margin:0 0 10px"><${AiOptIn} value=${prai} onChoose=${setPrai} /></div>
+      <button class="btn primary" style="width:100%" onClick=${()=>onCreate(pname,name,pmode,prai)}>Criar</button>
     </div>
     <div class="card">
       <div class="field-label">Entrar com código</div>
@@ -10178,13 +10518,82 @@ function Gate({ onCreate, onJoin, onOpen, onOpenFile, onNewFile, err, user, proj
   </div></div>`;
 }
 
+/* A PERGUNTA DO t0 — "este projeto vai usar IA?", feita na CRIACAO (S7, ago/2026).
+
+   POR QUE NA CRIACAO, e nao so no ProjectModal: e ela que PAGA a frase do Relatorio. A regra do
+   bloco de declaracao e "relata, nunca promete", e isso so fica trivialmente verdadeiro quando a
+   decisao nasce COM o projeto e nunca foi retroativa. Somada a RLS, "zero conversa de IA neste
+   projeto" vira fato do servidor, nao alegacao do cliente.
+
+   NASCE DESATIVADO E ATIVAR E UM ATO (decisao do autor): nao ha opcao pre-marcada, e fechar sem
+   responder mantem desativado. Caixa pre-marcada seria opt-out com outro nome.
+
+   A REDACAO E FONTE UNICA, e e por isso que este fragmento existe em vez de duas copias no Gate e
+   na App: sao TRES caminhos de criacao (nuvem, arquivo novo, rascunho) e o texto tem de dizer a
+   mesma coisa nos tres. Cada pedaco dele trabalha:
+     - fala de PAINEL, nao de dado: "os paineis ficam disponiveis" evita a leitura, falsa e
+       assustadora, de que algo passa a ser enviado sozinho;
+     - "nada e enviado a nenhum modelo sem voce pedir" e verdade verificavel — toda chamada e um
+       clique, e nao ha rotina de fundo que fale com provedor;
+     - "da para mudar depois" nao e enfeite: e a peca que sustenta o opt-in duro. Nascer
+       desativado so nao vira armadilha porque dizer "nao" nao tranca ninguem;
+     - a frase da TRAVA usa "fica registrado", que carrega a permanencia sem a palavra
+       "permanente" — que e o que faria o pesquisador querer arrancar o registro depois.
+
+   NO RASCUNHO o texto diz o que se GANHA ao ativar. E onde a pessoa esta conhecendo o app, e
+   nascer desativado sem uma frase de valor faz a descoberta passar pela ausencia. */
+
+// o que a IA faz por quem esta decidindo — so no rascunho, pelo motivo acima
+const AI_OPTIN_GANHO = 'sugerir codificações e categorias, conversar com o material e organizar o esquema.';
+
+function AiOptIn({ value, onChoose, contexto }){
+  const on = value === 'none';
+  return html`<div>
+    <div class="field-label">Recursos de IA</div>
+    <p class="hint" style="margin:0 0 8px;font-size:11.5px">
+      ${contexto==='rascunho'
+        ? html`Com a IA ativada, o QualiLab pode ${AI_OPTIN_GANHO} Nada é enviado a nenhum modelo sem você pedir.`
+        : html`Os painéis de IA ficam disponíveis. Nada é enviado a nenhum modelo sem você pedir.`}
+    </p>
+    <div class="row" style="gap:8px;margin-bottom:8px">
+      <button class="opt ${!on?'on':''}" style="flex:1;justify-content:center"
+        onClick=${()=>onChoose('all')}>Sem IA</button>
+      <button class="opt ${on?'on':''}" style="flex:1;justify-content:center"
+        onClick=${()=>onChoose('none')}>Ativar IA</button>
+    </div>
+    <p class="hint" style="margin:0;font-size:11.5px">
+      ${on
+        ? 'Ativar fica registrado no projeto, e o registro gera uma declaração sobre o uso de IA — opcional — nos relatórios de pesquisa.'
+        : 'As telas de IA não aparecem. Dá para mudar depois, no painel do projeto.'}
+    </p>
+  </div>`;
+}
+
+/* Modal para os caminhos que NAO tem formulario de criacao (rascunho e arquivo novo): la a
+   criacao e um clique so, e sem isto a pergunta nao teria onde aparecer. O Gate usa o AiOptIn
+   INLINE, porque ali ja existe um formulario que pergunta nome e tipo — abrir um segundo passo
+   em cima de um formulario seria cerimonia.
+   FECHAR = SEM IA, e o botao secundario diz isso com todas as letras em vez de deixar a pessoa
+   descobrir pelo Escape. */
+function AiOptInModal({ contexto, onChoose }){
+  const [val,setVal] = useState('all');
+  return html`<div class="modal-bg"><div class="modal" style="max-width:460px">
+    <h2>${contexto==='rascunho' ? 'Novo rascunho' : 'Novo projeto'}</h2>
+    <${AiOptIn} value=${val} onChoose=${setVal} contexto=${contexto} />
+    <div class="row" style="gap:8px;margin-top:14px">
+      <div class="grow"></div>
+      <button class="btn ghost" onClick=${()=>onChoose('all')}>Continuar sem IA</button>
+      <button class="btn primary" onClick=${()=>onChoose(val)}>Continuar</button>
+    </div>
+  </div></div>`;
+}
 /* ============ ENVIAR PARA A NUVEM ============
    Cria um projeto novo na nuvem e importa pra ele o projeto local/arquivo ativo, numa tacada
    so — sem passar por exportar .qualilab e importar manualmente. Auto-contido: usa seu PROPRIO
    cliente Supabase (mesma URL/key globais, sempre disponiveis quando canSendToCloud e true)
    e sua propria instancia de SupabaseStore, sem tocar no store/sessao principal do App — entrar
    de fato no projeto criado continua sendo "trocar projeto" depois, fluxo ja existente. */
-function SendToCloudModal({ defaultName, onBuildDb, onGatherPdfs, onGatherPdfIndexes, hasPdfs, onEnter, onClose }){
+function SendToCloudModal({ defaultName, onBuildDb, onGatherPdfs, onGatherPdfIndexes, hasPdfs, onEnter, onClose, restrictAi }){
   const [step, setStep] = useState('auth'); // auth | otp | project | running | done
   const [includePdfs, setIncludePdfs] = useState(false); // enviar tb os PDFs originais? (opt-in — privacidade)
   const [authTab, setAuthTab] = useState('in'); // in | up
@@ -10240,7 +10649,10 @@ function SendToCloudModal({ defaultName, onBuildDb, onGatherPdfs, onGatherPdfInd
     setErr(null); setBusy(true); setStep('running'); setProgress({done:0,total:1});
     try{
       const st = cloudRef.current;
-      const proj = await st.createProject(pname.trim()||'Projeto', st.currentUser()?.name||'pesquisador', pmode);
+      // S7: a subida e onde a decisao do t0 morre se ninguem a carregar — o p_restrict_ai da RPC
+      // existe por isto. Mesmo cuidado do p_mode, que quando faltava fazia projeto individual
+      // nascer coletivo, calado.
+      const proj = await st.createProject(pname.trim()||'Projeto', st.currentUser()?.name||'pesquisador', pmode, restrictAi);
       const db = await onBuildDb();
       const pdfs = (includePdfs && onGatherPdfs) ? await onGatherPdfs() : null;   // PDFs só com opt-in
       const pdfIdx = (pdfs && onGatherPdfIndexes) ? await onGatherPdfIndexes() : null;   // §4: índice acompanha o PDF (mesmo opt-in)
@@ -10460,7 +10872,7 @@ function AssignModal({ docs, members, assignments, allCodings, blind, restrict, 
 }
 
 function ProjectModal({ mode, user, project, projectMode, isAdmin, members, hasDocs,
-                        canAssign, onOpenAssign, blind, restrict, nAssignments,
+                        canAssign, onOpenAssign, blind, restrict, nAssignments, restrictAi, onSetAi,
                         onClose, onSetMode, onSetRole, onRemoveMember, onRename, onClear, onDelete,
                         onSaveCloud, onClearCloud, onResetCloud, onReconnectCloud, canFolderBackup, backupStatus, onEnableFolderBackup, onDisableFolderBackup,
                         canSaveAsFile, onSaveAsFile, canLeaveFile, onLeaveFile, canSendToCloud, onOpenSendToCloud, storeMode }){
@@ -10476,6 +10888,18 @@ function ProjectModal({ mode, user, project, projectMode, isAdmin, members, hasD
   // de convite e compartilhava nada — o botão agora avisa pra copiar manualmente (o código
   // está visível na pill ao lado)
   const copyCode = async ()=>{ try{ await navigator.clipboard.writeText(project.code); setCopied('ok'); }catch(e){ setCopied('fail'); } setTimeout(()=>setCopied(false),2500); };
+  /* S7 — as DUAS frases que a spec fixou, e cada uma no momento em que a expectativa se forma.
+     ATIVAR: o verbo "fica registrado" carrega a permanência da trava sem a palavra "permanente",
+     que é o que assustaria; e "opcional" já aponta a caixa do Relatório.
+     DESATIVAR: dizer isto ao LIGAR seria abstrato — quem desliga é que supõe que apaga. */
+  function askAi(v){
+    if(v===restrictAi) return;
+    if(v!=='all' && restrictAi==='all' &&
+       !confirm('Ativar os recursos de IA neste projeto?\n\nAtivar fica registrado no projeto, e o registro gera uma declaração sobre o uso de IA — opcional — nos relatórios de pesquisa.')) return;
+    if(v==='all' &&
+       !confirm('Desativar os recursos de IA para todos, você inclusive?\n\nOs registros de uso que já existem continuam no projeto.')) return;
+    onSetAi(v);
+  }
 
   return html`<div class="modal-bg"><div class="modal" style="max-width:560px">
     <h2>${project?.name||'Projeto'}</h2>
@@ -10514,6 +10938,32 @@ function ProjectModal({ mode, user, project, projectMode, isAdmin, members, hasD
         onClick=${()=>{ if(toIndividual && !confirm('Converter para Individual? Esta ação não pode ser desfeita.')) return; onSetMode(sel); }}>
         ${toIndividual?'Converter para Individual':'Salvar tipo'}</button>`}
       ${!isAdmin && html`<span class="meta">Apenas administradores alteram o tipo.</span>`}
+    </div>
+
+    <!-- RECURSOS DE IA (S7) — este card é o CAMINHO DE VOLTA, e ele não é conveniência: o projeto
+         nasce com a IA desativada, as telas somem sem deixar placeholder, e sem um lugar fixo para
+         reativar a chave ficaria inalcançável (o app pareceria ter perdido telas). Fica aqui, e
+         não no modal de distribuição, porque vale em rascunho e arquivo também. -->
+    <div class="card" style="margin-bottom:12px">
+      <div class="field-label">Recursos de IA</div>
+      <div class="row" style="gap:8px;margin:6px 0;flex-wrap:wrap">
+        <button class="opt ${restrictAi==='none'?'on':''}" style="flex:1 1 120px;justify-content:center"
+          disabled=${!isAdmin} onClick=${()=>askAi('none')}>Ativados</button>
+        ${cloud && projectMode==='collective' && html`<button class="opt ${restrictAi==='members'?'on':''}" style="flex:1 1 120px;justify-content:center"
+          disabled=${!isAdmin} onClick=${()=>askAi('members')}>Só para administradores</button>`}
+        <button class="opt ${restrictAi==='all'?'on':''}" style="flex:1 1 120px;justify-content:center"
+          disabled=${!isAdmin} onClick=${()=>askAi('all')}>Desativados</button>
+      </div>
+      <p class="hint" style="margin:0 0 6px">
+        ${restrictAi==='all' ? 'As telas de IA não aparecem para ninguém neste projeto, você inclusive.'
+          : restrictAi==='members' ? 'Os pesquisadores não têm as telas de IA; os administradores continuam com elas.'
+          : 'As telas de IA ficam disponíveis. Nada é enviado a nenhum modelo sem você pedir.'}
+      </p>
+      ${/* O QUE ISTO NÃO É, e tem de estar na tela: em BYOK o navegador fala DIRETO com o
+            provedor e qualquer pessoa copia um trecho para outra aba. Prometer bloqueio seria
+            falsa segurança — o que isto faz é limitar a TAXA, e o dano escala com volume. */''}
+      ${restrictAi!=='none' && html`<p class="meta" style="margin:0">Isto não é um bloqueio técnico: quem quiser ainda pode copiar um trecho para outra ferramenta. O que muda é que o trabalho em massa deixa de caber dentro do QualiLab.</p>`}
+      ${!isAdmin && html`<span class="meta">Apenas administradores alteram o acesso à IA.</span>`}
     </div>
 
     <!-- MEMBROS -->
@@ -10902,7 +11352,11 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
    (31 props, quase todas inputRef/doImport*) mais conta, projeto e pilulas de estado — 119
    identificadores livres e 5 setters. Cabe numa prop-objeto, o que ESCONDE a superficie em
    vez de reduzi-la. */
-function TopNav({ project, mainView, projectMode, focusMode, blindLock, darkMode,
+/* `aiLock` (S7) esconde as tres telas de IA de quem esta sob a restricao do projeto. SOME MESMO,
+   sem placeholder de "IA desativada": anunciar a quem nao pode o que ele nao pode fazer e
+   provocacao sem funcao. O INDICADOR do estado e o caminho de volta ficam na 2a LINHA do
+   cabecalho (entre a pilula do projeto e o nome), nao aqui — ver a nota na App(). */
+function TopNav({ project, mainView, projectMode, focusMode, blindLock, aiLock, darkMode,
                   onView, onToggleTheme }){
   return html`
   <div class="top-row">
@@ -10917,8 +11371,14 @@ function TopNav({ project, mainView, projectMode, focusMode, blindLock, darkMode
       <button class=${mainView==='graficos'?'on':''} onClick=${()=>onView('graficos')}>Gráficos</button>
       <button class=${mainView==='memos'?'on':''} onClick=${()=>onView('memos')}>Memos</button>
       ${!focusMode && html`<button class=${mainView==='esquema'?'on':''} onClick=${()=>onView('esquema')}>Esquema</button>`}
-      <button class=${mainView==='ia_codificar'?'on':''} onClick=${()=>onView('ia_codificar')}>Codificar Automaticamente</button>
-      <button class=${mainView==='ia_analisar'?'on':''} onClick=${()=>onView('ia_analisar')}>Analisar com IA</button>
+      ${!aiLock && html`<button class=${mainView==='ia_codificar'?'on':''} onClick=${()=>onView('ia_codificar')}>Codificar Automaticamente</button>`}
+      ${!aiLock && html`<button class=${mainView==='ia_analisar'?'on':''} onClick=${()=>onView('ia_analisar')}>Analisar com IA</button>`}
+      ${!aiLock && html`<button class=${mainView==='mcp'?'on':''} onClick=${()=>onView('mcp')}>MCP/RAG</button>`}
+      ${/* S7 — as três telas de IA somem sob `aiLock`, e SÓ isso: o indicador de estado NÃO mora
+            aqui. Ele esteve, e saiu por medição — no estado ATIVADO virava um 11º botão numa
+            barra que já tem dez, ao lado de dois rótulos longos, e a ~1000px a barra quebrava em
+            duas linhas. Hoje ele fica na 2ª linha do cabeçalho, entre a pílula do projeto e o
+            nome, que é onde os outros estados do PROJETO já moram. */''}
       <button class=${mainView==='relatorio'?'on':''} onClick=${()=>onView('relatorio')}>Relatório</button>
     </div>`}
   </div>`;
@@ -13699,7 +14159,7 @@ function ReconcileCodesAllDocs({ docs, allCodings, coders, codeById, codePath, i
 /* ============ MemoNav — painel esquerdo da aba Memos ============
    Memo do projeto + lista de documentos + árvore de códigos. Visual idêntico
    ao painel de Codificação/Leitura (mesmas classes .node-row etc). */
-function MemoNav({ project, docs, codes, codings, memos, sel, onSel, onRenameDoc, aiMemory, iaResults }){
+function MemoNav({ project, docs, codes, codings, memos, sel, onSel, onRenameDoc, aiMemory, iaResults, aiLock }){
   const treeKeys = useTreeKeys();   // a11y: as linhas aqui nao tinham NENHUM elemento focavel
   const [docsOpen, setDocsOpen] = useState(false);
   const [codesOpen, setCodesOpen] = useState(false);
@@ -13801,15 +14261,19 @@ function MemoNav({ project, docs, codes, codings, memos, sel, onSel, onRenameDoc
       </div>`)}
       ${convsOpen && (iaResults||[]).length===0 && html`<div class="meta" style="padding:6px 28px">Nenhuma conversa salva.</div>`}
     </div>
+    ${/* S7 — CONFIGURAÇÃO SOME, REGISTRO FICA. Sob `aiLock` saem as duas seções de CONFIGURAÇÃO
+          (Memo para a IA e Prompts salvos): são mobília de uma máquina que não roda. As duas de
+          REGISTRO ficam — Conversas salvas (acima) e Memória do projeto (abaixo) —, porque é o
+          que houve, e escondê-lo contradiria o bloco do Relatório, que CONTA esse registro. */''}
     <!-- Memo para a IA (contexto do projeto dedicado à IA, injetado por padrão) -->
-    <div class="node-row ${sel.scope==='ai_context'?'sel':''}" style="padding:8px 14px;cursor:pointer;border-bottom:1px solid var(--line-soft)"
+    ${!aiLock && html`<div class="node-row ${sel.scope==='ai_context'?'sel':''}" style="padding:8px 14px;cursor:pointer;border-bottom:1px solid var(--line-soft)"
       onClick=${()=>onSel({scope:'ai_context', targetId:project.id})}>
       <span style="margin-right:4px">✦</span>
       <span class="node-name" style="font-weight:600">Memo para a IA</span>
       ${hasMemo('ai_context', project.id) && html`<span class="count">●</span>`}
-    </div>
+    </div>`}
     <!-- Prompts salvos (biblioteca de prompts, escopo ai_prompt) -->
-    <div style="border-bottom:1px solid var(--line-soft)">
+    ${!aiLock && html`<div style="border-bottom:1px solid var(--line-soft)">
       <div class="node-row" style="padding:6px 14px;cursor:pointer;border-radius:0" onClick=${()=>setPromptsOpen(o=>!o)}>
         <span class="caret">${promptsOpen?'▾':'▸'}</span>
         <span style="margin-right:4px">✦</span>
@@ -13822,7 +14286,7 @@ function MemoNav({ project, docs, codes, codings, memos, sel, onSel, onRenameDoc
         <span class="node-name" style="font-size:12.5px" title=${m.label||m.content}>${m.label||m.content.slice(0,40)}</span>
       </div>`)}
       ${promptsOpen && promptMemos.length===0 && html`<div class="meta" style="padding:6px 28px">Nenhum prompt salvo. Salve na aba Analisar com IA.</div>`}
-    </div>
+    </div>`}
     <div style="border-bottom:1px solid var(--line-soft)">
       <div class="node-row" style="padding:6px 14px;cursor:pointer;border-radius:0"
         onClick=${()=>{ setMemOpen(o=>!o); onSel({scope:'ai_memory'}); }}>
@@ -14623,13 +15087,23 @@ const REPORT_GROUPS = [
   ]},
 ];
 
-function ReportView({ project, projectMode, docs, cats, codes, codeById, codePath, allCodings, allValues, store, view, onView, coders:projCoders, userId, mode, memos, pdfIdx }){
+function ReportView({ project, projectMode, docs, cats, codes, codeById, codePath, allCodings, allValues, store, view, onView, coders:projCoders, userId, mode, memos, pdfIdx,
+                      restrictAi, aiEverEnabled, nConversasIa, nMemoriasIa }){
   // §4: offset -> página no PDF original (mapa docPdfIdx carregado pelo App; null = sem índice)
   const pageOfR = (docId, off)=>{ const e=(pdfIdx||{})[docId]; return (e && e.index) ? pageOfOffset(e.index, off) : null; };
   const [enabled, setEnabled] = useState(()=>new Set(['credito','resumo','freq']));
   const [title, setTitle] = useState('');
   const [rmode, setRmode] = useState('ati'); // ati | padrao | w3c — interativo é o padrão (incentivar)
   const [anonAuthors, setAnonAuthors] = useState(false); // ocultar autoria (revisão cega) nas saídas de transparência
+  /* S7 — a declaração sobre uso de IA. LIGADA por padrão: o caminho honesto é o padrão, e quem
+     usa e não declara está fazendo uma escolha, não caindo num default. Desmarcada, o bloco
+     simplesmente não sai e o app NÃO insiste — a ferramenta não policia conduta de pesquisa.
+     A frase sai do aiUsageStatement, que é fonte única das três saídas: duas cópias derivariam,
+     e aqui a divergência seria entre o que o artefato afirma e o que o projeto tem. */
+  const [incluirIa, setIncluirIa] = useState(true);
+  const aiDecl = useMemo(()=> incluirIa ? aiUsageStatement({
+      restrictAi, aiEverEnabled, conversas:nConversasIa, memorias:nMemoriasIa }) : null,
+    [incluirIa, restrictAi, aiEverEnabled, nConversasIa, nMemoriasIa]);
   const toggle = (id)=> setEnabled(s=>{ const n=new Set(s); n.has(id)?n.delete(id):n.add(id); return n; });
   const on = (id)=> enabled.has(id);
 
@@ -14764,14 +15238,14 @@ function ReportView({ project, projectMode, docs, cats, codes, codeById, codePat
   }
 
   // --- modos de transparência: prévia ao vivo + exportação (só constrói no modo ativo) ---
-  const readerHTML = useMemo(()=> rmode==='ati' ? buildTransparencyReaderHTML(docs, codes, allCodings, memos||[], project, anonAuthors, pageOfR) : ''
-  , [rmode, docs, codes, allCodings, memos, project, anonAuthors, pdfIdx]);
+  const readerHTML = useMemo(()=> rmode==='ati' ? buildTransparencyReaderHTML(docs, codes, allCodings, memos||[], project, anonAuthors, pageOfR, aiDecl) : ''
+  , [rmode, docs, codes, allCodings, memos, project, anonAuthors, pdfIdx, aiDecl]);
   // um único build por render (texto + total saem da mesma coleção — antes construía 2×)
   const w3c = useMemo(()=>{
     if(rmode!=='w3c') return { text:'', total:0 };
-    const coll = buildWebAnnotations(docs, codes, allCodings, memos||[], project, anonAuthors, pageOfR);
+    const coll = buildWebAnnotations(docs, codes, allCodings, memos||[], project, anonAuthors, pageOfR, aiDecl);
     return { text: JSON.stringify(coll, null, 2), total: coll.total||0 };
-  }, [rmode, docs, codes, allCodings, memos, project, anonAuthors, pdfIdx]);
+  }, [rmode, docs, codes, allCodings, memos, project, anonAuthors, pdfIdx, aiDecl]);
   const w3cText = w3c.text, w3cTotal = w3c.total;
   const RMODES = [
     { id:'ati',    label:'Relatório Interativo (ATI)', desc:'Documentos com grifos clicáveis e nota analítica. HTML publicável.' },
@@ -14785,8 +15259,8 @@ function ReportView({ project, projectMode, docs, cats, codes, codeById, codePat
       <div class="row" style="gap:8px;flex-wrap:wrap">
         ${rmode==='padrao' && html`<button class="btn sm" onClick=${copy} disabled=${enabled.size===0}>${copied?'Copiado ✓':'Copiar texto'}</button>
           <button class="btn sm primary" onClick=${()=>window.print()} disabled=${enabled.size===0}>Imprimir / PDF</button>`}
-        ${rmode==='ati' && html`<button class="btn sm primary" onClick=${()=>exportTransparencyReader(docs, codes, allCodings, memos||[], project, anonAuthors, pageOfR)} disabled=${docs.length===0}>Exportar HTML</button>`}
-        ${rmode==='w3c' && html`<button class="btn sm primary" onClick=${()=>exportWebAnnotations(docs, codes, allCodings, memos||[], project, anonAuthors, pageOfR)} disabled=${docs.length===0}>Exportar JSON</button>`}
+        ${rmode==='ati' && html`<button class="btn sm primary" onClick=${()=>exportTransparencyReader(docs, codes, allCodings, memos||[], project, anonAuthors, pageOfR, aiDecl)} disabled=${docs.length===0}>Exportar HTML</button>`}
+        ${rmode==='w3c' && html`<button class="btn sm primary" onClick=${()=>exportWebAnnotations(docs, codes, allCodings, memos||[], project, anonAuthors, pageOfR, aiDecl)} disabled=${docs.length===0}>Exportar JSON</button>`}
       </div>
     </div>
     <div class="pane-body scroll" style="display:flex;gap:0;align-items:flex-start">
@@ -14841,6 +15315,12 @@ function ReportView({ project, projectMode, docs, cats, codes, codeById, codePat
           <input type="checkbox" checked=${anonAuthors} onChange=${()=>setAnonAuthors(v=>!v)} style="margin-top:2px" />
           <span><b>Ocultar autoria</b> (revisão cega): remove o nome dos codificadores da prévia e da exportação. Use ao preparar o material para avaliador cego (double-blind).</span>
         </label>`}
+        ${/* S7 — vale nas TRES saidas, entao fica FORA do `rmode!=='padrao'` que governa a de
+              cima. Ligada por padrao; desmarcar simplesmente omite o bloco. */''}
+        <label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer;margin-top:${rmode==='padrao'?'14px':'10px'};padding-top:${rmode==='padrao'?'12px':'0'};${rmode==='padrao'?'border-top:1px solid var(--line);':''}font-size:12px;color:var(--ink-soft)">
+          <input type="checkbox" checked=${incluirIa} onChange=${()=>setIncluirIa(v=>!v)} style="margin-top:2px" />
+          <span><b>Incluir informações sobre uso de IA</b>: acrescenta ao artefato uma declaração com o que o projeto registra — se os recursos de IA estiveram disponíveis e quantas conversas e memórias existem.</span>
+        </label>
       </aside>
       <${PaneResizer} which="side" />
 
@@ -14849,6 +15329,10 @@ function ReportView({ project, projectMode, docs, cats, codes, codeById, codePat
       <div id="report-print" style="flex:1;min-width:0;padding:24px 28px;max-width:840px">
         <h1 style="font-family:var(--serif);font-size:24px;margin:0 0 4px">${title.trim()||project?.name||'Relatório'}</h1>
         <p class="meta" style="margin:0 0 20px">Gerado em ${new Date().toLocaleDateString('pt-BR')}${projectMode==='collective'?' · Ver: '+viewLabel(view, projCoders):''}</p>
+        ${/* S7 — a declaração é PROSA e vem cedo, junto do cabeçalho: quem lê o relatório precisa
+              dela antes dos resultados, não num apêndice. Sem selo: ele é chrome do app. */''}
+        ${aiDecl && html`<p style="margin:0 0 20px;padding:10px 12px;border-left:3px solid var(--line);font-size:13px;line-height:1.6;color:var(--ink-soft)">
+          <b style="color:var(--ink)">Uso de IA.</b> ${aiDecl}</p>`}
 
         ${enabled.size===0 && html`<p class="hint no-print">Marque ao menos uma seção à esquerda.</p>`}
 
@@ -19712,6 +20196,596 @@ function MemoryPanel({ memory, onToggle, onDelete, onAdd, showAdd=true, bare=fal
       <button class="btn sm" style="margin-top:4px" disabled=${!draft.trim()||adding} onClick=${addManual}>＋ Adicionar à memória</button>
     </div>`}
   </div>`;
+}
+
+/* ===== MCP/RAG — SUPERFICIE DE LEITURA DO CORPUS (jul/2026) ==================================
+   Oito tools de SO-LEITURA que o modelo chama pra PEDIR o material, em vez de receber um recorte
+   fechado antes da pergunta. Contrato (nomes, argumentos, envelope, textos) fechado em
+   to-do/spec-mcp-tools.md; este bloco e a promocao dele pro codigo.
+
+   O ENTREGAVEL DURAVEL SAO AS DESCRICOES, nao os executores: eles so COMPOEM funcoes que ja
+   existiam (findMatches, maskRedactedContent, aggCounts, extractionHealth, semSuggest,
+   pageOfOffset). Se um executor precisar de logica NOVA de dominio, o desenho esta errado — e a
+   mascara de censura, em especial, nao pode ser reimplementada em lugar nenhum.
+
+   ISTO NAO E MCP, apesar do nome da tela: os tools sao funcoes JS chamadas na propria pagina, e
+   MCP so existe pra atravessar fronteira de PROCESSO. O contrato e que e o mesmo de um servidor
+   MCP de verdade (o spike do M0) — dai os nomes e o envelope identicos.
+
+   ONTOLOGIA E CONDUTA MORAM NO PREAMBULO, nao em cada descricao: as descricoes sao reenviadas a
+   CADA turno do laco, entao repetir o vocabulario oito vezes multiplicaria esse texto por oito em
+   todas as chamadas.
+   =============================================================================================== */
+// LIMITES DA SUPERFICIE DE LEITURA — soltos em ago/2026 junto com os do painel (ver a nota do
+// IA_DOC_CHAR_LIMIT). QL_LIMIT_* e QL_WINDOW_* sao EXTRAIDOS pelo gen_core.py e valem tambem na
+// porta B (extensao/plugins), onde quem administra o contexto e o cliente do fornecedor: la um teto
+// nosso baixo so impedia o modelo de pedir o que ele podia receber. A janela PADRAO subiu junto com
+// o maximo de proposito — o default e o que o modelo usa quando nao pensa no assunto, e 8k fazia
+// toda leitura nascer truncada. QL_MAX_STEPS/QL_CHAR_BUDGET sao do laco da TELA (nao viajam pro
+// servidor) e continuam existindo: sao a defesa contra laco caro, e nenhum deles e silencioso.
+const QL_LIMIT_DEF = 100, QL_LIMIT_MAX = 1000;
+const QL_WINDOW_DEF = 30000, QL_WINDOW_MAX = 400000;
+const QL_MAX_STEPS = 24;                // passos do laco por pergunta
+// NAO volte a igualar isto ao IA_TOTAL_CHAR_LIMIT (era 600k, "= IA_TOTAL_CHAR_LIMIT", e ESTOUROU):
+// nas telas de IA aquele numero e material enviado UMA vez num prompt de uma rodada; aqui e o que
+// ACUMULA no historico de um laco, e o historico inteiro e reenviado a cada passo. Pior, a unidade
+// e caractere de JSON (uuid, chaves repetidas, \n escapado), que tokeniza a ~2,6 chars/token: 600k
+// davam ~230k tokens e a Anthropic recusava a conversa inteira com "prompt is too long". 250k dao
+// ~75k tokens, com folga pro preambulo, pra prosa dos passos e pra resposta final. Modelo de janela
+// grande (Gemini 1M) aguentaria mais, mas o teto e o mesmo pros quatro de proposito: o pesquisador
+// troca de provedor sem que o comportamento da tela mude.
+const QL_CHAR_BUDGET = 250000;          // teto de material devolvido pelos tools numa conversa
+
+const QL_PREAMBLE = `Você está analisando um projeto de pesquisa qualitativa no QualiLab. Leia este vocabulário antes de chamar qualquer ferramenta; os termos abaixo têm significado técnico aqui.
+
+Documento: uma unidade do corpus (entrevista, decisão, artigo). Tem um conteúdo de texto puro, e é sobre as posições de caractere desse texto que tudo o mais se ancora.
+Código: um rótulo do esquema de análise, organizado em árvore. Código COM FILHOS é uma família: ela agrupa e, por construção, não recebe trechos diretamente. Por isso toda contagem vem em dois números, count_direct e count_with_descendants — família com direto 0 e agregado 1070 é o normal, não um erro.
+Trecho (coding): a aplicação de UM código a UM intervalo de caracteres de UM documento, por UM codificador, em UMA camada. Dois códigos no mesmo intervalo são dois trechos. Já o MESMO código no MESMO intervalo, aplicado por várias pessoas, são várias codificações de um pedaço de texto só: list_codings devolve esse pedaço UMA vez, com o campo codings listando cada aplicação — três pessoas concordando não é evidência três vezes maior.
+Camada: "individual" é o trabalho de cada pesquisador; "final" é o gabarito consolidado da equipe. Quando as duas existem, a final é a que a equipe sustenta.
+Categoria (atributo): um campo preenchido por documento (tipo, ano, tribunal). É metadado do documento, não codificação de trecho.
+Memo: texto escrito pelo pesquisador sobre o projeto, um documento, um código ou um trecho. É o raciocínio dele, não dado bruto.
+
+Conduta, sem exceção:
+1. Chame get_project antes de qualquer outra coisa.
+2. Nunca cite um trecho que você não recebeu de uma ferramenta nesta conversa. Se precisa do texto, peça o texto. Não reconstrua de memória e não parafraseie citação.
+3. Ao afirmar algo sobre codificação, diga em que camada e de que codificador ela vem.
+4. Faixas de █ são conteúdo censurado de propósito pelo pesquisador (nomes, dados identificáveis). São recorte deliberado, não lacuna do corpus e não falha de extração: não tente inferir o que está sob a máscara, não conte como dado ausente e não conclua que "o corpus não menciona" a partir delas. Elas preservam o comprimento do texto original, então os offsets continuam válidos.
+5. Você lê janelas, não documentos inteiros. Se sua conclusão vale só para o que leu, diga isso. Quando um retorno traz next_offset ou next_start diferente de nulo, há mais material: ou continue lendo, ou declare que parou.
+6. Ao usar contagem, diga qual das duas (direta ou agregada).
+7. Você não altera o projeto. Nenhuma ferramenta escreve. Sugestões de codificação são feitas ao pesquisador em palavras, para ele decidir na interface.
+8. Responda em português, com a sobriedade de quem escreve para publicação: sem elogiar a pergunta, sem prometer o que não leu.`;
+
+const QL_LAYER_PARAM = { type:'string', enum:['auto','final','individual','all'], description:'auto (padrão) = gabarito quando existir, senão individual' };
+
+const QL_TOOLS = [
+  {
+    name: 'get_project',
+    description: 'Retrato do projeto e do que existe nele. CHAME ANTES DE QUALQUER OUTRA FERRAMENTA: é aqui que você descobre se o projeto é individual ou coletivo, quais codificadores existem, se há gabarito (camada final), quais categorias podem filtrar documentos e quanto do corpus está sob censura. Se redaction.codings for maior que zero, avise o pesquisador, uma vez, de que a análise corre sobre texto parcialmente mascarado.',
+    parameters: { type:'object', properties:{} },
+  },
+  {
+    name: 'list_documents',
+    description: 'Inventário do corpus. Use para escolher o que ler: os ids devolvidos aqui são os únicos aceitos por get_document_content, list_codings e list_memos. extraction_warning presente significa que o texto pode estar corrompido na origem (PDF sem camada de texto, sem espaços, fonte quebrada, OCR de baixa confiança) — não trate ruído de extração como achado sobre o corpus, e diga ao pesquisador qual documento é.',
+    parameters: { type:'object', properties:{
+      query: { type:'string', description:'filtra por nome; casamento parcial, ignora acento e caixa' },
+      category_id: { type:'string', description:'id de categoria como retornado por get_project' },
+      value: { type:'string', description:'valor da categoria a casar; use junto de category_id' },
+      include_values: { type:'boolean', description:'traz os atributos preenchidos de cada documento (padrão falso)' },
+      layer: QL_LAYER_PARAM,
+      order: { type:'string', enum:['name','import','length','codings'], description:'padrão name' },
+      offset: { type:'integer' }, limit: { type:'integer', description:'padrão 100, máximo 1000' },
+    } },
+  },
+  {
+    name: 'get_document_content',
+    description: 'O texto de um documento, em janela. Este texto é o REFERENCIAL DE POSIÇÕES de todo o projeto: os offsets de list_codings e de search_corpus são posições de caractere nesta string, contadas do início do documento, inclusive quando você pediu uma janela do meio. Leia mais janelas antes de concluir sobre o documento inteiro, ou diga explicitamente que leu de start a end de total_length.',
+    parameters: { type:'object', properties:{
+      document_id: { type:'string', description:'id como retornado por list_documents' },
+      start: { type:'integer', description:'offset inicial no documento; padrão 0' },
+      length: { type:'integer', description:'tamanho da janela; padrão 30000, máximo 400000 (cabe um documento inteiro numa chamada)' },
+    }, required:['document_id'] },
+  },
+  {
+    name: 'search_corpus',
+    description: 'Busca literal ou por expressão regular em todos os documentos visíveis. É o caminho para achar ocorrências de um termo que você já conhece; para descobrir que termos o corpus usa, chame antes suggest_terms. A busca roda sobre o texto MASCARADO, então termo censurado não é encontrável por construção: zero ocorrências nunca prova ausência no corpus original, e isso precisa ser dito se a contagem for o ponto da resposta.',
+    parameters: { type:'object', properties:{
+      query: { type:'string' },
+      regex: { type:'boolean', description:'padrão falso' },
+      case_sensitive: { type:'boolean', description:'padrão falso' },
+      whole_word: { type:'boolean', description:'padrão falso; recomendado em termos curtos, senão "ato" casa dentro de "contrato"' },
+      document_ids: { type:'array', items:{ type:'string' }, description:'restringe a documentos, ids de list_documents' },
+      context: { type:'integer', description:'caracteres de cada lado; padrão 120, máximo 400' },
+      offset: { type:'integer' }, limit: { type:'integer' },
+    }, required:['query'] },
+  },
+  {
+    name: 'suggest_terms',
+    description: 'Descobre como o corpus FALA de um assunto. Devolve palavras e expressões extraídas do próprio texto dos documentos, ordenadas por proximidade de sentido com a consulta, calculada por um modelo de vetores que roda no navegador do pesquisador. Não devolve trechos: serve para você escolher os termos que vai passar a search_corpus. Se vier available falso, isso significa índice ausente, NÃO ausência de termos parecidos — não conclua nada a partir disso. Proximidade de vetor não é sinonímia: confirme com search_corpus antes de afirmar que o corpus trata do tema.',
+    parameters: { type:'object', properties:{
+      query: { type:'string', description:'o sentido procurado, em linguagem natural, curto' },
+      limit: { type:'integer', description:'padrão 30, máximo 200' },
+    }, required:['query'] },
+  },
+  {
+    name: 'list_codes',
+    description: 'O esquema de análise, como árvore. Use o campo path ao falar de um código com o pesquisador: nomes de subcódigos se repetem entre famílias. A contagem agregada soma cada trecho uma vez por código da cadeia, sem deduplicar (um trecho com dois subcódigos irmãos conta duas vezes na família), então não some contagens de níveis diferentes. Códigos de censura não aparecem aqui: eles não são categorias analíticas, e o que existe deles está declarado em get_project.',
+    parameters: { type:'object', properties:{
+      parent_id: { type:'string', description:'id de um código; ausente = árvore inteira a partir da raiz' },
+      depth: { type:'integer', description:'níveis a devolver; padrão todos' },
+      include_definition: { type:'boolean', description:'traz o memo de definição do código (padrão verdadeiro)' },
+    } },
+  },
+  {
+    name: 'list_codings',
+    description: 'Os trechos codificados, com o texto de cada um. É a evidência: quando você afirma que o corpus diz algo, a citação sai daqui ou de get_document_content. O campo quote é o texto real do documento naquele intervalo — cite verbatim, e nunca atribua a um codificador o que veio de outro, nem trate trabalho individual de uma pessoa como posição da equipe. Um item é UM PEDAÇO DE TEXTO, não uma aplicação de código: quando o mesmo intervalo recebeu o mesmo código de mais de um codificador (ou de um codificador e do gabarito), o item traz coding_count e codings — uma entrada por aplicação, com autor e camada — no lugar dos campos author/layer do topo. Trechos de códigos de censura não são listados.',
+    parameters: { type:'object', properties:{
+      code_id: { type:'string', description:'id como retornado por list_codes' },
+      include_descendants: { type:'boolean', description:'inclui a subárvore do código (padrão falso)' },
+      document_id: { type:'string', description:'id como retornado por list_documents' },
+      layer: QL_LAYER_PARAM,
+      author: { type:'string', description:'nome como listado em get_project.coders' },
+      offset: { type:'integer' }, limit: { type:'integer' },
+    } },
+  },
+  {
+    name: 'list_memos',
+    description: 'As notas escritas pelo pesquisador: sobre o projeto, sobre um documento, sobre um código (definição) ou sobre um trecho. É raciocínio humano sobre o material, não material: cite como opinião do pesquisador, atribuída, nunca como achado do corpus. Se um memo contradiz o que você leu no texto, aponte a divergência em vez de escolher um lado.',
+    parameters: { type:'object', properties:{
+      scope: { type:'string', enum:['project','document','code','coding','all'], description:'padrão all' },
+      target_id: { type:'string', description:'id do documento, código ou trecho, conforme o escopo' },
+      offset: { type:'integer' }, limit: { type:'integer' },
+    } },
+  },
+];
+
+const qlNorm = s => String(s==null?'':s).normalize('NFD').replace(/\p{M}/gu,'').toLowerCase();
+const qlInt = (v, def, lo, hi) => { const n = Math.floor(Number(v)); return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : def; };
+// envelope comum: total sempre declarado e next_offset dizendo se sobrou material (a conduta 5 do
+// preambulo depende disso — sem o total, "li tudo" e indistinguivel de "li a primeira pagina").
+function qlPage(items, a, extra){
+  const off = qlInt(a.offset, 0, 0, Math.max(0, items.length));
+  const lim = qlInt(a.limit, QL_LIMIT_DEF, 1, QL_LIMIT_MAX);
+  const slice = items.slice(off, off+lim);
+  return { items: slice, total: items.length, returned: slice.length,
+    next_offset: (off+slice.length < items.length) ? off+slice.length : null, ...(extra||{}) };
+}
+// 'auto' = gabarito quando existir, senao individual (a regra do pickTransparencyLayer)
+function qlLayer(rows, layer){
+  const l = layer || 'auto';
+  if(l === 'all') return rows;
+  if(l === 'final' || l === 'individual') return rows.filter(r=>(r.layer||'individual')===l);
+  return rows.filter(r=>(r.layer||'individual') === (rows.some(x=>x.layer==='final') ? 'final' : 'individual'));
+}
+
+/* O suggest_terms so pode devolver termo que o modelo TEM DIREITO DE LER, e o filtro e AQUI, na
+   fronteira, nao na construcao do indice. Por que aqui: o indice semantico e construido do texto
+   CRU e deve continuar sendo — ele tambem serve o "≈ termos" do LEITOR, que e tela de TRABALHO,
+   onde a censura aparece (mesma assimetria de o leitor mostrar o texto enquanto o ATI mascara).
+   Mascarar na construcao degradaria a busca do pesquisador para proteger OUTRA superficie, e
+   ainda obrigaria a um segundo indice (o semVocabHash invalidaria o cache).
+   O QUE ESTA EM JOGO: o indice nunca sai da maquina, mas o RETORNO desta ferramenta atravessa
+   para o modelo, que em BYOK e a API do provedor. E um nome censurado e exatamente o n-grama
+   repetido que o vocabulario melhor captura — entrega-lo aqui desmentiria o proprio QL_PREAMBLE,
+   que a cada turno manda o modelo nao inferir o que esta sob a mascara.
+   REGRA: sobrevive o termo que ainda ocorre no texto MASCARADO. Quem nao ocorre em lugar nenhum
+   vivia so dentro de faixa censurada e sai. A contagem tambem passa a ser a do mascarado — dizer
+   "10 ocorrencias" e o modelo achar 7 com search_corpus e a mesma incoerencia por outra porta.
+   A OMISSAO E DECLARADA pelo chamador (campo `notes`): corte silencioso e o bug do materialDesc,
+   em que o modelo le o recorte NOSSO como lacuna do corpus e conclui "isto nao e mencionado".
+   Custo: uma varredura por termo sobre o corpus mascarado, limitada pelo `cap` do findMatches e
+   pela contagem crua (o mascarado nunca tem mais ocorrencias que o cru). */
+function qlVisibleTerms(termos, textosMascarados){
+  const vivos = [];
+  let omitidos = 0;
+  for(const x of (termos || [])){
+    // FAIL-CLOSED: termo que ja contenha o caractere de faixa nunca sai daqui. Hoje o
+    // vocabulario nao consegue produzir um (o tokenizador do extractVocab so aceita letra),
+    // mas a invariante "nada com censura atravessa" nao pode depender dessa suposicao — e
+    // sem esta linha ele PASSARIA, porque o █ de fato ocorre no texto mascarado.
+    if(String(x.w || '').includes('█')){ omitidos++; continue; }
+    let n = 0;
+    for(const texto of textosMascarados){
+      if(!texto) continue;
+      const r = findMatches(texto, x.w, { re:false, cs:false, whole:false }, Math.max(1, x.n || 1));
+      n += (r.spans || []).length;
+    }
+    if(n > 0) vivos.push({ ...x, n });
+    else omitidos++;
+  }
+  return { termos: vivos, omitidos };
+}
+
+/* Os executores. Devolvem SEMPRE um objeto serializavel; erro e { error, hint } com o tool que
+   resolve — nunca excecao (o laco entrega o erro ao modelo, que precisa conseguir sair dele). */
+function makeQlToolRunner(ctx){
+  const { project, projectMode, docs, codes, cats, allCodings, allValues, memos, coders, pdfIdx } = ctx;
+  const docById = {}; docs.forEach(d=>{ docById[d.id] = d; });
+  const codeById = {}; codes.forEach(c=>{ codeById[c.id] = c; });
+  const redIds = new Set(codes.filter(c=>c.is_redaction).map(c=>c.id));
+  const codingsOfDoc = {}; allCodings.forEach(c=>{ (codingsOfDoc[c.document_id] = codingsOfDoc[c.document_id] || []).push(c); });
+  const kidsOf = {}; codes.forEach(c=>{ if(c.parent_id) (kidsOf[c.parent_id] = kidsOf[c.parent_id] || []).push(c); });
+  const memoOf = {}; (memos||[]).forEach(m=>{ memoOf[m.scope+':'+m.target_id] = m; });
+  const agg = aggCounts(allCodings, codes);
+  const direct = {}; allCodings.forEach(c=>{ direct[c.code_id] = (direct[c.code_id]||0)+1; });
+  // o texto MASCARADO e a unica versao que sai daqui, e ele e o referencial dos offsets: o quote
+  // de list_codings e uma FATIA dele, nao um campo mascarado a parte — assim os dois nao tem como
+  // divergir (era o jeito de o quote e o content discordarem sobre onde a censura comeca).
+  const maskCache = {};
+  const maskedOf = id => {
+    if(maskCache[id] == null) maskCache[id] = maskRedactedContent(docById[id]?.content || '', codingsOfDoc[id] || [], redIds, { fill:true });
+    return maskCache[id];
+  };
+  const pathOf = id => { const o=[]; let c=codeById[id], g=0; while(c && g++<12){ o.unshift(c.name); c = c.parent_id ? codeById[c.parent_id] : null; } return o.join(': '); };
+  const pageOf = (docId, off) => { const e = pdfIdx && pdfIdx[docId]; return (e && e.index) ? pageOfOffset(e.index, off) : null; };
+  const pagesOf = docId => { const e = pdfIdx && pdfIdx[docId]; if(!(e && e.index && e.index.length)) return null; let mx=null; for(const f of e.index) if(f.page!=null && (mx==null || f.page>mx)) mx=f.page; return mx; };
+  const subtree = id => { const out=new Set([id]); const walk=x=>(kidsOf[x]||[]).forEach(k=>{ out.add(k.id); walk(k.id); }); walk(id); return out; };
+  const analyticCodings = allCodings.filter(c=>!redIds.has(c.code_id));
+  // UM PEDACO DE TEXTO por linha, nao uma codificacao (recebe um grupo do groupCodingSpans, o mesmo
+  // consolidador das telas do app): o mesmo intervalo marcado com o MESMO codigo por tres pessoas —
+  // ou por alguem e pelo gabarito — sao tres codificacoes e UM pedaco, e repetir a citacao por
+  // codificador enche a janela do modelo com o tamanho da EQUIPE. Nao e o caso raro: com camada
+  // 'all', e com 'auto' num projeto coletivo que ainda nao reconciliou, e o normal.
+  // Nada de autoria se perde (conduta 3 do preambulo): com UMA codificacao o item e o de sempre
+  // (id/author/layer/created_at/memo no topo, forma inalterada, e e o caso dominante); com mais de
+  // uma, esses campos saem para dentro de `codings`, uma entrada por aplicacao, com a nota de trecho
+  // de cada uma. Assimetrico de proposito — a forma expandida no caso comum custaria MAIS tokens
+  // que a duplicata que ela evita.
+  const codingRow = g => {
+    const c = g.rep;
+    const m = maskedOf(c.document_id);
+    const pg = pageOf(c.document_id, c.span_start);
+    const base = { document_id:c.document_id, document_name:docById[c.document_id]?.name || '(documento removido)',
+      code: { id:c.code_id, name:codeById[c.code_id]?.name || '(código removido)', path:pathOf(c.code_id) },
+      span_start:c.span_start, span_end:c.span_end,
+      // A lost anchor NEVER falls back to the stored quote: it cannot be verified against the
+      // served (masked) text and may carry the censored text itself — finding 2 of the 1.4.21
+      // adversarial review. The omission is declared in the list_codings envelope notes.
+      quote: (c.span_start>=0 && c.span_end>c.span_start) ? m.slice(c.span_start, c.span_end) : '',
+      ...(pg!=null ? { page:pg } : {}) };
+    const quem = x => { const nota = memoOf['coding:'+x.id];
+      return { layer: x.layer||'individual', author: x.author_name||'anônimo', created_at: x.created_at,
+        ...(nota ? { memo:nota.content } : {}) }; };
+    return g.items.length === 1
+      ? { id:c.id, ...base, ...quem(c) }
+      : { ...base, coding_count: g.items.length, codings: g.items.map(x=>({ id:x.id, ...quem(x) })) };
+  };
+
+  async function run(name, args){
+    const a = args || {};
+    switch(name){
+      case 'get_project': {
+        const redC = allCodings.filter(c=>redIds.has(c.code_id));
+        let mascarados = 0;
+        docs.forEach(d=>{
+          const r = redC.filter(c=>c.document_id===d.id && c.span_end>c.span_start).map(c=>[c.span_start,c.span_end]).sort((x,y)=>x[0]-y[0]);
+          let fim = -1; r.forEach(([s,e])=>{ mascarados += Math.max(0, e - Math.max(s, fim)); fim = Math.max(fim, e); });
+        });
+        return {
+          name: project?.name || '(sem nome)',
+          mode: projectMode === 'individual' ? 'individual' : 'collective',
+          coders: (coders||[]).map(x=>x.name||x).filter(Boolean),
+          layers_present: [...new Set(allCodings.map(c=>c.layer||'individual'))],
+          counts: { documents: docs.length, codes: codes.filter(c=>!redIds.has(c.id)).length,
+            codings: analyticCodings.length, corpus_chars: docs.reduce((s,d)=>s+(d.content||'').length, 0) },
+          categories: (cats||[]).map(c=>({ id:c.id, name:c.name, kind:c.kind, ...((c.options||[]).length ? { options:c.options } : {}) })),
+          redaction: { codes: redIds.size, codings: redC.length, chars_masked: mascarados,
+            code_names: codes.filter(c=>redIds.has(c.id)).map(c=>c.name) },
+        };
+      }
+      case 'list_documents': {
+        let list = docs.slice();
+        if(a.query){ const q = qlNorm(a.query); list = list.filter(d=>qlNorm(d.name).includes(q)); }
+        if(a.category_id){
+          const cat = (cats||[]).find(c=>c.id===a.category_id);
+          if(!cat) return { error:'category_id desconhecido', hint:'as categorias e seus ids vêm de get_project' };
+          const vals = qlLayer((allValues||[]).filter(v=>v.category_id===a.category_id), a.layer);
+          const alvo = a.value == null ? null : qlNorm(a.value);
+          const ok = new Set(vals.filter(v=>alvo==null ? String(v.value||'').trim() : qlNorm(v.value)===alvo).map(v=>v.document_id));
+          list = list.filter(d=>ok.has(d.id));
+        }
+        const nC = {}; analyticCodings.forEach(c=>{ nC[c.document_id] = (nC[c.document_id]||0)+1; });
+        const ordem = a.order || 'name';
+        if(ordem==='name') list.sort((x,y)=>qlNorm(x.name).localeCompare(qlNorm(y.name)));
+        else if(ordem==='length') list.sort((x,y)=>(y.content||'').length-(x.content||'').length);
+        else if(ordem==='codings') list.sort((x,y)=>(nC[y.id]||0)-(nC[x.id]||0));
+        return qlPage(list.map(d=>{
+          const saude = extractionHealth(d.content||'', (pdfIdx && pdfIdx[d.id]) ? pdfIdx[d.id].index : null);
+          const pgs = pagesOf(d.id);
+          const row = { id:d.id, name:d.name, length:(d.content||'').length, codings_count:nC[d.id]||0 };
+          if(pgs!=null) row.pages = pgs;
+          if(!saude.ok) row.extraction_warning = saude.flags.join(' · ');
+          if(a.include_values){
+            row.values = qlLayer((allValues||[]).filter(v=>v.document_id===d.id), a.layer)
+              .map(v=>({ category:(cats||[]).find(c=>c.id===v.category_id)?.name || '(categoria removida)',
+                value:v.value, layer:v.layer||'individual', author:v.author_name||'anônimo' }));
+          }
+          return row;
+        }), a);
+      }
+      case 'get_document_content': {
+        const d = docById[a.document_id];
+        if(!d) return { error:'document_id desconhecido', hint:'os ids vêm de list_documents; são identificadores, não nomes de documento' };
+        const texto = maskedOf(d.id);
+        const start = qlInt(a.start, 0, 0, texto.length);
+        const end = Math.min(texto.length, start + qlInt(a.length, QL_WINDOW_DEF, 1, QL_WINDOW_MAX));
+        const naJanela = (codingsOfDoc[d.id]||[]).filter(c=>!redIds.has(c.code_id) && c.span_start < end && c.span_end > start);
+        return { document_id:d.id, document_name:d.name, content: texto.slice(start, end),
+          start, end, total_length: texto.length, next_start: end < texto.length ? end : null,
+          codings_in_window: qlLayer(naJanela, a.layer).map(c=>({ code:pathOf(c.code_id), span_start:c.span_start,
+            span_end:c.span_end, layer:c.layer||'individual', author:c.author_name||'anônimo' })) };
+      }
+      case 'search_corpus': {
+        if(!a.query || !String(a.query).trim()) return { error:'query vazia', hint:'passe o termo a procurar; para descobrir termos do corpus, use suggest_terms' };
+        const alvo = a.document_ids?.length ? docs.filter(d=>a.document_ids.includes(d.id)) : docs;
+        const ctxN = qlInt(a.context, 120, 0, 400);
+        const hits = [];
+        for(const d of alvo){
+          const texto = maskedOf(d.id);
+          const r = findMatches(texto, String(a.query), { re:!!a.regex, cs:!!a.case_sensitive, whole:!!a.whole_word }, 400);
+          if(r.error) return { error:`expressão regular inválida: ${r.error}`, hint:'corrija o padrão ou repita a busca com regex falso (busca literal)' };
+          for(const [s,e] of r.spans){
+            const emCima = (codingsOfDoc[d.id]||[]).filter(c=>!redIds.has(c.code_id) && c.span_start < e && c.span_end > s);
+            hits.push({ document_id:d.id, document_name:d.name, span_start:s, span_end:e,
+              context: (s>ctxN?'…':'') + texto.slice(Math.max(0,s-ctxN), s) + '[[' + texto.slice(s,e) + ']]' + texto.slice(e, e+ctxN) + (e+ctxN<texto.length?'…':''),
+              ...(pageOf(d.id,s)!=null ? { page:pageOf(d.id,s) } : {}),
+              ...(emCima.length ? { codes:[...new Set(emCima.map(c=>pathOf(c.code_id)))] } : {}) });
+          }
+        }
+        return qlPage(hits, a, { notes:['a busca roda sobre o texto mascarado: termo censurado não é encontrável'] });
+      }
+      case 'suggest_terms': {
+        if(!a.query || !String(a.query).trim()) return { error:'query vazia', hint:'descreva em poucas palavras o sentido procurado' };
+        try{
+          const { rec } = await semLoadVocab(project.id, docs);
+          if(!rec) return { available:false, reason:'o índice semântico ainda não foi construído neste projeto',
+            hint:'diga ao pesquisador que ele pode construí-lo na busca do leitor ("≈ termos"); enquanto isso, use search_corpus com os termos que você já conhece' };
+          const t = await semSuggest(project.id, String(a.query), docs, qlInt(a.limit, 30, 1, 200));
+          // filtro de censura na fronteira — ver qlVisibleTerms
+          const vis = qlVisibleTerms(t, docs.map(d=>maskedOf(d.id)));
+          const notes = ['termos extraídos do próprio corpus; proximidade de sentido não é sinonímia'];
+          if(vis.omitidos) notes.push(vis.omitidos + ' termo(s) sugerido(s) foram omitidos por só ocorrerem em trechos censurados. Isso é recorte deliberado do pesquisador, não ausência no corpus: não conclua que o assunto não é mencionado.');
+          return { available:true, terms: vis.termos.map(x=>({ term:x.w, score:Math.round(x.cos*1000)/1000, occurrences:x.n })), notes };
+        }catch(e){ return { available:false, reason:String(e?.message||e), hint:'siga com search_corpus' }; }
+      }
+      case 'list_codes': {
+        const inclDef = a.include_definition !== false;
+        const maxD = a.depth == null ? Infinity : qlInt(a.depth, 1, 1, 12);
+        if(a.parent_id && !codeById[a.parent_id]) return { error:'parent_id desconhecido', hint:'os ids de código vêm de list_codes' };
+        const monta = (c, d) => {
+          const def = inclDef ? memoOf['code:'+c.id] : null;
+          return { id:c.id, name:c.name, path:pathOf(c.id), depth:c.depth||0,
+            count_direct: direct[c.id]||0, count_with_descendants: agg[c.id]||0,
+            ...(def ? { definition:def.content } : {}),
+            ...(d < maxD ? { children:(kidsOf[c.id]||[]).filter(k=>!redIds.has(k.id)).map(k=>monta(k, d+1)) } : {}) };
+        };
+        const raiz = a.parent_id ? (kidsOf[a.parent_id]||[]) : codes.filter(c=>!c.parent_id);
+        return { items: raiz.filter(c=>!redIds.has(c.id)).map(c=>monta(c,1)), total: codes.filter(c=>!redIds.has(c.id)).length,
+          notes: redIds.size ? [`${redIds.size} código(s) de censura fora desta árvore de propósito (ver get_project)`] : [] };
+      }
+      case 'list_codings': {
+        let rows = analyticCodings;
+        if(a.code_id){
+          if(!codeById[a.code_id]) return { error:'code_id desconhecido', hint:'os ids de código vêm de list_codes' };
+          const alvo = a.include_descendants ? subtree(a.code_id) : new Set([a.code_id]);
+          rows = rows.filter(c=>alvo.has(c.code_id));
+        }
+        if(a.document_id){
+          if(!docById[a.document_id]) return { error:'document_id desconhecido', hint:'os ids vêm de list_documents' };
+          rows = rows.filter(c=>c.document_id===a.document_id);
+        }
+        rows = qlLayer(rows, a.layer);
+        if(a.author){ const q = qlNorm(a.author); rows = rows.filter(c=>qlNorm(c.author_name).includes(q)); }
+        rows = rows.slice().sort((x,y)=>x.document_id===y.document_id ? x.span_start-y.span_start : String(x.document_id).localeCompare(String(y.document_id)));
+        // consolida DEPOIS dos filtros (author/layer recortam o que entra no grupo) e depois da
+        // ordenacao (o agrupamento preserva a ordem de entrada). A consolidacao e DECLARADA: sem a
+        // nota, o total daqui contradiria em silencio o counts.codings do get_project.
+        const trechos = groupCodingSpans(rows);
+        const notes = trechos.length < rows.length
+          ? [`${rows.length} codificações do mesmo texto consolidadas em ${trechos.length} trecho(s): quando mais de um codificador (ou o gabarito) marca o MESMO intervalo com o MESMO código, o trecho vem uma vez e o campo codings lista cada aplicação, com autor e camada. O counts.codings de get_project conta aplicações, não trechos.`]
+          : [];
+        // Declared, never silent (same rule as every other partial result in this envelope):
+        // a coding whose anchor is invalid ships with an empty quote, because the stored text
+        // cannot be verified against the served document.
+        const semAncora = trechos.filter(g=>!(g.rep.span_start>=0 && g.rep.span_end>g.rep.span_start)).length;
+        if(semAncora) notes.push(`${semAncora} trecho(s) sem âncora válida no documento: o campo quote veio vazio porque o texto guardado não pôde ser conferido contra o texto servido. Não trate como citação perdida do corpus — é defeito de ancoragem do dado.`);
+        return qlPage(trechos.map(codingRow), a, notes.length ? { notes } : null);
+      }
+      case 'list_memos': {
+        const escopos = ['project','document','code','coding'];
+        const alvo = (!a.scope || a.scope==='all') ? escopos : [a.scope];
+        if(alvo.some(s=>!escopos.includes(s))) return { error:'scope inválido', hint:'use project, document, code, coding ou all' };
+        let rows = (memos||[]).filter(m=>alvo.includes(m.scope));
+        if(a.target_id) rows = rows.filter(m=>m.target_id===a.target_id);
+        // codigos de censura: o nome do codigo ja e informacao sobre o que foi removido, mas a
+        // DEFINICAO dele costuma descrever exatamente o dado sensivel — fica de fora, como os trechos
+        rows = rows.filter(m=>!(m.scope==='code' && redIds.has(m.target_id)));
+        return qlPage(rows.map(m=>({ scope:m.scope, target_id:m.target_id,
+          target_name: m.scope==='document' ? (docById[m.target_id]?.name||'(documento removido)')
+            : m.scope==='code' ? pathOf(m.target_id)
+            : m.scope==='coding' ? (docById[allCodings.find(c=>c.id===m.target_id)?.document_id]?.name || '(trecho removido)')
+            : (project?.name||'projeto'),
+          content:m.content, author:m.author_name||'anônimo', updated_at:m.updated_at })), a);
+      }
+      default:
+        return { error:`ferramenta desconhecida: ${name}`, hint:`as disponíveis são ${QL_TOOLS.map(t=>t.name).join(', ')}` };
+    }
+  }
+  return { run };
+}
+
+/* TELA "MCP/RAG": chat simples sobre o laco agentico. A UI mostra CADA CHAMADA (ferramenta,
+   argumentos e resumo do retorno) lida DO DADO, nao da narracao do modelo — a prosa dele pode
+   nao corresponder a chamada que saiu, e e justamente isso que esta tela existe pra tornar
+   verificavel. Sem config a esquerda de proposito: o material nao e escolhido antes da pergunta;
+   o modelo pede o que precisa. */
+// Janela estourada volta CRUA e em ingles, e os quatro provedores dizem isso com frases diferentes.
+// Sem traduzir, o pesquisador le "prompt is too long: 231658 tokens > 200000 maximum" e nao tem o
+// que fazer com aquilo. Fica AQUI (lado da tela) e nao junto das constantes QL_*: o gen_core.py
+// extrai o nucleo ate o comentario acima, e isto e UI, nao contrato de ferramenta.
+const QL_CTX_ERR = /prompt is too long|context[ _]length|maximum context|context window|too many tokens|input token count|exceeds the maximum number of tokens/i;
+const qlErrMsg = (m)=> QL_CTX_ERR.test(m)
+  ? 'A conversa ficou maior que a janela deste modelo. Comece outra com o botão "limpar" — cada leitura fica no histórico até o fim da conversa — ou faça perguntas mais estreitas.'
+  : m;
+
+function AgentPanel({ project, projectMode, docs, codes, cats, allCodings, allValues, memos, coders, pdfIdx }){
+  const [msgs, setMsgs] = useState([]);
+  const [input, setInput] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const [aviso, setAviso] = useState('');
+  const [, setAiPrices] = useState(null);   // so pra re-renderizar quando a tabela de preco chegar
+  const abortRef = useRef(null);
+  const bodyRef = useRef(null);
+  useEffect(()=>{ if(!AI_PRICES) loadAiPrices().then(setAiPrices); }, []);   // calculadora de custo
+  const runner = useMemo(()=>makeQlToolRunner({ project, projectMode, docs, codes, cats, allCodings, allValues, memos, coders, pdfIdx }),
+    [project, projectMode, docs, codes, cats, allCodings, allValues, memos, coders, pdfIdx]);
+  useEffect(()=>()=>{ try{ abortRef.current?.abort(); }catch(e){} }, []);
+  useEffect(()=>{ const el = bodyRef.current; if(el) el.scrollTop = el.scrollHeight; }, [msgs, busy]);
+
+  async function send(){
+    const texto = input.trim();
+    if(!texto || busy) return;
+    setInput(''); setErr(''); setAviso('');
+    const ac = new AbortController(); abortRef.current = ac;
+    let work = [...msgs, { role:'user', content:texto }];
+    setMsgs(work); setBusy(true);
+    // o orcamento e da CONVERSA, nao da pergunta: o historico inteiro volta ao modelo a cada passo,
+    // entao zerar a cada send() deixava duas perguntas caras somarem o dobro do teto sem nada acusar.
+    let gastos = msgs.reduce((n,m)=> n + (m.role==='tool' ? String(m.content||'').length : 0), 0);
+    const falhas = {};
+    try{
+      for(let passo=0; passo<QL_MAX_STEPS; passo++){
+        const r = await askAITools({ system:QL_PREAMBLE, messages:work, tools:QL_TOOLS, signal:ac.signal });
+        work = [...work, { role:'assistant', content:r.text||'', ...(r.toolCalls.length ? { tool_calls:r.toolCalls } : {}),
+          model: currentModelLabel(), usage: r.usage, est: aiCostEstimate(r.usage) }];
+        setMsgs(work);
+        if(!r.toolCalls.length) break;
+        const saidas = [];
+        for(const c of r.toolCalls){
+          let out;
+          if(c.argsError) out = { error:'os argumentos não vieram em JSON válido', hint:'repita a chamada passando um objeto JSON', recebido:c.argsError };
+          else if(gastos >= QL_CHAR_BUDGET) out = { error:'limite de material desta conversa atingido', hint:'trabalhe com o que já leu, ou peça ao pesquisador para iniciar outra conversa' };
+          else out = await runner.run(c.name, c.args);
+          // o gate acima e PRE-execucao: uma chamada que ainda cabe pode devolver ate QL_WINDOW_MAX
+          // de uma vez, entao o teto efetivo seria "orcamento + uma leitura inteira". Aqui a leitura
+          // que estoura e RECUSADA, com o que sobra dito em numero pro modelo poder se corrigir:
+          // rodar o tool de novo com janela menor nao custa nada (e local, nao ha ida ao provedor),
+          // enquanto estourar a janela do modelo perde a conversa inteira.
+          let txt = JSON.stringify(out);
+          if(!(out && out.error) && gastos + txt.length > QL_CHAR_BUDGET){
+            out = { error:'esta leitura excede o material restante desta conversa',
+              hint:`sobram cerca de ${QL_CHAR_BUDGET - gastos} caracteres; repita pedindo menos (length ou limit menores)` };
+            txt = JSON.stringify(out);
+          }
+          gastos += txt.length;
+          // duas falhas seguidas iguais = o modelo nao esta se corrigindo; laco que erra COMPOE
+          const chave = c.name + ':' + JSON.stringify(c.args||{});
+          if(out && out.error){ falhas[chave] = (falhas[chave]||0)+1; } else { delete falhas[chave]; }
+          saidas.push({ role:'tool', tool_call_id:c.id, name:c.name, content:txt, _out:out });
+        }
+        work = [...work, ...saidas];
+        setMsgs(work);
+        if(Object.values(falhas).some(n=>n>=2)){ setAviso('Interrompi: o modelo repetiu a mesma chamada com o mesmo erro. Reformule a pergunta.'); break; }
+        if(passo === QL_MAX_STEPS-1) setAviso(`Interrompi no teto de ${QL_MAX_STEPS} passos de leitura. Pergunte de novo para continuar de onde parou.`);
+      }
+    }catch(e){
+      if(e?.name !== 'AbortError') setErr(qlErrMsg(String(e?.message || e)));
+    }finally{ setBusy(false); abortRef.current = null; }
+  }
+
+  const semChave = !canAskDirect(getAIConfig());
+  /* Aviso de 1a vez: chave PROPRIA (`mcp_intro_seen`), e nao a do aviso das telas de IA — quem
+     ja dispensou aquele nunca viu ESTA tela, e reusar a chave a esconderia de todo mundo que ja
+     usa IA no app. localStorage porque e preferencia de quem le, nao decisao do estudo. */
+  const introKey = 'qualilab:mcp_intro_seen';
+  const [avisoVisto, setAvisoVisto] = useState(()=>{ try{ return localStorage.getItem(introKey)==='1'; }catch(e){ return false; } });
+  const dispensaAviso = ()=>{ try{ localStorage.setItem(introKey,'1'); }catch(e){} setAvisoVisto(true); };
+  return html`<section class="pane" style="flex:1;min-width:0;background:var(--paper)">
+    <div class="pane-head" style="gap:8px">
+      <span class="field-label" style="margin:0">MCP/RAG · leitura assistida do corpus</span>
+      ${/* A PILULA E PERMANENTE, e ambar de proposito (decisao do autor, 16/ago, ao liberar a tela
+            para o app publico). Ambar e a cor que este app ja usa para "atencao, nao erro" — a
+            faixa do rascunho, a pilula de offline —, entao ela le como ressalva e nao como falha.
+            Permanente porque a ressalva nao expira com o uso: a tela segue nova, e quem chega
+            nela pela quinta vez continua diante de uma superficie cujo formato pode mudar. */''}
+      <span class="pill" style="background:var(--amber-soft);border-color:var(--amber);color:var(--amber);flex:none"
+        title="Superfície nova: o formato das respostas e das ferramentas ainda pode mudar entre versões. Só leitura — nenhuma ferramenta altera o projeto.">experimental</span>
+      <span class="meta" style="margin-left:auto">${docs.length} documento${docs.length===1?'':'s'} · ${QL_TOOLS.length} ferramentas de leitura</span>
+      ${msgs.length>0 && html`<button class="btn sm ghost" disabled=${busy} onClick=${()=>{ if(confirm('Limpar esta conversa?')){ setMsgs([]); setErr(''); setAviso(''); } }}>limpar</button>`}
+    </div>
+    <div class="pane-body scroll" style="padding:16px" ref=${bodyRef}>
+      ${msgs.length===0 && html`<div style="max-width:520px;margin:32px auto 0">
+        ${/* A FAIXA DE PRIMEIRA VEZ diz o que "experimental" QUER DIZER — a pilula sozinha marca,
+              mas nao explica, e quem nunca viu esta tela nao tem como saber se o aviso e sobre
+              qualidade da resposta, sobre privacidade ou sobre estabilidade do formato. Some
+              depois de dispensada (localStorage, camada do NAVEGADOR: e preferencia de quem le,
+              nao decisao do estudo — mesmo criterio do aviso de 1a vez das telas de IA). */''}
+        ${!avisoVisto && html`<div class="banner warn" style="margin:0 0 14px;font-size:12.5px;line-height:1.6">
+          <b>Esta tela é experimental.</b> Ela funciona e não altera nada — as ferramentas são de
+          leitura —, mas é a superfície mais nova do QualiLab: o formato das respostas e o conjunto
+          de ferramentas ainda podem mudar entre versões. Não a use como o único registro de uma
+          análise: o que você quiser guardar, guarde em memo ou no relatório.
+          <button class="btn sm ghost" style="margin-left:8px" onClick=${dispensaAviso}>entendi</button>
+        </div>`}
+        <p class="meta" style="font-size:13px;line-height:1.7;margin:0 0 10px">Aqui a IA <b>não recebe</b> um recorte pronto: ela pede o material às ferramentas de leitura conforme precisa, e cada pedido aparece nesta tela. Pergunte em português, sobre o corpus.</p>
+        <p class="hint" style="margin:0 0 14px">Ela lê documentos, códigos, trechos, atributos e memos; busca literal e por sentido. Não escreve nada: nenhuma ferramenta altera o projeto.</p>
+        <div class="card" style="font-size:12.5px;line-height:1.6">
+          <div class="field-label" style="margin-bottom:4px">Para experimentar</div>
+          <div class="meta">"Que documentos falam de prazo e como o tema aparece?"</div>
+          <div class="meta">"Compare como os codificadores usaram a família Riscos."</div>
+          <div class="meta">"Ache trechos que contradigam a nota que escrevi no projeto."</div>
+        </div>
+      </div>`}
+      ${semChave && msgs.length===0 && html`<div class="banner warn" style="margin-top:14px">Esta tela conversa direto com o provedor, então precisa de uma chave própria de IA. Configure em <b>Minha conta</b>.</div>`}
+      ${msgs.map((m,i)=>{
+        if(m.role==='user') return html`<div key=${i} class="card" style="margin-bottom:10px;background:var(--teal-soft);border-color:var(--teal-soft)">
+          <div class="field-label" style="margin-bottom:4px">Você</div>
+          <div style="white-space:pre-wrap;font-size:13px">${m.content}</div>
+        </div>`;
+        if(m.role==='tool'){
+          const out = m._out || {};
+          const resumo = out.error ? ('erro: '+out.error)
+            : out.available===false ? out.reason
+            : out.total!=null ? `${out.returned} de ${out.total}${out.next_offset!=null?' (há mais)':''}`
+            : out.total_length!=null ? `${out.end-out.start} caracteres de ${out.total_length}`
+            : 'ok';
+          return html`<div key=${i} class="meta" style="margin:0 0 10px 12px;padding-left:10px;border-left:2px solid var(--line);font-size:12px">
+            → <b>${m.name}</b> devolveu ${resumo}
+          </div>`;
+        }
+        return html`<div key=${i}>
+          ${(m.tool_calls||[]).map((c,j)=>html`<div key=${j} class="meta" style="margin:0 0 4px 12px;padding-left:10px;border-left:2px solid var(--teal-soft);font-size:12px">
+            ⏣ chamou <b>${c.name}</b>${Object.keys(c.args||{}).length ? html` <span style="opacity:.75">${JSON.stringify(c.args)}</span>` : ''}
+          </div>`)}
+          ${m.content && html`<div class="card" style="margin-bottom:10px">
+            <div class="field-label" style="margin-bottom:4px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap">
+              <span>IA${m.model?' · '+m.model:''}</span>
+              ${m.est && html`<span class="meta" style="font-weight:400" title=${m.usage?`entrada ${(m.usage.input||0).toLocaleString('pt-BR')} · saída ${(m.usage.output||0).toLocaleString('pt-BR')} tokens`:''}>· ${m.est.src==='local'?'grátis (local)':('~'+iaMoney(m.est.brl,'BRL'))}</span>`}
+            </div>
+            <div dangerouslySetInnerHTML=${{__html: mdLite(m.content)}} />
+          </div>`}
+        </div>`;
+      })}
+      ${busy && html`<div class="card" style="margin-bottom:10px">
+        <div class="field-label" style="margin-bottom:6px">IA</div>
+        <div class="row" style="gap:10px;align-items:center">
+          <div class="typing"><span></span><span></span><span></span></div>
+          <button class="btn sm ghost" onClick=${()=>abortRef.current?.abort()}>Cancelar</button>
+        </div>
+      </div>`}
+      ${aviso && html`<div class="banner warn" style="margin-top:6px">${aviso}</div>`}
+      ${err && html`<div class="banner err" style="margin-top:6px">${err}</div>`}
+    </div>
+    <div style="flex:none;border-top:1px solid var(--line);background:var(--surface);padding:10px 14px">
+      <textarea class="txtin" rows="2" style="resize:vertical" placeholder="Pergunte sobre o corpus… Enter envia, Shift+Enter quebra linha"
+        value=${input} disabled=${busy} onInput=${e=>setInput(e.target.value)}
+        onKeyDown=${e=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); send(); } }}></textarea>
+      <div class="row" style="gap:8px;margin-top:6px;align-items:center">
+        <button class="btn primary" disabled=${busy || !input.trim()} onClick=${send}>Perguntar</button>
+        <span class="meta">a IA lê o corpus por ferramentas; cada leitura aparece acima</span>
+      </div>
+    </div>
+  </section>`;
 }
 
 try {

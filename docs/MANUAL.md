@@ -711,6 +711,23 @@ Depois exporte pela aba **Relatório**. As prévias de ATI e W3C são **ao vivo*
 
 **Uma frase para levar:** o QualiLab **não anonimiza**. Ele mascara o que você marcou, nas saídas de transparência e no que vai para a IA. O resto é decisão metodológica sua, tomada na cópia de publicação.
 
+### 12.5. Declaração sobre uso de IA
+
+No painel esquerdo há a caixa **"incluir informações sobre uso de IA"**, **ligada por padrão**, ao lado da de revisão cega. Com ela marcada, as três saídas — Relatório Padrão, Relatório Interativo e Web Annotation — levam um bloco curto com **o que o seu projeto registra**.
+
+Ele **relata, não promete**, e isso não é preciosismo de redação: uma frase do tipo "este projeto declara não usar IA desde tal data" pressupõe que houve uso antes, o que é falso no caso mais comum — o projeto que nasceu sem IA. O bloco diz duas coisas, e as mantém separadas:
+
+- se os recursos de IA **estiveram disponíveis** neste projeto (e, quando estão restritos agora, para quem);
+- **quantas conversas e memórias de IA** estão registradas.
+
+São fatos diferentes. Um projeto que ativou a IA e nunca a usou aparece como tendo tido os recursos disponíveis, **sem** conversas registradas — não como tendo usado. E um projeto que nunca ativou diz exatamente isso, sem data e sem promessa.
+
+O bloco também carrega o seu próprio limite: ele descreve **o que passou pelo QualiLab**, e não é garantia técnica de que nada foi levado a outra ferramenta por fora.
+
+Desmarcando a caixa, o bloco simplesmente não sai, e o app não insiste. Vale saber que, se você usou IA e não declara, isso é uma escolha sua sobre como reportar a sua pesquisa — a ferramenta oferece o caminho honesto como padrão e não fiscaliza ninguém.
+
+Para desligar a IA do projeto (e não só declará-la), veja [17.7](#177-desligar-a-ia-neste-projeto).
+
 ---
 
 ## 13. Colaboração
@@ -926,7 +943,7 @@ O cabeçalho mostra `offline` (âmbar) quando a conexão cai. Escritas (codifica
 
 > As telas de IA são **opt-in** e ficam no cabeçalho. Os princípios da [seção 0](#0-a-ideia-do-qualilab) valem aqui como **regras**: opt-in, transparência, e a IA nunca decide por você. Nada é enviado a um provedor de IA sem que você configure uma chave e peça a análise.
 
-A IA do QualiLab não "codifica sozinha" nem escreve no seu projeto sem permissão. Ela aparece em duas telas: *Codificar Automaticamente* (assistentes que **propõem** mudanças ao seu projeto, você revisa item a item) e *Analisar com IA* (leitura e interpretação do material). Em todas, o resultado é uma **proposta** ou um **texto** que você revisa. Aplicar qualquer mudança é sempre um ato seu.
+A IA do QualiLab não "codifica sozinha" nem escreve no seu projeto sem permissão. Ela aparece em três telas: *Codificar Automaticamente* (assistentes que **propõem** mudanças ao seu projeto, você revisa item a item), *Analisar com IA* (leitura e interpretação de um material que você recorta) e *MCP/RAG* (a IA busca o material sozinha; veja [17.6](#176-mcprag-a-ia-pede-o-material-em-vez-de-receber)). Em todas, o resultado é uma **proposta** ou um **texto** que você revisa. Aplicar qualquer mudança é sempre um ato seu.
 
 ### 17.1 Como a IA funciona aqui
 
@@ -1103,6 +1120,46 @@ Para constar, o que as políticas *dizem* hoje (e pode mudar): camadas **gratuit
 **Ollama local, na prática.** Como o navegador chama o `localhost` direto (sem passar pelo servidor), duas regras de segurança do navegador entram em jogo: é preciso **autorizar a origem do app** ao iniciar o Ollama (com `OLLAMA_ORIGINS`) e, se o app estiver em **HTTPS**, alguns navegadores bloqueiam a chamada a `http://localhost`. O caminho mais confiável é **rodar o app localmente** (o `index.html` baixado, ou `python -m http.server 8000`). Aí não há conflito. Os detalhes técnicos estão no [README](README.md).
 
 > **Para dado vedado**, a única combinação que mantém tudo na sua máquina é o **Ollama local com o app rodando localmente**, offline. Modelos locais pequenos são menos precisos, mas nas tarefas que exigem um formato estrito o QualiLab já ativa um modo que força a saída correta.
+
+### 17.6 MCP/RAG: a IA pede o material, em vez de receber
+
+> **Esta tela é experimental**, e o app diz isso nela. Ela funciona e não altera nada, mas é a superfície mais nova do QualiLab: o formato das respostas e o conjunto de ferramentas ainda podem mudar entre versões. Não a use como o único registro de uma análise — o que você quiser guardar, guarde em memo ou no relatório.
+
+Nas outras telas de IA **você monta o recorte** antes de perguntar: escolhe documentos, códigos, escopo, e a IA recebe aquilo pronto. Aqui é o contrário: você pergunta, e **a IA busca o material sozinha**, pedindo o que precisa por meio de um conjunto de ferramentas de leitura — ler um documento, buscar um termo, listar os trechos de um código, ver os memos. **Cada pedido aparece na tela**, com a ferramenta, os argumentos e um resumo do que voltou.
+
+Isso muda o tipo de pergunta que cabe. Nas outras telas você pergunta sobre um material que já delimitou; aqui dá para perguntar sobre o corpus **inteiro** sem saber de antemão onde está a resposta:
+
+- *"Que documentos falam de prazo, e como o tema aparece em cada um?"*
+- *"Compare como os codificadores usaram a família Riscos."*
+- *"Ache trechos que contradigam a nota que escrevi no projeto."*
+
+**O que ela pode e o que não pode.** Todas as ferramentas são de **leitura**: nenhuma cria, altera ou apaga nada no seu projeto. A censura vale aqui como vale em todo lugar — trechos marcados chegam mascarados, e a máscara preserva o tamanho do texto, então as posições continuam corretas. E a tela mostra **o que de fato foi pedido**, não o que a IA diz que pediu: se a resposta afirmar algo que nenhuma leitura sustenta, a lista de chamadas denuncia.
+
+**Precisa da sua chave** (veja [17.4](#174-configurar-a-sua-chave-opcional)), e consome mais que as outras telas: cada pergunta vira várias idas ao provedor, porque a IA lê, pensa e lê de novo. Há tetos automáticos — de passos de leitura e de quantidade de material — e, quando algum é atingido, a tela avisa em vez de parar sem explicação.
+
+**Quando preferir as outras telas.** Se você já sabe qual material quer analisar, *Analisar com IA* é mais direto e mais barato. Esta tela ganha quando a pergunta é de **busca**: quando achar o material é parte do problema.
+
+### 17.7 Desligar a IA neste projeto
+
+Nem toda pesquisa quer IA por perto, e há dois motivos bem diferentes para isso: a pesquisa que precisa **declarar** que não usou (para o comitê de ética, para o parecerista, para o leitor do artigo), e a coordenação que teme **codificação de modelo entrando como julgamento humano** — o que contamina concordância entre codificadores, saturação, tudo. O QualiLab atende os dois com uma chave só, mudando o **alcance**.
+
+**A pergunta vem na criação.** Todo projeto novo — na nuvem, em arquivo ou rascunho — pergunta se os recursos de IA ficam disponíveis. Nenhuma opção vem marcada, e **não responder é não ativar**. No cabeçalho, **entre a pílula do projeto e o seu nome**, um selo mostra sempre o estado da IA neste projeto — vermelho quando está desativada, verde quando está ativada. Clicar nele oferece trocar, com confirmação. Você também muda em **Projeto → Recursos de IA** (clique na pílula do projeto):
+
+| escolha | quem fica com as telas de IA |
+|---|---|
+| **Ativados** | todos |
+| **Só para administradores** | a coordenação; os demais pesquisadores não |
+| **Desativados** | ninguém, você inclusive |
+
+*Desativados* inclui você de propósito: é o que permite dizer à equipe "ninguém aqui usa, eu inclusive", e é o que impede reabrir a porta na pressa de um prazo.
+
+**O que some, e o que fica.** Somem as telas de IA do cabeçalho e a configuração que só serve a elas (o **Memo para a IA** e os **Prompts salvos**, na tela Memos). **Fica** o registro do que já aconteceu: as **conversas salvas** e a **memória do projeto** continuam onde estavam. Esconder o registro seria o oposto da transparência que a declaração promete — e é ele que o relatório conta.
+
+**A decisão acompanha o projeto.** Ela viaja dentro do `.qualilab`: salvar como arquivo, reabrir depois ou enviar para a nuvem preserva o que você escolheu. Importar material de um projeto sem IA para dentro de um projeto com IA ativa **não** muda a sua configuração (a decisão é do projeto que recebe, não do arquivo que chega), mas o resumo da importação avisa que aquele material vinha de um projeto assim. E conversas de IA guardadas num arquivo **não entram** num projeto que desativou a IA — o resumo diz quantas ficaram de fora, e por quê.
+
+**O relatório passa a dizer isso.** Veja [12.5](#125-declaração-sobre-uso-de-ia).
+
+> **Isto não é um bloqueio técnico, e é importante que você leia assim.** Qualquer pessoa pode copiar um trecho e colar noutra ferramenta, e nenhum software impede isso. O que a chave faz é tirar do aplicativo o trabalho **em massa** — e é o volume que desloca a análise, não uma consulta avulsa: três trechos copiados à mão não movem a concordância entre codificadores; duzentas sugestões aceitas numa varredura substituem o julgamento de um codificador inteiro. **Quem desativa a IA não deve ler "100% manual" como prova de coisa alguma.** É também a troca a fazer de olhos abertos: com as telas abertas você **vê** quanto de IA entrou; com elas fechadas entra muito menos, e o que entrar por fora chega indistinguível de trabalho manual.
 
 ---
 

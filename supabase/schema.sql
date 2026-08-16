@@ -25,6 +25,29 @@ alter table public.projects add column if not exists mode text not null default 
 -- restrito + 1 pessoa por doc = divisao de trabalho. Ver can_see_doc/can_see_authored abaixo.
 alter table public.projects add column if not exists blind         boolean not null default false;
 alter table public.projects add column if not exists restrict_docs boolean not null default false;
+-- DESLIGAR A IA POR PROJETO (S7, ago/2026). Um mecanismo serve os DOIS consumidores — a pesquisa
+-- que quer se DECLARAR sem IA, e o admin que teme codificacao de modelo entrando como julgamento
+-- humano — mudando so o ESCOPO, e e isso que evita dois flags sobrepostos:
+--   'none'    ninguem perde nada
+--   'members' membros perdem os paineis; admin mantem
+--   'all'     todos perdem, admin inclusive (contrato de Ulisses: fecha-se a porta pra nao poder
+--             abri-la sob pressa, e pra poder dizer a equipe "ninguem aqui usa, eu inclusive")
+-- NAO E FRONTEIRA TECNICA: em BYOK o navegador fala DIRETO com o provedor e qualquer pessoa copia
+-- o trecho pra outra aba. O que isto faz e LIMITAR A TAXA, e o dano escala com VOLUME (tres
+-- codificacoes por copiar-colar nao movem concordancia; duzentas sugestoes aceitas substituem o
+-- julgamento do codificador). O default 'none' e RETROCOMPATIBILIDADE de projeto ANTIGO: projeto
+-- novo nunca cai nele, porque a criacao PERGUNTA e nasce desativado.
+alter table public.projects add column if not exists restrict_ai text not null default 'none';
+alter table public.projects drop constraint if exists projects_restrict_ai_check;
+alter table public.projects add constraint projects_restrict_ai_check check (restrict_ai in ('none','members','all'));
+-- TRAVA DE UMA VIA. Existe porque o interruptor e REVERSIVEL, e a reversibilidade abre exatamente
+-- um buraco na declaracao do Relatorio: da pra ativar, conversar SEM salvar a conversa e desativar
+-- de volta, e o bloco (que conta conversas salvas e memorias) diria "os recursos de IA nao foram
+-- ativados neste projeto", que e FALSO. Ela registra DISPONIBILIDADE, nunca uso — confundir os
+-- dois recria o defeito da frase datada, que PRESSUPUNHA uso anterior.
+alter table public.projects add column if not exists ai_ever_enabled boolean not null default false;
+-- backfill honesto: projeto que ja existia sempre teve os paineis disponiveis.
+update public.projects set ai_ever_enabled = true where restrict_ai <> 'all' and not ai_ever_enabled;
 
 create table if not exists public.members (
   id           uuid primary key default gen_random_uuid(),
@@ -219,15 +242,22 @@ returns boolean language sql security definer stable set search_path = public as
   end;
 $$;
 
-create or replace function public.create_project(p_name text, p_display text, p_mode text default 'collective')
+-- ASSINATURA MUDOU (S7): parametro com default cria SOBRECARGA, nao substituicao — dai o drop.
+-- O DEFAULT 'none' SERVE O CLIENTE VELHO, nao o novo. Cliente em cache nao tem a pergunta do t0,
+-- e a UI dele mostra os paineis de IA: nascer 'all' ali pareceria app quebrado. O cliente novo
+-- SEMPRE passa o valor escolhido — mesmo cuidado do p_mode, que quando faltava fazia projeto
+-- individual nascer coletivo, calado.
+drop function if exists public.create_project(text, text, text);
+create or replace function public.create_project(p_name text, p_display text, p_mode text default 'collective', p_restrict_ai text default 'none')
 returns public.projects language plpgsql security definer set search_path = public as $$
 declare v_code text; v_proj public.projects;
 begin
   v_code := upper(substr(replace(gen_random_uuid()::text,'-',''),1,10));
-  insert into public.projects (name, code, mode, created_by)
+  insert into public.projects (name, code, mode, restrict_ai, created_by)
     values (coalesce(nullif(p_name,''),'Projeto'),
             v_code,
             case when p_mode in ('individual','collective') then p_mode else 'collective' end,
+            case when p_restrict_ai in ('none','members','all') then p_restrict_ai else 'none' end,
             auth.uid())
     returning * into v_proj;
   insert into public.members (project_id, user_id, display_name, role)
@@ -272,14 +302,15 @@ drop function if exists public.my_projects();
 create or replace function public.my_projects()
 returns table (id uuid, name text, code text, mode text, role text,
                created_at timestamptz, n_documents bigint, n_codings bigint,
-               blind boolean, restrict_docs boolean)
+               blind boolean, restrict_docs boolean,
+               restrict_ai text, ai_ever_enabled boolean)
 language sql security definer stable set search_path = public as $$
   select p.id, p.name, p.code, p.mode,
     (select m.role from public.members m where m.project_id = p.id and m.user_id = auth.uid()) as role,
     p.created_at,
     (select count(*) from public.documents d where d.project_id = p.id),
     (select count(*) from public.codings  c where c.project_id = p.id),
-    p.blind, p.restrict_docs
+    p.blind, p.restrict_docs, p.restrict_ai, p.ai_ever_enabled
   from public.projects p
   where exists (select 1 from public.members m where m.project_id = p.id and m.user_id = auth.uid())
   order by p.created_at desc;
@@ -353,22 +384,29 @@ end; $$;
 
 -- ligar/desligar distribuicao restritiva e cego (admin). Precisa de RPC porque projects
 -- nao tem policy de UPDATE nenhuma -- so o select.
-create or replace function public.set_project_flags(p_project uuid, p_blind boolean default null, p_restrict boolean default null)
+-- ASSINATURA MUDOU (S7) — drop antes, senao ficam DUAS funcoes e o PostgREST pode resolver a
+-- ambiguidade para a errada. O grant tambem e por assinatura, e o drop leva o antigo junto.
+drop function if exists public.set_project_flags(uuid,boolean,boolean);
+create or replace function public.set_project_flags(p_project uuid, p_blind boolean default null, p_restrict boolean default null, p_restrict_ai text default null)
 returns public.projects language plpgsql security definer set search_path = public as $$
 declare v_proj public.projects;
 begin
   if not public.is_admin(p_project) then
-    raise exception 'Apenas administradores alteram a distribuicao e o modo cego';
+    raise exception 'Apenas administradores alteram a distribuicao, o modo cego e o acesso a IA';
   end if;
   update public.projects
      set blind         = coalesce(p_blind, blind),
-         restrict_docs = coalesce(p_restrict, restrict_docs)
+         restrict_docs = coalesce(p_restrict, restrict_docs),
+         -- null = nao mexe; valor fora da lista tambem nao (o check ja barraria, mas aqui a
+         -- chamada parcial de blind/restrict nao pode falhar por causa de um terceiro campo)
+         restrict_ai   = case when p_restrict_ai in ('none','members','all') then p_restrict_ai
+                              else restrict_ai end
    where id = p_project
    returning * into v_proj;
   return v_proj;
 end; $$;
 
-grant execute on function public.create_project(text, text, text) to anon, authenticated;
+grant execute on function public.create_project(text, text, text, text) to anon, authenticated;
 grant execute on function public.join_project(text, text)         to anon, authenticated;
 grant execute on function public.my_projects()                    to anon, authenticated;
 grant execute on function public.is_admin(uuid)                   to anon, authenticated;
@@ -377,7 +415,10 @@ grant execute on function public.remove_member(uuid,uuid)         to anon, authe
 grant execute on function public.rename_project(uuid,text)        to anon, authenticated;
 grant execute on function public.delete_project(uuid)             to anon, authenticated;
 grant execute on function public.set_project_mode(uuid,text,text) to anon, authenticated;
-grant execute on function public.set_project_flags(uuid,boolean,boolean) to anon, authenticated;
+grant execute on function public.set_project_flags(uuid,boolean,boolean,text) to anon, authenticated;
+-- can_use_ai roda DENTRO das policies de ia_results/ia_memory, e policy roda como o usuario
+-- que chamou — sem este grant o insert falha por permissao da funcao, nao pela regra.
+grant execute on function public.can_use_ai(uuid)                 to anon, authenticated;
 
 -- (issue #7) Os GRANTs de tabela ficam no FIM do arquivo, depois de TODAS as tabelas —
 -- ver o bloco "GRANTS de tabela" no final.
@@ -667,6 +708,42 @@ revoke execute on function public.codes_color_guard() from public, anon, authent
 drop trigger if exists trg_codes_color_guard on public.codes;
 create trigger trg_codes_color_guard before insert or update on public.codes
   for each row execute function public.codes_color_guard();
+
+-- ---------- S7: quem pode usar a IA, e a trava de uma via ----------
+-- can_use_ai responde a MESMA pergunta que a UI responde ao esconder os paineis, e existe para
+-- que o servidor tambem a responda: "conversa de IA nao entra por este app" e verificavel aqui,
+-- mesmo que "o pesquisador nao conversou" nunca seja.
+create or replace function public.can_use_ai(p_project uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select case (select restrict_ai from public.projects where id = p_project)
+           when 'all'     then false
+           when 'members' then public.is_admin(p_project)
+           else true
+         end;
+$$;
+
+-- A trava e FORCADA aqui, e nao nos RPCs, de proposito: se quem a escrevesse fosse o cliente,
+-- bastaria chamar o RPC direto pra contorna-la. FORCA em vez de RAISE porque isto e invariante
+-- DERIVADA (o valor nao e escolha de ninguem), nao checagem de permissao — levantar excecao
+-- quebraria update legitimo de outra coluna.
+create or replace function public.projects_ai_guard()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  -- disponibilizar a IA a alguem (qualquer escopo que nao seja 'all') fica registrado...
+  if new.restrict_ai is distinct from 'all' then
+    new.ai_ever_enabled := true;
+  end if;
+  -- ...e o registro nao volta atras.
+  if TG_OP = 'UPDATE' and old.ai_ever_enabled and not new.ai_ever_enabled then
+    new.ai_ever_enabled := true;
+  end if;
+  return new;
+end; $$;
+revoke execute on function public.projects_ai_guard() from public, anon, authenticated;
+
+drop trigger if exists trg_projects_ai_guard on public.projects;
+create trigger trg_projects_ai_guard before insert or update on public.projects
+  for each row execute function public.projects_ai_guard();
 -- ---------- resultados salvos da aba "Analisar com IA" ----------
 create table if not exists public.ia_results (
   id           uuid primary key default gen_random_uuid(),
@@ -688,8 +765,13 @@ drop policy if exists ia_results_insert on public.ia_results;
 drop policy if exists ia_results_update on public.ia_results;
 drop policy if exists ia_results_delete on public.ia_results;
 create policy ia_results_select on public.ia_results for select using (public.is_member(project_id));
+-- can_use_ai (S7): conversa nao entra em projeto cujo escopo fechou a IA pra quem esta gravando.
+-- MORDE O IMPORT de proposito, e o cliente TEM de nomear o motivo no resumo: o mergeQualilabDb
+-- grava por addIaResultsBulk, entao um .qualilab com historico entrando num projeto 'all' vira
+-- linha recusada — numero sem motivo passa por bug.
 create policy ia_results_insert on public.ia_results for insert
-  with check (public.is_member(project_id) and (created_by = auth.uid() or created_by is null));
+  with check (public.is_member(project_id) and (created_by = auth.uid() or created_by is null)
+              and public.can_use_ai(project_id));
 create policy ia_results_update on public.ia_results for update
   using (public.is_member(project_id) and (created_by = auth.uid() or public.is_admin(project_id)))
   with check (public.is_member(project_id) and (created_by = auth.uid() or public.is_admin(project_id)));
@@ -727,7 +809,8 @@ drop policy if exists ia_memory_update on public.ia_memory;
 drop policy if exists ia_memory_delete on public.ia_memory;
 create policy ia_memory_select on public.ia_memory for select using (public.is_member(project_id));
 create policy ia_memory_insert on public.ia_memory for insert
-  with check (public.is_member(project_id) and (created_by = auth.uid() or created_by is null));
+  with check (public.is_member(project_id) and (created_by = auth.uid() or created_by is null)
+              and public.can_use_ai(project_id));
 create policy ia_memory_update on public.ia_memory for update
   using (public.is_member(project_id) and (created_by = auth.uid() or public.is_admin(project_id)))
   with check (public.is_member(project_id) and (created_by = auth.uid() or public.is_admin(project_id)));

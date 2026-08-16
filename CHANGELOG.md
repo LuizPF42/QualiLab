@@ -8,11 +8,67 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 
 > **Este arquivo é próprio deste repositório desde ago/2026** e descreve só o aplicativo
 > publicado aqui. O QualiLab dentro do assistente (extensão do Claude Desktop, plugin) tem
-> numeração e changelog próprios, no repositório `QualiLab-plugin` — as ferramentas de
-> leitura por agente não fazem parte deste app.
+> numeração e changelog próprios, no repositório `QualiLab-plugin` — ele leva as mesmas
+> ferramentas de leitura para dentro do seu assistente, e é outro produto.
 >
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
+
+## 1.4.32 (16/08/2026)
+
+### Você decide se o seu projeto usa IA, e isso passa a ser dito no relatório
+
+**Todo projeto novo pergunta, e nasce sem IA.** Ao criar um projeto — na nuvem, em arquivo ou como
+rascunho — o QualiLab pergunta se os recursos de IA devem ficar disponíveis. Nenhuma opção vem
+marcada, e a resposta padrão é não ativar. Dá para mudar quando quiser, em **Projeto → Recursos de
+IA**, ou clicando no selo que fica no cabeçalho, entre a pílula do projeto e o seu nome.
+
+São três escolhas, e a do meio existe para pesquisa coletiva: **Ativados** (todo mundo), **Só para
+administradores** (os pesquisadores não têm as telas de IA; a coordenação continua com elas) e
+**Desativados** (ninguém, você inclusive).
+
+Com a IA desativada, as telas de IA somem, junto com a configuração que só serve a elas (o Memo
+para a IA e os Prompts salvos). O que **fica** é o registro do que já houve: as conversas salvas e
+a memória do projeto continuam onde estavam. Conversa de IA também não entra num projeto que a
+desativou, nem por importação — o resumo diz quantas ficaram de fora, e por quê.
+
+**A decisão acompanha o projeto.** Ela vai dentro do `.qualilab`: salvar como arquivo, reabrir
+depois ou enviar para a nuvem preserva o que você escolheu. Importar material de um projeto sem IA
+para dentro de um projeto com IA ativa **não** muda a sua configuração, mas o resumo avisa que
+aquele material vinha de um projeto assim.
+
+**Nova declaração no Relatório**, ligada por padrão, na caixa *"incluir informações sobre uso de
+IA"* (ao lado da de revisão cega). Ela sai nas três saídas — Relatório Padrão, Relatório Interativo
+e Web Annotation — e diz **o que o projeto registra**, nunca uma promessa: se os recursos
+estiveram disponíveis, e quantas conversas e memórias existem. Um projeto que ativou a IA e nunca
+a usou não é descrito como tendo usado; um que nunca ativou diz exatamente isso, sem data.
+
+> **O que isto não é, e está escrito na tela também:** não é um bloqueio técnico. Qualquer pessoa
+> pode copiar um trecho para outra ferramenta, e o QualiLab não tem como impedir. O que muda é que
+> o trabalho **em massa** deixa de caber dentro do aplicativo — e é o volume que desloca a
+> concordância entre codificadores, não uma consulta avulsa. Quem desativa a IA não deve ler
+> "100% manual" como prova de coisa alguma.
+
+### Nova tela: MCP/RAG, em que a IA busca o material sozinha (experimental)
+
+Nas outras telas de IA **você monta o recorte** antes de perguntar: escolhe documentos, códigos,
+escopo, e a IA recebe aquilo pronto. Nesta é o contrário — você pergunta, e a IA **procura o
+material**, pedindo o que precisa por meio de ferramentas de leitura (ler um documento, buscar um
+termo, listar os trechos de um código, ver os memos). **Cada pedido aparece na tela**, com a
+ferramenta, os argumentos e um resumo do que voltou.
+
+Isso muda o tipo de pergunta que cabe: dá para perguntar sobre o corpus inteiro sem saber de
+antemão onde está a resposta. *"Que documentos falam de prazo, e como o tema aparece em cada um?"*
+
+Todas as ferramentas são de **leitura**: nenhuma cria, altera ou apaga nada. A censura vale como
+em todo lugar, e a tela mostra o que de fato foi pedido — se a resposta afirmar algo que nenhuma
+leitura sustenta, a lista de chamadas denuncia. Precisa da sua chave, e consome mais que as outras
+telas, porque cada pergunta vira várias idas ao provedor.
+
+> **Ela é experimental, e o app diz isso nela.** Funciona e não altera nada, mas é a superfície
+> mais nova do QualiLab: o formato das respostas e o conjunto de ferramentas ainda podem mudar
+> entre versões. Não a use como o único registro de uma análise — o que quiser guardar, guarde em
+> memo ou no relatório. Está documentada na seção 17.6 do manual.
 
 ## 1.4.31 (16/08/2026)
 
