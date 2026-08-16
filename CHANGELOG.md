@@ -14,6 +14,279 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.31 (16/08/2026)
+
+### O editor de categorias agora tem um "Salvar" — e não grava mais sozinho
+
+**Leia esta seção antes de editar uma categoria.** O cartão onde você define uma categoria (nome,
+tipo, descrição, valores) não tinha nenhum botão: o **nome** e a **descrição** eram gravados a
+cada tecla digitada. Não havia como saber se tinha salvado, e um esbarrão no campo já mudava o
+esquema do projeto — sendo que a descrição é a instrução de codificação que a sua equipe segue e
+que entra no prompt das telas de IA.
+
+Esses dois campos passaram a ser um **rascunho**: só vão para o projeto quando você clicar em
+**Salvar**, no canto inferior do cartão. Enquanto houver algo por salvar, o botão fica em
+destaque e aparece um **descartar** ao lado, que devolve os campos ao que está gravado; sem nada
+pendente, ele mostra **"Salvo ✓"**.
+
+O que você escreveu não se perde ao trocar de tela e voltar. E quando o painel "Gerenciar esquema
+de categorias" está recolhido, um aviso no título dele diz que há alteração não salva. O resto do
+cartão — o tipo, os valores, as caixas "Não informado" e "Outros" — continua valendo na hora,
+porque são cliques que você desfaz clicando de novo.
+
+### O cartão de categoria ficou legível no painel lateral
+
+Na aba **Codificação**, dentro de "Gerenciar esquema de categorias", o campo do **nome** dividia a
+linha com o seletor de tipo e sobrava para ele menos de um terço da largura: cabiam poucas letras
+e o nome da categoria ficava cortado. Agora, quando o painel é estreito, o nome ocupa a linha
+inteira e o tipo desce para a linha seguinte. Na tela larga nada muda.
+
+### Os botões de salvar ganharam cor
+
+Em vários lugares o botão que **grava** o que você acabou de escrever tinha a mesma aparência dos
+botões comuns ao lado. Ganharam destaque: **Salvar** o nome de um código (no painel de cores),
+**Salvar** o nome de exibição e o nome de um projeto em *Minha conta*, e **Renomear** o projeto no
+painel do projeto.
+
+### Saiu a opção de cor "cinza" dos códigos
+
+A cor de uma família de código podia ser **cinza**, e quase ninguém usava — além de disputar a
+leitura com o **preto**, que marca censura. O botão saiu; continuam o anel de matiz, a saturação,
+o preto e a "cor automática". **Códigos que já estavam em cinza continuam cinza**: para trocar,
+use "cor automática" e depois escolha a cor que quiser.
+
+## 1.4.30 (16/08/2026)
+
+Esta versão corrige três defeitos da importação de `.qdpx` do **ATLAS.ti**. Como na 1.4.28, os
+três eram silenciosos: o material entrava, nada dava erro, e o resultado parecia uma propriedade
+da sua pesquisa.
+
+### Trechos do ATLAS.ti chegavam cortados no meio da palavra
+
+Parte dos trechos entrava com o texto interrompido depois de 70 caracteres, muitas vezes no meio
+de uma palavra. Eles não pareciam defeituosos: a citação estava lá, só que pela metade — e, ao
+contrário de um trecho que o QualiLab não conseguiu localizar, esses não recebiam marca nenhuma.
+
+O texto completo estava dentro do arquivo o tempo todo. O ATLAS.ti guarda a citação de duas
+formas, e o QualiLab estava lendo o **rótulo de prévia**, que é curto por natureza, em vez da
+citação. Num projeto real de 119 documentos, os trechos afetados ganharam em média **474
+caracteres** a mais.
+
+Quando o arquivo de origem realmente não traz a citação inteira — o que acontece com marcações
+feitas por retângulo sobre a página —, o trecho continua entrando pelo rótulo curto, mas o resumo
+da importação passa a **avisar**, dizendo quantos são e em quantos caracteres o programa de
+origem cortou. Antes eles passavam calados.
+
+### As notas do ATLAS.ti agora ficam no código que elas explicam
+
+O ATLAS.ti registra quais notas explicam quais códigos. Essa ligação era ignorada, e todas as
+notas chegavam empilhadas num **único memo do projeto** — num caso real, 24 notas somando 28 mil
+caracteres num texto só, que ninguém lê. Agora cada uma vai para o memo do código a que o arquivo
+a amarra, que é onde você procura quando a dúvida aparece. Notas sem dono continuam no memo do
+projeto.
+
+Quando a mesma nota explica mais de um código, ela é **copiada** em todos eles, com uma linha
+dizendo com quais outros ela é compartilhada.
+
+### O resumo da importação contava memos que o projeto não recebia
+
+A mensagem ao fim da importação anunciava mais memos do que de fato entravam — num caso real, 159
+anunciados contra 94 no projeto —, porque contava antes de descartar as repetições. Agora o número
+é o que você encontra no projeto.
+
+E quando um trecho não pode ser localizado no texto, a **nota analítica** dele cai junto. Isso
+sempre aconteceu, mas em silêncio; o resumo agora diz quantas notas foram nesse mesmo saco.
+
+**Se você importou um `.qdpx` do ATLAS.ti antes desta versão, refaça a importação — inclusive se
+já refez por causa da 1.4.28.** As citações completas e as notas nos códigos só chegam numa
+importação nova. E, como importar **acrescenta** ao que já existe, não repita a importação por
+cima do projeto atual: crie um projeto novo, ou use "Limpar conteúdo" no painel do projeto antes.
+O seu `.qdpx` está intacto — o problema sempre foi a leitura, nunca o arquivo.
+
+## 1.4.29 (16/08/2026)
+
+### As fontes do QualiLab nunca carregaram — agora carregam, e sem chamar ninguém
+
+A folha de estilo pedia três fontes ao Google (Newsreader para a leitura, Inter para a interface,
+JetBrains Mono para os números), e essa linha estava numa posição em que o navegador simplesmente
+a ignora. Resultado: desde a primeira versão o app rodava com as fontes de reserva do seu sistema,
+sem nada avisar. Se a sua tela parecia certa, é porque o seu computador já tinha alguma delas
+instalada.
+
+Agora as três **viajam dentro do arquivo**. Duas consequências, e a segunda é a que importa:
+
+- o texto passa a ser exibido na tipografia que a ferramenta escolheu, em qualquer computador —
+  o leitor, em especial, deixa de cair no Georgia;
+- o QualiLab **não pede nada ao Google**, nem a nenhum outro servidor, para se desenhar. Pôr a
+  linha "no lugar certo" teria custado três requisições a cada abertura, entregando o seu IP —
+  inclusive no modo arquivo, onde a promessa é que nada saia da sua máquina. Ele continua abrindo
+  sem falar com ninguém.
+
+O arquivo ficou cerca de 190 KB maior por causa disso. Os ícones da interface continuam vindo do
+sistema, como antes.
+
+### O custo estimado da IA em "Definir Categoria" era muito menor que o real
+
+O número de tokens e o custo mostrados no ⚙ Configurar Prompt contavam **só a última chamada** da
+rodada. Antes dela, a tela dispara uma chamada por caso de treino, e cada uma leva o **documento
+inteiro** — que é justamente o que domina o gasto. Com doze casos e documentos de 20 mil
+caracteres, o valor anunciado era cerca de 85 vezes menor que o cobrado; com acórdãos longos, mais
+de 300.
+
+O que mudou:
+
+- a estimativa agora soma **todas** as chamadas da rodada, e a nota ao lado diz quantas são e por
+  que a localização é a parte cara. A barra continua medindo a maior chamada — é ela que decide se
+  o material vai ser cortado —, e isso passou a estar escrito;
+- o **teste nos documentos guardados**, que é outro clique e outra rodada de chamadas, ganhou
+  estimativa própria: até aqui ele não aparecia em número nenhum;
+- a mesma correção conserta a **avaliação cega** da aba Sugerir Categorização, cuja estimativa
+  parava de crescer depois de certo tamanho de corpus.
+
+Nenhuma tela ficou mais cara: o que mudou é o que se anuncia antes de gastar.
+
+### Reimportar o mesmo projeto não empilha mais as conversas e as memórias de IA
+
+Trocar o corpus de um projeto ("Limpar conteúdo" e importar de novo) duplicava as conversas salvas
+e o diário de insights a cada vez — três importações, três cópias de cada. Documentos, códigos e
+trechos nunca tiveram esse problema; essas duas coleções são as únicas que sobrevivem de propósito
+ao "Limpar conteúdo", para que o conhecimento do estudo não morra junto com o corpus antigo.
+
+Agora o que já está no projeto não entra de novo, e o resumo da importação diz quantas conversas e
+memórias foram reconhecidas como repetidas — em vez de anunciar como gravado o que veio no
+arquivo.
+
+## 1.4.28 (14/08/2026)
+
+Esta versão corrige quatro defeitos de importação e devolve o PDF original. Os quatro tinham a
+mesma característica: **nenhum deles dava erro**. O material entrava, a tela mostrava números, e
+o resultado parecia uma propriedade da sua pesquisa. Se você importou de alguma dessas
+ferramentas, vale ler a seção correspondente até o fim — algumas pedem uma reimportação.
+
+### Importação do ATLAS.ti: cada trecho entrava duas vezes, e uma das cópias vinha cortada
+
+Quem importava um `.qdpx` do ATLAS.ti com documentos em PDF recebia o projeto **dobrado**. Cada
+trecho codificado aparecia duas vezes: uma com a citação inteira e outra com o texto cortado no
+meio de uma palavra. Na tela isso aparecia como um par quase idêntico, e a *Reconciliação* pedia
+para escolher entre duas versões do mesmo trecho, como se dois codificadores tivessem discordado.
+
+A causa está no arquivo, não no seu trabalho: o ATLAS.ti descreve cada citação de PDF duas vezes,
+uma pela posição na página e outra pela posição no texto, e o QualiLab estava importando as duas
+como se fossem trechos diferentes. A cópia extra saía cortada porque o rótulo curto que o
+ATLAS.ti guarda ali tem no máximo 70 caracteres, e era dele que o texto estava sendo tirado.
+
+Num projeto real de 119 documentos, o mesmo arquivo produzia **9.563 trechos; agora produz
+4.971** — quase o dobro do que havia. Como a codificação é o que alimenta os *Gráficos*,
+frequência, cobertura, nuvem de palavras e a matriz de co-ocorrência estavam todas medindo esse
+excesso.
+
+Agora cada citação entra uma vez, com o texto inteiro, e o fim da importação diz quantas vinham
+descritas duas vezes no arquivo.
+
+**Se você importou um `.qdpx` do ATLAS.ti antes desta versão, refaça a importação — mas não por
+cima do projeto atual.** Importar **acrescenta** ao que já existe, então repetir a importação no
+mesmo projeto somaria uma terceira cópia em vez de consertar. Crie um projeto novo e importe
+nele, ou use "Limpar conteúdo" no painel do projeto antes de importar de novo. O seu `.qdpx`
+está intacto: nada se perdeu nele, o problema era só a leitura.
+
+### Importação do Taguette: o texto vinha com marcação e os grifos caíam no lugar errado
+
+Quem importava um projeto do Taguette (`.sqlite3`) recebia duas coisas quebradas, e nenhuma delas
+avisava nada.
+
+O documento chegava com o código HTML à mostra — o leitor exibia `<p><b>CÂMARA DOS
+DEPUTADOS</b></p>` no lugar do texto. E **todos os trechos codificados ficavam ancorados fora do
+lugar**: o Taguette conta a posição dos grifos de um jeito diferente do QualiLab, e essa
+diferença não era traduzida. O desvio não era de um caractere: ele cresce ao longo do documento,
+então o trecho aparecia grifado a parágrafos de distância de onde deveria. Num projeto real de 45
+documentos, nenhum dos 278 trechos estava no lugar certo.
+
+Agora o texto entra limpo e cada trecho ancora onde você o marcou no Taguette. A mensagem do fim
+da importação também passou a dizer o que não coube: grifos que estavam sem nenhuma tag (no
+QualiLab todo trecho precisa de um código) e trechos cujo texto não confere com o documento.
+
+Se importou antes desta versão, **reimporte** (num projeto novo, ou depois de "Limpar
+conteúdo"): a codificação antiga está deslocada, e hoje não existe uma migração que a reancore no
+lugar certo.
+
+### Importação do Zotero: referências duplicadas trocavam de PDF
+
+Se a sua biblioteca do Zotero tinha duas entradas para a mesma referência — algo comum, e por
+isso o próprio Zotero tem a ferramenta "Itens duplicados" —, uma delas era importada com **o
+texto do outro artigo**, embaixo do título, da referência e do memo corretos. Nada avisava.
+
+Agora cada referência entra com o PDF dela. Se você importou do Zotero antes desta versão e a sua
+coleção tinha duplicatas, vale conferir esses documentos: o texto pode não ser o da referência
+que está no memo.
+
+### Trechos do ATLAS.ti que iam parar em outra página
+
+Quando o mesmo texto aparece mais de uma vez num documento — comum em projeto de lei, com o texto
+da ementa repetido no corpo do artigo —, o QualiLab colocava o trecho na **primeira** ocorrência,
+mesmo que o ATLAS.ti dissesse que ele estava em outra página.
+
+O trecho continuava com o texto certo, o código certo e a nota certa: só ficava no lugar errado do
+documento. É o tipo de erro que não se percebe lendo o trecho, e que só aparece ao voltar ao
+documento para ver o contexto — que é justamente o que se faz ao escrever.
+
+Num projeto real de 2.658 citações, **17 estavam em outra página**, espalhadas por 15 dos 119
+documentos. Em um deles, a expressão "terrorismo ambiental" foi para a página 1 enquanto o
+ATLAS.ti a marca na página 2 — e ela aparece seis vezes naquele documento.
+
+O ATLAS.ti sempre disse em que página cada trecho está; o QualiLab é que não usava essa
+informação. Agora usa: a busca começa pela página indicada e só depois olha o resto do documento.
+
+O fim da importação também passou a contar as **citações que estavam sem nenhum código**. No
+ATLAS.ti é legítimo marcar um trecho e classificá-lo depois; aqui todo trecho precisa de um
+código, então essas não entram — e antes sumiam sem aparecer em lugar nenhum. No projeto real
+eram 213, 8% das marcações.
+
+### O PDF original agora fica ao importar um `.qdpx`
+
+Um `.qdpx` traz os PDFs dentro dele, e o QualiLab estava jogando fora todos. O texto entrava e o
+documento original desaparecia — em um projeto real, nos 119 documentos.
+
+Com isso, três coisas simplesmente não funcionavam em nada que tivesse vindo de um `.qdpx`:
+
+- **🗎 ver original**, para conferir o trecho na página como ela é
+- **o número da página** ("p. 12") nos trechos da *Leitura*, no *Relatório*, na coluna do CSV e
+  na exportação de anotações
+- **⋯ → ler com OCR**, justamente onde mais falta: PDF escaneado entra sem texto, e o OCR é o que
+  resolve — mas ele precisa do original, que tinha sido descartado
+
+Agora o original é guardado, junto com o índice de páginas que o QualiLab já havia calculado
+durante a importação. Isso também conserta a ida e volta do próprio QualiLab: exportar um projeto
+com PDFs em `.qdpx` e reimportá-lo perdia todos eles.
+
+**Na nuvem o QualiLab pergunta antes**, uma vez por projeto, porque ali o arquivo original passa
+a ser acessível ao operador do servidor e aos outros membros — é a mesma pergunta que já aparece
+ao enviar um PDF pelo "＋ enviar". Em rascunho ou arquivo, o PDF não sai da sua máquina. O fim da
+importação diz quantos originais foram guardados.
+
+Quem já importou antes desta versão e quer os originais precisa reimportar, com o mesmo cuidado
+das seções acima: projeto novo, ou "Limpar conteúdo" antes.
+
+### Reconciliação: em projeto importado ela dizia que havia um codificador só
+
+A tela de *Reconciliação* existe para comparar o trabalho de pesquisadores diferentes. Em
+qualquer projeto que tenha vindo de uma importação (`.qdpx`, `.qualilab` de outra pessoa,
+Taguette, `.qdc`), ela mostrava **"1 de 1" em todos os grupos**, com um nome só ao lado de cada
+trecho — mesmo com cinco pesquisadores no arquivo, e a borda de consenso nunca acendia.
+
+A informação de quem codificou o quê nunca se perdeu: ela estava gravada e aparece corretamente
+em outras telas, como o filtro "Ver:". Era a *Reconciliação* que estava olhando para o campo
+errado.
+
+Agora ela conta as pessoas certas, mostra o nome de cada uma nos trechos e volta a marcar
+consenso quando todos concordam. **Nenhum dado precisa ser reimportado por causa disto**: é só
+abrir a tela de novo.
+
+O botão "Consolidar tudo feito por mim" continua contando só o que foi codificado nesta conta, e
+por isso segue mostrando "(0)" num projeto que veio inteiro de uma importação. Isso é de
+propósito: codificação importada não é sua, ainda que traga o seu nome. Para consolidar o que
+veio no arquivo, use "Consolidar tudo", que diz no aviso que vai consolidar o trabalho de todos
+os codificadores.
+
 ## 1.4.27 (14/08/2026)
 
 ### O código de confirmação do cadastro é aceito com o tamanho que tiver

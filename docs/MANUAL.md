@@ -467,7 +467,14 @@ Cada categoria pode ter uma **descrição/instrução** e habilitar duas opçõe
 A aba **Esquema** é uma tela cheia (sem documento aberto) para organizar tudo de uma vez. Tem duas sub-abas.
 
 ### 7.1. Categorias
+
+![A aba Esquema (sub-aba Categorias): um cartão por categoria, com nome, tipo, a descrição/instrução em várias linhas, os valores e as opções especiais. No primeiro cartão a descrição foi alterada e ainda não foi salva, então aparecem "descartar" e o botão **Salvar** em destaque; no segundo, sem nada pendente, o botão mostra "Salvo ✓".](manual-img/04b-esquema-categorias.png)
+
 Mesma edição do painel de Categorias, mas focada em montar o esquema: criar, editar tipos e opções, e **reordenar arrastando** pelo punho **⠿** (o item arrastado fica translúcido; uma linha azul mostra onde vai cair).
+
+**O nome e a descrição só valem quando você clica em "Salvar".** Enquanto houver algo por salvar, o botão fica em destaque e aparece um **descartar** ao lado, que devolve os dois campos ao que está gravado; sem nada pendente, ele mostra **"Salvo ✓"**. É assim de propósito: a descrição é a instrução que a equipe e a IA seguem, e um esbarrão no campo não deve mudar o esquema do projeto. O que você escreveu não se perde se trocar de tela e voltar — e, quando o painel "Gerenciar esquema de categorias" está recolhido, um aviso no título dele avisa que há alteração não salva. O resto do cartão (o tipo, os valores, as caixas "Não informado" e "Outros") vale na hora, porque são cliques que você desfaz clicando de novo.
+
+O campo da descrição é **redimensionável**: arraste o canto inferior direito dele para escrever o verbete inteiro com folga.
 
 ### 7.2. Códigos (reorganização em lote)
 Pensado para quem terminou uma codificação aberta com **centenas de códigos soltos** e quer organizá-los. É uma árvore com **caixas de seleção**; o painel da direita muda conforme a seleção:
@@ -506,7 +513,7 @@ No alto do painel de códigos, o seletor **⛼ Árvore / ⊞ Mapa** troca a list
 
 ### 7.4. Cores e censura (admin)
 Ao editar um código, o admin pode:
-- Escolher a **cor da família** por um controle de **matiz** (0–359), ou **cinza** / **preto**, propagada aos subcódigos.
+- Escolher a **cor da família** por um controle de **matiz** (0–359) e um de **saturação**, ou **preto**, propagada aos subcódigos.
 - Marcar o código como **censura** (força a cor preta). Veja [5.5](#55-censura-mascarar-trechos-sensíveis).
 
 **A censura acompanha a posição na árvore.** Subcódigo criado dentro de uma família de censura já nasce censurado, e **mover ou agrupar** um código para dentro dela também o marca, junto com os subcódigos dele. O QualiLab avisa antes, dizendo quantos códigos e quantos trechos passam a ser mascarados; em pesquisa coletiva isso conta como alteração de censura, então é ação de admin. O caminho inverso é diferente de propósito: tirar um código de dentro da família **não** desmarca a censura dele, porque desmarcar deve ser uma decisão explícita, tomada na caixa **censura** do próprio código. Se você **mesclar** um código de censura em um código normal, os trechos dele deixam de ser mascarados: o QualiLab avisa e pede confirmação, mas quem decide é você.
@@ -934,7 +941,7 @@ A IA do QualiLab não "codifica sozinha" nem escreve no seu projeto sem permiss�
   - **um documento passou do teto por documento**: ele entra, mas **só pelas primeiras ~133 páginas**. O resto do texto não vai à IA. Aqui a saída não é selecionar menos: é **dividir o documento** em documentos menores.
 
   **Sempre que algo é cortado, uma faixa amarela aparece na tela**, na coluna de configuração, dizendo quantos documentos ficaram de fora e quantos entraram só pelo começo. A prévia do **⚙ Configurar Prompt** mostra o tamanho em páginas e marca no texto o ponto exato do corte. Vale confiar no aviso e não no silêncio: sem ele, um resultado montado sobre metade do material se parece com um resultado completo.
-- **Estimativa de custo.** Com a **sua própria** chave paga, o **⚙ Configurar Prompt** mostra, **antes de enviar**, o custo aproximado do envio (**≈ R$**, ao lado da estimativa de tokens), e assim você sabe o preço estimado *antes* de rodar. E, no *Analisar com IA*, **cada resposta** traz o **custo estimado** (em R$, com o total acumulado da conversa). As duas são **estimativas de teto** (não descontam cache); a de antes do envio ainda **presume um tamanho de resposta** (a saída real varia). O câmbio e, para provedores sem tabela de preços, a sua tarifa se ajustam em **Minha conta**. Com o **Ollama local** o custo é zero.
+- **Estimativa de custo.** Com a **sua própria** chave paga, o **⚙ Configurar Prompt** mostra, **antes de enviar**, o custo aproximado do envio (**≈ R$**, ao lado da estimativa de tokens), e assim você sabe o preço estimado *antes* de rodar. E, no *Analisar com IA*, **cada resposta** traz o **custo estimado** (em R$, com o total acumulado da conversa). As duas são **estimativas de teto** (não descontam cache); a de antes do envio ainda **presume um tamanho de resposta** (a saída real varia). **Quando uma tela dispara várias chamadas** — a avaliação às cegas do *Sugerir Categorização* e o *Definir Categoria*, que lê um documento por vez —, a estimativa soma **todas** elas, e uma nota ao lado do número diz quantas são; a barra de material continua medindo a **maior** chamada, que é a que pode ser cortada. No *Definir Categoria*, o **teste nos documentos guardados** é outro clique e tem estimativa própria, ao lado do botão. O câmbio e, para provedores sem tabela de preços, a sua tarifa se ajustam em **Minha conta**. Com o **Ollama local** o custo é zero.
 
 > ⚠️ **A IA pode errar e inventar.** Trate toda saída como hipótese a conferir contra o trecho citado. É exatamente por isso que a regra é "a IA propõe, você decide".
 
