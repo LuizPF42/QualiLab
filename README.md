@@ -14,7 +14,9 @@ QualiLab é uma ferramenta **gratuita e de código aberto** para análise qualit
 
 Acesse a ferramenta **[aqui](https://luizpf42.github.io/QualiLab)** / Baixe a ferramenta **[aqui](https://github.com/LuizPF42/QualiLab/releases/download/alpha/index.html)**
 
-📖 **Novo por aqui?** Comece pelo **[Manual de uso](https://luizpf42.github.io/QualiLab/manual.html)**: guia completo, passo a passo, de todas as telas.
+📖 **Novo por aqui?** Comece pelo **[Manual de uso](https://luizpf42.github.io/QualiLab/manual.html)**: guia completo, passo a passo, de todas as telas. · 📝 **O que mudou em cada versão:** [`CHANGELOG.md`](CHANGELOG.md)
+
+> A **versão em uso** aparece no cabeçalho e no rodapé do próprio app. Cite esse número ao relatar um problema: sem ele não há como saber qual build o seu navegador carregou.
 
 ---
 
@@ -55,133 +57,100 @@ As ferramentas disponíveis, pagas ou gratuitas, também não têm colaboração
 
 ## Recursos
 
-### Documentos
-Importe `.txt`, `.md`, `.docx` e `.pdf`, ou cole texto diretamente. O conteúdo é extraído e exibido para leitura e codificação. A extração de **`.docx`** preserva a estrutura do documento como texto limpo e bem espaçado: títulos, parágrafos, listas com o aninhamento por indentação e tabelas em linhas e colunas. Nada disso suja o conteúdo com marcadores artificiais, para que o material fique legível na hora de codificar. O **`.pdf`** passa por um reflow geométrico que **detecta colunas** (artigos em duas colunas deixam de sair embaralhados), **remove cabeçalhos, rodapés e números de página** repetidos, remonta parágrafos (independente da entrelinha) e corrige hifenização de fim de linha; páginas desenhadas em duplicata (falso-negrito / camada de texto dupla) são de-duplicadas.
+Uma linha por recurso: aqui é o inventário. O **passo a passo** de cada um está no [manual do usuário](docs/MANUAL.md).
 
-Como a extração de PDF é imperfeita por natureza (sobretudo em documentos antigos ou digitalizados), você pode **editar o texto extraído** (e o **título**) de qualquer documento pelo botão **✏ editar** no cabeçalho do leitor: um trecho grudado, um rodapé que sobrou, uma linha quebrada. Ao salvar, **os grifos já feitos são reancorados automaticamente** às novas posições (e você é avisado se alguma codificação cair exatamente no trecho que você mexeu). Casos de corrupção sistêmica (um PDF inteiro sem espaços, por exemplo) continuam sendo tarefa para OCR, não para edição manual.
+### Material
 
-Documentos vindos de **PDF** trazem ainda um leitor do **original**: o botão **▤ original** no cabeçalho do leitor mostra a página do PDF de verdade (com zoom e navegação), e os seus grifos são desenhados sobre ela; dá para selecionar e codificar direto na página. Para **PDF digitalizado** (escaneado), o botão **◫ OCR** reconstrói o texto no próprio navegador (offline), a página inteira ou por **área** (arraste um retângulo → revise o texto lido → codifique). Como o app guarda a correspondência trecho ↔ página, o número de página do original (**p. N**) acompanha o trecho na Leitura, no Relatório e nos exports (CSV/JSON/W3C), e "ver original" abre já na página do trecho. Um **sinal de qualidade da extração** (⚠︎ no nome do documento e uma pílula "⚠︎ extração" no leitor) avisa quando um documento provavelmente saiu mal extraído (vazio, sem espaços entre palavras, glifos quebrados, OCR de baixa confiança), para você conferir/limpar ou rodar OCR antes de codificar.
-
-### Codificação por trechos
-Selecione qualquer trecho e aplique um código, ou clique com o **botão direito** para um menu de contexto rápido. Clicar com o botão direito num trecho **já codificado** (sem selecionar nada novo) abre direto a opção de **remover** aquele código, sem precisar reselecionar o trecho. **Ctrl+Z** desfaz a última codificação aplicada na sessão atual. Os códigos são **hierárquicos** (famílias → subcódigos), com cor por família e tonalidade por profundidade; administradores podem personalizar a cor de uma família (matiz e saturação, ou preto), propagada para os subcódigos.
-
-### Esquema de categorias (atributos do documento)
-Cada documento pode receber atributos com sete tipos de campo:
-
-| Tipo | Comportamento |
+| Recurso | O que é |
 |---|---|
-| **Texto Fechado** | Lista suspensa, escolhe um |
-| **Texto Aberto** | Campo livre |
-| **Número** | Aceita inteiro ou decimal (vírgula ou ponto), ordena como número e sai tipado no `.qdpx` |
-| **Data** | DD / MM / AAAA com partes opcionais |
-| **Sim/Não** | Dois botões |
-| **Múltipla Escolha** | Botões, escolhe um |
-| **Caixa de Seleção** | Botões, escolhe vários |
+| **Formatos de entrada** | `.txt`, `.md`, `.docx`, `.pdf` e colar texto. Planilha (`.csv`/`.xlsx`): cada linha vira um documento. Pasta do **Zotero** (RDF): cada referência com PDF vira um documento, os metadados viram categorias e a referência vira memo |
+| **Reflow de PDF** | detecta **colunas** (artigo em duas colunas deixa de sair embaralhado), remove cabeçalho, rodapé e número de página repetidos, remonta parágrafos independentemente da entrelinha, corrige hifenização de fim de linha e de-duplica sobre-impressão |
+| **`.docx` sem sujeira** | títulos, listas e tabelas viram texto limpo por quebra de linha e indentação, **sem marcadores injetados** (que virariam conteúdo codificável) |
+| **PDF original** | a página de verdade, com os seus grifos desenhados sobre ela; dá para selecionar e codificar ali |
+| **OCR no navegador** | a página inteira ou **por área** (arraste um retângulo, revise o texto lido, codifique). Offline, sem servidor |
+| **Página do trecho** | a correspondência trecho ↔ página sobrevive à ida e volta e aparece na Leitura, no Relatório e nos exports (CSV/JSON/W3C) |
+| **Editar o texto extraído** | corrige a extração e **reancora automaticamente os grifos** já feitos |
+| **Sinal de qualidade** | avisa quando um documento provavelmente saiu mal extraído (vazio, sem espaços entre palavras, glifos quebrados, OCR de baixa confiança) |
 
-Cada categoria pode ter descrição/instrução e habilitar as opções **"Não informado"** e **"Outros"** (valor livre). O esquema é definido pelos administradores do projeto; os membros apenas preenchem.
+### Codificação e esquema
 
-### Telas principais
+| Recurso | O que é |
+|---|---|
+| **Codificar trechos** | selecione e aplique pelo botão direito; **Ctrl+Z** desfaz a última |
+| **Códigos hierárquicos** | cor por família e tonalidade por profundidade; matiz e saturação personalizáveis, propagados à subárvore |
+| **Família × código** | uma regra só: quem tem subcódigos **agrupa** e não recebe trechos; a contagem da família soma os filhos |
+| **Categorias do documento** | sete tipos (texto fechado, texto aberto, número, data, sim/não, múltipla escolha, caixa de seleção). A descrição de cada uma é a **instrução de codificação** — o mesmo texto que a pessoa lê e que entra no prompt da IA |
+| **Esquema em lote** | agrupar, mesclar, promover a Hierarquia 0, **dividir** um código em subcódigos, e um **mapa espacial** dos códigos |
+| **Busca** | literal (expressão regular, maiúsculas, palavra inteira) e global em todo o corpus |
+| **Censura** | um código marcado 🚫 mascara os trechos dele nas saídas de transparência e no que vai para a IA |
 
-- **Codificação**: leitor à esquerda com grifos coloridos (a linha embaixo do grifo só aparece quando há mais de um código sobreposto no mesmo trecho, pra não poluir visualmente); painéis de categorias e de códigos à direita. Uma barra de ferramentas no leitor traz zoom de fonte, largura de coluna e tema de leitura (claro/sépia/escuro), além de busca com navegação entre ocorrências (🔎): o destaque da busca sobrepõe os grifos de código e censura sem substituí-los. Filtro **"Ver:"** para alternar entre camadas (individual, por codificador, final, ou "Individuais (todos)" (que sobrepõe os grifos de todos os pesquisadores **e** o gabarito ao mesmo tempo)) afeta tanto os grifos no texto quanto as respostas de categoria exibidas: ver a resposta de outro pesquisador ou o gabarito é só leitura (editar fica restrito à sua própria resposta, pra não sobrescrever a de outra pessoa por engano).
-- **Esquema**: tela em branco (sem documento aberto) pra organizar o livro de códigos e o esquema de categorias de uma vez: reorganização em lote de códigos (agrupar, mesclar, promover a Hierarquia 0) e edição das categorias.
-- **Reconciliação**: agrupa as codificações que se sobrepõem no mesmo código, mostra quantos codificadores concordam e permite **consolidar** na camada final (gabarito).
-- **Leitura**: dois modos de reler o que já foi codificado. Em **Documentos**, o documento inteiro com os grifos no contexto em que foram feitos (passar o mouse mostra o código e o autor; clicar abre o caminho do código, a camada e a nota analítica), com a lista do corpus à esquerda — filtro por nome, ordenação, agrupamento por categoria e nº de trechos por documento. Em **Trechos**, os trechos do código selecionado em todo o projeto, em tipografia legível, agrupados por documento. Filtro por categoria e cruzamento por co-ocorrência de até 2 códigos.
-- **Gráficos**: frequência de códigos, distribuição por categoria (gabarito), heatmap código × categoria, produção por codificador e concordância entre codificadores. **Clicar numa barra ou célula abre a Leitura já naquele código** (na co-ocorrência, com o par de códigos cruzado; o filtro de categorias do gráfico vai junto, então os trechos exibidos batem com a contagem clicada).
-- **Memos**: nota analítica única por alvo (projeto, documento, código **ou trecho codificado**), compartilhada entre os pesquisadores e editável por qualquer membro. A nota por trecho é escrita pelo menu de contexto do leitor (botão direito num grifo → "Anotar trecho") e também aparece na própria aba Memos. A aba Memos também reúne, abaixo dos códigos, as **Conversas salvas** (cada conversa do "Analisar com IA" abre por inteiro) e a **Memória do projeto** (o diário de insights da IA).
-- **Relatório**: é o **hub de publicação**, com três tipos de saída escolhidos na coluna esquerda:
-  - **Relatório Interativo (ATI)**: uma página HTML auto-contida (sem servidor) com cada documento em trechos grifados clicáveis; clicar abre, num painel lateral, a nota analítica daquele trecho. Títulos de documento e códigos da legenda também abrem seus memos. Equivale ao *overlay* da **Annotation for Transparent Inquiry (ATI)** do QDR, mas hospedável por você (ex.: GitHub Pages). Os documentos vêm colapsados e a legenda é recolhível, para escalar a projetos grandes.
-  - **Relatório Padrão**: montador de relatório. Você liga e desliga seções por caixas de seleção (resumo, lista de documentos, contagens e listas do esquema, frequência de códigos, distribuição por categoria, trechos por código, códigos não utilizados) e o texto se monta ao vivo. **Copiar texto** (pronto pra colar em `.docx`/Docs) e **Imprimir / PDF**. Crédito opcional ao QualiLab no resumo.
-  - **Web Annotation (W3C)**: exporta as anotações no padrão aberto **[W3C Web Annotation Data Model](https://www.w3.org/TR/annotation-model/)** (JSON-LD), a mesma "língua de dados" sob o ATI, o [hypothes.is](https://web.hypothes.is/), o Anno-REP e o Dataverse. É interoperável sem casar com nenhuma ferramenta específica.
-  - Em projeto coletivo, os três respeitam a camada escolhida (gabarito final ou individuais). Em todas as saídas de transparência, trechos marcados como **censura** são mascarados por padrão.
+**Busca semântica (`≈ termos`), sem chave e sem servidor.** Você descreve o *sentido* que procura e o app sugere **palavras e expressões do seu próprio corpus** próximas dele; clicar dispara a busca **literal** por elas. Roda com [transformers.js](https://github.com/huggingface/transformers.js) e o modelo [`paraphrase-multilingual-MiniLM-L12-v2`](https://huggingface.co/Xenova/paraphrase-multilingual-MiniLM-L12-v2) **dentro do navegador**: o modelo vem até os dados, não o contrário — por isso vale nos modos arquivo e rascunho sem quebrar a promessa de privacidade deles. Custo: um download único (~113 MB no caminho WASM, ~224 MB no WebGPU) e ~10 s na primeira consulta da sessão. O índice é cache local, refeito quando o corpus muda, e **não viaja** no `.qualilab`.
 
-### Busca semântica (sem chave, no seu navegador)
+### Telas
 
-Além da busca literal (com expressão regular, diferenciação de maiúsculas e palavra inteira) e da busca global em todo o corpus, o leitor tem **"≈ termos"**: você descreve o *sentido* que procura e o app sugere **palavras e expressões do seu próprio corpus** próximas daquele sentido. Clicar numa sugestão dispara a busca **literal** por ela, com a etiqueta `≈ termo` em cada ocorrência — o resultado continua sendo texto que está mesmo lá, não um palpite do modelo.
+| Tela | Para quê |
+|---|---|
+| **Codificação** | o leitor com os grifos, mais os painéis de categorias e de códigos |
+| **Reconciliação** | *(coletivo)* agrupa as codificações sobrepostas, mostra quem concorda e consolida o gabarito |
+| **Leitura** | reler o resultado: o documento inteiro com os grifos no contexto, ou todos os trechos de um código |
+| **Gráficos** | frequência, nuvem de palavras, co-ocorrência, cobertura, código × atributo, tempo e concordância entre codificadores. Clicar numa barra abre a Leitura naquele código |
+| **Memos** | nota analítica por projeto, documento, código **ou trecho**, compartilhada e co-editável |
+| **Esquema** | organizar códigos e categorias em lote |
+| **Relatório** | o hub de publicação (abaixo) |
 
-Isso **não é IA generativa e não pede chave nenhuma**. Roda com [transformers.js](https://github.com/huggingface/transformers.js) e o modelo [`paraphrase-multilingual-MiniLM-L12-v2`](https://huggingface.co/Xenova/paraphrase-multilingual-MiniLM-L12-v2), um modelo de *embeddings* (converte texto em coordenadas, para medir proximidade de sentido; não escreve nada), **executado dentro do navegador**: o modelo vem até os dados, os dados não vão até o modelo. Por isso vale também nos modos rascunho e arquivo sem quebrar a promessa de privacidade deles, e funciona sem conexão depois do primeiro uso.
+### Equipe e projeto
 
-Dois custos a saber: o modelo é baixado **uma vez** (~113 MB no caminho WASM, ~224 MB no caminho WebGPU, em cache do navegador depois disso) e a **primeira consulta da sessão leva ~10 s** enquanto o motor sobe. O índice do vocabulário é um **cache derivado**: fica no IndexedDB deste navegador, é refeito quando o corpus muda e **não viaja** no `.qualilab`.
+| Recurso | O que é |
+|---|---|
+| **Camadas** | cada pesquisador codifica na sua (`individual`); a equipe consolida um gabarito (`final`) na Reconciliação. Vale também para as respostas de categoria |
+| **Papéis** | admin e membro, **impostos pelo servidor** (RLS), não escondidos na interface: excluir documento ou código, editar texto compartilhado, mesclar códigos e importar exigem admin |
+| **Distribuição de documentos** | matriz documentos × pesquisadores, com rodízio: cada um só **enxerga** o que lhe foi atribuído |
+| **Codificação cega** | cada um só enxerga o **próprio** trabalho (o gabarito também some). Com o mesmo documento para duas pessoas, o estudo fica duplo-cego |
+| **Tipos de projeto** | individual (tudo vai direto ao gabarito) ou coletivo |
+| **Tempo real** | codificações e respostas de categoria sincronizam ao vivo; esquema de códigos e categorias exigem recarregar |
+| **Onde os dados ficam** | arquivo no disco, rascunho no navegador ou nuvem — trocar entre eles é um clique no hub do projeto, sem exportar e importar à mão |
+| **Sua própria nuvem** | apontar o app para um projeto **Supabase seu**, pela tela de entrada ou pelo hub |
 
-### Análise com IA
+### IA — opcional, BYOK, opt-in
 
-Duas telas opcionais conversam com um modelo de linguagem. O modo é **BYOK**: cada pesquisador traz a própria chave (Gemini/OpenAI/Anthropic/Azure/compatível-OpenAI ou **Ollama local**), guardada **só no navegador** — e é o **próprio navegador que chama o provedor**, sem intermediário: nenhum servidor do QualiLab vê o material da análise. A Edge Function `ai-ask` cobre os dois casos que sobram: um endpoint *Personalizado*/*Azure* que não libere chamadas de navegador (CORS) e uma eventual **chave de servidor** (a instância pública não tem):
+**O padrão é o navegador chamar o provedor direto**: com a sua chave (guardada só no navegador), **nenhum servidor do QualiLab vê o material** da análise. A Edge Function `ai-ask` cobre só dois casos: um endpoint *Personalizado*/*Azure* que não libere chamadas de navegador (CORS) e uma eventual chave de servidor — que a instância pública não tem.
 
-- **Codificar Automaticamente**: cinco assistentes em abas, todos no mesmo padrão (a IA **propõe**, você **aprova/recusa item a item**, nada é gravado sem confirmação):
-  - **Sugerir Codificação**, no papel de **segunda codificadora (recall)**: a IA lê os documentos e aponta trechos que se encaixam em **códigos existentes** mas escaparam; o trecho é localizado no texto (quote→span) e vira uma codificação ao aprovar. Trechos já codificados não são repropostos; censura nunca é codificada.
-  - **Repetir Codificação**: sem IA e sem chave nenhuma — acha as ocorrências **exatas** dos trechos que um código já tem e propõe aplicá-lo a cada uma. Útil sobretudo na censura: censurar é por trecho, e o mesmo nome costuma reaparecer descoberto adiante. Acha texto idêntico, não variante.
-  - **Sugerir Categorização**: preenche o **valor de categorias já existentes** por documento (não cria categorias). No modo normal a IA vê o que **já está preenchido** e só devolve **diferenças ou campos vazios**; cada sugestão mostra se a categoria está "já aplicada" (com o valor atual) ou "vazia". Há também um **modo cego**, em que ela responde **sem ver** as suas respostas, um documento por chamada, e o painel devolve um **placar** de concordância com o seu gabarito — o mesmo painel deixa de ser conferente e vira régua.
-  - **Definir Categoria**: escreve a **instrução de codificação** de uma categoria a partir das respostas que você já deu. A premissa é que o seu gabarito **contém** a regra que você aplicou e o que falta é escrevê-la; por isso ela serve ao **começo do zero**, quando não existe definição nenhuma para conferir e ajustar. Detalhado abaixo.
-  - **Organizar Códigos**: reorganiza o esquema. A IA propõe operações (mesclar, agrupar, mover, renomear, promover) com a justificativa de cada uma.
-- **Analisar com IA**: análise **conversacional** do material do projeto, em formato de chat. Você escolhe **o material**: Documentos brutos · Trechos + Código · Documentos + Trechos + Código (a seleção de códigos é uma **árvore** com cores e contagem, como na Leitura), e uma **modalidade** adequada a cada escopo (mais uma opção **Personalizado** com instrução livre). A IA responde com o **memo do projeto como contexto**, citando as fontes; o prompt **inteiro** enviado é exibível antes de rodar (transparência total). A partir da primeira resposta, a conversa continua com **perguntas de acompanhamento** (follow-ups) sobre o mesmo material. As respostas saem formatadas (títulos, listas) e cada conversa pode ser **salva**: ela passa a aparecer na aba **Memos**, em "Conversas salvas".
+| Recurso | O que é |
+|---|---|
+| **Codificar Automaticamente** | cinco assistentes: **Sugerir Codificação** (segunda codificadora, recall) · **Sugerir Categorização** (preenche categorias existentes) · **Definir Categoria** (escreve a instrução a partir do gabarito que você já deu) · **Organizar Códigos** · **Repetir Codificação** (esta **sem IA**: acha ocorrências exatas). Em todos: a IA **propõe**, você aprova ou recusa **item a item**, nada é gravado sem confirmação |
+| **Analisar com IA** | conversa sobre o material que você recorta (documentos, trechos por código, ou os dois), citando as fontes, com postura metodológica escolhível e prompts salvos |
+| **MCP/RAG** *(experimental)* | a IA **pede** o material em vez de receber um recorte pronto, por ferramentas de só-leitura; **cada chamada aparece na tela**, lida do dado e não da narração do modelo |
+| **Prompt visível e editável** | o **⚙ Configurar Prompt** mostra o que será enviado, seção por seção, com o modelo ativo, a estimativa de tokens e o **custo em R$** — antes de enviar |
+| **Modo cego** | a IA responde **sem ver** o seu gabarito e o painel devolve um placar de concordância: deixa de ser conferente e vira régua |
+| **Memória do projeto** | diário de insights entre sessões; a IA propõe, você aprova, e cada entrada tem interruptor de uso |
+| **Provedores** | Gemini, OpenAI, Anthropic, Azure OpenAI, qualquer API no formato clássico da OpenAI (DeepSeek, Mistral, Qwen, vLLM) e **Ollama local** — o único em que nada sai da sua máquina |
+| **Desligar por projeto** | `ninguém` · `só administradores` · `todos`, imposto no banco e não só na interface; o relatório passa a declarar o que o projeto registra |
+| **Corte de material avisado** | há teto por documento e por envio; sempre que algo é cortado, uma faixa diz **quantos documentos ficaram de fora** e quantos entraram só pelo começo |
 
-**Definir Categoria (escrever a instrução a partir do que você já respondeu)**: depois de responder alguns documentos numa categoria, a regra que você aplicou já existe — ela está nas suas respostas, só não está escrita. Esta aba lê uma amostra dos documentos já respondidos e propõe o texto da **descrição** da categoria, que é o mesmo campo que o codificador humano lê ao preencher e que entra no prompt das telas de IA: **uma definição só governando os dois avaliadores**. O texto vem editável, você aprova, e gravar chama o mesmo caminho de sempre (é o campo de descrição do esquema, sem tabela nova) — por isso exige **administrador**, como qualquer mudança de esquema.
+### Publicação e transparência
 
-- **A amostra é dividida antes de qualquer chamada**, em casos de **treino** (vão no prompt) e **guardados** (não vão, e servem para testar depois: decorar um caso que a IA já viu aparece como acerto). Ela é **equilibrada por valor**, não proporcional ao corpus — com 90 "Não" e 10 "Sim", um sorteio simples ensinaria "quase sempre Não", uma regra que acerta 90% e não serve para nada. Um cartão mostra a repartição que de fato saiu, valor por valor. Com menos de **seis** documentos respondidos a aba se recusa a rodar, e diz por quê: com tão poucos casos qualquer texto sairia conjectura com aparência de critério.
-- **Roda em dois tempos.** Primeiro uma **passada de localização**: uma chamada curta por caso, que **não julga nada** — só copia do documento o trecho literal que sustenta a resposta que **você** já deu. É o que faz um corpus longo caber numa indução (o material da chamada seguinte passa a ser um trecho por caso, não o texto inteiro), e de graça ela separa os casos em que **nada no documento** sustenta o rótulo: resposta vinda de fora, engano de preenchimento ou extração ruim do texto. Depois vem a chamada que escreve o verbete.
-- **Junto do verbete vêm os casos que a regra não explica**, e é essa lista que paga a tela: a IA é obrigada a aplicar a própria regra a cada caso recebido e a apontar aqueles em que ela daria resposta **diferente da sua**, sem ajustar a regra para explicar todos. Ou a sua codificação está inconsistente ali, ou existe um critério que você aplica sem ter percebido. **Lista vazia é motivo de desconfiança, não elogio**: uma regra que explica 100 de 100 quase sempre decorou os exemplos. Vêm também os **pontos que os exemplos não decidem**, deixados em aberto de propósito — onde os casos não bastam, a IA é proibida de completar com o que soa razoável, e a escolha fica sua.
-- **Teste e laço.** *Testar a definição* responde os documentos **guardados às cegas**, com o texto que está no campo (o rascunho, não o que está gravado: a graça é saber **antes** de aplicar), e compara com o seu gabarito. É o mesmo motor e o mesmo placar da avaliação cega da aba Sugerir Categorização, de propósito — os dois números medem a mesma coisa e você vai compará-los. Onde a definição errou, cada caso aparece com a sua resposta ao lado da resposta da IA, e um botão **refaz a indução incluindo esses casos**: eles entram no treino da volta seguinte, e os novos guardados saem só de documentos que **nunca entraram em prompt nenhum**.
-- **O que o número não é**, e a tela declara: ele conta só os pares em que os dois responderam; mede **concordância com o seu gabarito**, não acerto (onde vocês divergem, a resposta incompleta pode ser a sua); com poucos casos não distingue 27 de 28; e, depois de várias voltas, tende a ficar **otimista**, porque o conjunto guardado é novo mas as suas escolhas passaram a depender do que você viu. Para uma medida limpa, separe documentos que não vai usar em volta nenhuma — isso é método, não botão.
-- As **cinco regras da indução** (escrever instrução e não descrição · a regra vale para o caso 101 · só escrever critério que os casos sustentam · declarar o que não conseguiu explicar · a anatomia do verbete) são fixas e vão em todo prompt; aparecem inteiras no **⚙ Configurar Prompt** e podem ser editadas ali — são o piso, não algema, e a edição vale para a sessão. Esta aba **precisa da sua própria chave**: a saída é estruturada por ferramenta e conversa direto com o provedor, sem passar pela função do servidor.
+| Saída | O que é |
+|---|---|
+| **Relatório Interativo (ATI)** | página HTML **auto-contida** (sem servidor) com os trechos grifados clicáveis; clicar abre a nota analítica num painel lateral. Equivale ao *overlay* da **Annotation for Transparent Inquiry** do QDR, hospedável por você |
+| **Relatório Padrão** | montador por seções, com prévia ao vivo, **copiar texto** e **imprimir / PDF** |
+| **Web Annotation (W3C)** | as anotações no [padrão aberto do W3C](https://www.w3.org/TR/annotation-model/) (JSON-LD), a mesma língua de dados sob o ATI, o [hypothes.is](https://web.hypothes.is/), o Anno-REP e o Dataverse |
 
-**Memória do projeto (diário de insights da IA)**: um caderno de memórias curtas (fatos e decisões do projeto) que a IA passa a levar em conta entre sessões. Ao fim de uma análise ou organização de códigos, a IA pode **sugerir** memórias (cada uma com a justificativa); você **aprova, edita ou recusa** cada uma antes de gravar, e também pode adicionar memórias à mão. Cada memória tem um **interruptor "usar na análise"**: só as marcadas entram no prompt da IA, e assim você controla o que ela usa (economiza tokens e deixa explícito o contexto). Para transparência em projetos colaborativos, cada memória registra **quem a criou** e **qual modelo a gerou**.
-
-O uso de IA é **opt-in e transparente**: nada é enviado sem você clicar, e você vê exatamente o prompt. Suporta **Google Gemini, OpenAI ou Anthropic**. O padrão é **BYOK**: cada pesquisador **traz a própria chave** em "Minha Conta", guardada só no navegador (nas chamadas de nuvem, transita pela Edge Function e é usada em memória, sem ser gravada no servidor). (Quem hospeda a própria instância pode, opcionalmente, configurar uma chave de servidor nos secrets do Supabase. Ver [Configuração da nuvem](#configuração-da-nuvem-supabase).) Além desses, há suporte BYOK a **Azure OpenAI**, a um provedor **Personalizado** (qualquer API no formato clássico da OpenAI) e ao **Ollama local** (modelo na sua própria máquina, chamado direto pelo navegador). Ver abaixo.
-
-**Azure OpenAI (BYOK apenas)**: em "Minha Conta", escolha o provedor **Azure OpenAI** e preencha o endpoint do seu recurso na superfície "v1" (`https://SEU-RECURSO.openai.azure.com/openai/v1`), a chave de API do recurso (obrigatória) e o nome do **deployment** (não o nome do modelo base). Usa o formato clássico de chat completions, autenticando pela chave do Azure. Sem chave de servidor: só funciona com BYOK (sua chave).
-
-**Provedor "Personalizado" (BYOK apenas)**: em "Minha Conta", além de Gemini/OpenAI/Anthropic/Azure, há a opção **Personalizado**: você preenche a URL base da API, uma chave (opcional) e o modelo. Cobre qualquer API compatível com o formato clássico da OpenAI (`/chat/completions`): **DeepSeek, Mistral, Qwen** hospedados, ou um servidor próprio (Ollama/vLLM) **exposto numa URL pública** (a Edge Function roda no servidor do Supabase, não alcança `localhost` da sua máquina sem um túnel). Não tem chave de servidor nem modelo padrão: só funciona com BYOK.
-
-**Ollama local (BYOK apenas, chamada direta do navegador)**: para rodar um modelo **na sua própria máquina** sem expor nada na internet, escolha o provedor **Ollama (local)** em "Minha Conta". Diferente do Personalizado (que passa pela Edge Function no servidor e por isso **não** alcança o seu `localhost`), aqui o **navegador chama o Ollama direto** (`http://localhost:11434/v1` por padrão): o material não sai da máquina e a Edge Function nem é tocada. O modelo é **texto livre** (qualquer modelo baixado, ex.: `llama3.1`, `qwen2.5:14b`), com uma lista de sugestões. As chamadas que esperam saída estruturada (organizar códigos, sugerir memórias) usam o **modo JSON** do Ollama/vLLM (`response_format: json_object`), que restringe a resposta a JSON válido. Isso resolve o caso clássico do modelo local pequeno que entende a tarefa mas devolve prosa em vez de JSON. Dois cuidados operacionais: (1) inicie o Ollama com `OLLAMA_ORIGINS=*` (ou a origem exata) para liberar o **CORS**, senão o navegador barra a chamada; (2) app em **HTTPS** (GitHub Pages) + `http://localhost` é bloqueado por Firefox/Safari por *mixed content* (Chrome/Edge têm exceção para localhost); o caminho mais confiável é **rodar o app localmente** (`python -m http.server 8000`). Modelos melhores em seguir formato estruturado rendem mais aqui (`qwen2.5` > `llama3.1` no mesmo tamanho).
-
-**Censura de trechos sensíveis**: marque um código como 🚫 (em qualquer código, não só famílias; ex.: "Censura: nomes" separado de "Censura: cidades") e os trechos com ele ficam **de fora** do material enviado à IA por padrão. Na tela "Analisar com IA", se a seleção tiver trechos censurados, aparece um checkbox por código de censura, útil quando uma censura é irrelevante pro contexto (nomes) e outra é informação relevante que você quer que a IA considere (ex.: cidade).
-
-### Codificação colaborativa em camadas
-Cada codificação registra o autor. O trabalho de cada pesquisador é independente (`layer = individual`); a equipe consolida uma **camada final** na tela de Reconciliação. O mesmo modelo vale para as respostas de categoria: cada pesquisador preenche a sua; o administrador define o gabarito. Ações **destrutivas ou que afetam todo mundo** (excluir documentos ou códigos, editar o texto de um documento, importar material e mesclar códigos) são restritas ao **administrador** e impostas pelo servidor (não só escondidas na interface).
-
-### Distribuição de documentos e codificação cega
-Em projeto **coletivo na nuvem**, o administrador pode controlar **quem vê o quê** por dois interruptores independentes, ambos desligados por padrão:
-
-- **Distribuição restritiva**: cada pesquisador só **enxerga** os documentos atribuídos a ele. Serve para **dividir o corpus**: cada um cuida da sua parte, ninguém codifica em duplicidade.
-- **Codificação cega (*true blind*)**: cada pesquisador só **enxerga as próprias** codificações e respostas. Atribuindo o **mesmo** documento a duas pessoas, o estudo fica **duplo-cego**, para medir a confiabilidade entre codificadores.
-
-A atribuição é feita numa **matriz documentos × pesquisadores** (com rodízio automático e um selo de quem já codificou cada documento), no hub do projeto. As duas regras são **impostas pelo servidor** (RLS), não só escondidas na interface: um membro não alcança pela API o texto do trecho, o PDF original nem a codificação que estão ocultos. É recurso exclusivo da **nuvem coletiva** (depende de contas de vários pesquisadores) e não viaja no `.qualilab`.
-
-### Tipos de projeto
-Ao criar um projeto você escolhe:
-- **Individual**: uso solo; tudo vai direto para a camada final, sem etapa de reconciliação.
-- **Coletivo**: múltiplos pesquisadores codificam de forma independente e reconciliam depois.
-
-O tipo pode ser alterado depois pelo administrador (convertendo Coletivo → Individual de forma irreversível, colapsando todas as codificações num único autor).
-
-### Gestão de projeto e membros
-A **pílula do projeto** no cabeçalho muda de cor conforme **onde os seus dados estão**: neutra = rascunho (neste navegador, efêmero), **verde** = arquivo no seu disco, **azul** = nuvem (servidor padrão), **violeta** = nuvem no **seu próprio** servidor Supabase, **âmbar** = nuvem sem conexão (nada está sendo salvo). Passe o mouse para a explicação completa; em modo rascunho, o tooltip também mostra **quanto do armazenamento do navegador (~5 MB) o projeto já usa**, e um aviso aparece no cabeçalho a partir de 75%. Nos modos rascunho e arquivo, um **"✓ salvo HH:MM"** discreto confirma a última gravação automática.
-
-Clicar na pílula abre o hub de gestão: código de convite para colaboradores, tipo do projeto, lista de membros com papéis (admin/membro), renomear, limpar conteúdo, excluir e configuração de conexão. No card **Conexão (Supabase)** dá para apontar o app pro **seu próprio projeto Supabase** (as credenciais valem só naquele navegador e passam a ter precedência), voltar ao servidor padrão, ou **desconectar de verdade** para o modo rascunho. Conforme o modo, o hub também mostra atalhos para trocar de armazenamento sem exportar/importar `.qualilab` na mão: **"Salvar como arquivo"** (só no rascunho, Chromium) migra o projeto atual pra um arquivo `.qualilab` no disco num clique (pílula fica verde); **"Enviar para a nuvem"** (rascunho ou arquivo) cria um projeto novo na nuvem e copia tudo pra ele (documentos, categorias, códigos, codificações, memos e resultados de IA salvos); **"Sair deste arquivo"** (só no modo arquivo) desanexa do arquivo atual e volta à tela de entrada, deixando o `.qualilab` intacto no disco.
-
-### Tela de entrada, conta e login
-Na primeira execução (sem sessão nem arquivo salvo), a **tela de entrada** oferece três caminhos, com o logo do projeto no topo: **Novo em arquivo** e **Entrar na nuvem** lado a lado, e **Só testar (rascunho)** abaixo. "Entrar na nuvem" leva ao login por **Google** ou **e-mail e senha** (com cadastro e **"Esqueci minha senha"** na mesma tela); **"← Voltar"** retorna à tela de escolha. Um botão violeta **"Conectar ao meu Supabase"** (na tela de entrada e no login) aponta o app pro **seu próprio servidor Supabase** antes de logar: é onde ficam seus projetos coletivos; depois de conectar, você loga ali e entra no projeto pelo código. Sessões de rascunho ficam vinculadas ao dispositivo, sem sincronizar entre aparelhos.
-
-Clicando no seu nome no cabeçalho, **em qualquer modo** (nuvem, local ou arquivo), a tela **Minha Conta** permite:
-- Trocar o nome de exibição (usado nas codificações).
-- Alterar a senha (contas com e-mail; some nos modos local/arquivo). Esqueceu a senha? A tela de acesso tem **"Esqueci minha senha"**, que envia um link para você criar uma nova.
-- Ver todos os seus projetos em um só lugar, com ações diretas: abrir, renomear (admin), sair ou excluir (admin), sem precisar entrar em cada um.
-- Configurar a sua **chave/modelo de IA** (BYOK), incluindo o **Ollama local**. Por isso o nome agora é clicável também offline (antes, em local/arquivo, ele não abria nada e não havia como configurar a IA local sem a nuvem).
-- Sair da conta (desconecta do Supabase e volta pra tela de login; só no modo nuvem).
+Em projeto coletivo as três respeitam a camada escolhida; em todas, os trechos de **censura** saem mascarados, e ATI e W3C ainda oferecem **anonimizar a autoria**.
 
 ### Importação e exportação
 
 | Formato | Importa | Exporta | Notas |
 |---|:---:|:---:|---|
-| **`.qualilab`** (nativo) | ✅ | ✅ | Botão **"salvar .qualilab"** no cabeçalho: baixa o projeto inteiro (documentos, categorias, valores, códigos, codificações, memos e resultados de IA salvos) para reabrir no próprio app. Funciona em qualquer modo. Ao **importar para um projeto coletivo já em uso**, preserva a resposta de categoria de cada pesquisador de origem (não só uma); o gabarito do arquivo entra como gabarito do projeto de destino. |
-| **QDPX** (REFI-QDA) | ✅ | ✅ | Interoperável com ATLAS.ti, MAXQDA, NVivo, Quirkos, QualCoder. O `.qdpx` exportado é **validado contra o `Project.xsd` oficial do REFI-QDA (v1.0, MIT)**, mas isso é **tentativa de intercompatibilidade, não garantia**: schema válido não substitui testar na ferramenta de destino real. Na exportação, prefere a camada final (gabarito) quando consolidada. Ao importar um `.qdpx` de outra ferramenta (sem a convenção de tipo do QualiLab), tenta inferir categorias fechadas pelos valores repetidos (revise em "Gerenciar esquema de categorias". **Não inclui o Taguette**) ele só exporta o codebook em REFI-QDA (`.qdc`, sem documentos nem trechos). |
-| **`.sqlite3`** (Taguette) | ✅ | ✕ | Lê o projeto nativo do Taguette direto no navegador (via [sql.js](https://github.com/sql-js/sql.js), sem servidor): documentos, tags (com hierarquia por `/` ou `.`, como o próprio Taguette documenta) e trechos codificados. O Taguette não tem atributos de documento nem autor por trecho, então isso não vem no import. |
-| **QDC** (codebook REFI-QDA) | ✅ | ✅ | Só o livro de códigos (sem documentos nem trechos: o formato não tem isso). Compatível com o codebook exportado por qualquer ferramenta REFI-QDA, incluindo o Taguette; se a hierarquia não vier em `<Code>` aninhado, tenta reconstruir pelo nome (`/` ou `.`), igual ao import do `.sqlite3`. |
-| **Zotero RDF** (pasta) | ✅ | ✕ | Importa uma coleção do Zotero exportada em **Zotero RDF com arquivos** (que é uma pasta: um `.rdf` mais `files/`). Cada referência com PDF anexado vira um documento, com o texto extraído pelo mesmo caminho do envio manual (o "ver original", a página do trecho e o OCR continuam funcionando). Antes de importar, você escolhe **quais metadados viram categorias** (tipo de item, ano, autores, publicação e palavras-chave vêm marcados; identificadores, desmarcados), o **nome do documento** e se guarda o PDF original; o que não vai entrar (referência sem PDF, anexo que é página salva, arquivo ausente) é listado **pelo nome antes de confirmar**. Referência, resumo e as notas escritas no Zotero vão para o **memo do documento**. Não vêm códigos nem trechos: uma biblioteca de referências não tem isso, e as marcações do leitor de PDF do Zotero não saem na exportação dele. |
-| **Web Annotation (W3C)** | ✕ | ✅ | Anotações no padrão aberto [W3C Web Annotation Data Model](https://www.w3.org/TR/annotation-model/) (JSON-LD). Cada trecho codificado vira uma anotação com seletor de posição/citação + nota analítica (a do trecho tem prioridade sobre a do código). É a base interoperável do ATI/QDR, hypothes.is, Anno-REP e Dataverse. Censura mascarada. Na aba **Relatório**. |
-| **Leitor de Transparência (HTML)** | ✕ | ✅ | Página HTML auto-contida (sem servidor): documentos com grifos clicáveis e nota analítica. É o *overlay* do ATI, hospedável por você (ex.: GitHub Pages). Na aba **Relatório**. |
-| **CSV de trechos** | ✕ | ✅ | Um trecho por linha, com documento, código, camada e autor. |
-| **CSV de atributos** | ✕ | ✅ | Um documento por linha, com os valores de cada categoria. |
-| **JSON** | ✕ | ✅ | Projeto completo com camadas e autores. |
+| **`.qualilab`** (nativo) | ✅ | ✅ | O projeto inteiro, sem perda, em qualquer modo. Ao importar num projeto coletivo, **preserva a resposta de cada pesquisador** de origem. Formato aberto e documentado ([abaixo](#o-qualilab-não-é-um-formato-mágico)) |
+| **QDPX** (REFI-QDA) | ✅ | ✅ | Intercâmbio com ATLAS.ti, MAXQDA, NVivo, Quirkos, QualCoder. O pacote gerado é **validado contra o `Project.xsd` oficial (v1.0)** por um harness de round-trip mantido no repositório de desenvolvimento — o que é **tentativa de intercompatibilidade, não garantia**. Importa `.qdpx` do ATLAS.ti com os PDFs |
+| **QDC** (codebook REFI-QDA) | ✅ | ✅ | Só o livro de códigos (é o que o formato tem). Compatível com o codebook do Taguette |
+| **`.sqlite3`** (Taguette) | ✅ | ✕ | O projeto nativo do Taguette lido direto no navegador, via [sql.js](https://github.com/sql-js/sql.js): documentos, tags com hierarquia e trechos |
+| **Zotero RDF** (pasta) | ✅ | ✕ | Coleção exportada com arquivos. Você escolhe quais metadados viram categorias e o que é listado, pelo nome, antes de entrar |
+| **Planilha** (`.csv`/`.xlsx`) | ✅ | ✅ | Uma linha por documento na ida; e o **CSV de atributos tem caminho de volta** — preencha na planilha e reimporte, com prévia do que muda antes de gravar |
+| **Web Annotation (W3C)** · **Leitor ATI** | ✕ | ✅ | Na aba Relatório. Censura mascarada |
+| **CSV de trechos** · **JSON** | ✕ | ✅ | Um trecho por linha (documento, código, camada, autor); ou o projeto completo com camadas e autores |
+
+> Os formatos de **trabalho e migração** saem **crus, censura inclusive**: é por eles que você leva o seu material para outra ferramenta e o traz de volta, e mascarar ali seria perda irreversível. Quem mascara são as saídas de **transparência**. O menu de exportação avisa isso na hora.
 
 ---
 
@@ -213,7 +182,7 @@ Comparação direta com os achados de [Küster & Wolf (2025)](#motivação) sobr
 
 **O que fica de fora por escopo, e não por acaso.** O QualiLab é uma ferramenta de **texto e PDF**. Áudio, vídeo e imagem exigem anotação sobre linha do tempo ou sobre pixels, que é outro produto e não uma funcionalidade a mais. Para isso, veja o [ELAN](https://archive.mpi.nl/tla/elan/), o [Transana](https://www.transana.com/), o [dicto](https://dictoapp.github.io/dicto/) ou o [QualCoder](https://github.com/ccbogel/qualcoder).
 
-**Extensibilidade por dados, não por plugins.** O QualiLab não tem arquitetura de plugins, e não pretende ter: ela briga de frente com o desenho de arquivo único que faz o app rodar sem instalação e sem build. O que ele oferece no lugar são superfícies abertas: o formato **`.qualilab`** (sem perda, documentado) e a exportação em **REFI-QDA** e **W3C Web Annotation**, para que qualquer outra ferramenta possa ler o que foi produzido aqui.
+**Extensibilidade por dados, não por plugins.** O QualiLab não tem arquitetura de plugins, e não pretende ter: ela briga de frente com o desenho de arquivo único que faz o app rodar sem instalação e sem build. O que ele oferece no lugar são três superfícies abertas: o formato **`.qualilab`** (sem perda, documentado), e a exportação em **REFI-QDA** e **W3C Web Annotation**, para que qualquer outra ferramenta possa ler o que foi produzido aqui.
 
 ### O `.qualilab` não é um formato mágico
 
@@ -318,7 +287,7 @@ https://luizpf42.github.io/QualiLab
 python -m http.server 8000   # ou: npx serve .
 ```
 
-As dependências (Preact, htm, pdf.js, mammoth, JSZip, supabase-js) são carregadas via CDN na primeira utilização: conexão com a internet é necessária na primeira vez, mas depois o app funciona com o arquivo já baixado.
+O **núcleo do front-end (Preact + htm) vem embutido** no próprio `index.html`, então o app abre e chega à tela inicial **mesmo sem rede**. As demais bibliotecas (pdf.js, mammoth, JSZip, sql.js, XLSX, tesseract.js, transformers.js e o supabase-js) são carregadas **por CDN e sob demanda**: cada uma só é buscada quando você usa o recurso que depende dela, e a falta de rede derruba **aquele recurso**, com uma mensagem, em vez do app inteiro.
 
 ---
 
@@ -346,7 +315,8 @@ Abra o **SQL Editor** do Supabase, cole o conteúdo de [`supabase/schema.sql`](s
 Em **Authentication → Providers**:
 - Habilite **Email** para login por e-mail e senha. A **recuperação de senha** ("Esqueci minha senha") já funciona com isso: o app manda o link de redefinição de volta para a própria URL do app, que precisa estar em **Auth → URL Configuration → Redirect URLs** (a mesma entrada `.../**` usada pelo login com Google já serve). ⚠️ **Atenção ao SMTP embutido do Supabase: são ~2 e-mails por hora, e a cota é do projeto** (medido em jul/2026), **compartilhada entre a confirmação de cadastro e a recuperação de senha**. Ou seja: duas pessoas usando na mesma hora e a terceira não recebe nada. Para uso real, **configure um SMTP próprio** em `Authentication > Emails > SMTP Settings`: aí o limite começa em 30/hora e fica ajustável em `Authentication > Rate Limits`. Serve qualquer serviço com SMTP (Brevo, Resend, AWS SES, Postmark, SendGrid, ZeptoMail); o **Brevo** dispensa domínio próprio, pois verifica um remetente individual.
 - **Não** habilite *Allow anonymous sign-ins*: o QualiLab não usa mais modo visitante. Os três fluxos são **arquivo** (no disco), **nuvem** (com login) e **rascunho** (local, temporário).
-- Opcional: desative **Confirm email** para que o cadastro entre direto (o app trata os dois casos).
+- **A confirmação de cadastro é por CÓDIGO DIGITADO, não por link** (v1.4.19). O app abre uma tela pedindo o número que chega por e-mail, então o template **Authentication → Emails → Confirm signup** precisa mandar `{{ .Token }}`, e **não** `{{ .ConfirmationURL }}`. Existe porque antivírus de link de caixa corporativa (Safe Links e afins) **abre o link sozinho** e o queima antes do clique da pessoa, o que dava "link inválido ou expirado" a quem nunca tinha clicado. ⚠️ **O Supabase só libera a edição de templates com SMTP próprio configurado**: sem ele vale o template padrão deles, que manda um link — ou seja, **configure o SMTP antes do template**, senão a tela do app pede um número que o e-mail não traz. O tamanho do código é do projeto (**Authentication → Providers → Email**, de 6 a 10 dígitos); o app aceita qualquer um deles e não promete quantidade.
+- Alternativa: desative **Confirm email** e o cadastro entra direto, sem código nenhum.
 
 ### 4. IA (Edge Function `ai-ask`: opcional, só para chave de servidor e fallback de CORS)
 
@@ -366,7 +336,7 @@ Sem nenhuma chave configurada, as telas de IA retornam um erro claro; o restante
 
 Sem build, sem bundler, sem framework pesado.
 
-- **UI**: [Preact](https://preactjs.com/) + [htm](https://github.com/developit/htm) via `esm.sh`
+- **UI**: [Preact](https://preactjs.com/) + [htm](https://github.com/developit/htm), **embutidos no `index.html`** (UMD, ~17 KB) — é o que faz o app renderizar sem depender de rede
 - **PDF**: [pdf.js](https://github.com/mozilla/pdf.js)
 - **DOCX**: [mammoth](https://github.com/mwilliamson/mammoth.js)
 - **QDPX**: [JSZip](https://stuk.github.io/jszip/)
@@ -374,22 +344,38 @@ Sem build, sem bundler, sem framework pesado.
 - **Busca semântica**: [transformers.js](https://github.com/huggingface/transformers.js) + o modelo de *embeddings* [`paraphrase-multilingual-MiniLM-L12-v2`](https://huggingface.co/Xenova/paraphrase-multilingual-MiniLM-L12-v2) (ONNX, baixado sob demanda e executado **no navegador**; nenhuma chave, nenhuma chamada a servidor de IA)
 - **Armazenamento local**: File System Access API + IndexedDB (nativos do navegador)
 - **Nuvem** (opcional): [Supabase](https://supabase.com/)
+- **Entrega das dependências**: import map com **SRI** (`integrity` por URL), servindo do **jsdelivr** com o `esm.sh` de reserva. O hash cobre o módulo de topo; o *worker* do pdf.js e o `.wasm` do sql.js não são *module script* e ficam declaradamente fora. É defesa em profundidade, não garantia.
 
 ```
 QualiLab/
-├── docs/index.html   # o app inteiro (front-end), publicado pelo GitHub Pages
+├── docs/index.html   # o app, publicado pelo GitHub Pages
 ├── docs/MANUAL.md    # manual do usuário (e manual.html, que o renderiza)
-├── README.md         # este arquivo
+├── scripts/          # as verificações que rodam aqui (invariantes, SRI)
+├── supabase/
+│   ├── schema.sql              # backend: tabelas, RPCs, políticas de RLS, realtime
+│   └── functions/ai-ask/       # Edge Function: proxy de reserva (chave de servidor / CORS)
+├── examples/         # projetos de exemplo (.qualilab, .qdpx)
+├── CHANGELOG.md      # o que mudou em cada versão
 ├── CITATION.cff      # como citar
 ├── SECURITY.md       # política de segurança
-├── LICENSE           # MIT
-├── supabase/
-│   ├── schema.sql              # schema completo do backend (tabelas, RPCs, RLS, realtime)
-│   └── functions/ai-ask/       # Edge Function: proxy de reserva (chave de servidor / CORS)
-│       └── index.ts
-└── examples/
-    └── *.qdpx        # projeto de exemplo (REFI-QDA) para testes
+└── LICENSE           # MIT
 ```
+
+---
+
+## Como se constrói, e como se verifica
+
+O `docs/index.html` deste repositório é o **artefato publicado**: um arquivo único, sem bundler, sem npm e sem etapa de compilação do seu lado. Ele é **gerado** a partir de uma fonte modular (dezenas de fragmentos concatenados em bytes, sem transformação nenhuma) mantida no repositório de desenvolvimento.
+
+A seção [Sustentabilidade](#o-qualilab-não-é-um-formato-mágico) diz que há verificação a cada mudança. **Neste repositório** ela roda a cada push, e você pode inspecionar o `ci.yml`:
+
+| Verificação | O que ela prova |
+|---|---|
+| `scripts/check_index.py` + `node --check` | as invariantes do arquivo único (um só `<script type="module">`, nenhuma aspa tipográfica em atributo, nenhum `</script>` literal dentro do módulo) e a sintaxe do módulo |
+| `scripts/sri.py` + `sri_selftest.py` | as dependências de CDN conferem com o hash declarado no import map |
+| checagem de credenciais | o app publicado aponta o projeto Supabase **público**, e nenhum outro |
+
+O restante da bateria roda no repositório de desenvolvimento, a cada push, sobre a fonte modular: testes de funções puras (censura, âncoras de trecho, offsets, parsing dos formatos), **23 suítes de navegador** que verificam que cada tela renderiza e que as regras que falham **mudas** continuam valendo (o modo cego não vazar o gabarito, a indução não ver os documentos guardados, o código de confirmação não perder dígito, **zero requisição externa no boot**), **pgTAP** sobre as políticas de RLS (papéis, codificação cega, distribuição, acesso à IA) e o harness de round-trip que valida o `.qdpx` gerado contra o `Project.xsd` oficial.
 
 ---
 
@@ -432,21 +418,21 @@ A camada técnica sob o ATI (e sob o [hypothes.is](https://web.hypothes.is/), o 
 
 ## Restrições atuais
 
-O QualiLab é um projeto em desenvolvimento ativo. Vale conhecer as limitações antes de adotar para um projeto de pesquisa importante:
+Projeto em desenvolvimento ativo. Vale conhecer os limites antes de adotar num trabalho importante.
 
-- **Capacidade do Supabase (modo nuvem)**: o plano gratuito do Supabase tem limites de armazenamento e processamento (na ordem de **500MB de banco de dados** e **alguns GB de tráfego mensal**, sujeitos a mudança pelo provedor; confira os valores atuais em [supabase.com/pricing](https://supabase.com/pricing)). Projetos muito grandes (muitos documentos longos, milhares de codificações) podem exigir um plano pago do Supabase ou o modo **Arquivo local**, que não tem esse limite.
-- **Anonimização é manual, via código de censura**: marque um código como 🚫 (em "Renomear código") e os trechos com ele ficam de fora, por padrão, do que é enviado pra IA (com opção de incluir caso a caso na hora da análise). Não há detecção automática de informação sensível (nomes, CPFs, dados de saúde): o pesquisador precisa identificar e codificar os trechos. Também **não cobre export** (QDPX/CSV/JSON continuam exportando o texto cru, sem mascarar) nem qualquer informação fora dos trechos explicitamente codificados.
-- **E-mail da conta não pode ser trocado**: nome de exibição e senha sim; e-mail, não (há **"Esqueci minha senha"** na tela de acesso, que redefine por link no e-mail). Se o servidor estiver usando o SMTP embutido do Supabase, o envio desses e-mails é limitado a poucos por hora.
-- **A fila de escrita não é modo offline**: ela guarda e reenvia o que você *escreve* quando a nuvem falha, mas **ler** continua exigindo rede. Sem conexão, abrir um documento que ainda não está carregado ou trocar de projeto não funciona. Para trabalhar de fato sem rede, use o modo Arquivo local.
-- **QDPX não carrega categorias por pesquisador**: é uma limitação do próprio formato REFI-QDA, não do QualiLab. O padrão não tem campo de autoria para atributos de documento (só para trechos codificados). Ao importar um `.qdpx`, todos os atributos chegam atribuídos a quem importou.
-- **Tipo dos atributos em `.qdpx` de outras ferramentas é inferido, não declarado**: o REFI-QDA não distingue campo fechado de aberto. Ao importar um `.qdpx` de outro software (QualCoder, ATLAS.ti etc.), o QualiLab tenta adivinhar pelas respostas: poucos valores distintos repetidos entre documentos viram Texto Fechado; valores todos diferentes viram Texto Aberto. O resumo do import avisa quantas categorias foram decididas assim; vale revisar em "Gerenciar esquema de categorias".
-- **Fidelidade do round-trip QDPX (medida, não presumida)**: o que sobrevive a `QualiLab → QDPX → QualiLab/QualCoder` é verificado por um harness de round-trip mantido no repositório de desenvolvimento, com uma **matriz de fidelidade** (sobrevive / degrada / se perde) e um corpus adversarial. Resumo: códigos, hierarquia e trechos em texto limpo **sobrevivem** (inclusive após emoji/char fora do BMP, desde o fix de offsets em code points); **degradam** tipos de categoria inferidos e multi-valor; **se perdem** camadas individuais e autoria de atributo (limites do próprio formato REFI-QDA). O `.qdpx` exportado é **validado contra o `Project.xsd` oficial do REFI-QDA (v1.0, MIT)**, vendorizado no repositório. ⚠️ Isso é uma **tentativa de intercompatibilidade, não uma garantia**: validade de schema e round-trip interno não substituem testar o arquivo na ferramenta de destino real (ATLAS.ti, MAXQDA, NVivo, QualCoder), que pode interpretar partes do padrão de forma diferente.
-- **Sincronização em tempo real parcial**: apenas codificações e valores de categoria sincronizam ao vivo entre colaboradores. Mudanças no esquema de categorias ou na árvore de códigos exigem recarregar a página para aparecer para outros membros. O mesmo vale para mudanças na **distribuição de documentos / sigilo**.
-- **Distribuição e codificação cega só na nuvem coletiva**: atribuir documentos, restringir a visão por pesquisador e o modo cego dependem de contas de vários pesquisadores; não existem em rascunho, arquivo ou projeto individual, e a distribuição **não** é exportada no `.qualilab` (os identificadores de usuário só existem na nuvem).
-- **PDF original na nuvem é opt-in**: guardar os bytes do PDF original na nuvem (para "ver original"/OCR em outro aparelho) exige **consentimento explícito** no envio, porque quem administra o banco passa a poder abrir o PDF inteiro. Sem consentir, sobe só o texto e a codificação. Para dado sensível, mantenha o PDF no **modo arquivo**.
-- **Governança do livro de códigos**: qualquer membro **cria e renomeia** códigos (necessário para codificação colaborativa em tempo real), mas **excluir** um código, **mesclar/reorganizar** o esquema em lote e marcar/desmarcar **censura** são restritos ao **administrador**, imposto pelo servidor (RLS), não só escondido na interface, porque excluir um código apaga em cascata as codificações de toda a equipe. Ainda **não** há um modo intermediário de aprovação antes de um código novo (criado por um membro) ficar visível a todos.
-- **Desfazer é limitado**: Ctrl+Z desfaz só a última codificação aplicada na sessão atual (sem histórico entre sessões). Não há desfazer para categorias, código em si, documentos, ou qualquer outra ação; exclusões desses são definitivas. Também não há log de auditoria de alterações.
-- **Modo Arquivo local restrito a Chromium**: a File System Access API que sustenta esse modo só existe em Chrome e Edge; Firefox e Safari caem automaticamente para o modo local (`localStorage`).
+- **Modo Arquivo local só em Chromium.** A File System Access API que o sustenta só existe em Chrome e Edge; Firefox e Safari caem no rascunho (`localStorage`, ~5 MB).
+- **Nem tudo sincroniza ao vivo.** Só codificações e respostas de categoria. Mudar o esquema de códigos, as categorias ou a distribuição de documentos exige recarregar a página.
+- **A fila de escrita não é modo offline.** Ela guarda e reenvia o que você *escreve* quando a nuvem falha, mas **ler** continua exigindo rede: sem conexão, abrir um documento ainda não carregado ou trocar de projeto não funciona. Para trabalhar sem rede, use o modo Arquivo.
+- **Capacidade do plano gratuito do Supabase** (ordem de 500 MB de banco, sujeita a mudança — confira em [supabase.com/pricing](https://supabase.com/pricing)). Projetos muito grandes podem exigir plano pago ou o modo Arquivo, que não tem esse teto.
+- **O QualiLab NÃO anonimiza.** A censura mascara **só os trechos que você marcou à mão**, e só nas saídas de transparência e no prompt da IA: não detecta o que é sensível, não cobre as exportações de trabalho (QDPX/CSV/JSON saem crus) e não alcança **título do documento, valor de categoria nem memo**. O manual traz o [fluxo de publicação](docs/MANUAL.md) que cuida desses três.
+- **Sem trilha de auditoria do processo.** Não há log de operações do projeto, e o **Ctrl+Z** desfaz só a última codificação da sessão. Excluir documento, código ou categoria é definitivo. É o critério em que o QualiLab está abaixo da mediana do campo, na régua acima.
+- **QDPX perde o que o formato não modela**: camadas individuais e autoria de atributo por pesquisador (limite do REFI-QDA, não nosso). E o tipo das categorias vindas de outra ferramenta é **inferido** quando ela não o declara — o resumo do import diz quantas foram, e vale revisar no esquema.
+- **A fidelidade do round-trip é medida, não presumida** (harness mantido no repositório de desenvolvimento, com corpus adversarial e matriz de sobrevive/degrada/se perde). Ainda assim, **validade de schema não substitui testar na ferramenta de destino real**, que pode ler o padrão de outro jeito.
+- **PDF original na nuvem é opt-in**, com consentimento explícito no envio: quem administra o banco passa a poder abrir o arquivo inteiro, e não só o texto codificado. Para dado sensível, mantenha o PDF no modo Arquivo.
+- **Distribuição e codificação cega só existem na nuvem coletiva** (dependem de contas de vários pesquisadores) e **não** viajam no `.qualilab`.
+- **Livro de códigos sem etapa de aprovação**: qualquer membro cria e renomeia códigos (necessário para codificar em equipe); excluir, mesclar e mexer na censura são de admin. Não há um estado intermediário antes de um código novo ficar visível a todos.
+- **E-mail da conta não pode ser trocado** no app; nome de exibição e senha, sim.
+- **Áudio, vídeo, imagem e planilha não são material codificável** — é escopo declarado, não pendência (veja acima).
 
 ---
 
@@ -460,58 +446,11 @@ Copyright (c) 2026 Luiz Pimenta Filho
 
 ---
 
-## To-dos
+## Backlog
 
-O backlog completo, com o raciocínio e as decisões já tomadas, é mantido no repositório de desenvolvimento. Resumo do que está pendente, por tema:
+O backlog completo é mantido no repositório de desenvolvimento, com o raciocínio de cada item e também o que foi **avaliado e descartado**, com o porquê. As prioridades declaradas hoje:
 
-**Prioridades declaradas**
-
-- Backend sem credencial enterrada: catálogo de nuvens nomeado na configuração, "usar minha própria nuvem" como caminho de primeira classe e link-convite com tela de confirmação.
-- Relações nomeadas entre códigos e entre trechos ("X contradiz Y", "X é causa de Y"): tabela de ligações com comentário, criadas pelo menu de contexto — sem editor gráfico por ora.
-
-**Decisões em aberto (é escolha, não código)**
-
-- Fontes: o `@import` do Google Fonts nunca funcionou e o app sempre rodou nas fontes de sistema. Corrigir liga o app ao Google em todo boot (questão de privacidade); apagar formaliza a pilha de sistema; embutir custa centenas de KB no arquivo único.
-- Criptografia ponta a ponta com passkey, para colaboração ao vivo sem que o operador do servidor possa ler o corpus: desenho pronto, nada decidido, e duas sondagens de viabilidade vêm antes de qualquer código.
-
-**Rastro e auditoria**
-
-- Registro de mesclagem no código sobrevivente (quais códigos foram fundidos nele).
-- Log de operações do projeto: imports, merges, exclusões, aplicações em lote — operações, não linhas.
-- Desfazer em lote: quando a IA aplica 40 codificações, não há como desfazer o conjunto.
-
-**Interoperabilidade**
-
-- Citação em norma (ABNT, via citeproc-js) no import do Zotero; referência sem PDF virar documento, marcada como "resumo" ou "texto integral".
-- Grupo de códigos do ATLAS.ti virar família quando a associação permitir.
-- Testar o export QDPX contra MAXQDA e NVivo reais (ATLAS.ti e QualCoder já foram).
-
-**Codificação sem IA (barata e valiosa)**
-
-- Unidades de fala: reconhecer `Nome:` na transcrição e codificar cada fala com o código do falante.
-- Planilha que nasce codificada (colunas de pergunta aberta viram trechos já codificados).
-- Import de codebook por planilha (nome, definição, hierarquia).
-- Comentários de margem do `.docx` virarem trechos anotados.
-
-**Gráficos e medidas**
-
-- Cards de síntese (nº de documentos, códigos, cobertura), distribuição por famílias analíticas e análises textuais automatizadas (similaridade, co-ocorrência, redes textuais).
-- Frequências relativas e normalização na matriz código × atributo; coeficiente-C de co-ocorrência, com os avisos de leitura.
-- Se exibimos "concordância", dizer o que é — e, se virar coeficiente, alfa de Krippendorff por caractere.
-- Decidir a deduplicação das contagens: hoje árvore, frequência e cobertura contam codificações, então em equipe medem em parte o tamanho da equipe.
-
-**UI e diversos**
-
-- Definição do código visível onde se codifica, não só na aba Memos.
-- "Buscar no contexto" a partir da nuvem de palavras; lista de "só contar estas" (GO list).
-- Botão "Não informado" no tipo data; filtro por parte de valor; troca de e-mail da conta; sintaxe hierárquica no nome do código ("Tema: Subtema" cria a cadeia).
-- Pastas por categoria e seleção declarada do que entra no relatório de transparência — o embrião do pipeline de publicação por pesquisador/pesquisa.
-
-**Desempenho e robustez**
-
-- Upload de PDFs e OCR em paralelo; carregamento agregado numa chamada só; rascunho local no IndexedDB (tira o teto de ~5 MB); streaming das respostas de IA; o realtime não propaga mudança de esquema (só de codificações).
-- Reimportar o mesmo projeto duplica conversas e memórias de IA (idem coleção do Zotero) — falta deduplicação.
-
-**Operacional (painel do Supabase, não código)**
-
-- SMTP próprio (o embutido manda ~2 e-mails por hora, por projeto).
+- **Backend sem credencial enterrada**: catálogo de nuvens nomeado na configuração, "usar minha própria nuvem" como caminho de primeira classe e link-convite com tela de confirmação.
+- **Relações nomeadas** entre códigos e entre trechos ("X contradiz Y", "X é causa de Y"), criadas pelo menu de contexto.
+- **Rastro e auditoria**: log de operações do projeto (imports, merges, exclusões, aplicações em lote) e desfazer em lote — o critério em que estamos abaixo da mediana do campo.
+- **Criptografia ponta a ponta** com passkey, para colaboração ao vivo sem que o operador do servidor possa ler o corpus: desenho pronto, nada decidido.
