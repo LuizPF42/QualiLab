@@ -124,7 +124,9 @@ Uma linha por recurso: aqui é o inventário. O **passo a passo** de cada um est
 | **Onde os dados ficam** | arquivo no disco, rascunho no navegador ou nuvem — trocar entre eles é um clique no hub do projeto, sem exportar e importar à mão |
 | **Sua própria nuvem** | apontar o app para um projeto **Supabase seu**, pela tela de entrada ou pelo hub |
 
-### IA — opcional, BYOK, opt-in
+### IA: desligada por padrão, e com a sua chave
+
+**Ela vem desligada, e ligar é um ato.** Todo projeto novo — na nuvem, em arquivo ou no rascunho — pergunta se os recursos de IA ficam disponíveis, **sem nenhuma opção pré-marcada**: fechar sem responder mantém desligado, porque caixa pré-marcada seria opt-out com outro nome. A escolha tem três alcances (**ninguém** · **só administradores** · **todos**), é **imposta no banco** e não só escondida na interface, **viaja dentro do `.qualilab`** e o Relatório passa a declarar o que o projeto registra. Com a IA desligada, as telas somem — e, com ela ligada, **nada é enviado a modelo nenhum sem você pedir**: toda chamada é um clique seu, não há rotina de fundo conversando com provedor.
 
 **O padrão é o navegador chamar o provedor direto**: com a sua chave (guardada só no navegador), **nenhum servidor do QualiLab vê o material** da análise. A Edge Function `ai-ask` cobre só dois casos: um endpoint *Personalizado*/*Azure* que não libere chamadas de navegador (CORS) e uma eventual chave de servidor — que a instância pública não tem.
 
@@ -137,8 +139,9 @@ Uma linha por recurso: aqui é o inventário. O **passo a passo** de cada um est
 | **Modo cego** | a IA responde **sem ver** o seu gabarito e o painel devolve um placar de concordância: deixa de ser conferente e vira régua |
 | **Memória do projeto** | diário de insights entre sessões; a IA propõe, você aprova, e cada entrada tem interruptor de uso |
 | **Provedores** | Gemini, OpenAI, Anthropic, Azure OpenAI, qualquer API no formato clássico da OpenAI (DeepSeek, Mistral, Qwen, vLLM) e **Ollama local** — o único em que nada sai da sua máquina |
-| **Desligar por projeto** | `ninguém` · `só administradores` · `todos`, imposto no banco e não só na interface; o relatório passa a declarar o que o projeto registra |
 | **Corte de material avisado** | há teto por documento e por envio; sempre que algo é cortado, uma faixa diz **quantos documentos ficaram de fora** e quantos entraram só pelo começo |
+
+> **E uma ressalva honesta: desligar a IA não é uma fronteira técnica.** Qualquer pessoa copia um trecho e cola em outra ferramenta, e nenhum software impede isso. O que a chave faz é tirar do aplicativo o trabalho **em massa** — e é o volume que desloca uma análise, não uma consulta avulsa: três trechos copiados à mão não movem a concordância entre codificadores; duzentas sugestões aceitas numa varredura substituem o julgamento de um codificador inteiro. Quem desativa a IA não deve ler "100% manual" como prova de coisa alguma.
 
 ### Publicação e transparência
 
@@ -158,7 +161,7 @@ Em projeto coletivo as três respeitam a camada escolhida; em todas, os trechos 
 
 - **Arquivo / Rascunho**: ficam **no seu dispositivo** e não saem dele.
 - **Nuvem**: são enviados a um **servidor de terceiros** (Supabase), ficam sujeitos aos termos desse provedor e saem do seu controle direto.
-- **IA de nuvem**: os trechos que você analisar são enviados ao **provedor de IA** que você usar (Gemini/OpenAI/Anthropic/Azure…), sob a política dele; o **Ollama local** é a exceção (roda na sua máquina, nada sai dela). A censura é mascarada antes do envio.
+- **IA**: **vem desligada** — todo projeto nasce sem ela, e ativar é um ato ([abaixo](#ia-desligada-por-padrão-e-com-a-sua-chave)). Depois de ativada, os trechos que você **pedir** para analisar são enviados ao **provedor de IA** que você usar (Gemini/OpenAI/Anthropic/Azure…), sob a política dele; o **Ollama local** é a exceção (roda na sua máquina, nada sai dela). A censura é mascarada antes do envio.
 - **Publicação** (Relatório Interativo / Web Annotation): o que você divulgar fica **público**.
 
 O QualiLab opera em três modos, escolhidos na **tela de entrada** (ou reabertos automaticamente):
