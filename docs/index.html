@@ -573,7 +573,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.32';
+const QUALILAB_VERSION = '1.4.33';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -2683,6 +2683,7 @@ async function importQDPX(file, store, projectId, projectMode, onProgress, opts)
   // sempre existem quando o memo deles e montado — so o trecho pode nao ter sido localizado.
   const notasDeTrechoPerdidas = new Set();
   let memosGravados = 0;   // depois do dedup por (escopo,alvo): e o que o projeto de fato recebe
+  let catsSemValor = [];   // nomes das categorias que terminaram o import sem NENHUM valor
   const PDF_POOL = 4;   // na nuvem cada item e um upload com o peso real do arquivo
 
   // usuarios: guid -> nome
@@ -2751,6 +2752,45 @@ async function importQDPX(file, store, projectId, projectMode, onProgress, opts)
     else { kind = 'text'; foreignCatIds.add(id); }
     newCats.push({ id, name, kind, options });
   });
+
+  // VALORES DE CATEGORIA: o REFI-QDA tem DUAS casas para eles, e ate ago/2026 este importador lia
+  // so uma. (a) <VariableValue> filho DIRETO de <TextSource>/<PDFSource> — o atributo colado no
+  // DOCUMENTO, que e o modelo daqui; (b) <Cases>/<Case>/<VariableValue> — o atributo de um CASO,
+  // que se derrama nos SourceRef dele. As duas sao normativas: o XSD poe VariableValue no fim de
+  // TextSourceType e de PDFSourceType, e tambem em CaseType. E ferramentas de verdade usam cada
+  // uma: o QualCoder grava em (a) — o source_variables_xml() do refi.py monta o elemento dentro do
+  // <TextSource>/<PDFSource>, e ha ate um "#TODO put file variables inside Cases.Case elements as
+  // with Quirkos" dizendo que ele ainda NAO usa (b) —, enquanto Quirkos (e, segundo o mesmo
+  // arquivo, o MAXQDA) grava em (b), com <Case> sem nome e um SourceRef so.
+  // SINTOMA de ler so (b), e ele PASSA POR SUCESSO: as categorias NASCEM (vem de <Variables>, que
+  // ja era lido) e ficam TODAS VAZIAS, sem uma linha no resumo. Medido por sonda no molde do
+  // QualCoder: 2 atributos no arquivo, 0 valores no projeto, resumo anunciando "4 categoria(s)".
+  // Quem vinha de la via os nomes dos atributos no Esquema e concluia que tinha importado.
+  const newValues = [];
+  const kindByCat = Object.fromEntries(newCats.map(c=>[c.id, c.kind]));
+  // PRECEDENCIA DECLARADA, e ela e FORCADA por haver duas casas: (a) fala DESTE documento, (b) de
+  // um agrupamento que pode reunir varios. Dizendo os dois coisas diferentes sobre o mesmo
+  // (documento, categoria), vence (a). Sem regra escrita, quem venceria seria a ordem de insercao,
+  // que o dedup da persistencia resolve pelo ULTIMO — criterio nenhum.
+  const valorDaFonte = new Set();   // "docId:catId" ja respondido pelo proprio documento
+  // le os <VariableValue> de uma fonte. `extras` cobre a <Representation> de um <PDFSource> (ela e
+  // um TextSourceType, entao o XSD tambem lhe da VariableValue); o nivel de cima vence.
+  function lerVariaveisDaFonte(srcEl, docId, extras){
+    for(const el of [srcEl, ...(extras||[])]){
+      for(const vv of directChildren(el, 'VariableValue')){
+        const ref = firstChild(vv, 'VariableRef'); if(!ref) continue;
+        const catId = stripGuid(ref.getAttribute('targetGUID'));
+        const chave = docId+':'+catId;
+        if(valorDaFonte.has(chave)) continue;
+        valorDaFonte.add(chave);
+        // sem elemento de valor e resposta VAZIA, nao ausencia de resposta: o QualCoder grava
+        // <VariableValue> so com o VariableRef quando a variavel numerica esta em branco.
+        const valEl = vv.querySelector('TextValue,BooleanValue,IntegerValue,FloatValue,DateValue,DateTimeValue');
+        newValues.push({ document_id:docId, category_id:catId,
+                         value: valEl ? qdpxValueIn(kindByCat[catId], valEl.tagName, valEl.textContent) : '' });
+      }
+    }
+  }
 
   // fontes de texto (TextSource e, quando existir, a Representation textual de um PDFSource)
   const newDocs = [];
@@ -3029,6 +3069,7 @@ async function importQDPX(file, store, projectId, projectMode, onProgress, opts)
         if(content==null) continue;
         newDocs.push({ id, name, content });
         addDocMemo(src, id);
+        lerVariaveisDaFonte(src, id);
         importSelections(src, id, content, buildMatchIndex(content), null, null);
       } else if(src.tagName==='PDFSource'){
         const id = stripGuid(src.getAttribute('guid'));
@@ -3079,6 +3120,7 @@ async function importQDPX(file, store, projectId, projectMode, onProgress, opts)
         newDocs.push({ id, name: baseName + (geomPages ? '' : ' (texto extraído)'), content });
         if(keepPdf && pdfBytes) pdfPend.push({ oldId:id, bytes:pdfBytes, content, index: geomPages ? pdfIndex : null, nome: baseName });
         addDocMemo(src, id);
+        lerVariaveisDaFonte(src, id, rep ? [rep] : null);
         // repText so quando o content NAO e ele (senao os offsets ja sao usados direto, e recortar
         // a mesma string seria dar a volta para chegar no mesmo lugar)
         importSelections(src, id, content, buildMatchIndex(content), geomPages, pdfIndex,
@@ -3123,9 +3165,7 @@ async function importQDPX(file, store, projectId, projectMode, onProgress, opts)
     projectNote = parts.join('\n\n---\n\n').trim();
   }
 
-  // casos -> valores de categoria por documento
-  const newValues = [];
-  const kindByCat = Object.fromEntries(newCats.map(c=>[c.id, c.kind]));
+  // casos -> valores de categoria por documento (a forma (b); a (a) foi lida junto com as fontes)
   xml.querySelectorAll('Cases > Case').forEach(caseEl=>{
     const srcRefs = directChildren(caseEl, 'SourceRef').map(r=>stripGuid(r.getAttribute('targetGUID')));
     const vvs = directChildren(caseEl, 'VariableValue');
@@ -3137,7 +3177,12 @@ async function importQDPX(file, store, projectId, projectMode, onProgress, opts)
       // <DateValue>2013-05-02</DateValue> vira 02/05/2013. Sem isso o tipo vinha certo e o
       // valor vinha na forma da outra ferramenta — e o campo aparecia vazio na tela.
       const value = valEl ? qdpxValueIn(kindByCat[catId], valEl.tagName, valEl.textContent) : '';
-      srcRefs.forEach(docId=>newValues.push({ document_id:docId, category_id:catId, value }));
+      // o documento ja respondeu por si (forma (a)): o caso nao sobrescreve — ver a precedencia
+      // declarada junto do lerVariaveisDaFonte.
+      srcRefs.forEach(docId=>{
+        if(valorDaFonte.has(docId+':'+catId)) return;
+        newValues.push({ document_id:docId, category_id:catId, value });
+      });
     });
   });
 
@@ -3301,6 +3346,10 @@ async function importQDPX(file, store, projectId, projectMode, onProgress, opts)
     // em projeto individual os valores vao direto para o gabarito (final); em coletivo, como resposta individual
     const setVal = projectMode==='individual' ? store.setFinalValue.bind(store) : store.setDocValue.bind(store);
     const valBulk = projectMode==='individual' ? store.setFinalValuesBulk : store.setDocValuesBulk;
+    // categorias que RECEBERAM valor nao vazio (ids pre-remap, para casar com o newCats): e o que
+    // sustenta o aviso logo abaixo. Valor em branco nao conta — senao uma linha vazia derrotaria a
+    // rede, que existe justamente para acusar categoria que ficou sem resposta.
+    const catsComValor = new Set();
     if(valBulk){
       // dedup por (documento,categoria) — os dois bulks gravam com set_by fixo (o usuario atual),
       // entao dois itens do mesmo par repetiriam a chave de conflito no MESMO upsert em lote e o
@@ -3308,11 +3357,27 @@ async function importQDPX(file, store, projectId, projectMode, onProgress, opts)
       // O QDPX so tem 1 valor por documento+categoria, mas a defesa e barata e o formato e externo.
       const pick = {};
       for(const v of newValues){ if(docMap[v.document_id] && catMap[v.category_id]) pick[v.document_id+':'+v.category_id] = v; }
+      for(const v of Object.values(pick)) if((v.value||'').trim()) catsComValor.add(v.category_id);
       linhasRecusadas += bulkFails(await valBulk.call(store, projectId, Object.values(pick).map(v=>({ document_id:docMap[v.document_id], category_id:catMap[v.category_id], value:v.value }))));
       for(let i=0;i<newValues.length;i++) await tick();
     } else {
-      for(const v of newValues){ if(docMap[v.document_id] && catMap[v.category_id]) await setVal(projectId, docMap[v.document_id], catMap[v.category_id], v.value); await tick(); }
+      for(const v of newValues){
+        if(docMap[v.document_id] && catMap[v.category_id]){
+          if((v.value||'').trim()) catsComValor.add(v.category_id);
+          await setVal(projectId, docMap[v.document_id], catMap[v.category_id], v.value);
+        }
+        await tick();
+      }
     }
+    // REDE DE SEGURANCA: categoria que o arquivo DECLARA e que termina o import sem nenhum valor.
+    // Ela nasce de <Variables> e aparece no Esquema, entao perda de VALOR passa por sucesso — foi
+    // exatamente assim que a forma (a) ficou anos sem ser lida sem ninguem notar. Vale a pena mesmo
+    // agora que as duas formas sao lidas: o formato e externo, e uma terceira casa (ou uma quinta
+    // convencao de ferramenta) reaparece como AVISO em vez de silencio. Pode ser legitimo — o
+    // pesquisador declarou o atributo e nunca o preencheu —, e por isso a frase PERGUNTA em vez de
+    // acusar; o que ela impede e a perda muda. Conta o que o projeto DE FATO recebeu (depois do
+    // dedup e do descarte de fonte pulada), no mesmo espirito do memosGravados.
+    catsSemValor = newCats.filter(c=>catMap[c.id] && !catsComValor.has(c.id)).map(c=>c.name);
     // created_by: null => o agrupamento por codificador usa author_name (do QDPX), não o uuid de quem importou
     // layer: em projeto individual tudo vai para a camada final (sem reconciliacao); em coletivo, fica individual
     // id PRE-GERADO (mesmo padrao do mergeQualilabDb): o memo de trecho precisa do id FINAL da
@@ -3412,7 +3477,7 @@ async function importQDPX(file, store, projectId, projectMode, onProgress, opts)
     memos:memosGravados, notasProjeto: projectNotesCount, notasDeCodigo,
     trechosTruncados, nameCap, notasDeTrechoPerdidas: notasDeTrechoPerdidas.size,
     casos: xml.querySelectorAll('Cases > Case').length,
-    gruposDocumento, gruposCodigo, censuraRestaurada: censuraIds.size,
+    gruposDocumento, gruposCodigo, censuraRestaurada: censuraIds.size, catsSemValor,
     descartados: skipped, categoriasFechadasDetectadas: catsFechadasDetectadas, linhasRecusadas
   };
 }
@@ -8865,6 +8930,13 @@ function App(){
       const gruposCodMsg = (r.gruposCodigo||[]).length>0
         ? ` ${r.gruposCodigo.length} grupo(s) de códigos NÃO foram importados (aqui a família é definida pela hierarquia do código): ${r.gruposCodigo.slice(0,4).map(n=>'"'+n+'"').join(', ')}${r.gruposCodigo.length>4?` e mais ${r.gruposCodigo.length-4}`:''}.`
         : '';
+      // CATEGORIA QUE CHEGOU VAZIA: o arquivo declara o atributo (e ele aparece no Esquema) e
+      // nenhum documento recebeu valor. Pode ser legítimo — atributo declarado e nunca preenchido
+      // na ferramenta de origem —, então a frase pergunta em vez de acusar. Ela existe porque a
+      // perda de valor é MUDA: a categoria nasce, o resumo conta, e a tela está em branco.
+      const semValorMsg = (r.catsSemValor||[]).length>0
+        ? ` ${r.catsSemValor.length} categoria(s) chegaram sem nenhum valor preenchido: ${r.catsSemValor.slice(0,4).map(n=>'"'+n+'"').join(', ')}${r.catsSemValor.length>4?` e mais ${r.catsSemValor.length-4}`:''}. Se elas deviam vir preenchidas, confira na ferramenta de origem como os atributos foram gravados.`
+        : '';
       // §12: a marca de censura volta do <Set> que o exportQDPX escreve. É dito porque muda o
       // que a IA e os artefatos de transparência mascaram, e ninguém adivinha que voltou.
       const censuraMsg = r.censuraRestaurada>0 ? ` ${r.censuraRestaurada} código(s) voltaram marcados como censura.` : '';
@@ -8879,7 +8951,7 @@ function App(){
       const truncadosMsg = r.trechosTruncados>0
         ? ` ATENÇÃO: ${r.trechosTruncados} trecho(s) foram ancorados pelo rótulo de prévia do arquivo, que o programa de origem corta em ${r.nameCap} caracteres, e por isso podem estar cortados no meio. O texto completo deles não vem no .qdpx; confira no documento.`
         : '';
-      setImportMsg(`Importado: ${r.documentos} documento(s), ${r.categorias} categoria(s), ${r.codigos} código(s), ${r.trechos} trecho(s) codificado(s)${aproxMsg}.${memosMsg}${notasMsg}${notasCodMsg}${censuraMsg}${pdfOkMsg}${duplicadasMsg}${gruposMsg}${gruposCodMsg}${skippedMsg}${fechadasMsg}${truncadosMsg}${r.pdfFail?` ATENÇÃO: ${r.pdfFail} PDF(s) originais não puderam ser guardados (o texto entrou, mas "ver original"/OCR podem não funcionar neles).`:''}${r.linhasRecusadas?` ATENÇÃO: ${r.linhasRecusadas} linha(s) foram recusadas pelo servidor (permissão/RLS ou dado inválido) e NÃO foram gravadas. Detalhes no console do navegador.`:''}`);
+      setImportMsg(`Importado: ${r.documentos} documento(s), ${r.categorias} categoria(s), ${r.codigos} código(s), ${r.trechos} trecho(s) codificado(s)${aproxMsg}.${memosMsg}${notasMsg}${notasCodMsg}${censuraMsg}${pdfOkMsg}${duplicadasMsg}${gruposMsg}${gruposCodMsg}${semValorMsg}${skippedMsg}${fechadasMsg}${truncadosMsg}${r.pdfFail?` ATENÇÃO: ${r.pdfFail} PDF(s) originais não puderam ser guardados (o texto entrou, mas "ver original"/OCR podem não funcionar neles).`:''}${r.linhasRecusadas?` ATENÇÃO: ${r.linhasRecusadas} linha(s) foram recusadas pelo servidor (permissão/RLS ou dado inválido) e NÃO foram gravadas. Detalhes no console do navegador.`:''}`);
     }catch(e){ setBusy(null); setProgress(null); setErr('Falha ao importar: '+(e.message||e)); }
   }
 

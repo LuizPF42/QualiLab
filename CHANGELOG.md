@@ -14,6 +14,27 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.33 (17/08/2026)
+
+**Os atributos dos seus documentos deixaram de sumir na importação de `.qdpx`.**
+
+- **Atributo gravado no próprio documento agora é lido.** O formato REFI-QDA aceita que o valor de
+  um atributo (tipo, ano, tribunal, situação) fique em **dois lugares** do arquivo: colado no
+  documento, ou dentro de um "caso" que aponta para ele. O QualiLab só lia o segundo — e é o
+  primeiro que o **QualCoder** usa. Quem importava de lá via os nomes dos seus atributos
+  aparecerem na tela de categorias e **todos os campos em branco**, sem nenhum aviso de que os
+  valores estavam no arquivo. Agora as duas formas entram, inclusive em documentos PDF.
+
+- **Categoria que chega vazia é dita no resumo da importação, pelo nome.** Se o arquivo declara um
+  atributo e nenhum documento recebe valor, a mensagem ao fim da importação nomeia a categoria e
+  sugere conferir na ferramenta de origem. Pode ser normal — você pode ter criado o atributo e
+  nunca o preenchido —, mas antes esse caso era **silencioso**, e era assim que uma perda de dados
+  passava por importação bem-sucedida.
+
+- **Quando os dois lugares discordam, vale o que está no documento.** O valor colado no documento
+  fala dele; o do "caso" fala de um agrupamento que pode reunir vários documentos. Antes vencia,
+  sem critério nenhum, o que o arquivo listasse por último.
+
 ## 1.4.32 (16/08/2026)
 
 ### Você decide se o seu projeto usa IA, e isso passa a ser dito no relatório

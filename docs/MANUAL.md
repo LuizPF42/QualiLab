@@ -805,7 +805,7 @@ Os menus **exportar ▾** e **importar ▾** ficam no cabeçalho (aparecem quand
 | Item | O que traz |
 |---|---|
 | **.qualilab** | Mescla um projeto exportado. Em destino **coletivo**, preserva a resposta de cada pesquisador de origem; o gabarito vira gabarito |
-| **QDPX** | Projeto REFI-QDA de outras ferramentas. O tipo de categoria que a origem **declara** (número, Sim/Não, data) é respeitado; o que ela declara só como texto é **inferido** (revise no esquema). Inclui importação reforçada de `.qdpx` do **ATLAS.ti** com PDFs |
+| **QDPX** | Projeto REFI-QDA de outras ferramentas. O tipo de categoria que a origem **declara** (número, Sim/Não, data) é respeitado; o que ela declara só como texto é **inferido** (revise no esquema). Os valores de atributo entram **das duas formas** que o padrão admite (gravados no próprio documento ou num "caso" que aponta para ele), e se alguma categoria chegar **sem nenhum valor** o resumo diz quais. Inclui importação reforçada de `.qdpx` do **ATLAS.ti** com PDFs |
 | **.sqlite3 (Taguette)** | Projeto nativo do Taguette: documentos, tags (hierarquia por `/` ou `.`) e trechos. Sem atributos nem autor por trecho |
 | **.qdc (codebook REFI-QDA)** | Só o livro de códigos |
 | **planilha (.csv / .xlsx → documentos + categorias)** | **Cada linha vira um documento**, veja abaixo |
