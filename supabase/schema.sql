@@ -155,6 +155,17 @@ create table if not exists public.codings (
 alter table public.codings add column if not exists layer text not null default 'individual';
 alter table public.codings add column if not exists pdf_region jsonb;   -- PDF-BLOCK (idempotente p/ bancos já criados)
 
+-- ---------- indices de performance (ago/2026) ----------
+-- codings/doc_values sem indice nas FKs mais filtradas causava sequential
+-- scan -> timeout no PostgREST ("Thread killed by timeout manager") ->
+-- retry do cliente -> estouro de egress no Free Plan. Ver migrations/2026-08-indices-performance.sql.
+create index if not exists codings_document_id_idx    on public.codings (document_id);
+create index if not exists codings_project_id_idx     on public.codings (project_id);
+create index if not exists codings_code_id_idx        on public.codings (code_id);
+create index if not exists doc_values_project_id_idx  on public.doc_values (project_id);
+create index if not exists doc_values_category_id_idx on public.doc_values (category_id);
+create index if not exists documents_project_id_idx   on public.documents (project_id);
+
 -- ---------- distribuicao: quem codifica o que (jul/2026) ----------
 -- Uma linha por (documento, pesquisador). Sozinha e so um PLANO de trabalho; vira restricao
 -- de verdade quando projects.restrict_docs esta ligado (ver can_see_doc). Serve aos dois
