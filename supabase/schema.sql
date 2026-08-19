@@ -154,6 +154,12 @@ create table if not exists public.codings (
 );
 alter table public.codings add column if not exists layer text not null default 'individual';
 alter table public.codings add column if not exists pdf_region jsonb;   -- PDF-BLOCK (idempotente p/ bancos já criados)
+-- S8: PROVENIENCIA — de onde veio o julgamento que criou a linha. 'manual' (default) | 'ai'
+-- (sugerido por modelo e aprovado item a item) | 'agreement' (concordancia registrada na
+-- Reconciliacao, com a resposta alheia ja visivel). Vocabulario reusado da ia_memory.source.
+-- SEM check constraint, seguindo o precedente da ia_memory: valor novo nesta familia e esperado
+-- (a propria S8 preve), e um check obrigaria migracao nos dois projetos a cada valor novo.
+alter table public.codings add column if not exists source text not null default 'manual';
 
 -- ---------- indices de performance (ago/2026) ----------
 -- codings/doc_values sem indice nas FKs mais filtradas causava sequential
@@ -719,6 +725,28 @@ revoke execute on function public.codes_color_guard() from public, anon, authent
 drop trigger if exists trg_codes_color_guard on public.codes;
 create trigger trg_codes_color_guard before insert or update on public.codes
   for each row execute function public.codes_color_guard();
+
+-- S8: a proveniencia e IMUTAVEL depois do insert, e a trava vale para TODO MUNDO, admin incluso.
+-- Nao e permissao, e invariante do dado: a linha nasce com a origem que teve, e nenhum caminho
+-- legitimo do app muda esse campo depois (moveCodings troca code_id, o remap de edicao de texto
+-- troca span/quote, e nenhum dos dois toca aqui). Sem a trava, "lavar" uma codificacao assistida
+-- seria um UPDATE direto pela API — e o valor da coluna inteira e ser dificil de desmentir.
+-- RAISE, e nao FORCE como no projects_ai_guard: la o valor e derivado e ninguem o escolhe; aqui
+-- alguem esta escrevendo um valor diferente de proposito, e engolir isso em silencio esconderia
+-- justamente o que a trava existe para tornar visivel.
+create or replace function public.codings_source_guard()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if new.source is distinct from old.source then
+    raise exception 'A proveniencia de uma codificacao nao pode ser alterada depois de criada';
+  end if;
+  return new;
+end; $$;
+revoke execute on function public.codings_source_guard() from public, anon, authenticated;
+
+drop trigger if exists trg_codings_source_guard on public.codings;
+create trigger trg_codings_source_guard before update on public.codings
+  for each row execute function public.codings_source_guard();
 
 -- ---------- S7: quem pode usar a IA, e a trava de uma via ----------
 -- can_use_ai responde a MESMA pergunta que a UI responde ao esconder os paineis, e existe para

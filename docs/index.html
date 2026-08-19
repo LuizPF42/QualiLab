@@ -573,7 +573,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.33';
+const QUALILAB_VERSION = '1.4.34';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -913,6 +913,28 @@ function coderKey(c){
   if(c.created_by) return c.created_by;
   return c.author_name ? '__nm__' + c.author_name : null;
 }
+
+/* PROVENIENCIA DA CODIFICACAO (S8 do to-do) — de onde veio o julgamento que criou ESTA linha.
+   Tres valores, e o vocabulario e o que a `ia_memory.source` ja usava ('ai'|'manual'), para a
+   mesma ideia nao ganhar um segundo vocabulario:
+     'manual'    julgamento humano direto, aplicado no leitor. E o caso comum, e por isso o DEFAULT;
+     'ai'        sugerido por modelo e aprovado item a item numa tela de IA;
+     'agreement' concordancia registrada na Reconciliacao, ou seja, com a resposta alheia JA VISIVEL.
+   AUSENTE VALE 'manual', E E ISSO QUE TORNA A COLUNA BARATA: nenhum caminho de escrita que ja
+   existia precisou mudar (rascunho e arquivo simplesmente nao gravam o campo; na nuvem o Postgres
+   poe o default), projeto antigo continua lendo certo, e so os dois caminhos NAO-manuais carimbam.
+   Quem le passa por aqui em vez de tocar `c.source` cru — senao "ausente" viraria undefined em
+   comparacao e um `!== 'ai'` acidental leria projeto antigo como assistido.
+   POR QUE 'agreement' E VALOR PROPRIO, e nao sinonimo de 'manual': concordar vendo quem codificou
+   o que nao e o mesmo dado que codificar sozinho, e a aba Codificadores dos Graficos mede
+   concordancia justamente sobre a camada individual — sem separar os dois, o gesto de concordar
+   inflaria em silencio a medida que ele deveria alimentar. E o mesmo vicio que o modo cego do
+   Sugerir Categorizacao existe para evitar: avaliador que ja viu a resposta nao mede, confere.
+   TETO HONESTO (a escrever na tela junto de qualquer numero): proveniencia marca o que passou
+   PELO APP. Copiar de outra aba e colar continua saindo como 'manual', e nenhuma ferramenta
+   alcanca isso. O que ela faz e tornar o caminho honesto o mais facil. */
+const CODING_SOURCES = { MANUAL:'manual', AI:'ai', AGREEMENT:'agreement' };
+const codingSource = (c)=> (c && c.source) || CODING_SOURCES.MANUAL;
 
 /* quadradinho de cor da árvore de códigos: FAMÍLIA (tipo declarado na criação) sai VAZADA, só
    contorno. Comunica "não guarda trechos" sem gastar outra cor (a cor é da família de matiz) nem
@@ -3865,6 +3887,7 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
           const c = keep[k];
           const co = { id:uid(), created_by:null, layer:codLayer, document_id:docMap[c.document_id], code_id:codeMap[c.code_id], span_start:c.span_start, span_end:c.span_end, quote:c.quote, author_name:c.author_name||'importado' };
           if(c.pdf_region) co.pdf_region = c.pdf_region;
+          if(c.source) co.source = c.source;   // S8: proveniencia do arquivo de origem; ausente = 'manual' pelo default
           return { key:k, co };
         });
         linhasRecusadas += bulkFails(await store.addCodingsBulk(projectId, built.map(x=>x.co)));
@@ -3874,6 +3897,7 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
           const c = keep[k];
           const co = { created_by:null, layer:codLayer, document_id:docMap[c.document_id], code_id:codeMap[c.code_id], span_start:c.span_start, span_end:c.span_end, quote:c.quote, author_name:c.author_name||'importado' };
           if(c.pdf_region) co.pdf_region = c.pdf_region;   // PDF-BLOCK: preserva a geometria do retângulo no round-trip
+          if(c.source) co.source = c.source;   // S8: proveniencia do arquivo de origem; ausente = 'manual' pelo default
           const nc = await store.addCoding(projectId, co);
           if(nc?.id) for(const oldId of groups[k]) if(oldId) codingMap[oldId] = nc.id;
         }
@@ -3885,6 +3909,7 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
         if(docMap[c.document_id] && codeMap[c.code_id]){
           const co = { id:uid(), created_by:null, layer:(c.layer||codLayer), document_id:docMap[c.document_id], code_id:codeMap[c.code_id], span_start:c.span_start, span_end:c.span_end, quote:c.quote, author_name:c.author_name||'importado' };
           if(c.pdf_region) co.pdf_region = c.pdf_region;
+          if(c.source) co.source = c.source;   // S8: proveniencia do arquivo de origem; ausente = 'manual' pelo default
           built.push({ oldId:c.id, co });
         }
       }
@@ -3896,6 +3921,7 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
         if(docMap[c.document_id] && codeMap[c.code_id]){
           const co = { created_by:null, layer:(c.layer||codLayer), document_id:docMap[c.document_id], code_id:codeMap[c.code_id], span_start:c.span_start, span_end:c.span_end, quote:c.quote, author_name:c.author_name||'importado' };
           if(c.pdf_region) co.pdf_region = c.pdf_region;   // PDF-BLOCK: preserva a geometria do retângulo no round-trip
+          if(c.source) co.source = c.source;   // S8: proveniencia do arquivo de origem; ausente = 'manual' pelo default
           const nc = await store.addCoding(projectId, co);
           if(c.id && nc?.id) codingMap[c.id] = nc.id;
         }
@@ -4462,6 +4488,134 @@ async function applyAttrImport(plan, store, projectId, cats, layer, onProgress){
   };
 }
 
+/* ============ IMPORTAR TRECHOS POR PLANILHA (planilha de excertos -> codificacao) ============
+   Terceiro importador de planilha, IRMAO do planilha-de-categorias.js (mesma precondicao: toda
+   linha aponta para um documento que JA EXISTE, casado pelo NOME) e NAO do csv-e-xlsx.js (que
+   sempre CRIA documento a partir da linha). Aqui cada linha e a unidade maior (ex.: uma lei
+   inteira) e cada coluna marcada com um Codigo e um EXCERTO daquele mesmo documento a localizar e
+   marcar. A base relacional real por tras de uma planilha larga (uma lei por linha, uma coluna por
+   codigo) e Documento (1) -- (N) Coding; mapear coluna->codigo no modal produz essa forma
+   longa/normalizada sem exigir que a pessoa desmonte a planilha (unpivot) na mao antes de importar.
+
+   Reaproveita o MESMO motor de localizacao de texto que ja roda em producao no import QDPX e na
+   sugestao de codificacao por IA (buildMatchIndex/findQuoteSpan, ancoragem-de-citacao.js): dado o
+   texto integral do documento e um trecho ("quote"), acha {start,end} — com o mesmo fallback
+   aproximado para OCR ruim/hifenizacao que os outros dois caminhos ja usam. Trecho que nao bate
+   com o texto do documento (resumo em vez de citacao literal, OCR errado) fica de fora e aparece
+   na previa como "nao encontrado" — nunca e chutado.
+
+   DIFERENCA DELIBERADA do planAttrImport: la, duas linhas apontando o MESMO documento sao erro (a
+   segunda e recusada) porque categoria e um UNICO valor por (documento,categoria). Aqui NAO: coding
+   e aditivo por natureza — um documento recebe VARIOS trechos, de VARIOS codigos, e nada impede
+   reimportar depois para acrescentar mais linhas do mesmo documento. O que se deduplica e o PAR
+   (documento,codigo,intervalo sobreposto), contra o banco E contra o que a propria importacao ja
+   planejou — nao a linha inteira. */
+
+/* chave de casamento tolerante e a normalizacao de intervalos sao as MESMAS do planilha-de-
+   categorias.js (attrKey ja definida la, mesmo arquivo do bundle — ver manifesto.txt).
+
+   PLANO do import: puro e deterministico (nenhuma chamada de store, nenhum uid) — o QuoteImportModal
+   mostra exatamente este objeto, e applyQuoteImport executa exatamente o que foi mostrado.
+     mapping = { docCol, items:[{col,codeId}], novos:[{col,name}] }
+     allCodings = todas as codificacoes HOJE no projeto (para o dedup contra o banco; o chamador
+       busca por todos os documentos antes de abrir o modal, o mesmo padrao do openAttrMapping). */
+function planQuoteImport(parsed, mapping, docs, codes, allCodings){
+  const { headers, rows } = parsed;
+  // `overlap` e local por desenho: o mesmo helper de uma linha que ia/sugerir-codificacao.js e
+  // ia/repetir-codificacao.js ja definem cada um no seu escopo, pequeno demais pra virar modulo.
+  const overlap = (aS,aE,bS,bE)=> aS>=0 && aE>aS && bS>=0 && bE>bS && aS<bE && bS<aE;
+  const byId = Object.fromEntries((codes||[]).map(c=>[c.id,c]));
+  // indice nome -> documentos, exato e normalizado — identico ao planAttrImport: normalizado so
+  // vale quando UM documento responde por ele, com dois e ambiguo tanto quanto o nome cru.
+  const exato = new Map(), norm = new Map();
+  for(const d of docs||[]){
+    const push = (m,k)=>{ const a=m.get(k); if(a) a.push(d); else m.set(k,[d]); };
+    push(exato, String(d.name||'')); push(norm, attrKey(d.name));
+  }
+  const alvos = [
+    ...(mapping.items||[]).map(it=>({ col:it.col, code:byId[it.codeId] })).filter(x=>x.code),
+    ...(mapping.novos||[]).map(n=>({ col:n.col, code:{ id:'novo:'+n.col, name:n.name, nova:true } })),
+  ];
+
+  // documento.id -> [{code_id,span_start,span_end}], carregado do banco e depois CRESCIDO com cada
+  // trecho que este mesmo import vai planejar — assim duas colunas sobrepostas na MESMA importacao
+  // tambem se deduplicam, nao so contra o que ja existia.
+  const existentes = new Map();
+  for(const c of allCodings||[]){ const a=existentes.get(c.document_id); if(a) a.push(c); else existentes.set(c.document_id,[c]); }
+
+  const idxCache = new Map();  // documento.id -> buildMatchIndex, UMA VEZ por documento, nao por celula
+  const codings = [], naoCasadas = [], naoEncontrados = [];
+  let casadas = 0, vazias = 0, jaExistiam = 0;
+
+  (rows||[]).forEach((r,i)=>{
+    const linha = i+2;   // a planilha conta a partir do cabecalho, que e a linha 1
+    const nome = String((r||[])[mapping.docCol]==null ? '' : r[mapping.docCol]).trim();
+    if(!nome){ naoCasadas.push({ linha, nome:'', motivo:'linha sem nome de documento' }); return; }
+    const cand = exato.get(nome) || norm.get(attrKey(nome)) || [];
+    if(!cand.length){ naoCasadas.push({ linha, nome, motivo:'nenhum documento com este nome' }); return; }
+    if(cand.length>1){ naoCasadas.push({ linha, nome, motivo:cand.length+' documentos com este nome (ambíguo)' }); return; }
+    const doc = cand[0]; casadas++;
+    let idx = idxCache.get(doc.id); if(!idx){ idx = buildMatchIndex(doc.content||''); idxCache.set(doc.id, idx); }
+    for(const a of alvos){
+      const bruto = String((r||[])[a.col]==null ? '' : r[a.col]).trim();
+      if(!bruto){ vazias++; continue; }
+      if(bruto.length<3){ naoEncontrados.push({ linha, coluna:(headers||[])[a.col]||'', trecho:bruto, motivo:'trecho curto demais (mínimo 3 caracteres)' }); continue; }
+      const sp = findQuoteSpan(idx, bruto);
+      if(!sp){ naoEncontrados.push({ linha, coluna:(headers||[])[a.col]||'', trecho:bruto, motivo:'não encontrado no texto do documento' }); continue; }
+      const jaTem = (existentes.get(doc.id)||[]).some(e=> String(e.code_id)===String(a.code.id) && overlap(Number(e.span_start),Number(e.span_end),sp.start,sp.end));
+      if(jaTem){ jaExistiam++; continue; }
+      codings.push({ docId:doc.id, docName:doc.name, codeId:a.code.id, codeName:a.code.name, col:a.col, linha,
+        start:sp.start, end:sp.end, quote:(doc.content||'').slice(sp.start, sp.end), approx:!!sp.approx });
+      const arr = existentes.get(doc.id);
+      const marca = { code_id:a.code.id, span_start:sp.start, span_end:sp.end };
+      if(arr) arr.push(marca); else existentes.set(doc.id, [marca]);
+    }
+  });
+
+  return {
+    linhas:(rows||[]).length, casadas, naoCasadas, codings, naoEncontrados, vazias, jaExistiam,
+    novosCodigos: (mapping.novos||[]).map(n=>({ col:n.col, name:n.name })),
+  };
+}
+
+/* executa o plano. Cria os codigos novos primeiro (raiz, cor round-robin — mesma logica do addCode
+   manual em app.js), depois grava as codificacoes. `layer` e escolhido GLOBALMENTE pelo modal (a
+   mesma decisao do AttrImportModal: gabarito da equipe ou minha resposta) e entra como campo do
+   PROPRIO payload de addCoding — diferente de categoria, coding nao troca de metodo por camada. */
+async function applyQuoteImport(plan, store, projectId, codes, layer, onProgress){
+  const total = plan.novosCodigos.length + plan.codings.length;
+  const tick = makeProgressTicker(onProgress, total);
+  const idMap = {};   // 'novo:<col>' -> uuid do codigo recem-criado
+  let linhasRecusadas = 0;
+  if(store.beginBatch) store.beginBatch();
+  try{
+    const topoAtual = (codes||[]).filter(c=>!c.parent_id).length;
+    for(let i=0;i<plan.novosCodigos.length;i++){
+      const n = plan.novosCodigos[i];
+      const hue = (topoAtual + i) % HUES.length;
+      const c = await store.addCode(projectId, { parent_id:null, name:n.name, hue, depth:0, hue_deg:null, sat:null, is_redaction:false, position:(codes||[]).length + i });
+      idMap['novo:'+n.col] = c.id;
+      await tick();
+    }
+    const rows = plan.codings.map(o=>({
+      document_id:o.docId, code_id: idMap[o.codeId] || o.codeId,
+      span_start:o.start, span_end:o.end, quote:o.quote, layer,
+    }));
+    if(store.addCodingsBulk && rows.length){
+      linhasRecusadas += bulkFails(await store.addCodingsBulk(projectId, rows));
+      for(let i=0;i<rows.length;i++) await tick();
+    } else {
+      for(const r of rows){ await store.addCoding(projectId, r); await tick(); }
+    }
+  } finally {
+    if(store.endBatch) await store.endBatch();
+  }
+  return {
+    codificacoes: plan.codings.length - linhasRecusadas,
+    codigos: plan.novosCodigos.length,
+    linhasRecusadas,
+  };
+}
 /* ============ IMPORT .sqlite3 do TAGUETTE ============
    O Taguette nao usa QDPX/REFI-QDA para o projeto completo (so o codebook, em .qdc) —
    o projeto inteiro (documentos + tags + trechos) e um banco SQLite proprio. Lemos esse
@@ -7109,8 +7263,8 @@ const CTXNEW_INITIAL = { criando: false, nome: '', pai: null, query: '', hi: 0, 
    elas ESCOLHEM entre alternativas. Um `useState` com um discriminante ja torna o estado
    invalido inexprimivel, e um reducer por cima seria cerimonia.
 
-   - `pendImport` = {tipo:'csv'|'attr'|'zotero', dados}. Eram tres estados independentes para
-     os tres modais de mapeamento, e nada impedia dois abertos ao mesmo tempo.
+   - `pendImport` = {tipo:'csv'|'attr'|'quotes'|'zotero', dados}. Eram estados independentes para
+     cada modal de mapeamento, e nada impedia dois abertos ao mesmo tempo.
    - `menu` = 'exportar'|'importar'|'enviar'|'docs'|'doc'|null. Eram cinco booleanos, e o
      Escape tinha de zerar os cinco um a um; hoje e `setMenu(null)`. O toggle do gatilho ficou
      em `alternaMenu`. (Detalhe pre-existente da UI: com um dropdown aberto ele desenha um
@@ -7654,9 +7808,10 @@ function App(){
   const qdcInputRef = useRef(null);
   const csvInputRef = useRef(null);
   const attrInputRef = useRef(null);                  // planilha que ATUALIZA categorias (nao cria documento)
+  const quoteInputRef = useRef(null);                 // planilha que codifica TRECHOS em documentos ja existentes
   const zoteroInputRef = useRef(null);                // pasta exportada em "Zotero RDF" (webkitdirectory)
-  // tres modais de mapeamento que sao mutuamente exclusivos — ver src/app/areas.js
-  const [pendImport, setPendImport] = useState(null); // {tipo:'csv'|'attr'|'zotero', dados}
+  // quatro modais de mapeamento que sao mutuamente exclusivos — ver src/app/areas.js
+  const [pendImport, setPendImport] = useState(null); // {tipo:'csv'|'attr'|'quotes'|'zotero', dados}
   const abrePend = (tipo, dados)=> setPendImport({ tipo, dados });
   const pendDe = (tipo)=> pendImport && pendImport.tipo===tipo ? pendImport.dados : null;
   const undoStackRef = useRef([]);
@@ -8530,6 +8685,20 @@ function App(){
     const c = await store.addCoding(project.id,{ document_id:docId, code_id:codeId, span_start:start, span_end:end, quote, layer:'final' });
     setCodings(x=>[...x,c]);
   }
+  /* CONCORDANCIA (Reconciliacao): grava uma codificacao INDIVIDUAL do usuario atual no mesmo
+     trecho e com o mesmo codigo do grupo. E o gesto do CODIFICADOR, e nao o do consolidador —
+     nao encosta na camada final, e por isso passa na RLS de membro comum (codings_insert exige
+     created_by = auth.uid() e recusa 'final' de quem nao e admin), que era justamente quem nao
+     tinha gesto nenhum nesta tela.
+     `layer` FIXO em 'individual', e nao o ternario do applyCode: a Reconciliacao so existe em
+     projeto COLETIVO (em individual nao ha o que reconciliar, e a view nem e oferecida).
+     `source:'agreement'` e o unico lugar do app que grava esse valor. Ele nao e cosmetico — e o
+     que deixa o "desfazer" distinguir a concordancia do trabalho ORIGINAL do codificador, e o que
+     impede o gesto de inflar em silencio a concordancia medida na aba Codificadores. */
+  async function addAgreementCoding(docId, codeId, start, end, quote){
+    const c = await store.addCoding(project.id,{ document_id:docId, code_id:codeId, span_start:start, span_end:end, quote, layer:'individual', source:CODING_SOURCES.AGREEMENT });
+    setCodings(x=>[...x,c]);
+  }
   async function delCoding(id){ await store.deleteCoding(id); setCodings(x=>x.filter(c=>c.id!==id)); }   // PDF-BLOCK: o retângulo some sozinho (deriva de codings)
   // Salva a edicao do texto do documento e REANCORA os grifos (remapSpans reancora por prefixo/sufixo;
   // grifo que caiu dentro do trecho editado e clampeado e contado em 'affected' pra avisar).
@@ -8735,7 +8904,9 @@ function App(){
       // e PRECISA sobreviver ao export — reescrever como 'file-user' fazia o valOf estrito
       // mostrar resposta alheia como "minha" ao reabrir o arquivo
       r.v.forEach(x=>doc_values.push({ id:x.id||uid(), document_id:d.id, category_id:x.category_id, value:x.value, set_by:x.set_by??null, author_name:x.author_name||'anonimo', layer:x.layer||'individual' }));
-      r.co.forEach(x=>codings.push({ id:x.id||uid(), document_id:x.document_id, code_id:x.code_id, span_start:x.span_start, span_end:x.span_end, quote:x.quote, layer:x.layer||'individual', created_by:x.created_by??null, author_name:x.author_name||'anonimo', created_at:x.created_at||new Date().toISOString(), pdf_region:x.pdf_region??null }));
+      // S8: `source` sai SEMPRE resolvido (codingSource poe 'manual' na ausencia) — arquivo
+      // autodescritivo, e o merge do outro lado nao precisa saber o que a ausencia significava.
+      r.co.forEach(x=>codings.push({ id:x.id||uid(), document_id:x.document_id, code_id:x.code_id, span_start:x.span_start, span_end:x.span_end, quote:x.quote, layer:x.layer||'individual', created_by:x.created_by??null, author_name:x.author_name||'anonimo', created_at:x.created_at||new Date().toISOString(), pdf_region:x.pdf_region??null, source:codingSource(x) }));
     }
     let memos=[], ia_results=[], ia_memory=[];
     try{ memos = (await store.listMemos?.(project.id))||[]; }catch(e){}
@@ -9096,6 +9267,51 @@ function App(){
       const camada = layer==='final' ? 'no gabarito' : 'na sua camada individual';
       setImportMsg(`Planilha aplicada ${camada}: ${partes.join(', ') || 'nada a mudar'}.${naoAplicadas}${r.linhasRecusadas?` ATENÇÃO: ${r.linhasRecusadas} linha(s) foram recusadas pelo servidor (permissão/RLS ou dado inválido) e NÃO foram gravadas. Detalhes no console do navegador.`:''}`);
     }catch(e){ setBusy(null); setProgress(null); setErr('Falha ao atualizar categorias: '+(e.message||e)); }
+  }
+
+  /* IMPORTAR TRECHOS POR PLANILHA — 1a etapa: le a planilha e, junto, TODAS as codificacoes hoje no
+     projeto (para o dedup contra o banco, o mesmo papel que `valores` cumpre no openAttrMapping).
+     Igual ao attr, este menu fica disponivel em QUALQUER tela — inclusive onde `codings`/`allCodings`
+     do estado nao cobrem o projeto inteiro — entao busca do zero em vez de confiar no que ja esta carregado. */
+  async function openQuoteMapping(file){
+    const ext = (file.name||'').toLowerCase();
+    const isExcel = ext.endsWith('.xlsx') || ext.endsWith('.xls');
+    setBusy('Lendo planilha...');
+    setProgress({ done:0, total:docs.length, label:'lendo codificações atuais' });
+    try{
+      const parsed = isExcel ? await parseXLSX(file) : parseCSV(await file.text());
+      if(!parsed.headers.length || !parsed.rows.length) throw new Error('arquivo vazio ou sem dados.');
+      const allCod = [];
+      await mapPool(docs, 8, async (d)=>{ const c = await store.listCodings(project.id, d.id); (c||[]).forEach(x=>allCod.push(x)); },
+        (done,total)=>setProgress({ done, total, label:'lendo codificações atuais' }));
+      setProgress(null); setBusy(null);
+      abrePend('quotes', { parsed, fileName:file.name, allCodings:allCod });
+    }catch(e){ setBusy(null); setProgress(null); setErr(`Falha ao ler ${isExcel?'a planilha':'o .csv'}: `+(e.message||e)); }
+  }
+  // 2a etapa: o modal ja montou e aprovou o PLANO; aqui so executamos e recarregamos.
+  async function doImportQuote(plan, layer){
+    setPendImport(null);
+    setBusy('Codificando trechos...');
+    setProgress({done:0,total:0});
+    try{
+      const r = await applyQuoteImport(plan, store, project.id, codes, layer, (done,total)=>setProgress({done,total}));
+      setProgress(null);
+      const codes2 = await store.listCodes(project.id);
+      setCodes(codes2);
+      if(activeId){
+        const cods = await store.listCodings(project.id, activeId);
+        setCodings(cods);
+      }
+      if(AGG_VIEWS.includes(mainView)) await loadAll();
+      setErr(null);
+      setBusy(null);
+      const naoAplicadas = plan.naoCasadas.length
+        ? ` ${plan.naoCasadas.length} linha(s) não corresponderam a nenhum documento e foram ignoradas.` : '';
+      const naoEncontrados = plan.naoEncontrados.length
+        ? ` ${plan.naoEncontrados.length} trecho(s) não foram encontrados no texto do documento e ficaram de fora.` : '';
+      const camada = layer==='final' ? 'no gabarito' : 'na sua camada individual';
+      setImportMsg(`Planilha de trechos aplicada ${camada}: ${r.codificacoes} codificação(ões)${r.codigos?`, ${r.codigos} código(s) criado(s)`:''}.${naoAplicadas}${naoEncontrados}${r.linhasRecusadas?` ATENÇÃO: ${r.linhasRecusadas} linha(s) foram recusadas pelo servidor (permissão/RLS ou dado inválido) e NÃO foram gravadas. Detalhes no console do navegador.`:''}`);
+    }catch(e){ setBusy(null); setProgress(null); setErr('Falha ao importar trechos: '+(e.message||e)); }
   }
 
   /* ZOTERO — 1a etapa: le o .rdf da PASTA escolhida e resolve os anexos contra os arquivos que o
@@ -9569,6 +9785,7 @@ function App(){
               <button title="Importa só o livro de códigos (.qdc), sem documentos nem codificações" onClick=${()=>{ setMenu(null); qdcInputRef.current.click(); }}>.qdc (codebook REFI-QDA)</button>
               <button title="Importa uma planilha (.csv ou Excel .xlsx): cada linha vira um documento; você escolhe qual coluna é o texto e quais viram categorias" onClick=${()=>{ setMenu(null); csvInputRef.current.click(); }}>planilha (.csv / .xlsx → documentos + categorias)</button>
               ${docs.length>0 && html`<button title="O caminho de volta do CSV de atributos: preencha as categorias na planilha e reimporte aqui. Casa cada linha com o documento de mesmo nome; não cria nem apaga documento, e mostra o que vai mudar antes de gravar." onClick=${()=>{ setMenu(null); attrInputRef.current.click(); }}>planilha (.csv / .xlsx → atualizar categorias)</button>`}
+              ${docs.length>0 && html`<button title="Planilha de excertos: cada linha aponta um documento que já existe (casado pelo nome) e cada coluna marcada com um Código é um trecho a localizar e codificar naquele documento. Não cria documento; mostra o que vai codificar antes de gravar." onClick=${()=>{ setMenu(null); quoteInputRef.current.click(); }}>planilha (.csv / .xlsx → codificar trechos)</button>`}
               <button title="Importa uma coleção do Zotero exportada em Zotero RDF (com arquivos): cada referência com PDF vira um documento, os metadados viram categorias e a referência/resumo/notas viram o memo" onClick=${()=>{ setMenu(null); zoteroInputRef.current.click(); }}>pasta do Zotero (Zotero RDF → documentos + categorias)</button>
             </div>
           </div>`}
@@ -9597,6 +9814,7 @@ function App(){
       <input ref=${qdcInputRef} type="file" accept=".qdc" style="display:none" onChange=${e=>{ if(e.target.files[0]) doImportQDC(e.target.files[0]); e.target.value=''; }} />
       <input ref=${csvInputRef} type="file" accept=".csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" style="display:none" onChange=${e=>{ if(e.target.files[0]) openCsvMapping(e.target.files[0]); e.target.value=''; }} />
       <input ref=${attrInputRef} type="file" accept=".csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" style="display:none" onChange=${e=>{ if(e.target.files[0]) openAttrMapping(e.target.files[0]); e.target.value=''; }} />
+      <input ref=${quoteInputRef} type="file" accept=".csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" style="display:none" onChange=${e=>{ if(e.target.files[0]) openQuoteMapping(e.target.files[0]); e.target.value=''; }} />
       ${/* ZOTERO: a exportacao "Zotero RDF" e uma PASTA (.rdf + files/), nao um arquivo — por isso
             webkitdirectory. Precisa do ${true} explicito: htm daria string vazia num atributo solto,
             e Preact escreveria dom.webkitdirectory='' (falso), abrindo o seletor de ARQUIVO.
@@ -9870,11 +10088,13 @@ function App(){
               ? html`<${ReconcileCodesAllDocs} docs=${docs} allCodings=${allCodings} coders=${coders}
                   codeById=${codeById} codePath=${codePath} isOwner=${isAdmin} userId=${user?.id} selCode=${recon.code}
                   onConsolidateDoc=${async (docId,codeId,start,end,quote)=>{ await addFinalCoding(docId,codeId,start,end,quote); loadAll(); }}
+                  onAgreeDoc=${async (docId,codeId,start,end,quote)=>{ await addAgreementCoding(docId,codeId,start,end,quote); loadAll(); }}
                   onDelCoding=${async id=>{ await delCoding(id); loadAll(); }} />`
               : html`<${Reconcile} activeDoc=${activeDoc} codings=${codings} coders=${coders}
                   codeById=${codeById} codePath=${codePath} tab=${recon.aba}
                   cats=${cats} values=${values} isOwner=${isAdmin} userId=${user?.id} onSetFinal=${setFinalValue}
                   onConsolidate=${(codeId,start,end,quote)=>addFinalCoding(activeId,codeId,start,end,quote)}
+                  onAgree=${(codeId,start,end,quote)=>addAgreementCoding(activeId,codeId,start,end,quote)}
                   onDelCoding=${delCoding} />`}
           </div>
         </div>
@@ -10258,6 +10478,9 @@ function App(){
   ${pendDe('attr') && html`<${AttrImportModal} parsed=${pendDe('attr').parsed} fileName=${pendDe('attr').fileName}
     docs=${docs} cats=${cats} valores=${pendDe('attr').valores} projectMode=${projectMode} isAdmin=${isAdmin} userId=${user?.id}
     onCancel=${()=>setPendImport(null)} onConfirm=${doImportAttrs} />`}
+  ${pendDe('quotes') && html`<${QuoteImportModal} parsed=${pendDe('quotes').parsed} fileName=${pendDe('quotes').fileName}
+    docs=${docs} codes=${codes} codePath=${codePath} allCodings=${pendDe('quotes').allCodings} projectMode=${projectMode} isAdmin=${isAdmin}
+    onCancel=${()=>setPendImport(null)} onConfirm=${doImportQuote} />`}
   `;
 }
 
@@ -14014,7 +14237,43 @@ function reparentPatch(node, base, adoptColor, markRedaction){
 /* ============ RECONCILIACAO (camadas individuais -> camada final) ============
    Agrupa as codificacoes individuais que se sobrepoem com o mesmo codigo, mostra
    quantos codificadores concordam e permite consolidar cada grupo na camada "final". */
-function Reconcile({ activeDoc, codings, coders, codeById, codePath, cats, values, isOwner, userId, tab, onSetFinal, onConsolidate, onDelCoding }){
+/* CONCORDAR COM UM GRUPO — o gesto que faltava ao codificador nesta tela.
+   Ate ago/2026 a Reconciliacao so tinha "Consolidar no final", que e ato de ADMIN (a RLS recusa
+   camada 'final' de quem nao e), entao para o membro comum a tela era leitura com um botao que o
+   servidor recusava. Concordar grava uma codificacao INDIVIDUAL dele no mesmo trecho e com o mesmo
+   codigo — que e o que "concordar" ja significava no modelo de dados, e por isso nao precisou de
+   tabela nem de metodo de store novo: sobe o placar de "2 de 3" para "3 de 3 · consenso", entra no
+   "Ver:", viaja no .qualilab e no QDPX de graca, e nao encosta no gabarito.
+   O SPAN E O DO GRUPO (a uniao dos sobrepostos), o MESMO que a consolidacao usa, e o quote sai de
+   content.slice(inicio,fim) — a invariante da regra de ouro #13 (quote == fatia) vale aqui como em
+   todo caminho que cria coding.
+   TRES ESTADOS, e o terceiro e a razao de a proveniencia existir:
+     'none'     nao estou no grupo -> posso concordar;
+     'agreed'   ja concordei (source 'agreement') -> ofereco DESFAZER, que apaga aquela linha;
+     'own'      codifiquei este trecho eu mesmo -> nao ofereco nada.
+   Sem o `source`, 'agreed' e 'own' seriam indistinguiveis e o "desfazer" apagaria trabalho
+   ORIGINAL do codificador achando que desfazia uma concordancia. Destruir grifo proprio tem lugar
+   proprio (o leitor), e nao pode ser efeito colateral de um botao de reconciliacao.
+   created_by CRU, e nao coderKey: "eu" e sobre a SESSAO VIVA, igual ao "Consolidar tudo feito por
+   mim" logo abaixo. Uma linha importada com o meu nome nao e minha (ver a nota do coderKey). */
+function agreementState(group, userId){
+  const meus = ((group && group.items) || []).filter(i=> i.created_by && i.created_by === userId);
+  if(!meus.length) return { kind:'none' };
+  const concordei = meus.find(i=> codingSource(i) === CODING_SOURCES.AGREEMENT);
+  return concordei ? { kind:'agreed', id:concordei.id } : { kind:'own' };
+}
+
+/* Os tres estados acima em botao. Componente proprio porque os DOIS cards da aba Codigos (o de um
+   documento e o de todos) mostram exatamente o mesmo gesto — a regra visual fica num lugar so. */
+function AgreeButton({ state, onAgree, onUndo }){
+  if(state.kind === 'own') return html`<span class="author" title="Você codificou este trecho; a sua codificação já está no grupo.">✓ codificação sua</span>`;
+  if(state.kind === 'agreed') return html`<span class="row" style="gap:6px">
+    <span class="author" style="background:var(--teal-soft);color:var(--teal-deep)" title="Você registrou concordância com este código neste trecho.">✓ você concorda</span>
+    <button class="btn sm ghost" title="Remove a codificação criada pela sua concordância." onClick=${()=>onUndo(state.id)}>desfazer</button></span>`;
+  return html`<button class="btn sm" title="Registra uma codificação sua neste trecho, na camada individual. Não mexe no gabarito." onClick=${onAgree}>Concordo com este código</button>`;
+}
+
+function Reconcile({ activeDoc, codings, coders, codeById, codePath, cats, values, isOwner, userId, tab, onSetFinal, onConsolidate, onAgree, onDelCoding }){
   if(!activeDoc) return html`<div class="card"><span class="meta">Abra um documento para reconciliar.</span></div>`;
   const indiv = codings.filter(c=>c.layer!=='final');
   const finals = codings.filter(c=>c.layer==='final');
@@ -14058,7 +14317,7 @@ function Reconcile({ activeDoc, codings, coders, codeById, codePath, cats, value
     </div>`}
     ${tab==='codigos' && html`<div>
     <p class="h">Códigos: reconciliação</p>
-    <p class="hint">Cada grupo reúne as codificações que se sobrepõem com o mesmo código. Consolide os que devem entrar na camada <b>final</b> do projeto.${totalCoders>1?` ${totalCoders} codificadores neste documento.`:''}</p>
+    <p class="hint">Cada grupo reúne as codificações que se sobrepõem com o mesmo código. Consolide os que devem entrar na camada <b>final</b> do projeto. <b>Concordo com este código</b> registra uma codificação sua no trecho, na camada individual, marcada como concordância.${totalCoders>1?` ${totalCoders} codificadores neste documento.`:''}</p>
     ${isOwner && (()=>{
       const pending = groups.filter(g=>!finalFor(g));
       // created_by CRU aqui e correto e nao e esquecimento: "feito por MIM" e sobre a sessao
@@ -14093,11 +14352,15 @@ function Reconcile({ activeDoc, codings, coders, codeById, codePath, cats, value
           ${coderIds.map(id=>html`<span class="author" key=${id}>${nameOf(id, (g.items.find(i=>coderKey(i)===id)||{}).author_name)}</span>`)}
         </div>
         <div style="font-family:var(--mono);font-size:11px;color:var(--ink-soft);margin-bottom:8px">"${quote.slice(0,180)}"</div>
-        ${fin
-          ? html`<div class="row" style="gap:8px;align-items:center">
-              <span class="author" style="background:var(--teal-soft);color:var(--teal-deep)">✓ na camada final</span>
-              <button class="btn sm ghost" onClick=${()=>onDelCoding(fin.id)}>Remover do final</button></div>`
-          : html`<button class="btn sm primary" onClick=${()=>onConsolidate(g.codeId, g.start, g.end, quote)}>Consolidar no final →</button>`}
+        <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap">
+          <${AgreeButton} state=${agreementState(g, userId)}
+            onAgree=${()=>onAgree(g.codeId, g.start, g.end, quote)} onUndo=${onDelCoding} />
+          ${fin
+            ? html`<span class="row" style="gap:8px">
+                <span class="author" style="background:var(--teal-soft);color:var(--teal-deep)">✓ na camada final</span>
+                <button class="btn sm ghost" onClick=${()=>onDelCoding(fin.id)}>Remover do final</button></span>`
+            : html`<button class="btn sm primary" onClick=${()=>onConsolidate(g.codeId, g.start, g.end, quote)}>Consolidar no final →</button>`}
+        </div>
       </div>`;
     })}
     </div>`}
@@ -14144,7 +14407,7 @@ function ReconcileCatAcrossDocs({ docs, cat, allValues, isOwner, onSetFinalDoc }
 }
 
 /* Bloco colapsável de UM documento na visão "todos os documentos" da aba Códigos. */
-function ReconcileDocCodes({ d, groups, finalFor, totalCoders, coders, codeById, codePath, onConsolidateDoc, onDelCoding }){
+function ReconcileDocCodes({ d, groups, finalFor, totalCoders, coders, codeById, codePath, userId, onConsolidateDoc, onAgreeDoc, onDelCoding }){
   const [open, setOpen] = useState(true);
   const nameOf = (id, fallback)=> (coders.find(c=>c.id===id)||{}).name || fallback || 'anônimo';
   const pend = groups.filter(g=>!finalFor(g)).length;
@@ -14172,11 +14435,15 @@ function ReconcileDocCodes({ d, groups, finalFor, totalCoders, coders, codeById,
             ${coderIds.map(id=>html`<span class="author" key=${id}>${nameOf(id, (g.items.find(i=>coderKey(i)===id)||{}).author_name)}</span>`)}
           </div>
           <div style="font-family:var(--mono);font-size:11px;color:var(--ink-soft);margin-bottom:8px">"${quote.slice(0,180)}"</div>
-          ${fin
-            ? html`<div class="row" style="gap:8px;align-items:center">
-                <span class="author" style="background:var(--teal-soft);color:var(--teal-deep)">✓ na camada final</span>
-                <button class="btn sm ghost" onClick=${()=>onDelCoding(fin.id)}>Remover do final</button></div>`
-            : html`<button class="btn sm primary" onClick=${()=>onConsolidateDoc(d.id, g.codeId, g.start, g.end, quote)}>Consolidar no final →</button>`}
+          <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap">
+            <${AgreeButton} state=${agreementState(g, userId)}
+              onAgree=${()=>onAgreeDoc(d.id, g.codeId, g.start, g.end, quote)} onUndo=${onDelCoding} />
+            ${fin
+              ? html`<span class="row" style="gap:8px">
+                  <span class="author" style="background:var(--teal-soft);color:var(--teal-deep)">✓ na camada final</span>
+                  <button class="btn sm ghost" onClick=${()=>onDelCoding(fin.id)}>Remover do final</button></span>`
+              : html`<button class="btn sm primary" onClick=${()=>onConsolidateDoc(d.id, g.codeId, g.start, g.end, quote)}>Consolidar no final →</button>`}
+          </div>
         </div>`;
       })}
     </div>`}
@@ -14187,7 +14454,7 @@ function ReconcileDocCodes({ d, groups, finalFor, totalCoders, coders, codeById,
    Modo "(Todos os documentos)" da aba Códigos. selCode='all' mostra todos; um id filtra um código.
    Usa allCodings (projeto inteiro) e o conteúdo de cada doc para os trechos; blocos por documento
    colapsáveis; botões de consolidar em massa (projeto inteiro, respeitando o filtro de código). */
-function ReconcileCodesAllDocs({ docs, allCodings, coders, codeById, codePath, isOwner, userId, selCode, onConsolidateDoc, onDelCoding }){
+function ReconcileCodesAllDocs({ docs, allCodings, coders, codeById, codePath, isOwner, userId, selCode, onConsolidateDoc, onAgreeDoc, onDelCoding }){
   // por documento: grupos individuais + finais, e os pendentes (sem equivalente no gabarito)
   const perDoc = docs.map(d=>{
     const dc = allCodings.filter(c=>c.document_id===d.id);
@@ -14209,7 +14476,7 @@ function ReconcileCodesAllDocs({ docs, allCodings, coders, codeById, codePath, i
 
   return html`<div class="section">
     <p class="h">Códigos: todos os documentos${filtTitle}</p>
-    <p class="hint">Cada grupo reúne as codificações que se sobrepõem com o mesmo código. Consolide na camada <b>final</b> do projeto.</p>
+    <p class="hint">Cada grupo reúne as codificações que se sobrepõem com o mesmo código. Consolide na camada <b>final</b> do projeto. <b>Concordo com este código</b> registra uma codificação sua no trecho, na camada individual, marcada como concordância.</p>
     ${isOwner && allPending.length>0 && html`<div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:12px">
       <button class="btn sm" disabled=${allMine.length===0}
         title="Consolida no gabarito final todas as suas codificações ainda não consolidadas (respeitando o filtro de código)"
@@ -14223,8 +14490,8 @@ function ReconcileCodesAllDocs({ docs, allCodings, coders, codeById, codePath, i
     ${perDoc.length===0 && html`<div class="card"><span class="meta">${selCode && selCode!=='all' ? 'Nenhuma codificação deste código.' : 'Nenhuma codificação individual no projeto ainda.'}</span></div>`}
     ${perDoc.map(({d, groups, finalFor, totalCoders})=>html`<${ReconcileDocCodes} key=${d.id}
       d=${d} groups=${groups} finalFor=${finalFor} totalCoders=${totalCoders}
-      coders=${coders} codeById=${codeById} codePath=${codePath}
-      onConsolidateDoc=${onConsolidateDoc} onDelCoding=${onDelCoding} />`)}
+      coders=${coders} codeById=${codeById} codePath=${codePath} userId=${userId}
+      onConsolidateDoc=${onConsolidateDoc} onAgreeDoc=${onAgreeDoc} onDelCoding=${onDelCoding} />`)}
   </div>`;
 }
 
@@ -15774,6 +16041,159 @@ function AttrImportModal({ parsed, fileName, docs, cats, valores, projectMode, i
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
         <button class="btn ghost" onClick=${onCancel}>Cancelar</button>
         <button class="btn primary" disabled=${!podeAplicar} onClick=${()=>onConfirm(plan, layer)}>Aplicar</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ============ MODAL: IMPORTAR TRECHOS POR PLANILHA ============
+   Terceiro irmao do CsvImportModal/AttrImportModal — mesma gramatica (um <select> de papel por
+   coluna), mesma previa "o que vai acontecer" antes de gravar. A diferenca com o AttrImportModal
+   não é de UI, é de dedup: la duplicar LINHA (mesmo documento em duas linhas) é erro; aqui coding é
+   aditivo, entao o que se veda é duplicar o PAR (documento,código,trecho) — o planQuoteImport já
+   resolve isso, aqui só se mostra o resultado. */
+function QuoteImportModal({ parsed, fileName, docs, codes, codePath, allCodings, projectMode, isAdmin, onCancel, onConfirm }){
+  const { headers, rows } = parsed;
+  const individual = projectMode==='individual';
+  const [layer, setLayer] = useState(()=> (individual || isAdmin) ? 'final' : 'individual');
+  const [verTudo, setVerTudo] = useState(false);
+
+  // mesmo chute do AttrImportModal: a coluna que mais casa nomes de documento existentes.
+  const guessDocCol = useMemo(()=>{
+    const nomes = new Set((docs||[]).map(d=>attrKey(d.name)));
+    let best = 0, bestHits = -1;
+    headers.forEach((_,c)=>{
+      let hits = 0;
+      for(const r of rows.slice(0,200)) if(nomes.has(attrKey((r||[])[c]||''))) hits++;
+      if(hits > bestHits){ bestHits = hits; best = c; }
+    });
+    return { col:best, hits:bestHits };
+  }, [headers, rows, docs]);
+
+  const selectableCodes = useMemo(()=> (codes||[]).filter(c=>!c.is_redaction), [codes]); // censura não se aplica por planilha
+
+  const [roles, setRoles] = useState(()=> headers.map((_,c)=> c===guessDocCol.col ? 'doc' : 'ignore'));
+  const setRole = (c,v)=> setRoles(rs=> rs.map((x,i)=> i===c ? v : x));
+
+  const roleOpts = [
+    {v:'ignore', l:'(ignorar)'},
+    {v:'doc', l:'Nome do documento (casar)'},
+    ...selectableCodes.map(c=>({ v:'code:'+c.id, l:'Código · '+codePath(c.id).join(' ▸ ') })),
+    {v:'newcode', l:'Criar código novo (usa o título da coluna)'},
+  ];
+
+  const docCol = roles.indexOf('doc');
+  const mapping = useMemo(()=>({
+    docCol,
+    items: roles.map((r,c)=> r.startsWith('code:') ? { col:c, codeId:r.slice(5) } : null).filter(Boolean),
+    novos: roles.map((r,c)=> r==='newcode' ? { col:c, name:headers[c] } : null).filter(Boolean),
+  }), [roles, headers, docCol]);
+
+  const plan = useMemo(()=> planQuoteImport(parsed, mapping, docs, codes, allCodings), [parsed, mapping, docs, codes, allCodings]);
+
+  // erros de MAPEAMENTO (nao de dado): duas colunas no mesmo codigo, ou dois codigos novos com o
+  // mesmo nome, nasceriam indistinguiveis — mesma familia de guarda do AttrImportModal.
+  const erros = [];
+  if(roles.filter(r=>r==='doc').length===0) erros.push('Escolha a coluna que traz o nome do documento.');
+  if(roles.filter(r=>r==='doc').length>1)   erros.push('Só uma coluna pode ser o nome do documento.');
+  {
+    const usadas = mapping.items.map(x=>x.codeId);
+    if(new Set(usadas).size !== usadas.length) erros.push('Duas colunas apontam para o mesmo código.');
+    const novos = mapping.novos.map(n=>attrKey(n.name));
+    if(new Set(novos).size !== novos.length) erros.push('Duas colunas novas de código com o mesmo nome.');
+    const colide = mapping.novos.find(n=> (codes||[]).some(c=> attrKey(c.name)===attrKey(n.name)));
+    if(colide) erros.push(`Já existe um código chamado "${colide.name}": escolha-o na lista em vez de criar outro.`);
+  }
+  const nada = !plan.codings.length && !plan.novosCodigos.length;
+  const podeAplicar = !erros.length && !nada;
+
+  const MOSTRA = 12;
+  const visiveis = verTudo ? plan.codings : plan.codings.slice(0, MOSTRA);
+  const colSamples = headers.map((_,c)=>{
+    const seen=new Set(); const out=[];
+    for(const r of rows){ const v=((r||[])[c]||'').trim(); if(!v||seen.has(v)) continue; seen.add(v); out.push(v); if(out.length>=3) break; }
+    return out;
+  });
+
+  return html`<div class="modal-bg" onClick=${onCancel}>
+    <div class="modal" onClick=${e=>e.stopPropagation()} style="max-width:760px">
+      <h3 style="margin:0 0 4px">Importar trechos por planilha</h3>
+      <p class="hint" style="margin:0 0 12px">
+        <b>${fileName}</b> · ${rows.length} linha(s). Cada linha aponta um documento que <b>já existe</b>;
+        cada coluna marcada com um Código vira um trecho localizado e codificado NAQUELE documento.
+        Não precisa reformatar a planilha para "uma linha por trecho" — uma coluna por código, célula = o excerto, é suficiente.
+      </p>
+
+      <div style="max-height:34vh;overflow:auto;display:flex;flex-direction:column;gap:8px">
+        ${headers.map((h,c)=> html`<div key=${c} class="card" style="padding:8px 10px;display:flex;align-items:center;gap:10px">
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${h}</div>
+            <div class="hint" style="font-family:var(--mono);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title=${colSamples[c].join(' · ')}>
+              ${colSamples[c].length ? 'ex.: '+colSamples[c].join(' · ') : '(coluna vazia)'}
+            </div>
+          </div>
+          <select value=${roles[c]} onChange=${e=>setRole(c, e.target.value)} style="flex-shrink:0;max-width:280px">
+            ${roleOpts.map(o=> html`<option key=${o.v} value=${o.v}>${o.l}</option>`)}
+          </select>
+        </div>`)}
+      </div>
+
+      ${!individual && html`<div class="row" style="gap:14px;align-items:center;margin-top:12px;flex-wrap:wrap">
+        <label class="row" style="gap:6px;align-items:center">
+          <span class="field-label" style="margin:0">Gravar em</span>
+          <select class="opt" value=${layer} onChange=${e=>setLayer(e.target.value)}>
+            ${isAdmin && html`<option value="final">Gabarito da equipe</option>`}
+            <option value="individual">Minha resposta</option>
+          </select>
+        </label>
+      </div>`}
+
+      <div class="card" style="padding:10px;margin-top:12px">
+        <div class="row" style="gap:12px;flex-wrap:wrap;font-size:12px">
+          <span><b>${plan.casadas}</b> de ${plan.linhas} linha(s) casaram um documento</span>
+          <span>·</span>
+          <span><b>${plan.codings.length}</b> trecho(s) a codificar</span>
+          ${plan.jaExistiam>0 && html`<span class="meta">${plan.jaExistiam} já codificado(s) igual</span>`}
+        </div>
+        ${plan.novosCodigos.length>0 && html`<p class="hint" style="margin:8px 0 0">
+          Cria ${plan.novosCodigos.length} código(s) novo(s): ${plan.novosCodigos.map(n=>n.name).join(', ')}.
+        </p>`}
+        ${plan.naoEncontrados.length>0 && html`<p class="hint" style="margin:8px 0 0;color:var(--danger)">
+          ${plan.naoEncontrados.length} trecho(s) não encontrado(s) no texto do documento — ex.: linha ${plan.naoEncontrados[0].linha}, coluna "${plan.naoEncontrados[0].coluna}".
+          Confira se o texto da célula é IDÊNTICO ao do documento importado (resumo em vez de citação literal, ou erro de OCR, quebram o match); esses ficam de fora, sem travar o resto.
+        </p>`}
+      </div>
+
+      ${plan.codings.length>0 && html`<div style="margin-top:10px">
+        <div class="field-label">Trechos a codificar</div>
+        <div style="max-height:24vh;overflow:auto;font-size:12px">
+          ${visiveis.map((o,i)=> html`<div key=${i} class="row" style="gap:8px;padding:3px 0;border-bottom:1px solid var(--line-soft)">
+            <span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title=${o.docName}>${o.docName}</span>
+            <span class="meta" style="flex:0 0 auto">${o.codeName}</span>
+            <span style="flex:2;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title=${o.quote}>"${o.quote}"</span>
+            ${o.approx && html`<span class="meta" title="Match aproximado: o trecho não bateu caractere a caractere com o documento (comum em PDF com OCR) — confira antes de confiar cegamente.">≈</span>`}
+          </div>`)}
+        </div>
+        ${plan.codings.length>MOSTRA && html`<button class="btn sm ghost" style="margin-top:6px" onClick=${()=>setVerTudo(v=>!v)}>
+          ${verTudo ? 'mostrar menos' : `+ ${plan.codings.length-MOSTRA} restantes`}</button>`}
+      </div>`}
+
+      ${plan.naoCasadas.length>0 && html`<div style="margin-top:10px">
+        <div class="field-label">Linhas sem documento correspondente <span class="meta">· ${plan.naoCasadas.length}</span></div>
+        <div class="hint" style="max-height:14vh;overflow:auto;font-size:12px">
+          ${plan.naoCasadas.slice(0,20).map((n,i)=> html`<div key=${i}>linha ${n.linha}: ${n.nome ? `"${n.nome}"` : '(sem nome)'} — ${n.motivo}</div>`)}
+          ${plan.naoCasadas.length>20 && html`<div>...e mais ${plan.naoCasadas.length-20}.</div>`}
+        </div>
+      </div>`}
+
+      ${erros.length>0 && html`<p class="hint" style="color:var(--danger);margin:10px 0 0">${erros.join(' ')}</p>`}
+      ${!erros.length && nada && html`<p class="hint" style="margin:10px 0 0">
+        Nada a codificar: nenhuma coluna de código foi marcada, ou nenhum trecho novo foi encontrado.
+      </p>`}
+
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+        <button class="btn ghost" onClick=${onCancel}>Cancelar</button>
+        <button class="btn primary" disabled=${!podeAplicar} onClick=${()=>onConfirm(plan, layer)}>Importar ${plan.codings.length||''}</button>
       </div>
     </div>
   </div>`;
@@ -18316,6 +18736,11 @@ function IARepetirPanel({ project, docs, codes, codeById, codePath, store, allCo
     if(busy || !pending.length) return;
     setBusy(true); setErr(''); setApplyMsg('');
     const layer = projectMode==='individual' ? 'final' : 'individual';
+    // S8: SEM carimbo de proveniencia, e isso e DECISAO, nao esquecimento — esta aba nao passa por
+    // modelo nenhum (acha ocorrencias EXATAS com o mesmo findMatches das buscas), entao marca-la
+    // 'ai' faria a frase de metodo que a coluna existe para sustentar ("N% sugeridas por modelo")
+    // contar busca literal. Fica no default 'manual'. Ela mora sob "Codificar Automaticamente"
+    // por parentesco de FLUXO, nao por usar IA.
     const rows = pending.map(h=>({ document_id:h.docId, code_id:h.codeId, span_start:h.start, span_end:h.end, quote:h.quote, layer }));
     let ok=0, fail=0;
     try{
@@ -19971,7 +20396,10 @@ function IACodificacaoPanel({ project, docs, codes, codeById, codePath, store, a
     let applied=0, skipped=0;
     if(store.beginBatch) store.beginBatch();
     try{
-      for(const {o,i} of toApply){ try{ await store.addCoding(project.id, { document_id:o.docId, code_id:o.codeId, span_start:o.start, span_end:o.end, quote:o.quote, layer }); saved[i]=true; applied++; }catch(e){ skipped++; } }
+      // S8: `source:'ai'` — a linha aplicada aqui nasceu de sugestao de MODELO, aprovada item a
+      // item. Sem o carimbo ela fica indistinguivel de julgamento humano no banco (o principio 4
+      // manda aplicar pela MESMA funcao do caminho manual, e e a coluna que paga esse preco).
+      for(const {o,i} of toApply){ try{ await store.addCoding(project.id, { document_id:o.docId, code_id:o.codeId, span_start:o.start, span_end:o.end, quote:o.quote, layer, source:CODING_SOURCES.AI }); saved[i]=true; applied++; }catch(e){ skipped++; } }
     } finally { if(store.endBatch) await store.endBatch(); }
     await reload(); await loadAll();
     // #27: so marca como concluido (somente-leitura) quando NADA falhou; havendo falha, mantem o turno

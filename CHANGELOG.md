@@ -14,6 +14,70 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.34 (19/08/2026)
+
+### Na Reconciliação, agora dá para dizer "concordo", e não só "aceito no gabarito"
+
+- **Concordo com este código.** Cada grupo da aba Códigos ganhou um botão que registra que **você**
+  também aplicaria aquele código àquele trecho. Ele cria uma codificação sua na sua camada
+  individual e **não** encosta no gabarito. Até agora a tela só oferecia consolidar no gabarito, que
+  é ato de **administrador**: para quem apenas codifica, a Reconciliação era uma tela de leitura com
+  um botão que o servidor recusava. O placar do grupo sobe na hora ("2 de 3" vira "3 de 3 ·
+  consenso"), e um **desfazer** ao lado remove a concordância.
+
+- **Concordar não se confunde com codificar.** A codificação criada pelo botão fica marcada como
+  concordância, porque concordar aqui é decidir **vendo a resposta dos outros** — útil para fechar a
+  reconciliação, mas não é a mesma evidência que duas pessoas chegando ao mesmo trecho de forma
+  independente. É essa distinção que faz o **desfazer** apagar só a concordância e nunca o trabalho
+  que você fez lendo o documento: se o trecho já tem uma codificação sua, o card diz "codificação
+  sua" e não oferece o botão.
+
+- **Codificação sugerida por IA passou a ficar registrada como tal.** Quando você aprova uma
+  sugestão em "Sugerir Codificação", a linha guardada agora diz que nasceu de uma sugestão de
+  modelo. Antes ela ficava idêntica a uma codificação feita à mão, e a informação existia só na
+  conversa salva. Nada muda no que você vê ou faz; muda o que o seu projeto consegue dizer sobre si
+  mesmo depois. A aba "Repetir Codificação" **não** entra nessa conta, porque não passa por modelo
+  nenhum: ela procura ocorrências idênticas de um texto.
+
+- Essa marca **viaja no `.qualilab`** (exportar e reimportar preserva) e, na nuvem, **não pode ser
+  reescrita** depois que a linha é criada.
+
+### Codificar trechos direto de uma planilha
+
+Quem organiza o material numa planilha — uma linha por documento (uma lei, um acórdão, uma
+entrevista) e uma coluna por tema, com o excerto copiado na célula — agora traz isso para dentro do
+QualiLab de uma vez, em **importar ▾ → planilha (.csv / .xlsx → codificar trechos)**. É o terceiro
+caminho de planilha, e o único que **codifica**: o primeiro cria documentos, o segundo preenche
+categorias, este marca trechos.
+
+Cada linha aponta um documento que **já existe** (casado pelo nome, como o de categorias), e cada
+coluna que você marcar com um código vira um trecho **localizado dentro do texto daquele documento**
+e codificado ali. Não é preciso reformatar a planilha para "uma linha por trecho".
+
+- **O trecho é procurado no texto e ancorado no lugar certo** — não entra como citação solta. É o
+  mesmo mecanismo de localização que já traz os trechos de um `.qdpx` e o que a IA sugere, com a
+  mesma tolerância a hifenização e a OCR imperfeito.
+- **Trecho que não bate com o texto fica de fora e é listado**, com a linha e a coluna: um resumo
+  escrito por você em vez da citação literal, ou um erro de digitação, não é chutado para um lugar
+  aproximado. O resto da planilha entra normalmente.
+- **A tela mostra o que vai acontecer antes de gravar**: quantas linhas casaram um documento,
+  quantos trechos serão codificados, quais códigos serão criados e quais linhas não encontraram
+  documento nenhum.
+- **Coluna sem código correspondente pode criar um código novo**, usando o título da coluna como
+  nome.
+- **Reimportar a mesma planilha não duplica.** Um trecho que já está codificado com aquele código
+  naquele lugar é reconhecido e pulado — então dá para acrescentar linhas e importar de novo.
+- Em projeto **coletivo**, você escolhe se está gravando no **gabarito da equipe** (administrador)
+  ou na **sua camada**.
+
+O passo a passo está no [manual](https://luizpf42.github.io/QualiLab/manual.html).
+
+> **Precisa fazer alguma coisa?** Se você usa a nuvem do QualiLab (o modo padrão), **não**: a
+> atualização do banco já foi aplicada. Se você aponta o app para um **Supabase próprio**, rode o
+> `supabase/schema.sql` deste repositório novamente no SQL Editor do seu projeto — ele é
+> idempotente, rodar de novo não causa efeito colateral. Em rascunho e em arquivo `.qualilab` não há
+> banco nenhum, e nada muda.
+
 ## 1.4.33 (17/08/2026)
 
 **Os atributos dos seus documentos deixaram de sumir na importação de `.qdpx`.**

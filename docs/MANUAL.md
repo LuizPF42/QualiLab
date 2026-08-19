@@ -374,6 +374,8 @@ codificação**: com um trecho selecionado, o clique esquerdo *aplica* o código
 
 > Ao aplicar, o grifo aparece no texto com a cor do código. **A linha embaixo do grifo só aparece quando há mais de um código sobrepondo o mesmo trecho**. É o sinal de sobreposição. Trecho com um código só fica apenas tintado, sem linha, para não poluir.
 
+> **Já tem os excertos numa planilha?** Se o seu material já está organizado como uma linha por documento e uma coluna por tema, com a citação na célula, dá para trazer tudo de uma vez em **importar ▾ → planilha (.csv / .xlsx → codificar trechos)**: cada excerto é localizado no texto do documento e vira um grifo como os daqui. Ver [Codificar trechos numa planilha](#codificar-trechos-numa-planilha-e-trazer-para-o-projeto-passo-a-passo).
+
 ### 5.3. Remover um código de um trecho
 Você **não precisa selecionar de novo**:
 1. Clique com o **botão direito sobre o grifo** existente.
@@ -388,6 +390,8 @@ Você **não precisa selecionar de novo**:
 Um código pode ser marcado como **censura** (no [Esquema](#7-esquema), por um admin). Trechos com esse código ganham no leitor uma **caixa fechada** (a cor da censura é o preto, e a borda é o que a distingue de um grifo comum) e saem mascarados como `[trecho censurado]` nas **saídas de transparência** ([Relatório](#12-relatório)) e no que vai para a **IA** ([seção 17](#17-codificar-e-analisar-com-ia)), útil para publicar mantendo nomes/dados sensíveis ocultos.
 
 **Onde a censura NÃO se aplica, e por quê.** Os formatos de **trabalho e migração** (`.qualilab`, QDPX, QDC, CSV, JSON) saem **completos**, com os trechos censurados em claro. Não é esquecimento: é por esses arquivos que você leva o **seu próprio** material para o ATLAS.ti, o MAXQDA ou o NVivo e traz de volta, e mascarar ali destruiria o texto original de forma irreversível, além de fazer você **perder o próprio trabalho de censura** na migração. O menu **exportar ▾** avisa isso na hora, em âmbar, quando o projeto usa código de censura. Para material que sai da equipe, use a aba **Relatório**.
+
+**E a censura não alcança a sua tela.** Enquanto você trabalha, o leitor mostra o texto inteiro, sem máscara: é tela de trabalho, e esconder ali impediria você de codificar. Vale lembrar disso quando o computador é compartilhado, quando você projeta a tela numa reunião e, hoje, quando um assistente de IA recebe permissão para **ver a sua tela** — basta autorizar, e por esse caminho o material aparece como está. Nenhum programa de análise consegue impedir isso, e o QualiLab não é exceção: a máscara vive nos **artefatos** ([Relatório](#12-relatório)) e no que é **enviado** às telas de IA, que é onde o material sai de perto de você.
 
 **A censura protege o que você marcou, não o termo.** Marcar "Banca Exemplo Advogados" num parágrafo não protege as outras cinco menções ao mesmo escritório. Para isso existe a aba **Repetir Codificação** (em [Codificar Automaticamente](#172-codificar-automaticamente-cinco-assistentes-em-abas)): ela pega os trechos que o código já tem e mostra as demais ocorrências **idênticas** no corpus, para você aprovar uma a uma. Ela não acha **variantes**: "Banca Exemplo" sozinha, ou "a banca", continuam sendo caso de [pesquisar +](#57-buscar-no-documento-e-no-projeto-inteiro), onde o julgamento é seu. Antes de publicar, veja [12.4](#124-antes-de-publicar-trabalhe-no-laboratório-publique-de-uma-cópia).
 
@@ -540,6 +544,8 @@ Ao editar um código, o admin pode:
 
 **Códigos.** Cada **grupo** reúne as codificações que se **sobrepõem** no mesmo código, com o trecho e quem codificou. O selo **"N de M · consenso"** mostra quantos codificadores marcaram aquele trecho; quando todos concordam, o card ganha destaque. Você **consolida** cada grupo na camada final (**Consolidar no final →**) ou, se já estiver lá, pode **remover do final**.
 
+- **Concordo com este código**: registra que **você** também aplicaria aquele código àquele trecho. Cria uma codificação sua na **camada individual** e não encosta no gabarito, então é o gesto de quem **codifica** (qualquer membro), enquanto consolidar é o gesto de quem **consolida** (o admin). O placar sobe na hora ("2 de 3" vira "3 de 3 · consenso"), e o botão **desfazer** ao lado remove a concordância. Se o trecho já tiver uma codificação sua, o card diz **codificação sua** e não oferece o botão: você já está no grupo.
+  - A codificação criada assim fica **marcada como concordância**, e não se confunde com a que você fez sozinho lendo o documento. A distinção importa porque concordar aqui é decidir **vendo a resposta dos outros** — o que serve para fechar a reconciliação, mas não é a mesma evidência que duas pessoas chegando ao mesmo trecho de forma independente. É também o que faz o **desfazer** apagar só a concordância, nunca o seu trabalho original.
 - **Consolidar em massa**: havendo grupos pendentes, aparecem **Consolidar tudo feito por mim (N)** e **Consolidar tudo (N)**, do documento aberto ou, em (Todos os documentos), do projeto inteiro (respeitando o filtro de código). É irreversível; o app confirma antes.
 - **Atalho pelo leitor**: na aba Codificação, o admin pode aceitar um grifo direto no gabarito pelo **botão direito → "Aceitar no gabarito"**, sem passar por esta tela.
 
@@ -810,6 +816,7 @@ Os menus **exportar ▾** e **importar ▾** ficam no cabeçalho (aparecem quand
 | **.qdc (codebook REFI-QDA)** | Só o livro de códigos |
 | **planilha (.csv / .xlsx → documentos + categorias)** | **Cada linha vira um documento**, veja abaixo |
 | **planilha (.csv / .xlsx → atualizar categorias)** | **Preenche categorias de documentos que já existem**, casando pelo nome. Não cria documento nenhum, veja abaixo |
+| **planilha (.csv / .xlsx → codificar trechos)** | **Codifica trechos em documentos que já existem**: cada coluna vira um código e cada célula é o excerto a localizar no texto. Não cria documento nenhum, veja abaixo |
 | **pasta do Zotero (Zotero RDF)** | **Cada referência com PDF vira um documento**; os metadados viram categorias e a referência vira memo, veja abaixo |
 
 > Em projeto **coletivo na nuvem**, **importar é uma ação de administrador** (o import cria dados compartilhados e pode escrever o gabarito). Em rascunho, arquivo ou projeto individual, qualquer usuário importa.
@@ -869,6 +876,60 @@ O que ele faz e o que não faz:
   entender é recusado e informado, nunca chutado.
 - Em projeto **coletivo**, você escolhe se está preenchendo o **gabarito da equipe** (administrador)
   ou a **sua resposta**.
+
+#### Codificar trechos numa planilha e trazer para o projeto (passo a passo)
+
+Muita pesquisa começa numa planilha larga: **uma linha por documento** (uma lei, um acórdão, uma
+entrevista) e **uma coluna por tema**, com o excerto copiado na célula. Essa planilha já é uma
+codificação — só que fora do QualiLab. Este caminho a traz para dentro **sem que você tenha de
+desmontá-la** numa lista de "uma linha por trecho".
+
+1. **importar ▾ → planilha (.csv / .xlsx → codificar trechos)** e escolha o arquivo.
+2. A tela **Importar trechos por planilha** mostra uma linha por coluna, com exemplos de conteúdo.
+   Para cada uma, escolha o papel:
+   - **Nome do documento (casar)** — a coluna que diz de que documento é a linha. O QualiLab já
+     chuta a que mais casa nomes existentes;
+   - **Código · *nome*** — a coluna é um tema, e cada célula dela é um excerto daquele documento;
+   - **Criar código novo (usa o título da coluna)** — para um tema que ainda não existe no projeto;
+   - **(ignorar)** — como todas as colunas nascem, menos a do nome do documento.
+3. A prévia responde **o que vai acontecer antes de gravar**: quantas linhas casaram um documento,
+   quantos **trechos a codificar**, quais códigos serão criados, quais trechos **não foram
+   encontrados** e quais linhas **não têm documento correspondente**. A lista mostra, trecho a
+   trecho, o documento, o código e a citação que será marcada.
+4. Confirme em **Importar**.
+
+O que ele faz e o que não faz:
+
+- **Nenhum documento é criado.** Cada linha tem de apontar um documento que **já existe**, casado
+  pelo nome (acento, caixa e espaço a mais não atrapalham). Nome que não existe, ou que aparece em
+  **dois** documentos, é ignorado e listado com o motivo. Para criar documentos a partir de uma
+  planilha, use o primeiro item do menu.
+- **O trecho é procurado dentro do texto do documento**, e a codificação fica ancorada no lugar
+  certo — ela não é uma citação solta guardada à parte. É o mesmo mecanismo que traz os trechos de
+  um `.qdpx` e o que a IA sugere.
+- **O que não bate com o texto fica de fora, e é dito.** Um resumo escrito por você em vez da
+  citação literal, ou um erro de OCR no documento, não é encaixado num lugar aproximado: aparece na
+  lista de não encontrados, com a linha e a coluna, e o resto da planilha entra normalmente. Quando
+  a localização foi **aproximada** (comum em PDF com OCR), o trecho vem marcado com **≈** na prévia
+  — vale conferir esses antes de confiar.
+- **Célula vazia não faz nada**, e trecho com menos de três caracteres é recusado.
+- **Reimportar a mesma planilha não duplica.** O que se compara é o **par** documento + código +
+  lugar no texto: se aquele trecho já está codificado com aquele código ali, ele é pulado. Então dá
+  para acrescentar linhas à planilha e importar de novo. Isso vale também **dentro da mesma
+  importação**, se duas colunas apontarem o mesmo excerto e o mesmo código.
+- **Um trecho pode receber mais de um código** (duas colunas com o mesmo excerto e códigos
+  diferentes), e um documento recebe quantos trechos a planilha tiver: diferente de categoria, que
+  é uma resposta por documento, codificação **se acumula**.
+- **Códigos de censura não entram na lista** de colunas: censura se marca no leitor, olhando o
+  texto.
+- Em projeto **coletivo**, você escolhe se está gravando no **gabarito da equipe** (administrador)
+  ou na **sua camada**.
+
+> **Por que a planilha não precisa mudar de forma.** Uma planilha "uma lei por linha, uma coluna
+> por tema" já contém a mesma informação que o QualiLab guarda como documento e trechos; o que
+> falta é só dizer qual coluna é qual. Fazer isso no mapeamento evita o trabalho manual de
+> transformar a planilha antes de importar, que é onde os excertos costumam se perder ou se
+> desalinhar do documento a que pertencem.
 
 > Depois de importar de outra ferramenta, vale revisar o esquema de categorias (os tipos podem ter sido inferidos).
 
