@@ -14,6 +14,35 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.35 (22/08/2026)
+
+### Correção de segurança: abrir um `.qualilab` de terceiro não expõe mais a sua sessão
+
+- **O que acontecia.** Cada trecho codificado tem um identificador interno. Ao montar o
+  **Relatório ▸ Interativo ATI**, o app colava esse identificador dentro da página que ele gera
+  sem tratá-lo como texto. Num arquivo preparado de má-fé, esse campo podia trazer instruções em
+  vez de um identificador — e elas passavam a rodar dentro da prévia, com os mesmos poderes da aba
+  do QualiLab: alcance à **sua chave de IA** guardada no navegador e à **sua sessão da nuvem**. A
+  mesma página é a que o botão "Exportar HTML" entrega, então o arquivo hostil também fabricava um
+  relatório hostil para quem o recebesse.
+
+- **A quem isso alcançava.** Só a quem abrisse um `.qualilab` recebido de outra pessoa **e**
+  entrasse na aba Relatório. Arquivo produzido pelo próprio QualiLab nunca teve esse conteúdo, e
+  nada no seu projeto foi alterado por esta correção.
+
+- **O que mudou, e são duas barreiras independentes.** O identificador passou a ser tratado como
+  texto, então a instrução nunca chega a existir na página — e é essa metade que protege também o
+  **HTML exportado**, que roda fora do QualiLab e onde não há mais nada a socorrer. Além dela, a
+  prévia do relatório passou a rodar **isolada** da página do app: o clique no grifo e o filtro da
+  legenda continuam funcionando, mas sem alcance ao que está fora dela.
+
+- **Se você abriu arquivos de origem desconhecida**, vale trocar a chave de IA em *Minha Conta* —
+  era a informação sensível ao alcance. A recomendação é de prudência: não há indício de que isso
+  tenha ocorrido.
+
+- Achado numa inspeção de segurança do código, e preso por um teste que reproduz o ataque e
+  confirma que ele falha.
+
 ## 1.4.34 (19/08/2026)
 
 ### Na Reconciliação, agora dá para dizer "concordo", e não só "aceito no gabarito"

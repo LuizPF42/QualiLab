@@ -573,7 +573,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.34';
+const QUALILAB_VERSION = '1.4.35';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -5514,7 +5514,7 @@ function buildTransparencyReaderHTML(docs, codes, allC, memos, project, anonymiz
         anns[c.id]={ code:p.join(' › '), color:colorOf(c.code_id).solid, author:anonymize?'':(c.author_name||''),
           note:codingMemo[c.id]||'', page:(pageOf && pageOf(c.document_id, c.span_start))||0 }; } });   // §4: página no PDF original
       const bb = vis.length>1 ? `border-bottom:2px solid ${col.solid}` : '';
-      body += `<span class="hl" data-ann="${vis.map(c=>c.id).join(' ')}" style="background:${col.tint};${bb}">${t}</span>`;
+      body += `<span class="hl" data-ann="${xmlEsc(vis.map(c=>c.id).join(' '))}" style="background:${col.tint};${bb}">${t}</span>`;
     });
     // documento colapsável (vem colapsado): o TÍTULO (summary) abre/fecha; o ● é o link pro
     // memo do documento (clicar nele não dispara o colapso — preventDefault no handler).
@@ -15751,7 +15751,7 @@ function ReportView({ project, projectMode, docs, cats, codes, codeById, codePat
         <p class="meta" style="margin:0 0 8px;flex:none">Prévia do leitor interativo (mesma página que será exportada):</p>
         ${docs.length===0
           ? html`<p class="hint">Nenhum documento para exibir.</p>`
-          : html`<iframe srcdoc=${readerHTML} style="flex:1;width:100%;min-height:0;border:1px solid var(--line);border-radius:8px;background:#fff"></iframe>`}
+          : html`<iframe srcdoc=${readerHTML} sandbox="allow-scripts" style="flex:1;width:100%;min-height:0;border:1px solid var(--line);border-radius:8px;background:#fff"></iframe>`}
       </div>`}
 
       ${rmode==='w3c' && html`<div style="flex:1;min-width:0;padding:14px;display:flex;flex-direction:column;height:calc(100vh - 150px)">
