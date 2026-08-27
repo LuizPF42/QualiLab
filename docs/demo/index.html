@@ -94,7 +94,8 @@
   .mini .n{font:700 17px/1.2 var(--mono)}
   .mini .r{font-size:10.5px;color:#8FA3B8}
   .mini.bloq .n{color:#FFC24B}
-  .mini.loc .n{color:#7FB4E8}
+  .mini.leit .n{color:#7FB4E8}
+  .mini.escr .n{color:#4ADE80}
   .estado{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-family:var(--mono);font-size:11.5px;color:#9DB0C3}
   .estado b{color:#D7DEE8;font-weight:600;word-break:break-all}
   .log{list-style:none;margin:0;padding:0;max-height:300px;overflow:auto;font-family:var(--mono);font-size:11px;line-height:1.45;
@@ -106,6 +107,8 @@
   .l-externa{color:#FF6B5E}
   .l-bloqueada{color:#FFC24B}
   .l-local{color:#7FB4E8}
+  .l-leitura{color:#7FB4E8}
+  .l-escrita{color:#4ADE80}
   .l-tentativa{color:#E8D27F}
   .btn-escuro{width:100%;margin-top:8px;font:600 13px/1 system-ui,sans-serif;padding:10px 12px;border-radius:8px;cursor:pointer;
               background:transparent;color:#FFC24B;border:1px solid #5C4A15}
@@ -191,7 +194,8 @@
     </div>
     <div class="mini-contadores">
       <div class="mini bloq"><div class="n" id="numBloqueadas">0</div><div class="r">tentativas bloqueadas</div></div>
-      <div class="mini loc"><div class="n" id="numLocais">0</div><div class="r">leituras locais (disco/memória)</div></div>
+      <div class="mini leit"><div class="n" id="numLeituras">0</div><div class="r">leituras de arquivo</div></div>
+      <div class="mini escr"><div class="n" id="numEscritas">0</div><div class="r">escritas no disco</div></div>
     </div>
 
     <h3>Estado</h3>
@@ -289,15 +293,17 @@ function classificaUrl(u){
 }
 
 function contarMonitor(){
-  let ext = 0, blo = 0, loc = 0;
+  let ext = 0, blo = 0, leit = 0, escr = 0;
   for (const r of monitor.registros){
     if (r.classe === 'externa') ext++;
     else if (r.classe === 'bloqueada') blo++;
-    else if (r.classe === 'local') loc++;
+    else if (r.classe === 'leitura') leit++;
+    else if (r.classe === 'escrita') escr++;
   }
   $('numExternas').textContent = String(ext);
   $('numBloqueadas').textContent = String(blo);
-  $('numLocais').textContent = String(loc);
+  $('numLeituras').textContent = String(leit);
+  $('numEscritas').textContent = String(escr);
   $('placar').classList.toggle('alerta', ext > 0);
 }
 
@@ -308,16 +314,16 @@ function pintarRegistro(reg){
   hora.className = 'hora';
   hora.textContent = reg.hora;
   reg.li.appendChild(hora);
-  const rot = { externa: 'SAIU PARA A REDE', bloqueada: 'BLOQUEADA', local: 'local', tentativa: 'tentando…' }[reg.classe] || reg.classe;
+  const rot = { externa: 'SAIU PARA A REDE', bloqueada: 'BLOQUEADA', local: 'local', tentativa: 'tentando…', leitura: 'LEITURA', escrita: 'ESCRITA' }[reg.classe] || reg.classe;
   reg.li.appendChild(document.createTextNode('[' + rot + '] ' + reg.tipo + ' — ' + reg.alvo + (reg.nota ? ' (' + reg.nota + ')' : '')));
 }
 
-function registrar(classe, tipo, alvo){
+function registrar(classe, tipo, alvo, nota){
   const log = $('log');
   const ph = log.querySelector('.vazio-log');
   if (ph) ph.remove();
   const reg = {
-    classe: classe, tipo: tipo, alvo: String(alvo).slice(0, 300), nota: '',
+    classe: classe, tipo: tipo, alvo: String(alvo).slice(0, 300), nota: nota || '',
     hora: new Date().toLocaleTimeString('pt-BR'),
     li: document.createElement('li')
   };
@@ -633,6 +639,7 @@ async function urlDeImagem(rid){
   const mime = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', bmp: 'image/bmp', webp: 'image/webp', svg: 'image/svg+xml' }[ext];
   if (!mime) return null; // emf/wmf etc.: mostra a etiqueta de objeto
   const bytes = await zipInflar(ent);
+  registrar('leitura', 'arquivo · interno', caminho, fmtKB(bytes.length) + ' · imagem lida de dentro do próprio .docx, sem rede');
   const url = URL.createObjectURL(new Blob([bytes], { type: mime }));
   docx.urlsBlob.push(url);
   return url;
@@ -801,7 +808,7 @@ async function renderCorpo(xmlEl, destino){
   }
 }
 
-async function abrirBytes(buf, nome, handle){
+async function abrirBytes(buf, nome, handle, origem){
   const entradas = zipLer(buf);
   const entDoc = entradas.get('word/document.xml');
   if (!entDoc) throw new Error('o ZIP nao contem word/document.xml — nao e um .docx');
@@ -820,6 +827,8 @@ async function abrirBytes(buf, nome, handle){
   docx.urlsBlob = [];
   docx.rels = await lerRelsDeImagem(entradas);
 
+  // a leitura entra no razao ANTES das imagens internas, na ordem real dos fatos
+  if (origem) registrar('leitura', 'arquivo', nome, fmtKB(buf.byteLength) + ' · ' + origem);
   const dest = $('conteudo');
   dest.textContent = '';
   await renderCorpo(corpo, dest);
@@ -975,6 +984,7 @@ async function entregarArquivo(u8){
       const w = await docx.handle.createWritable();
       await w.write(blob);
       await w.close();
+      registrar('escrita', 'arquivo', nome, fmtKB(u8.length) + ' · direto no mesmo arquivo, na pasta original');
       status('Gravado direto em "' + nome + '" (' + fmtKB(u8.length) + ') — mesmo arquivo, mesma pasta, como um editor instalado.', 'ok');
       return true;
     }catch(_){ /* permissao revogada: tenta salvar-como */ }
@@ -991,6 +1001,7 @@ async function entregarArquivo(u8){
       docx.handle = h;
       docx.nome = h.name || nome;
       $('arquivoNome').querySelector('b').textContent = docx.nome;
+      registrar('escrita', 'arquivo', docx.nome, fmtKB(u8.length) + ' · no local que você escolheu no seletor');
       status('Gravado em "' + docx.nome + '" (' + fmtKB(u8.length) + '). Os próximos Ctrl+S vão direto nesse arquivo.', 'ok');
       return true;
     }catch(e){
@@ -1006,6 +1017,7 @@ async function entregarArquivo(u8){
   document.body.appendChild(a);
   a.click();
   a.remove();
+  registrar('escrita', 'arquivo', nome, fmtKB(u8.length) + ' · entregue à pasta Downloads');
   status('"' + nome + '" (' + fmtKB(u8.length) + ') foi para a pasta Downloads — este navegador não deixa a página gravar no lugar, então entrega uma cópia.', 'ok');
   return true;
 }
@@ -1119,8 +1131,9 @@ async function criarExemplo(){
       itens.push({ nome: f.nome, metodo: c.metodo, comp: c.comp, crc: crc32(b), usize: b.length, hora: dt.hora, data: dt.data });
     }
     const zip = zipEscrever(itens);
+    registrar('local', 'memória', 'exemplo-qualilab.docx', fmtKB(zip.length) + ' · .docx montado do zero na memória, sem tocar o disco nem a rede');
     // o proprio leitor da pagina reabre o ZIP recem-criado: autoteste do ciclo completo
-    await abrirBytes(zip.buffer, 'exemplo-qualilab.docx', null);
+    await abrirBytes(zip.buffer, 'exemplo-qualilab.docx', null, null);
     status('Documento criado do zero (' + fmtKB(zip.length) + '): XML montado, ZIP compactado e reaberto — tudo nesta página. Edite e clique em Salvar.', 'ok');
   }catch(e){
     status('Falha ao criar o exemplo: ' + (e && e.message ? e.message : e), 'erro');
@@ -1129,8 +1142,8 @@ async function criarExemplo(){
 
 /* --- fiacao da interface --- */
 
-async function abrirComErro(buf, nome, handle){
-  try{ await abrirBytes(buf, nome, handle); }
+async function abrirComErro(buf, nome, handle, origem){
+  try{ await abrirBytes(buf, nome, handle, origem); }
   catch(e){ status('Não consegui abrir "' + nome + '": ' + (e && e.message ? e.message : e), 'erro'); }
 }
 
@@ -1142,7 +1155,7 @@ async function abrirArquivoEscolhido(){
         types: [{ description: 'Documento do Word', accept: { 'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'] } }]
       });
       const f = await sel[0].getFile();
-      await abrirComErro(await f.arrayBuffer(), f.name, sel[0]);
+      await abrirComErro(await f.arrayBuffer(), f.name, sel[0], 'lido do disco, escolhido por você (com acesso de gravação)');
       return;
     }catch(e){
       if (e && e.name === 'AbortError') return;
@@ -1154,7 +1167,7 @@ async function abrirArquivoEscolhido(){
 
 $('inputArquivo').addEventListener('change', async function(e){
   const f = e.target.files && e.target.files[0];
-  if (f) await abrirComErro(await f.arrayBuffer(), f.name, null);
+  if (f) await abrirComErro(await f.arrayBuffer(), f.name, null, 'lido do disco pelo seletor de arquivos');
   e.target.value = '';
 });
 $('btnAbrir').addEventListener('click', abrirArquivoEscolhido);
@@ -1177,7 +1190,7 @@ folha.addEventListener('drop', async function(e){
     const item = e.dataTransfer.items && e.dataTransfer.items[0];
     if (item && item.getAsFileSystemHandle) handle = await item.getAsFileSystemHandle();
   }catch(_){}
-  await abrirComErro(await f.arrayBuffer(), f.name, (handle && handle.kind === 'file') ? handle : null);
+  await abrirComErro(await f.arrayBuffer(), f.name, (handle && handle.kind === 'file') ? handle : null, 'lido do disco, arrastado para a página');
 });
 
 const conteudo = $('conteudo');
