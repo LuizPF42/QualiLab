@@ -1,0 +1,1224 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<!-- A TRAVA DE REDE DA DEMONSTRACAO. Esta pagina declara ao navegador que nao usa rede
+     nenhuma: default-src 'none' bloqueia fetch/XHR/WebSocket/beacon/iframe/script externo
+     ANTES de qualquer pacote sair da maquina (nem DNS resolve). So ficam liberados o
+     script e o estilo embutidos neste proprio arquivo, e imagens data:/blob: — que sao
+     memoria local, nao rede. O monitor ao lado registra qualquer tentativa barrada. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src blob:; form-action 'none'; base-uri 'none'" />
+<title>QualiLab · demonstração: um index.html é um editor de arquivos</title>
+<meta name="description" content="Prova de conceito do QualiLab: um único arquivo HTML que abre, edita e grava .docx de verdade no seu computador — sem instalação, sem servidor, sem nenhuma requisição de rede. O monitor embutido mostra o tráfego: zero." />
+<!-- favicon inline (sem arquivo externo), mesma identidade do app -->
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%2300427A'/><text x='16.02' y='23.13' font-family='Georgia,serif' font-size='26' font-weight='700' fill='white' text-anchor='middle'>Q</text></svg>" />
+<style>
+  :root{
+    --navy:#00427A; --navy-esc:#00325C; --tinta:#1A1B1E; --cinza:#5C5F66;
+    --papel:#FFFFFF; --fundo:#EDEEF1; --borda:#D8DADF; --creme:#F3ECD9; --creme-borda:#D9C89A;
+    --verde:#1B7F3B; --verde-claro:#4ADE80; --vermelho:#C62F22; --ambar:#B58A1B;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--fundo);color:var(--tinta);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  header.topo{background:var(--navy);color:#fff;padding:14px 22px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+  header.topo .marca{font-family:Georgia,serif;font-size:21px;font-weight:700;letter-spacing:.2px}
+  header.topo .marca small{font-family:system-ui,sans-serif;font-weight:400;font-size:13px;opacity:.85;margin-left:8px}
+  header.topo .selos{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+  .selo{font-size:11.5px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);border-radius:99px;padding:2px 10px;white-space:nowrap}
+  .tese{background:var(--creme);border-bottom:1px solid var(--creme-borda);padding:14px 22px}
+  .tese .larg{max-width:1220px;margin:0 auto}
+  .tese h1{font-family:Georgia,serif;font-size:19px;margin:0 0 4px;color:var(--navy)}
+  .tese p{margin:0;color:#4a4a42;max-width:75ch}
+  main{max-width:1220px;margin:0 auto;padding:20px 22px;display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:22px;align-items:start}
+  @media (max-width:980px){ main{grid-template-columns:1fr} aside.monitor{position:static} }
+
+  /* ---------- coluna do editor ---------- */
+  .barra{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+  .btn{font:600 14px/1 system-ui,sans-serif;padding:9px 15px;border-radius:8px;border:1px solid var(--navy);
+       background:#fff;color:var(--navy);cursor:pointer}
+  .btn:hover{background:#F2F7FC}
+  .btn.prim{background:var(--navy);color:#fff}
+  .btn.prim:hover{background:var(--navy-esc)}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .barra .arquivo-nome{font-size:13px;color:var(--cinza);margin-left:auto;display:flex;align-items:center;gap:6px;min-width:0}
+  .arquivo-nome b{color:var(--tinta);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:34ch}
+  .ponto-sujo{width:9px;height:9px;border-radius:50%;background:var(--ambar);display:none}
+  .sujo .ponto-sujo{display:inline-block}
+
+  .folha{background:var(--papel);border:1px solid var(--borda);border-radius:4px;
+         box-shadow:0 1px 3px rgba(15,23,42,.10),0 8px 28px rgba(15,23,42,.06);
+         padding:52px 58px;min-height:480px;font-family:Georgia,"Times New Roman",serif;font-size:12pt;line-height:1.55}
+  @media (max-width:640px){ .folha{padding:26px 20px} }
+  .folha.solta{outline:3px dashed var(--navy);outline-offset:-10px}
+
+  .vazio{border:2px dashed var(--borda);border-radius:10px;padding:44px 24px;text-align:center;
+         color:var(--cinza);font-family:system-ui,sans-serif;font-size:14.5px}
+  .vazio .icone{font-size:38px;line-height:1;margin-bottom:10px;color:var(--navy);font-family:Georgia,serif;font-weight:700}
+  .vazio p{max-width:52ch;margin:8px auto}
+  .vazio .acoes{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:16px}
+
+  .par{white-space:pre-wrap;margin:0 0 .55em;outline:none;min-height:1em;caret-color:var(--navy)}
+  .par:focus{background:#F4F8FC;box-shadow:0 0 0 3px #F4F8FC}
+  .par.h0{font-size:22pt;font-weight:700;color:var(--navy);margin:.2em 0 .5em}
+  .par.h1{font-size:17pt;font-weight:700;color:var(--navy);margin:.7em 0 .35em}
+  .par.h2{font-size:14.5pt;font-weight:700;margin:.7em 0 .3em}
+  .par.h3{font-size:13pt;font-weight:700;margin:.6em 0 .25em}
+  .par.h4{font-size:12pt;font-weight:700;font-style:italic;margin:.6em 0 .25em}
+  .marcador{color:var(--cinza);user-select:none}
+  .obj{display:inline-block;vertical-align:middle;user-select:none}
+  .obj img{max-width:100%;height:auto;border:1px solid var(--borda);border-radius:3px}
+  .obj-x{font-size:10.5pt;color:var(--cinza);background:#F1F2F4;border:1px dashed var(--borda);border-radius:4px;padding:1px 7px;font-family:system-ui,sans-serif}
+  table.tbl{border-collapse:collapse;margin:.4em 0 .8em;width:100%}
+  table.tbl td{border:1px solid #9aa1ab;padding:5px 9px;vertical-align:top}
+  table.tbl .par{margin:0}
+
+  .rodape-folha{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--cinza);margin-top:10px;align-items:baseline}
+  #msgStatus{flex:1 1 260px;min-width:200px}
+  #msgStatus.ok{color:var(--verde)}
+  #msgStatus.erro{color:var(--vermelho)}
+
+  /* ---------- monitor de rede ---------- */
+  aside.monitor{position:sticky;top:16px;background:#12161D;color:#D7DEE8;border-radius:12px;
+                padding:18px;font-size:13px;box-shadow:0 8px 28px rgba(0,0,0,.25)}
+  .monitor h2{font:700 13px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:#8FA3B8;margin:0 0 12px}
+  .monitor h3{font:700 11px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:#66788C;margin:18px 0 6px}
+  .placar{background:#0B0E13;border:1px solid #232B36;border-radius:10px;padding:14px;text-align:center}
+  .placar .num{font:700 40px/1.05 var(--mono);color:var(--verde-claro)}
+  .placar.alerta .num{color:#FF6B5E}
+  .placar .rotulo{font-size:12px;color:#9DB0C3;margin-top:4px}
+  .mini-contadores{display:flex;gap:8px;margin-top:8px}
+  .mini{flex:1;background:#0B0E13;border:1px solid #232B36;border-radius:8px;padding:8px;text-align:center}
+  .mini .n{font:700 17px/1.2 var(--mono)}
+  .mini .r{font-size:10.5px;color:#8FA3B8}
+  .mini.bloq .n{color:#FFC24B}
+  .mini.loc .n{color:#7FB4E8}
+  .estado{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-family:var(--mono);font-size:11.5px;color:#9DB0C3}
+  .estado b{color:#D7DEE8;font-weight:600;word-break:break-all}
+  .log{list-style:none;margin:0;padding:0;max-height:300px;overflow:auto;font-family:var(--mono);font-size:11px;line-height:1.45;
+       background:#0B0E13;border:1px solid #232B36;border-radius:8px}
+  .log li{padding:5px 9px;border-bottom:1px solid #1A212B;word-break:break-all}
+  .log li:last-child{border-bottom:0}
+  .log .hora{color:#66788C;margin-right:6px}
+  .log .vazio-log{color:#66788C;font-style:italic}
+  .l-externa{color:#FF6B5E}
+  .l-bloqueada{color:#FFC24B}
+  .l-local{color:#7FB4E8}
+  .l-tentativa{color:#E8D27F}
+  .btn-escuro{width:100%;margin-top:8px;font:600 13px/1 system-ui,sans-serif;padding:10px 12px;border-radius:8px;cursor:pointer;
+              background:transparent;color:#FFC24B;border:1px solid #5C4A15}
+  .btn-escuro:hover{background:#1C1707}
+  .monitor .nota{font-size:11.5px;color:#8FA3B8;margin:8px 0 0}
+  .monitor code{font-family:var(--mono);font-size:10.5px;color:#A8BACD;background:#0B0E13;border:1px solid #232B36;
+                border-radius:6px;display:block;padding:8px;word-break:break-all;white-space:pre-wrap}
+
+  /* ---------- secao da analogia ---------- */
+  .analogia{max-width:1220px;margin:8px auto 0;padding:6px 22px 30px}
+  .analogia h2{font-family:Georgia,serif;color:var(--navy);font-size:20px;margin:18px 0 10px}
+  .cartoes{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+  .cartao{background:var(--papel);border:1px solid var(--borda);border-radius:10px;padding:16px}
+  .cartao h3{margin:0 0 6px;font-size:14.5px;color:var(--navy)}
+  .cartao p{margin:0;font-size:13.5px;color:#3C3F45}
+  .mapa{width:100%;border-collapse:collapse;background:var(--papel);border:1px solid var(--borda);border-radius:10px;overflow:hidden;font-size:13.5px}
+  .mapa th{background:#F4F6F8;text-align:left;padding:9px 12px;border-bottom:1px solid var(--borda);font-size:12.5px;color:var(--cinza)}
+  .mapa td{padding:9px 12px;border-bottom:1px solid #E8EAEE;vertical-align:top}
+  .mapa tr:last-child td{border-bottom:0}
+  .mapa .env{overflow-x:auto}
+  .honesto{background:var(--creme);border:1px solid var(--creme-borda);border-radius:10px;padding:14px 16px;font-size:13.5px;color:#4a4a42;margin-top:14px}
+  .honesto b{color:var(--tinta)}
+  .analogia .urls{font-family:var(--mono);font-size:12px;color:var(--cinza);margin-top:14px}
+  footer{max-width:1220px;margin:0 auto;padding:0 22px 26px;font-size:12px;color:var(--cinza)}
+</style>
+</head>
+<body>
+
+<header class="topo">
+  <span class="marca">QualiLab <small>demonstração de arquitetura</small></span>
+  <span class="selos">
+    <span class="selo">1 arquivo HTML</span>
+    <span class="selo">0 dependências</span>
+    <span class="selo">0 requisições de rede</span>
+    <span class="selo">funciona offline</span>
+  </span>
+</header>
+
+<section class="tese"><div class="larg">
+  <h1>Um "aplicativo web" pode ser só um editor de arquivos no seu computador.</h1>
+  <p>Esta página é um editor de <b>.docx</b> (o formato do Word) completo: abre, exibe, edita e grava
+  o arquivo de verdade — e é <b>um único index.html</b>, sem instalação, sem servidor e sem internet.
+  O monitor ao lado registra cada byte que tentar sair. O QualiLab, no modo Arquivo, é exatamente
+  esta arquitetura aplicada ao formato <b>.qualilab</b>.</p>
+</div></section>
+
+<main>
+  <section class="col-editor">
+    <div class="barra" id="barra">
+      <button class="btn" id="btnAbrir" type="button">Abrir .docx…</button>
+      <button class="btn" id="btnExemplo" type="button">Criar documento de exemplo</button>
+      <button class="btn prim" id="btnSalvar" type="button" disabled>Salvar</button>
+      <span class="arquivo-nome" id="arquivoNome"><span class="ponto-sujo" title="alterações não gravadas"></span><b>nenhum arquivo aberto</b></span>
+    </div>
+
+    <div class="folha" id="folha">
+      <div class="vazio" id="vazio">
+        <div class="icone">.docx</div>
+        <p><b>Arraste um arquivo .docx para cá</b>, abra um pelo botão acima, ou crie um documento
+        de exemplo do zero.</p>
+        <p>Tudo o que acontecer com ele — descompactar o ZIP, ler o XML, editar, recompactar,
+        gravar — acontece <b>neste navegador, nesta máquina</b>. Pode até desligar o Wi-Fi antes.</p>
+        <div class="acoes">
+          <button class="btn" id="btnAbrir2" type="button">Abrir .docx…</button>
+          <button class="btn prim" id="btnExemplo2" type="button">Criar exemplo</button>
+        </div>
+      </div>
+      <div id="conteudo" hidden></div>
+    </div>
+
+    <div class="rodape-folha">
+      <span id="msgStatus" role="status" aria-live="polite">Pronto. Nenhuma requisição de rede foi feita — nem será.</span>
+      <span id="contagem"></span>
+      <span title="atalho">Ctrl+S grava</span>
+    </div>
+  </section>
+
+  <aside class="monitor" aria-label="Monitor de rede">
+    <h2>Monitor de rede</h2>
+    <div class="placar" id="placar">
+      <div class="num" id="numExternas">0</div>
+      <div class="rotulo">requisições desta página à internet<br />desde o carregamento</div>
+    </div>
+    <div class="mini-contadores">
+      <div class="mini bloq"><div class="n" id="numBloqueadas">0</div><div class="r">tentativas bloqueadas</div></div>
+      <div class="mini loc"><div class="n" id="numLocais">0</div><div class="r">leituras locais (disco/memória)</div></div>
+    </div>
+
+    <h3>Estado</h3>
+    <div class="estado">
+      <span>página veio de</span><b id="estOrigem">—</b>
+      <span>conexão</span><b id="estConexao">—</b>
+      <span>monitorando desde</span><b id="estDesde">—</b>
+    </div>
+    <p class="nota" id="notaOrigem"></p>
+
+    <h3>Registro (tudo o que a página fizer)</h3>
+    <ul class="log" id="log"><li class="vazio-log">nada até agora — e o documento já pode ser aberto, editado e salvo</li></ul>
+    <button class="btn-escuro" id="btnProvocar" type="button">⚡ Duvida? Mandar esta página tentar acessar a internet</button>
+    <p class="nota">O botão dispara <b>fetch("https://example.com/…")</b>. O navegador barra a chamada antes
+    de qualquer pacote sair, porque esta página declara no próprio cabeçalho que não usa rede:</p>
+    <code id="cspTexto"></code>
+    <p class="nota"><b>Não acredite no monitor:</b> ele é parte da página. Audite por fora — <b>F12 →
+    aba Rede</b> (a lista fica vazia), ou desligue o Wi-Fi/modo avião e siga editando e salvando.</p>
+  </aside>
+</main>
+
+<section class="analogia">
+  <h2>O que isto prova</h2>
+  <div class="cartoes">
+    <div class="cartao"><h3>"Roda no navegador" ≠ "está na nuvem"</h3>
+      <p>O navegador aqui é só o ambiente de execução — como o Windows é para o Word. Um arquivo
+      HTML aberto do disco é um programa local. Servidor, conta e internet são escolhas de quem
+      desenha o software, não consequências de ele ser "web".</p></div>
+    <div class="cartao"><h3>Formato complexo, operação simples</h3>
+      <p>.docx é um ZIP com XML dentro. Esta página descompacta, interpreta, edita e recompacta
+      com ~algumas centenas de linhas de JavaScript puro — sem biblioteca externa. Abrir e gravar
+      arquivo é operação de <i>editor</i>, não de <i>plataforma</i>.</p></div>
+    <div class="cartao"><h3>Verificável, não prometido</h3>
+      <p>A promessa de privacidade não está em texto de política, e sim em mecanismo: a página
+      proíbe a si mesma de usar rede (CSP), o monitor registra tentativas, e o DevTools do seu
+      navegador é o auditor independente.</p></div>
+  </div>
+
+  <h2>E o QualiLab?</h2>
+  <div class="env"><table class="mapa">
+    <tr><th>Nesta demonstração</th><th>No QualiLab</th></tr>
+    <tr><td>Um único <b>index.html</b>, sem instalação e sem build</td>
+        <td>Um único <b>index.html</b>, sem instalação e sem build</td></tr>
+    <tr><td>Abre e grava <b>.docx</b> (ZIP + XML) direto no disco</td>
+        <td>Modo Arquivo: abre e grava <b>.qualilab</b> (JSON) direto no disco — o projeto inteiro visível no seu sistema de arquivos</td></tr>
+    <tr><td>Botão Salvar grava no mesmo arquivo, como um editor instalado</td>
+        <td>File System Access API (Chrome/Edge): o arquivo reabre sozinho na sessão seguinte</td></tr>
+    <tr><td>Zero tráfego de rede, garantido por CSP e visível no monitor</td>
+        <td>Modo Arquivo: zero tráfego do seu material; funciona offline, serve a dados sensíveis (entrevistas clínicas, dados judiciais, CEP/air-gap)</td></tr>
+    <tr><td>Monitor de rede embutido + auditoria externa via F12</td>
+        <td>Seção "Onde os seus dados ficam" no README: a regra de ouro é <i>o material só sai do seu dispositivo se você deixar</i></td></tr>
+  </table></div>
+
+  <p class="honesto"><b>Honestidade no limite da analogia.</b> Esta demonstração leva o princípio ao
+  extremo: proíbe <i>toda</i> rede, para sempre. O QualiLab completo carrega bibliotecas de interface
+  (CDN) ao abrir a página e oferece recursos <b>opcionais</b> que usam rede quando — e só quando —
+  você os escolhe: modo Nuvem (Supabase, inclusive o seu), IA (desligada por padrão, com a sua chave,
+  do navegador direto ao provedor) e busca semântica (o modelo é baixado uma vez para rodar local).
+  A tese demonstrada aqui é a do <b>modo Arquivo</b>, o caminho recomendado para dados sensíveis:
+  nele, o seu material faz o mesmo trajeto do .docx desta página — disco → memória do navegador → disco.</p>
+
+  <p class="urls">Sem nenhum link clicável de propósito: nada nesta página dispara navegação ou rede.
+  Ferramenta: luizpf42.github.io/QualiLab · Código: github.com/LuizPF42/QualiLab · Esta demo vive em docs/demo/ no repositório.</p>
+</section>
+
+<footer>QualiLab — projeto pessoal de pesquisa, licença MIT, sem garantias. Esta demonstração edita
+arquivos reais: trabalhe sobre uma cópia. Suporte necessário: navegador com DecompressionStream
+(Chrome/Edge 103+, Firefox 113+, Safari 16.4+); gravação direta no mesmo arquivo requer Chrome/Edge —
+nos demais, o salvamento baixa uma cópia.</footer>
+
+<input type="file" id="inputArquivo" accept=".docx" hidden />
+
+<script>
+'use strict';
+/* =====================================================================
+   QualiLab · demonstracao "um index.html e um editor de arquivos"
+   Zero dependencias: tudo abaixo e JavaScript de navegador, neste arquivo.
+     PARTE 1 — monitor de rede (instrumenta as APIs e escuta o CSP)
+     PARTE 2 — ZIP: CRC32, leitura e escrita (o .docx e um ZIP)
+     PARTE 3 — o editor de .docx (XML do Word: exibir, editar, gravar)
+   ===================================================================== */
+
+function $(id){ return document.getElementById(id); }
+
+/* ------------------ PARTE 1 · monitor de rede ------------------ */
+
+const monitor = { registros: [] };
+
+function classificaUrl(u){
+  try{
+    const p = new URL(String(u), location.href).protocol;
+    if (p === 'blob:' || p === 'data:' || p === 'file:' || p === 'about:' || p === 'javascript:') return 'local';
+    return 'externa';
+  }catch(_){ return 'externa'; }
+}
+
+function contarMonitor(){
+  let ext = 0, blo = 0, loc = 0;
+  for (const r of monitor.registros){
+    if (r.classe === 'externa') ext++;
+    else if (r.classe === 'bloqueada') blo++;
+    else if (r.classe === 'local') loc++;
+  }
+  $('numExternas').textContent = String(ext);
+  $('numBloqueadas').textContent = String(blo);
+  $('numLocais').textContent = String(loc);
+  $('placar').classList.toggle('alerta', ext > 0);
+}
+
+function pintarRegistro(reg){
+  reg.li.className = 'l-' + reg.classe;
+  reg.li.textContent = '';
+  const hora = document.createElement('span');
+  hora.className = 'hora';
+  hora.textContent = reg.hora;
+  reg.li.appendChild(hora);
+  const rot = { externa: 'SAIU PARA A REDE', bloqueada: 'BLOQUEADA', local: 'local', tentativa: 'tentando…' }[reg.classe] || reg.classe;
+  reg.li.appendChild(document.createTextNode('[' + rot + '] ' + reg.tipo + ' — ' + reg.alvo + (reg.nota ? ' (' + reg.nota + ')' : '')));
+}
+
+function registrar(classe, tipo, alvo){
+  const log = $('log');
+  const ph = log.querySelector('.vazio-log');
+  if (ph) ph.remove();
+  const reg = {
+    classe: classe, tipo: tipo, alvo: String(alvo).slice(0, 300), nota: '',
+    hora: new Date().toLocaleTimeString('pt-BR'),
+    li: document.createElement('li')
+  };
+  monitor.registros.push(reg);
+  pintarRegistro(reg);
+  log.insertBefore(reg.li, log.firstChild);
+  contarMonitor();
+  return reg;
+}
+
+function mudarClasse(reg, classe, nota){
+  reg.classe = classe;
+  reg.nota = nota || '';
+  pintarRegistro(reg);
+  contarMonitor();
+}
+
+// camada 1: tudo que o navegador efetivamente CARREGOU aparece no resource timing
+try{
+  new PerformanceObserver(function(lista){
+    for (const e of lista.getEntries()){
+      registrar(classificaUrl(e.name), 'recurso' + (e.initiatorType ? ' (' + e.initiatorType + ')' : ''), e.name);
+    }
+  }).observe({ type: 'resource', buffered: true });
+}catch(_){ /* navegador sem PerformanceObserver: as demais camadas seguem valendo */ }
+
+// camada 2: o proprio navegador avisa cada coisa que o CSP barrou
+document.addEventListener('securitypolicyviolation', function(e){
+  registrar('bloqueada', 'CSP · ' + (e.effectiveDirective || e.violatedDirective), e.blockedURI || '(sem uri)');
+});
+
+// camada 3: as APIs de rede sao embrulhadas para registrar ate a TENTATIVA
+const fetchOrig = window.fetch ? window.fetch.bind(window) : null;
+window.fetch = function(rec, ini){
+  let alvo = '(?)';
+  try{ alvo = (rec && typeof rec === 'object' && 'url' in rec) ? rec.url : String(rec); }catch(_){}
+  const reg = registrar('tentativa', 'fetch', alvo);
+  if (!fetchOrig){ mudarClasse(reg, 'bloqueada', 'fetch indisponivel'); return Promise.reject(new TypeError('fetch indisponivel')); }
+  return fetchOrig(rec, ini).then(
+    function(resp){ mudarClasse(reg, classificaUrl(alvo), 'completou'); return resp; },
+    function(err){ mudarClasse(reg, 'bloqueada', 'barrada pelo navegador'); throw err; }
+  );
+};
+
+const XhrOrig = window.XMLHttpRequest;
+if (XhrOrig){
+  window.XMLHttpRequest = function(){
+    const x = new XhrOrig();
+    const openOrig = x.open, sendOrig = x.send;
+    x.open = function(met, url){ x.__alvo = String(url); return openOrig.apply(x, arguments); };
+    x.send = function(){
+      const reg = registrar('tentativa', 'XMLHttpRequest', x.__alvo || '(sem url)');
+      x.addEventListener('error', function(){ mudarClasse(reg, 'bloqueada', 'barrada pelo navegador'); });
+      x.addEventListener('load', function(){ mudarClasse(reg, classificaUrl(x.__alvo), 'completou'); });
+      try{ return sendOrig.apply(x, arguments); }
+      catch(e){ mudarClasse(reg, 'bloqueada', 'excecao ao enviar'); throw e; }
+    };
+    return x;
+  };
+}
+
+const WsOrig = window.WebSocket;
+if (WsOrig){
+  window.WebSocket = function(url, prot){
+    const reg = registrar('tentativa', 'WebSocket', String(url));
+    let ws;
+    try{ ws = (prot === undefined) ? new WsOrig(url) : new WsOrig(url, prot); }
+    catch(e){ mudarClasse(reg, 'bloqueada', 'recusada na criacao'); throw e; }
+    ws.addEventListener('error', function(){ mudarClasse(reg, 'bloqueada', 'falhou/barrada'); });
+    ws.addEventListener('open', function(){ mudarClasse(reg, 'externa', 'CONECTOU'); });
+    return ws;
+  };
+}
+
+const EsOrig = window.EventSource;
+if (EsOrig){
+  window.EventSource = function(url, cfg){
+    const reg = registrar('tentativa', 'EventSource', String(url));
+    let es;
+    try{ es = (cfg === undefined) ? new EsOrig(url) : new EsOrig(url, cfg); }
+    catch(e){ mudarClasse(reg, 'bloqueada', 'recusada na criacao'); throw e; }
+    es.addEventListener('error', function(){ mudarClasse(reg, 'bloqueada', 'falhou/barrada'); });
+    es.addEventListener('open', function(){ mudarClasse(reg, 'externa', 'CONECTOU'); });
+    return es;
+  };
+}
+
+if (navigator.sendBeacon){
+  const beaconOrig = navigator.sendBeacon.bind(navigator);
+  navigator.sendBeacon = function(url, dados){
+    const reg = registrar('tentativa', 'sendBeacon', String(url));
+    let ok = false;
+    try{ ok = beaconOrig(url, dados); }catch(_){}
+    mudarClasse(reg, ok ? 'externa' : 'bloqueada', ok ? 'ACEITO pelo navegador' : 'recusado');
+    return ok;
+  };
+}
+
+$('btnProvocar').addEventListener('click', function(){
+  fetch('https://example.com/teste-de-egresso-do-qualilab').then(function(){}, function(){});
+});
+
+(function pintarEstado(){
+  const p = location.protocol;
+  if (p === 'file:'){
+    $('estOrigem').textContent = 'file:// (disco local)';
+    $('notaOrigem').textContent = 'Aberta direto do disco: nem a propria pagina veio da rede. Prova completa.';
+  } else {
+    $('estOrigem').textContent = (location.host || p) + ' (' + p.replace(':', '') + ')';
+    $('notaOrigem').textContent = 'Versao hospedada: houve 1 carga da propria pagina ao abrir; depois dela, nada. Para a prova completa, salve este arquivo no disco (botao direito → Salvar como) e abra de la, ate sem internet.';
+  }
+  function conexao(){
+    $('estConexao').textContent = navigator.onLine ? 'online (mas nada sai)' : 'OFFLINE — e tudo continua funcionando';
+  }
+  window.addEventListener('online', conexao);
+  window.addEventListener('offline', conexao);
+  conexao();
+  $('estDesde').textContent = new Date().toLocaleTimeString('pt-BR');
+  const meta = document.querySelector('meta[http-equiv="Content-Security-Policy"]');
+  $('cspTexto').textContent = meta ? meta.getAttribute('content') : '(csp ausente?)';
+})();
+
+/* ------------------ PARTE 2 · ZIP em JavaScript puro ------------------ */
+/* Um .docx e um ZIP comum: [Content_Types].xml, _rels/, word/document.xml…
+   Ler e escrever ZIP dispensa biblioteca: e aritmetica de bytes, e o proprio
+   navegador fornece o (des)compressor deflate via (De)CompressionStream. */
+
+const TAB_CRC = (function(){
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++){
+    let c = n;
+    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    t[n] = c;
+  }
+  return t;
+})();
+
+function crc32(u8){
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < u8.length; i++) c = TAB_CRC[(c ^ u8[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+
+function dosDataHora(d){
+  return {
+    data: (((d.getFullYear() - 1980) & 0x7F) << 9) | ((d.getMonth() + 1) << 5) | d.getDate(),
+    hora: (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1)
+  };
+}
+
+// le o ZIP inteiro para um Map nome → entrada {metodo, crc, usize, comp, hora, data}
+function zipLer(buf){
+  const dv = new DataView(buf);
+  const u8 = new Uint8Array(buf);
+  let eocd = -1;
+  const lim = Math.max(0, u8.length - 65558); // comentario maximo do EOCD
+  for (let i = u8.length - 22; i >= lim; i--){
+    if (dv.getUint32(i, true) === 0x06054b50){ eocd = i; break; }
+  }
+  if (eocd < 0) throw new Error('isto nao parece um .docx: assinatura ZIP ausente');
+  const total = dv.getUint16(eocd + 10, true);
+  const cdOff = dv.getUint32(eocd + 16, true);
+  if (total === 0xFFFF || cdOff === 0xFFFFFFFF) throw new Error('ZIP64 nao suportado nesta demonstracao');
+  const dec = new TextDecoder();
+  const entradas = new Map();
+  let p = cdOff;
+  for (let n = 0; n < total; n++){
+    if (dv.getUint32(p, true) !== 0x02014b50) throw new Error('diretorio central do ZIP corrompido');
+    const metodo = dv.getUint16(p + 10, true);
+    const hora = dv.getUint16(p + 12, true), data = dv.getUint16(p + 14, true);
+    const crc = dv.getUint32(p + 16, true);
+    const csize = dv.getUint32(p + 20, true);
+    const usize = dv.getUint32(p + 24, true);
+    const nlen = dv.getUint16(p + 28, true), elen = dv.getUint16(p + 30, true), clen = dv.getUint16(p + 32, true);
+    const lho = dv.getUint32(p + 42, true);
+    const nome = dec.decode(u8.subarray(p + 46, p + 46 + nlen));
+    // no cabecalho local, nome/extra podem ter tamanhos proprios — usa OS DELE
+    const lnlen = dv.getUint16(lho + 26, true), lelen = dv.getUint16(lho + 28, true);
+    const ini = lho + 30 + lnlen + lelen;
+    entradas.set(nome, { nome: nome, metodo: metodo, crc: crc, usize: usize, hora: hora, data: data, comp: u8.slice(ini, ini + csize) });
+    p += 46 + nlen + elen + clen;
+  }
+  return entradas;
+}
+
+async function zipInflar(ent){
+  if (ent.metodo === 0) return ent.comp;
+  if (ent.metodo === 8){
+    const ab = await new Response(new Blob([ent.comp]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer();
+    return new Uint8Array(ab);
+  }
+  throw new Error('metodo de compressao ' + ent.metodo + ' nao suportado');
+}
+
+async function comprimir(u8){
+  if (typeof CompressionStream === 'function'){
+    try{
+      const ab = await new Response(new Blob([u8]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer();
+      return { metodo: 8, comp: new Uint8Array(ab) };
+    }catch(_){ /* cai para armazenar sem compressao */ }
+  }
+  return { metodo: 0, comp: u8 };
+}
+
+function zipEscrever(itens){
+  const enc = new TextEncoder();
+  const partes = [];
+  let off = 0;
+  function poe(b){ partes.push(b); off += b.length; }
+  function u16(v){ const b = new Uint8Array(2); new DataView(b.buffer).setUint16(0, v & 0xFFFF, true); return b; }
+  function u32(v){ const b = new Uint8Array(4); new DataView(b.buffer).setUint32(0, v >>> 0, true); return b; }
+  const centro = [];
+  for (const it of itens){
+    const nomeB = enc.encode(it.nome);
+    const lho = off;
+    poe(u32(0x04034b50)); poe(u16(20)); poe(u16(0)); poe(u16(it.metodo));
+    poe(u16(it.hora)); poe(u16(it.data)); poe(u32(it.crc));
+    poe(u32(it.comp.length)); poe(u32(it.usize)); poe(u16(nomeB.length)); poe(u16(0));
+    poe(nomeB); poe(it.comp);
+    centro.push({ it: it, nomeB: nomeB, lho: lho });
+  }
+  const iniCentro = off;
+  for (const c of centro){
+    poe(u32(0x02014b50)); poe(u16(20)); poe(u16(20)); poe(u16(0)); poe(u16(c.it.metodo));
+    poe(u16(c.it.hora)); poe(u16(c.it.data)); poe(u32(c.it.crc));
+    poe(u32(c.it.comp.length)); poe(u32(c.it.usize));
+    poe(u16(c.nomeB.length)); poe(u16(0)); poe(u16(0)); poe(u16(0)); poe(u16(0)); poe(u32(0));
+    poe(u32(c.lho)); poe(c.nomeB);
+  }
+  const tamCentro = off - iniCentro;
+  poe(u32(0x06054b50)); poe(u16(0)); poe(u16(0)); poe(u16(centro.length)); poe(u16(centro.length));
+  poe(u32(tamCentro)); poe(u32(iniCentro)); poe(u16(0));
+  const tudo = new Uint8Array(off);
+  let pos = 0;
+  for (const b of partes){ tudo.set(b, pos); pos += b.length; }
+  return tudo;
+}
+
+/* ------------------ PARTE 3 · o editor de .docx ------------------ */
+/* Dentro do ZIP, o texto vive em word/document.xml (WordprocessingML):
+   <w:p> = paragrafo, <w:r> = trecho com formatacao propria ("run"),
+   <w:t> = o texto em si. A pagina exibe cada run como um <span> editavel,
+   e ao salvar escreve o texto de volta nos mesmos nos do XML — o resto do
+   pacote (estilos, imagens, propriedades) e copiado byte a byte. */
+
+const NS = {
+  w: 'http://schemas.openxmlformats.org/wordprocessingml/2006/main',
+  a: 'http://schemas.openxmlformats.org/drawingml/2006/main',
+  r: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
+  rel: 'http://schemas.openxmlformats.org/package/2006/relationships',
+  xml: 'http://www.w3.org/XML/1998/namespace'
+};
+
+const docx = {
+  entradas: null,   // Map nome → entrada do ZIP
+  xml: null,        // Document do word/document.xml
+  rels: new Map(),  // rId → {alvo, externo} (imagens)
+  pars: [],         // por paragrafo: {no, runs, el, rend:[{ri,obj}]}
+  nome: null,
+  handle: null,     // FileSystemFileHandle, quando o navegador da
+  sujo: false,
+  urlsBlob: []
+};
+
+function filhoNS(el, nome){
+  if (!el) return null;
+  for (const ch of el.children) if (ch.namespaceURI === NS.w && ch.localName === nome) return ch;
+  return null;
+}
+function attrW(el, nome){ return el ? el.getAttributeNS(NS.w, nome) : null; }
+function elh(tag, classe){ const e = document.createElement(tag); if (classe) e.className = classe; return e; }
+
+function status(msg, tom){
+  const el = $('msgStatus');
+  el.textContent = msg;
+  el.className = tom || '';
+}
+
+function marcarSujo(){
+  if (!docx.sujo){ docx.sujo = true; $('arquivoNome').classList.add('sujo'); }
+}
+function marcarLimpo(){
+  docx.sujo = false;
+  $('arquivoNome').classList.remove('sujo');
+}
+window.addEventListener('beforeunload', function(e){
+  if (docx.sujo){ e.preventDefault(); e.returnValue = ''; }
+});
+
+async function lerRelsDeImagem(entradas){
+  const mapa = new Map();
+  const ent = entradas.get('word/_rels/document.xml.rels');
+  if (!ent) return mapa;
+  const xml = new DOMParser().parseFromString(new TextDecoder().decode(await zipInflar(ent)), 'application/xml');
+  for (const rel of xml.getElementsByTagNameNS(NS.rel, 'Relationship')){
+    mapa.set(rel.getAttribute('Id'), {
+      alvo: rel.getAttribute('Target') || '',
+      externo: rel.getAttribute('TargetMode') === 'External'
+    });
+  }
+  return mapa;
+}
+
+async function urlDeImagem(rid){
+  const rel = docx.rels.get(rid);
+  if (!rel || rel.externo) return null; // TargetMode=External seria uma URL: NAO buscamos
+  let alvo = rel.alvo.replace(/\\/g, '/');
+  let caminho = alvo.startsWith('/') ? alvo.slice(1) : 'word/' + alvo;
+  caminho = caminho.replace('word/../', ''); // alvo relativo saindo de word/
+  const ent = docx.entradas.get(caminho);
+  if (!ent) return null;
+  const ext = caminho.split('.').pop().toLowerCase();
+  const mime = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', bmp: 'image/bmp', webp: 'image/webp', svg: 'image/svg+xml' }[ext];
+  if (!mime) return null; // emf/wmf etc.: mostra a etiqueta de objeto
+  const bytes = await zipInflar(ent);
+  const url = URL.createObjectURL(new Blob([bytes], { type: mime }));
+  docx.urlsBlob.push(url);
+  return url;
+}
+
+function aplicarRPr(rpr, span){
+  if (!rpr) return;
+  function ligado(nome){
+    const e = filhoNS(rpr, nome);
+    if (!e) return false;
+    const v = attrW(e, 'val');
+    return !(v === '0' || v === 'false' || v === 'off' || v === 'none');
+  }
+  if (ligado('b')) span.style.fontWeight = '700';
+  if (ligado('i')) span.style.fontStyle = 'italic';
+  const risco = [];
+  const u = filhoNS(rpr, 'u');
+  if (u && attrW(u, 'val') !== 'none') risco.push('underline');
+  if (ligado('strike') || ligado('dstrike')) risco.push('line-through');
+  if (risco.length) span.style.textDecoration = risco.join(' ');
+  const sz = filhoNS(rpr, 'sz');
+  if (sz){ const v = parseInt(attrW(sz, 'val'), 10); if (v) span.style.fontSize = (v / 2) + 'pt'; }
+  const cor = filhoNS(rpr, 'color');
+  if (cor){ const v = attrW(cor, 'val'); if (v && v !== 'auto' && /^[0-9A-Fa-f]{6}$/.test(v)) span.style.color = '#' + v; }
+  const marca = filhoNS(rpr, 'highlight');
+  if (marca){ const v = attrW(marca, 'val'); if (v && v !== 'none') span.style.backgroundColor = v; }
+  const va = filhoNS(rpr, 'vertAlign');
+  if (va){
+    const v = attrW(va, 'val');
+    if (v === 'superscript'){ span.style.verticalAlign = 'super'; span.style.fontSize = 'smaller'; }
+    else if (v === 'subscript'){ span.style.verticalAlign = 'sub'; span.style.fontSize = 'smaller'; }
+  }
+}
+
+function aplicarPPr(pXml, pEl){
+  const ppr = filhoNS(pXml, 'pPr');
+  if (!ppr) return;
+  const st = filhoNS(ppr, 'pStyle');
+  if (st){
+    const id = (attrW(st, 'val') || '').toLowerCase();
+    const m = id.match(/^(?:heading|ttulo|titulo|ttre|berschrift)(\d)/); // ids variam com o idioma do Word
+    if (m) pEl.classList.add('h' + Math.min(4, parseInt(m[1], 10)));
+    else if (id === 'title' || id === 'ttulo' || id === 'titulo') pEl.classList.add('h0');
+  }
+  const jc = filhoNS(ppr, 'jc');
+  if (jc){
+    const v = attrW(jc, 'val');
+    if (v === 'center') pEl.style.textAlign = 'center';
+    else if (v === 'right' || v === 'end') pEl.style.textAlign = 'right';
+    else if (v === 'both' || v === 'distribute') pEl.style.textAlign = 'justify';
+  }
+  let esqPt = 0;
+  const ind = filhoNS(ppr, 'ind');
+  if (ind){
+    const l = attrW(ind, 'left') || attrW(ind, 'start');
+    if (l) esqPt = parseInt(l, 10) / 20; // twips → pontos
+  }
+  const num = filhoNS(ppr, 'numPr');
+  if (num){
+    const ilvl = filhoNS(num, 'ilvl');
+    const nivel = ilvl ? (parseInt(attrW(ilvl, 'val'), 10) || 0) : 0;
+    if (!esqPt) esqPt = 18 + nivel * 18;
+    const m = elh('span', 'marcador');
+    m.dataset.ui = '1';
+    m.contentEditable = 'false';
+    m.textContent = '• ';
+    pEl.appendChild(m);
+  }
+  if (esqPt) pEl.style.paddingLeft = Math.min(esqPt, 220) + 'pt';
+}
+
+async function renderObjeto(chXml, pEl, ri){
+  const cont = elh('span', 'obj');
+  cont.dataset.ri = String(ri);
+  cont.dataset.obj = '1';
+  cont.contentEditable = 'false';
+  let url = null, largPx = 0;
+  const blips = chXml.getElementsByTagNameNS(NS.a, 'blip');
+  if (blips.length){
+    const rid = blips[0].getAttributeNS(NS.r, 'embed') || blips[0].getAttributeNS(NS.r, 'link');
+    if (rid) url = await urlDeImagem(rid);
+    const ext = chXml.getElementsByTagNameNS(NS.a, 'ext')[0];
+    if (ext){ const cx = parseInt(ext.getAttribute('cx') || '0', 10); if (cx) largPx = cx / 9525; } // EMU → px
+  }
+  if (url){
+    const img = elh('img');
+    img.src = url;
+    img.alt = 'imagem embutida no documento (lida de dentro do proprio arquivo)';
+    if (largPx) img.style.width = Math.min(largPx, 640) + 'px';
+    cont.appendChild(img);
+  } else {
+    cont.classList.add('obj-x');
+    cont.textContent = '[objeto do Word preservado, sem visual aqui]';
+  }
+  pEl.appendChild(cont);
+}
+
+async function renderRun(rXml, pEl, ri, rend){
+  const rpr = filhoNS(rXml, 'rPr');
+  let span = null;
+  function alvo(){
+    if (!span){
+      span = elh('span', 'run');
+      span.dataset.ri = String(ri);
+      aplicarRPr(rpr, span);
+      pEl.appendChild(span);
+      rend.push({ ri: ri, obj: false });
+    }
+    return span;
+  }
+  for (const ch of Array.from(rXml.children)){
+    switch (ch.localName){
+      case 't': alvo().appendChild(document.createTextNode(ch.textContent)); break;
+      case 'tab': alvo().appendChild(document.createTextNode('\t')); break;
+      case 'br': case 'cr': alvo().appendChild(elh('br')); break;
+      case 'noBreakHyphen': alvo().appendChild(document.createTextNode('‑')); break;
+      case 'drawing': case 'object': case 'pict':
+        await renderObjeto(ch, pEl, ri);
+        rend.push({ ri: ri, obj: true });
+        span = null; // texto que vier depois abre outro span (mesma run)
+        break;
+      // rPr, instrText, fldChar, lastRenderedPageBreak…: sem visual
+    }
+  }
+}
+
+async function renderPar(pXml, destino){
+  const pi = docx.pars.length;
+  const pEl = elh('div', 'par');
+  pEl.dataset.pi = String(pi);
+  pEl.contentEditable = 'true';
+  pEl.spellcheck = false;
+  const par = { no: pXml, runs: Array.from(pXml.getElementsByTagNameNS(NS.w, 'r')), el: pEl, rend: [] };
+  docx.pars.push(par);
+  aplicarPPr(pXml, pEl);
+  for (let i = 0; i < par.runs.length; i++) await renderRun(par.runs[i], pEl, i, par.rend);
+  destino.appendChild(pEl);
+  return pEl;
+}
+
+async function renderTabela(tXml, destino){
+  const tb = elh('table', 'tbl');
+  const corpo = document.createElement('tbody');
+  tb.appendChild(corpo);
+  for (const tr of Array.from(tXml.children)){
+    if (tr.localName !== 'tr') continue;
+    const linha = elh('tr');
+    for (const tc of Array.from(tr.children)){
+      if (tc.localName !== 'tc') continue;
+      const cel = elh('td');
+      await renderCorpo(tc, cel);
+      linha.appendChild(cel);
+    }
+    corpo.appendChild(linha);
+  }
+  destino.appendChild(tb);
+}
+
+const SEM_VISUAL = { sectPr: 1, tblPr: 1, tblGrid: 1, trPr: 1, tcPr: 1, pPr: 1, bookmarkStart: 1, bookmarkEnd: 1, proofErr: 1 };
+async function renderCorpo(xmlEl, destino){
+  for (const ch of Array.from(xmlEl.children)){
+    if (ch.namespaceURI === NS.w && ch.localName === 'p') await renderPar(ch, destino);
+    else if (ch.namespaceURI === NS.w && ch.localName === 'tbl') await renderTabela(ch, destino);
+    else if (SEM_VISUAL[ch.localName]) continue;
+    else await renderCorpo(ch, destino); // sdt, customXml e outros involucros
+  }
+}
+
+async function abrirBytes(buf, nome, handle){
+  const entradas = zipLer(buf);
+  const entDoc = entradas.get('word/document.xml');
+  if (!entDoc) throw new Error('o ZIP nao contem word/document.xml — nao e um .docx');
+  const texto = new TextDecoder().decode(await zipInflar(entDoc));
+  const xml = new DOMParser().parseFromString(texto, 'application/xml');
+  if (xml.getElementsByTagName('parsererror').length) throw new Error('o XML dentro do .docx nao e valido');
+  const corpo = xml.getElementsByTagNameNS(NS.w, 'body')[0];
+  if (!corpo) throw new Error('documento sem corpo (w:body)');
+
+  for (const u of docx.urlsBlob) URL.revokeObjectURL(u);
+  docx.entradas = entradas;
+  docx.xml = xml;
+  docx.nome = nome;
+  docx.handle = handle || null;
+  docx.pars = [];
+  docx.urlsBlob = [];
+  docx.rels = await lerRelsDeImagem(entradas);
+
+  const dest = $('conteudo');
+  dest.textContent = '';
+  await renderCorpo(corpo, dest);
+  $('vazio').hidden = true;
+  dest.hidden = false;
+  $('btnSalvar').disabled = false;
+  $('arquivoNome').querySelector('b').textContent = nome;
+  marcarLimpo();
+  atualizarContagem();
+  status('"' + nome + '" aberto: ZIP descompactado e XML interpretado aqui na sua maquina. Clique no texto e edite.', 'ok');
+}
+
+function atualizarContagem(){
+  const t = $('conteudo').textContent || '';
+  const palavras = (t.match(/\S+/g) || []).length;
+  $('contagem').textContent = palavras + ' palavra' + (palavras === 1 ? '' : 's');
+}
+
+/* --- de volta ao XML: escrever o que foi editado nos mesmos nos --- */
+
+function textoDe(el){
+  let s = '';
+  for (const n of el.childNodes){
+    if (n.nodeType === 3) s += n.nodeValue;
+    else if (n.nodeType === 1) s += (n.tagName === 'BR') ? '\n' : textoDe(n);
+  }
+  return s;
+}
+
+function empurrarTexto(itens, t){
+  const ult = itens[itens.length - 1];
+  if (ult && ult.tipo === 'texto') ult.texto += t;
+  else itens.push({ tipo: 'texto', texto: t });
+}
+
+// percorre o paragrafo editado e devolve a sequencia visual: runs originais,
+// objetos preservados e texto solto que o navegador tenha criado ao digitar
+function coletarItens(el, itens){
+  for (const no of Array.from(el.childNodes)){
+    if (no.nodeType === 3){ if (no.nodeValue) empurrarTexto(itens, no.nodeValue); continue; }
+    if (no.nodeType !== 1) continue;
+    if (no.dataset && no.dataset.ui === '1') continue;
+    if (no.tagName === 'BR'){ empurrarTexto(itens, '\n'); continue; }
+    if (no.dataset && no.dataset.ri !== undefined){
+      if (no.dataset.obj === '1') itens.push({ tipo: 'obj', ri: +no.dataset.ri });
+      else itens.push({ tipo: 'run', ri: +no.dataset.ri, texto: textoDe(no) });
+      continue;
+    }
+    coletarItens(no, itens); // <div>/<b>/<span> inseridos pelo proprio navegador
+  }
+}
+
+// texto plano → filhos de <w:r>: \n vira <w:br/>, \t vira <w:tab/>
+function definirTexto(run, texto){
+  const d = run.ownerDocument;
+  const linhas = texto.split('\n');
+  for (let li = 0; li < linhas.length; li++){
+    if (li > 0) run.appendChild(d.createElementNS(NS.w, 'w:br'));
+    const partes = linhas[li].split('\t');
+    for (let pi = 0; pi < partes.length; pi++){
+      if (pi > 0) run.appendChild(d.createElementNS(NS.w, 'w:tab'));
+      if (partes[pi]){
+        const t = d.createElementNS(NS.w, 'w:t');
+        t.setAttributeNS(NS.xml, 'xml:space', 'preserve');
+        t.textContent = partes[pi];
+        run.appendChild(t);
+      }
+    }
+  }
+}
+
+function reconstruirTextoRun(run, texto){
+  for (const ch of Array.from(run.children)){
+    const n = ch.localName;
+    if (n === 't' || n === 'tab' || n === 'br' || n === 'cr' || n === 'noBreakHyphen') run.removeChild(ch);
+  }
+  definirTexto(run, texto);
+}
+
+// devolve true quando a estrutura do paragrafo mudou (spans somem/aparecem) e
+// os runs do XML foram remontados — nesse caso o paragrafo precisa re-renderizar
+function sincronizarPar(par){
+  const itens = [];
+  coletarItens(par.el, itens);
+  const naoTexto = itens.filter(function(i){ return i.tipo !== 'texto'; });
+  const temSolto = itens.some(function(i){ return i.tipo === 'texto' && i.texto.length > 0; });
+  const intacta = !temSolto && naoTexto.length === par.rend.length &&
+    naoTexto.every(function(i, ix){ return i.ri === par.rend[ix].ri && (i.tipo === 'obj') === par.rend[ix].obj; });
+  const textoPorRi = new Map();
+  for (const i of itens){
+    if (i.tipo === 'run') textoPorRi.set(i.ri, (textoPorRi.get(i.ri) || '') + i.texto);
+  }
+  if (intacta){
+    for (const ent of textoPorRi.entries()) reconstruirTextoRun(par.runs[ent[0]], ent[1]);
+    return false;
+  }
+  const d = par.no.ownerDocument;
+  const ppr = filhoNS(par.no, 'pPr');
+  const novos = [];
+  const usados = new Set();
+  let ultimo = null;
+  for (const i of itens){
+    if (i.tipo === 'texto'){
+      if (!i.texto) continue;
+      const nr = d.createElementNS(NS.w, 'w:r');
+      const base = ultimo || par.runs.find(function(r){ return !!filhoNS(r, 'rPr'); }) || null;
+      const rpr = base ? filhoNS(base, 'rPr') : null;
+      if (rpr) nr.appendChild(rpr.cloneNode(true));
+      definirTexto(nr, i.texto);
+      novos.push(nr);
+    } else {
+      if (usados.has(i.ri)) continue;
+      usados.add(i.ri);
+      const r = par.runs[i.ri];
+      if (!r) continue;
+      if (textoPorRi.has(i.ri)) reconstruirTextoRun(r, textoPorRi.get(i.ri));
+      novos.push(r);
+      ultimo = r;
+    }
+  }
+  // runs cujo span foi apagado pelo usuario ficam de fora: apagados de verdade.
+  // (efeito colateral assumido: um run dentro de <w:hyperlink> re-emitido aqui
+  // perde o involucro do link — limitacao documentada da demonstracao)
+  for (const ch of Array.from(par.no.childNodes)) if (ch !== ppr) par.no.removeChild(ch);
+  for (const n of novos) par.no.appendChild(n);
+  return true;
+}
+
+async function rerenderPar(pi){
+  const par = docx.pars[pi];
+  const novo = elh('div', 'par');
+  novo.dataset.pi = String(pi);
+  novo.contentEditable = 'true';
+  novo.spellcheck = false;
+  par.runs = Array.from(par.no.getElementsByTagNameNS(NS.w, 'r'));
+  par.rend = [];
+  aplicarPPr(par.no, novo);
+  for (let i = 0; i < par.runs.length; i++) await renderRun(par.runs[i], novo, i, par.rend);
+  par.el.replaceWith(novo);
+  par.el = novo;
+}
+
+function fmtKB(n){
+  return (n >= 1048576) ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+}
+
+async function entregarArquivo(u8){
+  const nome = docx.nome || 'documento.docx';
+  const MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  const blob = new Blob([u8], { type: MIME });
+  if (docx.handle){
+    try{
+      const w = await docx.handle.createWritable();
+      await w.write(blob);
+      await w.close();
+      status('Gravado direto em "' + nome + '" (' + fmtKB(u8.length) + ') — mesmo arquivo, mesma pasta, como um editor instalado.', 'ok');
+      return true;
+    }catch(_){ /* permissao revogada: tenta salvar-como */ }
+  }
+  if (window.showSaveFilePicker){
+    try{
+      const h = await window.showSaveFilePicker({
+        suggestedName: nome,
+        types: [{ description: 'Documento do Word', accept: { 'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'] } }]
+      });
+      const w = await h.createWritable();
+      await w.write(blob);
+      await w.close();
+      docx.handle = h;
+      docx.nome = h.name || nome;
+      $('arquivoNome').querySelector('b').textContent = docx.nome;
+      status('Gravado em "' + docx.nome + '" (' + fmtKB(u8.length) + '). Os próximos Ctrl+S vão direto nesse arquivo.', 'ok');
+      return true;
+    }catch(e){
+      if (e && e.name === 'AbortError') return false;
+      /* picker indisponivel: cai para o download classico */
+    }
+  }
+  const url = URL.createObjectURL(blob);
+  docx.urlsBlob.push(url);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nome;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  status('"' + nome + '" (' + fmtKB(u8.length) + ') foi para a pasta Downloads — este navegador não deixa a página gravar no lugar, então entrega uma cópia.', 'ok');
+  return true;
+}
+
+async function salvar(){
+  if (!docx.xml) return;
+  try{
+    const mudados = [];
+    docx.pars.forEach(function(par, pi){ if (sincronizarPar(par)) mudados.push(pi); });
+    let s = new XMLSerializer().serializeToString(docx.xml);
+    if (!s.startsWith('<?xml')) s = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n' + s;
+    const bytes = new TextEncoder().encode(s);
+    const dt = dosDataHora(new Date());
+    const c = await comprimir(bytes);
+    docx.entradas.set('word/document.xml', {
+      nome: 'word/document.xml', metodo: c.metodo, comp: c.comp,
+      crc: crc32(bytes), usize: bytes.length, hora: dt.hora, data: dt.data
+    });
+    const zip = zipEscrever(Array.from(docx.entradas.values()));
+    const ok = await entregarArquivo(zip);
+    for (const pi of mudados) await rerenderPar(pi);
+    if (ok) marcarLimpo();
+    else status('Gravação cancelada — nada foi escrito.', '');
+  }catch(e){
+    status('Falha ao salvar: ' + (e && e.message ? e.message : e), 'erro');
+  }
+}
+
+/* --- documento de exemplo: um .docx montado do zero, aqui dentro --- */
+
+const XML_DECL = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n';
+
+function xesc(s){ return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+function xr(texto, props){
+  return '<w:r>' + (props ? '<w:rPr>' + props + '</w:rPr>' : '') + '<w:t xml:space="preserve">' + xesc(texto) + '</w:t></w:r>';
+}
+function xp(conteudo, ppr){
+  return '<w:p>' + (ppr ? '<w:pPr>' + ppr + '</w:pPr>' : '') + conteudo + '</w:p>';
+}
+
+function exemploDocumentoXml(){
+  function cel(texto, negrito){
+    return '<w:tc><w:tcPr><w:tcW w:w="4500" w:type="dxa"/></w:tcPr>' + xp(xr(texto, negrito ? '<w:b/>' : '')) + '</w:tc>';
+  }
+  const bordas = '<w:tblBorders>' +
+    '<w:top w:val="single" w:sz="6" w:space="0" w:color="9AA1AB"/>' +
+    '<w:left w:val="single" w:sz="6" w:space="0" w:color="9AA1AB"/>' +
+    '<w:bottom w:val="single" w:sz="6" w:space="0" w:color="9AA1AB"/>' +
+    '<w:right w:val="single" w:sz="6" w:space="0" w:color="9AA1AB"/>' +
+    '<w:insideH w:val="single" w:sz="6" w:space="0" w:color="9AA1AB"/>' +
+    '<w:insideV w:val="single" w:sz="6" w:space="0" w:color="9AA1AB"/></w:tblBorders>';
+  const corpo =
+    xp(xr('Relatório de exemplo'), '<w:pStyle w:val="Heading1"/>') +
+    xp(
+      xr('Este documento nasceu agora, dentro da página: o XML foi montado, compactado em ZIP e entregue como um ') +
+      xr('.docx legítimo', '<w:b/>') +
+      xr(' — sem servidor, sem internet, sem instalação.')
+    ) +
+    xp(
+      xr('Formatação sobrevive à viagem: ') + xr('negrito', '<w:b/>') + xr(', ') +
+      xr('itálico', '<w:i/>') + xr(', ') + xr('sublinhado', '<w:u w:val="single"/>') + xr(', ') +
+      xr('cor', '<w:color w:val="C62F22"/>') + xr(' e ') + xr('tamanho', '<w:sz w:val="30"/>') + xr('.')
+    ) +
+    xp(xr('O que fazer com ele:', '<w:b/>')) +
+    xp(xr('– edite qualquer trecho aqui e clique em Salvar;'), '<w:ind w:left="360"/>') +
+    xp(xr('– abra o arquivo salvo no Word ou no LibreOffice;'), '<w:ind w:left="360"/>') +
+    xp(xr('– confira no monitor ao lado: nenhuma requisição de rede.'), '<w:ind w:left="360"/>') +
+    '<w:tbl><w:tblPr><w:tblW w:w="0" w:type="auto"/>' + bordas + '</w:tblPr>' +
+    '<w:tblGrid><w:gridCol w:w="4500"/><w:gridCol w:w="4500"/></w:tblGrid>' +
+    '<w:tr>' + cel('Operação', true) + cel('Onde acontece', true) + '</w:tr>' +
+    '<w:tr>' + cel('Abrir e descompactar o .docx', false) + cel('No seu navegador, nesta máquina', false) + '</w:tr>' +
+    '<w:tr>' + cel('Editar o texto', false) + cel('No seu navegador, nesta máquina', false) + '</w:tr>' +
+    '<w:tr>' + cel('Recompactar e gravar', false) + cel('No seu disco, onde você escolher', false) + '</w:tr>' +
+    '</w:tbl>' +
+    xp(xr('Um aplicativo "web" que faz isso não é uma nuvem: é um editor de arquivos. O QualiLab, no modo Arquivo, é exatamente isso — trocando .docx por .qualilab.')) +
+    '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1417" w:right="1417" w:bottom="1417" w:left="1417" w:header="708" w:footer="708" w:gutter="0"/></w:sectPr>';
+  return XML_DECL + '<w:document xmlns:w="' + NS.w + '"><w:body>' + corpo + '</w:body></w:document>';
+}
+
+const CT_XML = XML_DECL + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+  '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+  '<Default Extension="xml" ContentType="application/xml"/>' +
+  '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>' +
+  '<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>';
+const RELS_XML = XML_DECL + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+  '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>';
+const DOCRELS_XML = XML_DECL + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+  '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>';
+const ESTILOS_XML = XML_DECL + '<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' +
+  '<w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr></w:rPrDefault>' +
+  '<w:pPrDefault><w:pPr><w:spacing w:after="120"/></w:pPr></w:pPrDefault></w:docDefaults>' +
+  '<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style>' +
+  '<w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/>' +
+  '<w:pPr><w:keepNext/><w:spacing w:before="240" w:after="120"/><w:outlineLvl w:val="0"/></w:pPr>' +
+  '<w:rPr><w:b/><w:sz w:val="32"/><w:szCs w:val="32"/><w:color w:val="00427A"/></w:rPr></w:style></w:styles>';
+
+async function criarExemplo(){
+  try{
+    const dt = dosDataHora(new Date());
+    const fontes = [
+      { nome: '[Content_Types].xml', texto: CT_XML },
+      { nome: '_rels/.rels', texto: RELS_XML },
+      { nome: 'word/document.xml', texto: exemploDocumentoXml() },
+      { nome: 'word/_rels/document.xml.rels', texto: DOCRELS_XML },
+      { nome: 'word/styles.xml', texto: ESTILOS_XML }
+    ];
+    const itens = [];
+    for (const f of fontes){
+      const b = new TextEncoder().encode(f.texto);
+      const c = await comprimir(b);
+      itens.push({ nome: f.nome, metodo: c.metodo, comp: c.comp, crc: crc32(b), usize: b.length, hora: dt.hora, data: dt.data });
+    }
+    const zip = zipEscrever(itens);
+    // o proprio leitor da pagina reabre o ZIP recem-criado: autoteste do ciclo completo
+    await abrirBytes(zip.buffer, 'exemplo-qualilab.docx', null);
+    status('Documento criado do zero (' + fmtKB(zip.length) + '): XML montado, ZIP compactado e reaberto — tudo nesta página. Edite e clique em Salvar.', 'ok');
+  }catch(e){
+    status('Falha ao criar o exemplo: ' + (e && e.message ? e.message : e), 'erro');
+  }
+}
+
+/* --- fiacao da interface --- */
+
+async function abrirComErro(buf, nome, handle){
+  try{ await abrirBytes(buf, nome, handle); }
+  catch(e){ status('Não consegui abrir "' + nome + '": ' + (e && e.message ? e.message : e), 'erro'); }
+}
+
+async function abrirArquivoEscolhido(){
+  if (window.showOpenFilePicker){
+    try{
+      const sel = await window.showOpenFilePicker({
+        multiple: false,
+        types: [{ description: 'Documento do Word', accept: { 'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'] } }]
+      });
+      const f = await sel[0].getFile();
+      await abrirComErro(await f.arrayBuffer(), f.name, sel[0]);
+      return;
+    }catch(e){
+      if (e && e.name === 'AbortError') return;
+      /* picker indisponivel neste contexto: usa o <input type=file> */
+    }
+  }
+  $('inputArquivo').click();
+}
+
+$('inputArquivo').addEventListener('change', async function(e){
+  const f = e.target.files && e.target.files[0];
+  if (f) await abrirComErro(await f.arrayBuffer(), f.name, null);
+  e.target.value = '';
+});
+$('btnAbrir').addEventListener('click', abrirArquivoEscolhido);
+$('btnAbrir2').addEventListener('click', abrirArquivoEscolhido);
+$('btnExemplo').addEventListener('click', criarExemplo);
+$('btnExemplo2').addEventListener('click', criarExemplo);
+$('btnSalvar').addEventListener('click', salvar);
+
+const folha = $('folha');
+folha.addEventListener('dragover', function(e){ e.preventDefault(); folha.classList.add('solta'); });
+folha.addEventListener('dragleave', function(){ folha.classList.remove('solta'); });
+folha.addEventListener('drop', async function(e){
+  e.preventDefault();
+  folha.classList.remove('solta');
+  const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+  if (!f) return;
+  if (!/\.docx$/i.test(f.name)){ status('A demonstração edita .docx (recebi "' + f.name + '").', 'erro'); return; }
+  let handle = null;
+  try{
+    const item = e.dataTransfer.items && e.dataTransfer.items[0];
+    if (item && item.getAsFileSystemHandle) handle = await item.getAsFileSystemHandle();
+  }catch(_){}
+  await abrirComErro(await f.arrayBuffer(), f.name, (handle && handle.kind === 'file') ? handle : null);
+});
+
+const conteudo = $('conteudo');
+conteudo.addEventListener('input', function(){ marcarSujo(); atualizarContagem(); });
+conteudo.addEventListener('keydown', function(e){
+  // Enter dentro do paragrafo vira quebra de linha (<w:br/>); a demonstracao
+  // nao cria paragrafos novos — edita, apaga e acrescenta texto nos existentes
+  if (e.key === 'Enter'){
+    e.preventDefault();
+    let ok = false;
+    try{ ok = document.execCommand('insertLineBreak'); }catch(_){}
+    if (!ok){
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount){
+        const r = sel.getRangeAt(0);
+        r.deleteContents();
+        const br = document.createElement('br');
+        r.insertNode(br);
+        r.setStartAfter(br);
+        r.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(r);
+        conteudo.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    }
+  }
+});
+conteudo.addEventListener('paste', function(e){
+  e.preventDefault();
+  const t = e.clipboardData ? e.clipboardData.getData('text/plain') : '';
+  if (t) document.execCommand('insertText', false, t);
+});
+window.addEventListener('keydown', function(e){
+  if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')){ e.preventDefault(); salvar(); }
+});
+
+if (typeof DecompressionStream !== 'function'){
+  status('Este navegador não tem DecompressionStream — use Chrome/Edge 103+, Firefox 113+ ou Safari 16.4+.', 'erro');
+  $('btnAbrir').disabled = true;
+  $('btnAbrir2').disabled = true;
+}
+</script>
+</body>
+</html>
