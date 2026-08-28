@@ -220,7 +220,7 @@ Não há etapa de build. Basta abrir o arquivo:
 https://luizpf42.github.io/QualiLab
 ```
 
-**Instalável como aplicativo (PWA):** em Chrome/Edge, "Instalar QualiLab" na barra de endereço dá janela própria e ícone no menu iniciar/dock. Instalado, o app **abre sem internet desde a primeira visita** (a cópia offline é guardada na instalação; com rede, vem sempre a versão mais nova, e a barra de status avisa quando há atualização) e o **duplo clique num `.qualilab` abre no QualiLab**, como um `.docx` abre no Word.
+**Instalável como aplicativo (PWA):** "Instalar QualiLab" na barra de endereço dá janela própria e ícone no menu iniciar/dock. Instalado, o app **abre sem internet desde a primeira visita** (a cópia offline é guardada na instalação; com rede, vem sempre a versão mais nova, e a barra de status avisa quando há atualização) e o **duplo clique num `.qualilab` abre no QualiLab**, como um `.docx` abre no Word. **No Windows, instale pelo Edge**: é ele que registra o `.qualilab` no sistema com nome de tipo e ícone próprios — pelo Chrome tudo funciona, mas o arquivo fica com o ícone genérico (limitação do Chrome no Windows). O que é um PWA, por que instalar e o passo a passo estão no manual, em "Instalar como aplicativo".
 
 **Para usar offline:** baixe o `index.html` e dê duplo clique pra abrir direto no navegador (`file://`), **sem precisar de servidor**: ele só importa bibliotecas externas via URL `https://` (nunca por caminho de arquivo local), então não bate no bloqueio clássico de módulo ES via `file://`. Em Chrome/Edge dá pra usar inclusive o modo **Arquivo local**, que salva o projeto como `.qualilab` visível no disco, ao lado do `index.html`.
 

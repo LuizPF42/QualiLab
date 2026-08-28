@@ -977,22 +977,46 @@ O QualiLab **salva sozinho** a cada ação. *Onde* ele salva depende do modo:
 
 ### Instalar como aplicativo (e abrir sem internet)
 
-O QualiLab é um **PWA**: no Chrome ou Edge, procure **"Instalar QualiLab"** na barra de endereço
-(o ícone de instalar, à direita da URL). Instalado, ele vira uma **janela própria**, com ícone no
-menu iniciar/dock — e três coisas passam a valer:
+**O que é isso.** O QualiLab pode ser **instalado como um aplicativo**, sem loja, sem instalador
+e sem baixar nada além do que o navegador já baixou: é o próprio navegador que guarda o site como
+um programa (a tecnologia se chama **PWA**, *Progressive Web App* — "aplicativo web progressivo").
+É exatamente o mesmo QualiLab do endereço, com os mesmos dados; o que muda é como o **computador**
+o trata: ele ganha janela própria (sem barra de endereço nem abas), ícone no menu iniciar/dock, e
+aparece na barra de tarefas como qualquer outro programa — em vez de viver como uma aba perdida
+entre trinta.
 
-- **Abre sem internet.** Depois da primeira visita, o endereço abre mesmo offline (a última
-  versão baixada responde; com internet, o app sempre busca a versão atual). As bibliotecas
-  pesadas (PDF, OCR, planilha) também ficam guardadas depois do primeiro uso de cada uma.
-- **Duplo clique num `.qualilab` abre no QualiLab** (com o app instalado): o gerenciador de
-  arquivos passa a oferecê-lo como programa para o formato.
-- **Aviso de versão nova na barra de status** (`nova versão disponível · recarregar`): um clique
+**Por que vale a pena instalar:**
+
+- **Abre sem internet.** Instalado, o QualiLab abre mesmo offline — inclusive se você nunca mais
+  visitou o endereço (a cópia é guardada na instalação). Com internet, ele sempre busca a versão
+  atual. As bibliotecas pesadas (PDF, OCR, planilha) também ficam guardadas depois do primeiro
+  uso de cada uma.
+- **Duplo clique num `.qualilab` abre no QualiLab**: o gerenciador de arquivos passa a
+  oferecê-lo como programa para o formato, como um `.docx` abre no Word.
+- **Os dados locais ficam mais protegidos.** Para projetos locais com conteúdo, o app pede ao
+  navegador **armazenamento persistente** — sem isso, o navegador pode limpar o rascunho e os
+  PDFs guardados sob pressão de disco, sem perguntar.
+- **Você não congela numa versão velha.** O app instalado continua se atualizando sozinho; quando
+  há versão nova, a barra de status avisa (`nova versão disponível · recarregar`) e um clique
   atualiza, sem perder nada salvo.
+- **Desinstalar é um clique** (no menu ⋯ da janela do app), e não apaga os seus arquivos
+  `.qualilab`.
+
+**Como instalar — e, no Windows, prefira o Edge.** Abra o endereço do QualiLab e procure
+**"Instalar QualiLab"** na barra de endereço (o ícone de instalar, à direita da URL; no Edge,
+também em ⋯ → **Aplicativos** → **Instalar este site como um aplicativo**). Recomendamos
+**fortemente instalar pelo Edge** no Windows, e o motivo é concreto: o Edge registra o QualiLab
+no sistema como um aplicativo completo — o arquivo `.qualilab` ganha **nome de tipo e ícone
+próprios** no Explorer, e a integração com o duplo clique fica inteira. Instalando pelo Chrome
+tudo funciona, mas o `.qualilab` fica com o **ícone genérico de folha em branco** (uma limitação
+do Chrome no Windows, não do QualiLab). No macOS os dois navegadores funcionam igualmente bem.
+Se você usa o Chrome no dia a dia: basta abrir o mesmo endereço no Edge uma vez, instalar por
+lá, e seguir usando o Chrome para o resto — o aplicativo instalado é independente do navegador
+que você navega.
 
 Instalar **não muda onde os dados ficam**: os modos da tabela acima continuam valendo, e o modo
-arquivo continua 100% no seu disco. Para projetos locais com conteúdo, o app também pede ao
-navegador **armazenamento persistente**, o que impede o navegador de limpar o rascunho e os PDFs
-sob pressão de disco sem perguntar.
+arquivo continua 100% no seu disco. Também **não é obrigatório** — tudo neste manual funciona
+igual na aba do navegador.
 
 ### Sensibilidade dos dados: o que é seguro habilitar
 Antes de escolher o modo, decida **o quanto da ferramenta você pode usar** conforme a **sensibilidade do material**. Não é uma escolha neutra. Primeiro, para onde o material vai em cada caminho:
