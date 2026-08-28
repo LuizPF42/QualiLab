@@ -977,6 +977,11 @@ O QualiLab **salva sozinho** a cada ação. *Onde* ele salva depende do modo:
 
 ### Instalar como aplicativo (e abrir sem internet)
 
+> **Recomendação: no Windows, instale pelo Edge.** Pelo Chrome a instalação funciona, mas os
+> ícones dos arquivos `.qualilab` saem **quebrados** (a folha em branco genérica do Explorer) —
+> uma limitação do Chrome no Windows, não do QualiLab. O Edge registra o tipo completo, com nome
+> e ícone próprios. O porquê e o passo a passo estão logo abaixo.
+
 **O que é isso.** O QualiLab pode ser **instalado como um aplicativo**, sem loja, sem instalador
 e sem baixar nada além do que o navegador já baixou: é o próprio navegador que guarda o site como
 um programa (a tecnologia se chama **PWA**, *Progressive Web App* — "aplicativo web progressivo").
