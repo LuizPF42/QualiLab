@@ -240,8 +240,11 @@ Depois do login (ou direto, sem nuvem) aparece **"Meus projetos"**:
 Depois de abrir um projeto, o **cabeçalho** tem duas linhas:
 
 **Primeira linha**
-- **QualiLab** (volta ao GitHub) e o botão de tema escuro/claro da *interface* (**☀︎/⏾**, não confundir com o tema do *leitor*, que fica na barra do documento).
-- As abas principais (`.seg`):
+- A marca **QualiLab** e o botão de **tema** da *interface* — ele alterna **automático** (segue o
+  claro/escuro do sistema; é o padrão) → **claro** → **escuro**. Não confundir com o tema do
+  *leitor*, que fica na barra do documento.
+- As abas principais (`.seg`), **agrupadas por assunto** com divisórias finas (codificar · ler e
+  organizar · analisar · publicar); a aba ativa aparece sublinhada:
 
 | Aba | Para quê |
 |---|---|
@@ -251,9 +254,9 @@ Depois de abrir um projeto, o **cabeçalho** tem duas linhas:
 | **Gráficos** | Frequências, nuvem, co-ocorrência etc. |
 | **Memos** | Notas analíticas |
 | **Esquema** | Organizar códigos e categorias em lote |
-| **Codificar Automaticamente** | Repetir codificação (sem IA) e, *(opcional, BYOK)*, IA propondo codificação/categorização/organização e induzindo a definição de uma categoria; você aprova |
+| **Auto-codificação** | Repetir codificação (sem IA) e, *(opcional, BYOK)*, IA propondo codificação/categorização/organização e induzindo a definição de uma categoria; você aprova |
 | **Analisar com IA** | *(opcional, BYOK)* conversa analítica sobre o material que você seleciona |
-| **MCP/RAG** | *(opcional, BYOK; **experimental**)* conversa em que a IA **busca** o material sozinha, em vez de receber um recorte pronto |
+| **Explorar com IA** | *(opcional, BYOK; **experimental**)* conversa em que a IA **busca** o material sozinha, em vez de receber um recorte pronto |
 | **Relatório** | Exportar relatórios e pacotes de transparência |
 
 > As três telas de **IA** são **opt-in**. Detalhes na [seção 17](#17-codificar-e-analisar-com-ia).
@@ -264,10 +267,24 @@ Depois de abrir um projeto, o **cabeçalho** tem duas linhas:
 - Seu **nome**, **clicável em todos os modos** (nuvem, rascunho e arquivo) → Minha conta. Em modo offline, é também a porta de entrada para configurar a sua chave/modelo de IA, inclusive o Ollama local (veja a [seção 17](#17-codificar-e-analisar-com-ia)).
 - **trocar projeto** / **sair** (modo nuvem).
 - **exportar ▾** e **importar ▾** (aparecem quando há documentos).
-- Indicadores `offline` / `sincronizando…` e, quando a nuvem falha, **`N alterações aguardando envio`** — clique para tentar na hora (modo nuvem; veja a [seção 16](#16-salvamento-backup-e-modos-de-armazenamento)).
+
+**Barra de status (rodapé)**
+O estado do sistema fica num rodapé fino, sempre no mesmo lugar:
+- **✓ salvo HH:MM** (arquivo/rascunho) ou o estado da nuvem: `✓ nuvem em dia`, `offline`, e —
+  quando a nuvem falha — **`N alterações aguardando envio`**, clicável para tentar na hora
+  (veja a [seção 16](#16-salvamento-backup-e-modos-de-armazenamento)).
+- Em rascunho, o **% do armazenamento** usado (fica âmbar perto do limite).
+- Os botões **comandos** (a paleta do Ctrl+K) e **atalhos** (o mapa da tecla ?).
 - No canto direito, a **versão** em uso (ex.: `v1.0.0`). **Cite esse número ao relatar um problema:** sem ele não há como saber qual versão o seu navegador carregou, já que o app se atualiza sozinho ao recarregar. O que mudou em cada versão está no [`CHANGELOG.md`](../CHANGELOG.md).
+- Quando uma **versão nova** do app já foi baixada, aparece aqui o aviso `nova versão
+  disponível · recarregar` — um clique aplica.
 
 Logo abaixo do cabeçalho podem aparecer **faixas de aviso**: erro (vermelho), importação em andamento (com barra de progresso) e o aviso de falha de salvamento (veja a [seção 16](#16-salvamento-backup-e-modos-de-armazenamento)).
+
+**Paleta de comandos (Ctrl+K).** Em qualquer tela, **Ctrl+K** abre uma caixa de busca que leva
+direto a um **documento** (digite parte do nome), a uma **tela** ou a uma **ação** (baixar
+.qualilab, pesquisar em todos os documentos). Com muitos documentos, é o caminho mais rápido
+que existe. A tecla **?** mostra o mapa de atalhos ([seção 19](#19-atalhos-de-teclado)).
 
 > **A tela em que você está mora no endereço.** Trocar de aba muda o endereço do navegador, e o documento aberto e a sub-aba vão junto. Daí duas coisas úteis: o **"voltar" do navegador funciona** (leva à tela anterior, não sai do app), e dá para **copiar o endereço e mandar a alguém** — quem abrir o mesmo projeto cai na mesma tela, no mesmo documento. Em pesquisa coletiva é o jeito mais curto de dizer "olha este aqui".
 
@@ -368,11 +385,20 @@ codificação**: com um trecho selecionado, o clique esquerdo *aplica* o código
 ![Com um trecho selecionado, o clique com o botão direito abre o menu de códigos: clique num código para aplicá-lo, ou em "+ Criar novo código". A faixa azul no topo confirma o trecho selecionado.](manual-img/03-codificacao-menu.png)
 
 1. **Selecione** o trecho no texto com o mouse.
-2. **Clique com o botão direito** sobre a seleção.
-3. No menu de contexto, clique no código desejado; ele é aplicado na hora.
+2. Ao soltar, aparece uma **barra flutuante** colada à seleção: os seus códigos **recentes** em
+   um clique, e o botão **aplicar código ▾**, que abre o menu completo. Ou **clique com o botão
+   direito** sobre a seleção — é o mesmo menu, pelos dois caminhos.
+3. No menu, clique no código desejado; ele é aplicado na hora.
    - Ou clique em **+ Criar novo código**: digite o nome, escolha se é uma **nova família (nível 0)** ou um **subcódigo de "…"**, e clique em **Criar e aplicar**.
+   - Com um trecho selecionado, as teclas **1 a 9** aplicam um dos códigos **recentes** (a lista
+     numerada fica no painel Codificar, à direita).
 
 > Ao aplicar, o grifo aparece no texto com a cor do código. **A linha embaixo do grifo só aparece quando há mais de um código sobrepondo o mesmo trecho**. É o sinal de sobreposição. Trecho com um código só fica apenas tintado, sem linha, para não poluir.
+
+> **Minimapa.** Na borda direita do leitor, uma coluna fina mostra **onde estão os grifos** no
+> documento inteiro (um traço na cor de cada código; as ocorrências da busca aparecem em âmbar).
+> Clique em qualquer ponto dela para ir até lá. Num documento de dezenas de páginas, é o jeito
+> mais rápido de ver o que já foi trabalhado e o que não foi.
 
 > **Já tem os excertos numa planilha?** Se o seu material já está organizado como uma linha por documento e uma coluna por tema, com a citação na célula, dá para trazer tudo de uma vez em **importar ▾ → planilha (.csv / .xlsx → codificar trechos)**: cada excerto é localizado no texto do documento e vira um grifo como os daqui. Ver [Codificar trechos numa planilha](#codificar-trechos-numa-planilha-e-trazer-para-o-projeto-passo-a-passo).
 
@@ -393,7 +419,7 @@ Um código pode ser marcado como **censura** (no [Esquema](#7-esquema), por um a
 
 **E a censura não alcança a sua tela.** Enquanto você trabalha, o leitor mostra o texto inteiro, sem máscara: é tela de trabalho, e esconder ali impediria você de codificar. Vale lembrar disso quando o computador é compartilhado, quando você projeta a tela numa reunião e, hoje, quando um assistente de IA recebe permissão para **ver a sua tela** — basta autorizar, e por esse caminho o material aparece como está. Nenhum programa de análise consegue impedir isso, e o QualiLab não é exceção: a máscara vive nos **artefatos** ([Relatório](#12-relatório)) e no que é **enviado** às telas de IA, que é onde o material sai de perto de você.
 
-**A censura protege o que você marcou, não o termo.** Marcar "Banca Exemplo Advogados" num parágrafo não protege as outras cinco menções ao mesmo escritório. Para isso existe a aba **Repetir Codificação** (em [Codificar Automaticamente](#172-codificar-automaticamente-cinco-assistentes-em-abas)): ela pega os trechos que o código já tem e mostra as demais ocorrências **idênticas** no corpus, para você aprovar uma a uma. Ela não acha **variantes**: "Banca Exemplo" sozinha, ou "a banca", continuam sendo caso de [pesquisar +](#57-buscar-no-documento-e-no-projeto-inteiro), onde o julgamento é seu. Antes de publicar, veja [12.4](#124-antes-de-publicar-trabalhe-no-laboratório-publique-de-uma-cópia).
+**A censura protege o que você marcou, não o termo.** Marcar "Banca Exemplo Advogados" num parágrafo não protege as outras cinco menções ao mesmo escritório. Para isso existe a aba **Repetir Codificação** (em [Auto-codificação](#172-auto-codificação-cinco-assistentes-em-abas)): ela pega os trechos que o código já tem e mostra as demais ocorrências **idênticas** no corpus, para você aprovar uma a uma. Ela não acha **variantes**: "Banca Exemplo" sozinha, ou "a banca", continuam sendo caso de [pesquisar +](#57-buscar-no-documento-e-no-projeto-inteiro), onde o julgamento é seu. Antes de publicar, veja [12.4](#124-antes-de-publicar-trabalhe-no-laboratório-publique-de-uma-cópia).
 
 ### 5.6. Controles de leitura
 A barra no topo do leitor ajusta **só a leitura** (preferência salva no navegador):
@@ -431,14 +457,14 @@ As sugestões incluem **expressões de até cinco palavras**, não só palavras 
 
 ### 5.8. Filtro "Ver:" (de quem é o que aparece)
 O seletor **Ver:** controla **de quem** são os grifos e as respostas de categoria exibidos. Aparece em projeto coletivo e também quando há mais de um codificador (ex.: dados importados com vários autores). Em projeto coletivo, as opções são:
-- **Individuais (todos)**: sobrepõe os grifos de todos + o gabarito ao mesmo tempo (só leitura).
-- **Minhas**: só o seu trabalho (editável).
+- **Individuais (todos)**: sobrepõe os grifos de todos os pesquisadores. Você continua trabalhando normalmente aqui: os grifos que você aplicar são seus, e o campo de cada categoria mostra e edita a **sua** resposta, com as respostas dos colegas e o gabarito logo abaixo, apenas para leitura.
+- **Minhas**: só o seu trabalho.
 - **(nome de cada pesquisador)**: o trabalho de um colega específico (só leitura).
 - **Final / gabarito**: a camada consolidada (só leitura aqui; edita-se na Reconciliação).
 
 Em projeto individual com mais de um autor importado, o seletor mostra **Todos os codificadores** e o nome de cada autor.
 
-> **Por que algumas visualizações são só leitura?** Editar enquanto vê o trabalho de *outra* pessoa gravaria sob a *sua* identidade. Por isso só **Minhas** (ou projeto individual) permite editar a resposta de categoria ali. O gabarito se edita na Reconciliação.
+> **Por que algumas visualizações são só leitura?** Quando a tela mostra a resposta de *outra* pessoa — em **(nome de um pesquisador)** ou em **Final / gabarito** —, editar ali gravaria sob a *sua* identidade: o campo mostraria um valor e mudaria outro. Por isso essas duas são só leitura, e o gabarito se edita na Reconciliação. Em **Individuais (todos)** e em **Minhas** o campo é sempre o seu, então os dois são editáveis.
 
 ---
 
@@ -632,6 +658,8 @@ A aba **Gráficos** é um explorador: filtros à esquerda, um gráfico por vez �
 ### Filtros (coluna esquerda)
 - **Por categoria**: restringe **todos** os gráficos aos documentos que passam ("X de Y documentos no filtro").
 - **Ignorar censura**: **ligado por padrão**; remove dos gráficos os trechos de códigos de censura.
+- **Texturas nas barras**: sobrepõe hachuras às barras, para distinguir cores parecidas (útil
+  para quem tem daltonismo). Vale para as abas de barras e **sai junto no SVG/PNG exportado**.
 - **Nuvem**: uma árvore com caixas seleciona de quais códigos vem o vocabulário (marcar um código marca a subárvore); abaixo dela, a lista de **palavras ignoradas** (veja adiante).
 - **Co-ocorrência**: dois seletores escolhem os eixos **X** (colunas) e **Y** (linhas); vazio = os 12 mais frequentes.
 - **Ver:** e **Top:** (10/25/50/Todos) refinam o recorte.
@@ -947,6 +975,25 @@ O QualiLab **salva sozinho** a cada ação. *Onde* ele salva depende do modo:
 | **Rascunho** | `localStorage` do navegador | `rascunho ·` | Só testar rápido (efêmero) |
 | **Nuvem** | Supabase | `nuvem ·` | Equipes, vários dispositivos |
 
+### Instalar como aplicativo (e abrir sem internet)
+
+O QualiLab é um **PWA**: no Chrome ou Edge, procure **"Instalar QualiLab"** na barra de endereço
+(o ícone de instalar, à direita da URL). Instalado, ele vira uma **janela própria**, com ícone no
+menu iniciar/dock — e três coisas passam a valer:
+
+- **Abre sem internet.** Depois da primeira visita, o endereço abre mesmo offline (a última
+  versão baixada responde; com internet, o app sempre busca a versão atual). As bibliotecas
+  pesadas (PDF, OCR, planilha) também ficam guardadas depois do primeiro uso de cada uma.
+- **Duplo clique num `.qualilab` abre no QualiLab** (com o app instalado): o gerenciador de
+  arquivos passa a oferecê-lo como programa para o formato.
+- **Aviso de versão nova na barra de status** (`nova versão disponível · recarregar`): um clique
+  atualiza, sem perder nada salvo.
+
+Instalar **não muda onde os dados ficam**: os modos da tabela acima continuam valendo, e o modo
+arquivo continua 100% no seu disco. Para projetos locais com conteúdo, o app também pede ao
+navegador **armazenamento persistente**, o que impede o navegador de limpar o rascunho e os PDFs
+sob pressão de disco sem perguntar.
+
 ### Sensibilidade dos dados: o que é seguro habilitar
 Antes de escolher o modo, decida **o quanto da ferramenta você pode usar** conforme a **sensibilidade do material**. Não é uma escolha neutra. Primeiro, para onde o material vai em cada caminho:
 
@@ -1014,18 +1061,18 @@ O que **não** funciona sem rede é **ler** o que ainda não foi carregado: abri
 
 > As telas de IA são **opt-in** e ficam no cabeçalho. Os princípios da [seção 0](#0-a-ideia-do-qualilab) valem aqui como **regras**: opt-in, transparência, e a IA nunca decide por você. Nada é enviado a um provedor de IA sem que você configure uma chave e peça a análise.
 
-A IA do QualiLab não "codifica sozinha" nem escreve no seu projeto sem permissão. Ela aparece em três telas: *Codificar Automaticamente* (assistentes que **propõem** mudanças ao seu projeto, você revisa item a item), *Analisar com IA* (leitura e interpretação de um material que você recorta) e *MCP/RAG* (a IA busca o material sozinha; veja [17.6](#176-mcprag-a-ia-pede-o-material-em-vez-de-receber)). Em todas, o resultado é uma **proposta** ou um **texto** que você revisa. Aplicar qualquer mudança é sempre um ato seu.
+A IA do QualiLab não "codifica sozinha" nem escreve no seu projeto sem permissão. Ela aparece em três telas: *Auto-codificação* (assistentes que **propõem** mudanças ao seu projeto, você revisa item a item), *Analisar com IA* (leitura e interpretação de um material que você recorta) e *Explorar com IA* (a IA busca o material sozinha; veja [17.6](#176-explorar-com-ia-a-ia-pede-o-material-em-vez-de-receber)). Em todas, o resultado é uma **proposta** ou um **texto** que você revisa. Aplicar qualquer mudança é sempre um ato seu.
 
 É o capítulo mais longo do manual, então vale o mapa:
 
 | | |
 |---|---|
 | [17.1](#171-como-a-ia-funciona-aqui) | **como funciona aqui** — por onde a chamada vai, de quem é a chave, o prompt visível, os limites de tamanho e o custo |
-| [17.2](#172-codificar-automaticamente-cinco-assistentes-em-abas) | **Codificar Automaticamente** — os cinco assistentes, um por sub-seção (17.2.1 a 17.2.5) |
+| [17.2](#172-auto-codificação-cinco-assistentes-em-abas) | **Auto-codificação** — os cinco assistentes, um por sub-seção (17.2.1 a 17.2.5) |
 | [17.3](#173-analisar-com-ia-leitura-assistida-do-material) | **Analisar com IA** — a conversa sobre o material que você recorta |
 | [17.4](#174-configurar-a-sua-chave-opcional) | **configurar a sua chave** |
 | [17.5](#175-para-onde-vão-os-seus-dados-provedores-e-configuração) | **para onde vão os seus dados** — os provedores, e o que confiar em cada um |
-| [17.6](#176-mcprag-a-ia-pede-o-material-em-vez-de-receber) | **MCP/RAG** — a IA pede o material em vez de receber |
+| [17.6](#176-explorar-com-ia-a-ia-pede-o-material-em-vez-de-receber) | **Explorar com IA** — a IA pede o material em vez de receber |
 | [17.7](#177-desligar-a-ia-neste-projeto) | **desligar a IA** neste projeto |
 
 > **Se você não vai usar IA**, o único trecho que interessa é o [17.7](#177-desligar-a-ia-neste-projeto), que desliga os painéis e faz o Relatório declarar isso. O resto do manual não depende deste capítulo.
@@ -1047,13 +1094,13 @@ A IA do QualiLab não "codifica sozinha" nem escreve no seu projeto sem permiss�
 
 > ⚠️ **A IA pode errar e inventar.** Trate toda saída como hipótese a conferir contra o trecho citado. É exatamente por isso que a regra é "a IA propõe, você decide".
 
-### 17.2 Codificar Automaticamente: cinco assistentes em abas
+### 17.2 Auto-codificação: cinco assistentes em abas
 
-![Codificar Automaticamente: os assistentes em abas, no topo. À esquerda, a seleção de documentos e códigos; no topo, o botão "Configurar Prompt" com a estimativa de tokens e de custo (≈ R$) do envio.](manual-img/09-ia-codificar.png)
+![Auto-codificação: os assistentes em abas, no topo. À esquerda, a seleção de documentos e códigos; no topo, o botão "Configurar Prompt" com a estimativa de tokens e de custo (≈ R$) do envio.](manual-img/09-ia-codificar.png)
 
-A tela **Codificar Automaticamente** reúne **cinco assistentes** em abas, no topo: **Sugerir Codificação** (que abre por padrão), **Repetir Codificação**, **Sugerir Categorização**, **Definir Categoria** e **Organizar Códigos**. Todos seguem o mesmo padrão: o assistente **propõe**, você **aprova ou recusa item a item**, e **nada é gravado sem a sua confirmação**.
+A tela **Auto-codificação** reúne **cinco assistentes** em abas, no topo: **Sugerir Codificação** (que abre por padrão), **Repetir Codificação**, **Sugerir Categorização**, **Definir Categoria** e **Organizar Códigos**. Todos seguem o mesmo padrão: o assistente **propõe**, você **aprova ou recusa item a item**, e **nada é gravado sem a sua confirmação**.
 
-> **Uma das cinco não usa IA.** A **Repetir Codificação** ([17.2.5](#1725-repetir-codificação-sem-ia)) é mecânica: não precisa de chave, não manda nada para fora e funciona offline. É por isso que a tela se chama "Codificar Automaticamente" e não "Codificar com IA". As outras quatro são as que conversam com o provedor, e o que segue abaixo (prompt, custo, censura) vale para elas. O **Memo para a IA** e a memória do projeto entram como contexto ([seção 11](#11-memos)), a censura é mascarada, e o botão **⚙ Configurar Prompt** mostra o prompt inteiro e deixa ajustar as *instruções próprias à IA*, os *memos injetados* e a *memória do projeto* (veja [17.1](#171-como-a-ia-funciona-aqui)). Se a resposta for muito longa e vier cortada, o QualiLab aproveita os itens completos e descarta só o último (incompleto).
+> **Uma das cinco não usa IA.** A **Repetir Codificação** ([17.2.5](#1725-repetir-codificação-sem-ia)) é mecânica: não precisa de chave, não manda nada para fora e funciona offline. É por isso que a tela se chama "Auto-codificação" e não "Codificar com IA". (Até a v1.4.37 ela se chamava "Codificar Automaticamente".) As outras quatro são as que conversam com o provedor, e o que segue abaixo (prompt, custo, censura) vale para elas. O **Memo para a IA** e a memória do projeto entram como contexto ([seção 11](#11-memos)), a censura é mascarada, e o botão **⚙ Configurar Prompt** mostra o prompt inteiro e deixa ajustar as *instruções próprias à IA*, os *memos injetados* e a *memória do projeto* (veja [17.1](#171-como-a-ia-funciona-aqui)). Se a resposta for muito longa e vier cortada, o QualiLab aproveita os itens completos e descarta só o último (incompleto).
 
 O botão **⚙ Configurar Prompt** (no topo de cada assistente) abre a janela abaixo. Em cima ficam os **controles**: **Instruções próprias à IA** (guias que entram em todo prompt, compartilhadas com o Analisar com IA), **Memos injetados** (por padrão o *Memo para a IA*; dá para incluir outros) e a **Memória do projeto** (liga/desliga quais insights entram no contexto). Embaixo, a **prévia exata do que será enviado**: o modelo ativo, a contagem de material (em **páginas**), **quantos códigos de censura foram mascarados**, a **estimativa de tokens e de custo (≈ R$)** e o prompt **seção por seção** (papel e princípios, memos, memória do projeto, material), com o ponto do corte marcado no texto quando o material não coube. Um botão **copiar prompt** leva tudo para a área de transferência. **Nada sai do navegador sem passar por aqui**: é a face concreta da regra de transparência.
 
@@ -1206,9 +1253,11 @@ Para constar, o que as políticas *dizem* hoje (e pode mudar): camadas **gratuit
 
 > **Para dado vedado**, a única combinação que mantém tudo na sua máquina é o **Ollama local com o app rodando localmente**, offline. Modelos locais pequenos são menos precisos, mas nas tarefas que exigem um formato estrito o QualiLab já ativa um modo que força a saída correta.
 
-### 17.6 MCP/RAG: a IA pede o material, em vez de receber
+### 17.6 Explorar com IA: a IA pede o material, em vez de receber
 
-![A tela MCP/RAG respondendo "o que aparece no lugar dos nomes?": no topo, a pílula âmbar "experimental" e a contagem de documentos e de ferramentas. Entre os turnos aparece cada chamada que a IA fez (get_project, list_documents, get_document_content) com os argumentos e o que cada uma devolveu; na resposta, o trecho lido vem com os nomes em blocos pretos, porque a censura é aplicada antes de o texto sair para o modelo.](manual-img/19-mcp-rag.png)
+> Até a v1.4.37 esta tela se chamava **MCP/RAG** (o nome técnico do mecanismo). O que ela faz não mudou.
+
+![A tela Explorar com IA respondendo "o que aparece no lugar dos nomes?": no topo, a pílula âmbar "experimental" e a contagem de documentos e de ferramentas. Entre os turnos aparece cada chamada que a IA fez (get_project, list_documents, get_document_content) com os argumentos e o que cada uma devolveu; na resposta, o trecho lido vem com os nomes em blocos pretos, porque a censura é aplicada antes de o texto sair para o modelo.](manual-img/19-mcp-rag.png)
 
 > **Esta tela é experimental**, e o app diz isso nela. Ela funciona e não altera nada, mas é a superfície mais nova do QualiLab: o formato das respostas e o conjunto de ferramentas ainda podem mudar entre versões. Não a use como o único registro de uma análise — o que você quiser guardar, guarde em memo ou no relatório.
 
@@ -1254,7 +1303,7 @@ Nem toda pesquisa quer IA por perto, e há dois motivos bem diferentes para isso
 
 *Desativados* inclui você de propósito: é o que permite dizer à equipe "ninguém aqui usa, eu inclusive", e é o que impede reabrir a porta na pressa de um prazo.
 
-**O que some, e o que fica.** Somem as telas de IA do cabeçalho e a configuração que só serve a elas (o **Memo para a IA** e os **Prompts salvos**, na tela Memos). ⚠️ **Some junto a aba [Repetir Codificação](#1725-repetir-codificação-sem-ia), que não usa IA nenhuma** — ela mora dentro da tela *Codificar Automaticamente*, e a tela sai inteira. É bom saber porque ela é a ferramenta que a [seção 5.5](#55-censura-mascarar-trechos-sensíveis) recomenda para fechar a censura (achar as outras ocorrências idênticas de um termo já censurado). Desligando a IA, esse trabalho volta a ser feito pelo [pesquisar +](#57-buscar-no-documento-e-no-projeto-inteiro), caso a caso. **Fica** o registro do que já aconteceu: as **conversas salvas** e a **memória do projeto** continuam onde estavam. Esconder o registro seria o oposto da transparência que a declaração promete — e é ele que o relatório conta.
+**O que some, e o que fica.** Somem as telas de IA do cabeçalho e a configuração que só serve a elas (o **Memo para a IA** e os **Prompts salvos**, na tela Memos). ⚠️ **Some junto a aba [Repetir Codificação](#1725-repetir-codificação-sem-ia), que não usa IA nenhuma** — ela mora dentro da tela *Auto-codificação*, e a tela sai inteira. É bom saber porque ela é a ferramenta que a [seção 5.5](#55-censura-mascarar-trechos-sensíveis) recomenda para fechar a censura (achar as outras ocorrências idênticas de um termo já censurado). Desligando a IA, esse trabalho volta a ser feito pelo [pesquisar +](#57-buscar-no-documento-e-no-projeto-inteiro), caso a caso. **Fica** o registro do que já aconteceu: as **conversas salvas** e a **memória do projeto** continuam onde estavam. Esconder o registro seria o oposto da transparência que a declaração promete — e é ele que o relatório conta.
 
 **A decisão acompanha o projeto.** Ela viaja dentro do `.qualilab`: salvar como arquivo, reabrir depois ou enviar para a nuvem preserva o que você escolheu. Importar material de um projeto sem IA para dentro de um projeto com IA ativa **não** muda a sua configuração (a decisão é do projeto que recebe, não do arquivo que chega), mas o resumo da importação avisa que aquele material vinha de um projeto assim. E conversas de IA guardadas num arquivo **não entram** num projeto que desativou a IA — o resumo diz quantas ficaram de fora, e por quê.
 
@@ -1310,9 +1359,12 @@ PDFs muito visuais (colunas, tabelas, digitalizações) podem extrair mal. Tabel
 
 | Atalho | Onde | Ação |
 |---|---|---|
-| **Botão direito** sobre uma seleção | Codificação | Menu para aplicar/criar código |
+| **Botão direito** sobre uma seleção | Codificação | Menu para aplicar/criar código (a barra flutuante sobre a seleção abre o mesmo menu) |
 | **Botão direito** sobre um grifo | Codificação | Remover código / Anotar trecho |
-| **Ctrl+Z** | Codificação | Desfazer a última codificação aplicada |
+| **Ctrl+K** | Em qualquer tela | Paleta de comandos: ir a um documento, tela ou ação |
+| **?** | Em qualquer tela (fora de campo de texto) | Mapa de atalhos |
+| **1 … 9** | Codificação, com trecho selecionado | Aplicar um dos códigos recentes |
+| **Ctrl+Z** | Codificação | Desfazer a última codificação (aplicada ou apagada) |
 | **Enter** / **Shift+Enter** | Busca (🔎) | Próxima / anterior ocorrência |
 | **Enter** / **Esc** | Renomear documento | Confirmar / cancelar |
 | **Delete** / **Backspace** | Codificação | Excluir o grifo em foco (clique num grifo para focá-lo) |
@@ -1346,7 +1398,7 @@ PDFs muito visuais (colunas, tabelas, digitalizações) podem extrair mal. Tabel
 - **W3C Web Annotation**: padrão aberto de dados de anotação (base do ATI, hypothes.is etc.).
 - **Opt-in**: recurso desligado por padrão que só age quando você o aciona (a regra da IA no QualiLab).
 - **BYO-key** (*bring your own key*): usar a sua própria chave de API de um provedor de IA (o padrão no QualiLab; guardada só no seu navegador).
-- **MCP/RAG**: a tela (experimental) em que a IA **pede** o material de que precisa, em vez de receber um recorte que você montou antes; cada pedido dela fica visível. Ver [17.6](#176-mcprag-a-ia-pede-o-material-em-vez-de-receber).
+- **Explorar com IA** (até a v1.4.37, "MCP/RAG"): a tela (experimental) em que a IA **pede** o material de que precisa, em vez de receber um recorte que você montou antes; cada pedido dela fica visível. Ver [17.6](#176-explorar-com-ia-a-ia-pede-o-material-em-vez-de-receber).
 - **Provedor / LLM**: o serviço de modelo de linguagem que a IA chama (Gemini, OpenAI, Anthropic, Azure, um compatível com OpenAI, ou o **Ollama local** na sua própria máquina).
 - **Ollama local**: modelo de linguagem rodando na sua máquina (via [Ollama](https://ollama.com/)), chamado **direto pelo navegador**, sem passar pelo servidor, a opção em que o material **não sai do seu computador**.
 

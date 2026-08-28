@@ -1,0 +1,4073 @@
+{
+  "_meta": {
+    "id": "file-project",
+    "name": "IA generativa na advocacia — corpus de demonstração (fictício)",
+    "code": "DEMO3",
+    "mode": "collective",
+    "displayName": "Admin"
+  },
+  "documents": [
+    {
+      "id": "doc-1",
+      "name": "ENT-01 — Dra. Fulana de Tal, sócia fundadora (Tal, Qual & Associados, São Paulo)",
+      "content": "ENT-01 — Dra. Fulana de Tal, sócia fundadora (Tal, Qual & Associados, São Paulo)\n\nEntrevistadora: Para começar, como a senhora descreveria a chegada da IA generativa aqui no escritório?\n\nFulana de Tal: Vou ser honesta: eu resisti no começo. Hoje eu diria que já me rendi, mas cercada de regra por todo lado. A verdade é que a gente não tinha escolha. Foi a pressão do mercado que abriu a porta, não foi convicção minha: os próprios clientes começaram a perguntar se usávamos inteligência artificial e por que ainda cobrávamos tantas horas por uma pesquisa que a máquina faz em minutos.\n\nEntrevistadora: E quais ganhos a senhora enxerga no dia a dia?\n\nFulana de Tal: Produtividade, sem dúvida. O que mudou a vida da equipe foi a velocidade. Uma pesquisa de jurisprudência que levava uma tarde inteira hoje sai num café. E as tarefas repetitivas — formatar contrato, revisar cláusula padrão, montar minuta de petição simples — isso a ferramenta despacha sozinha. Sobra tempo para o que é realmente advocacia.\n\nEntrevistadora: A senhora mesma usa?\n\nFulana de Tal: Uso, mas quase escondido, como experimento pessoal. Eu testo em casa, no meu computador, antes de liberar para a equipe. Ninguém me ensinou — fui aprendendo no tatear.\n\nEntrevistadora: E os riscos?\n\nFulana de Tal: Aí mora o meu medo. Eu já vi um colega citar uma jurisprudência que simplesmente não existia: a máquina inventou o acórdão, com número e tudo. Isso me apavora. Mais grave ainda é a confidencialidade: eu jamais jogaria os dados de um caso de M&A do meu cliente numa ferramenta dessas, não sei onde isso vai parar. E tem a questão de quem responde se der errado: o advogado assina a peça, a responsabilidade é dele, não da máquina.\n\nEntrevistadora: Há resistência interna?\n\nFulana de Tal: Há, e ela tem idade. Os sócios mais seniores torcem o nariz — alguns acham que é moda passageira, outros se sentem ameaçados. É uma divisão geracional clara: os associados júnior já chegam usando, os sócios de cabelo branco desconfiam. Eu fico no meio.\n\nEntrevistadora: O escritório tem alguma regra formal?\n\nFulana de Tal: Tem. Criamos uma política interna de uso no ano passado. Está tudo escrito: o que pode, o que não pode, e que nenhum dado de cliente entra na ferramenta sem anonimizar. Foi a forma que encontramos de dormir tranquila.\n\nEntrevistadora: E o impacto no negócio em si?\n\nFulana de Tal: Esse é o elefante na sala. Se a pesquisa que eu cobrava seis horas agora leva trinta minutos, como eu cobro? O modelo de honorário por hora está com os dias contados, isso é fato. E me preocupa o futuro dos mais novos: se a máquina faz o trabalho do estagiário, para que serve o estagiário? Vamos ter que reinventar como se forma advogado.\n\nEntrevistadora: Para fechar, uma frase que resuma seu sentimento?\n\nFulana de Tal: Não dá para colocar o gênio de volta na lâmpada — mas dá para ensinar o gênio a respeitar o sigilo. É isso.\n"
+    },
+    {
+      "id": "doc-2",
+      "name": "ENT-02 — Beltrano de Souza, associado júnior (Tal, Qual & Associados, São Paulo)",
+      "content": "ENT-02 — Beltrano de Souza, associado júnior (Tal, Qual & Associados, São Paulo)\n\nEntrevistadora: Você usa IA generativa no trabalho?\n\nBeltrano de Souza: Uso o tempo todo, é quase um corretor ortográfico para mim. Aprendi na faculdade, então para a minha geração isso é natural. Os sócios é que estranham — tem aquela divisão clara: a gente, mais novo, já chegou usando; eles ainda desconfiam.\n\nEntrevistadora: Em que tarefas?\n\nBeltrano de Souza: Principalmente pesquisa. Antes eu passava a madrugada caçando precedente; agora a busca de jurisprudência sai em minutos. Também uso para automatizar coisa repetitiva, tipo padronizar contrato e revisar cláusula. É um ganho de produtividade absurdo.\n\nEntrevistadora: E treinamento, o escritório ofereceu?\n\nBeltrano de Souza: Nenhum. Ninguém me ensinou, eu fui na tentativa e erro. Acho isso arriscado, porque mesmo gostando eu não me sinto totalmente seguro. Já vi a ferramenta inventar um acórdão que não existia — se eu não conferisse, ia parar na petição.\n\nEntrevistadora: Preocupa o futuro da carreira?\n\nBeltrano de Souza: Preocupa. Se a máquina faz o trabalho braçal do júnior, sobra o quê para quem está começando? E o modelo de cobrar por hora não se sustenta mais. Acho que vão contratar menos estagiário por causa disso.\n"
+    },
+    {
+      "id": "doc-3",
+      "name": "ENT-03 — Dr. Sicrano Modelo, sócio (Banca Exemplo Advogados, Rio de Janeiro)",
+      "content": "ENT-03 — Dr. Sicrano Modelo, sócio (Banca Exemplo Advogados, Rio de Janeiro)\n\nEntrevistadora: Qual a sua posição sobre IA generativa na advocacia?\n\nSicrano Modelo: Sou cético, e não tenho vergonha de dizer. Vejo muito modismo. O sócio que assina a peça é o responsável, ponto — não vou terceirizar isso para um robô que inventa jurisprudência. Já me mostraram um caso de acórdão fabricado pela máquina; aquilo me bastou.\n\nEntrevistadora: E a confidencialidade?\n\nSicrano Modelo: Esse é o ponto que ninguém leva a sério o suficiente. Os dados dos nossos clientes são sagrados. Colocar informação de um cliente numa ferramenta na nuvem é, para mim, quebra de sigilo. Enquanto não houver garantia, eu proíbo na minha equipe.\n\nEntrevistadora: O senhor percebe pressão para mudar?\n\nSicrano Modelo: Percebo, e ela vem dos clientes, que comparam preço e velocidade com escritórios que já usam. Mas resisto. Sei que sou parte da turma mais antiga que segura o freio. Os jovens daqui reclamam disso.\n\nEntrevistadora: Há política interna?\n\nSicrano Modelo: Aqui na Banca Exemplo não há nada escrito, e acho isso um problema. Cada um faz como quer. Sem regra clara, é terra de ninguém.\n"
+    },
+    {
+      "id": "doc-4",
+      "name": "ENT-04 — Joana das Couves, estagiária (Banca Exemplo Advogados, Rio de Janeiro)",
+      "content": "ENT-04 — Joana das Couves, estagiária (Banca Exemplo Advogados, Rio de Janeiro)\n\nEntrevistadora: Como estagiária, você usa essas ferramentas?\n\nJoana das Couves: Uso, mas meio escondido, porque o Dr. Sicrano não gosta. É experimentação minha mesmo, em casa. Ajuda muito a resumir decisão longa e a achar precedente rápido.\n\nEntrevistadora: Recebeu algum treinamento?\n\nJoana das Couves: Que nada. Ninguém ensina. A gente aprende sozinha, trocando dica entre os estagiários. Por isso fico insegura: já vi a ferramenta errar e ter uma confiança enorme no erro.\n\nEntrevistadora: Você teme pela sua vaga?\n\nJoana das Couves: Bastante. Se a máquina faz a pesquisa que era a minha função, fico pensando se vão precisar de estagiário daqui a pouco. É assustador começar a carreira assim.\n"
+    },
+    {
+      "id": "doc-5",
+      "name": "ENT-05 — Dra. Maria Exemplo, sócia (Tal, Qual & Associados, filial Brasília)",
+      "content": "ENT-05 — Dra. Maria Exemplo, sócia (Tal, Qual & Associados, filial Brasília)\n\nEntrevistadora: A senhora é favorável ao uso?\n\nMaria Exemplo: Favorável, com método. Não adianta proibir nem liberar geral. Aqui na filial de Brasília eu puxei a fila do treinamento: montei oficinas para a equipe aprender a usar com responsabilidade.\n\nEntrevistadora: O que mudou com isso?\n\nMaria Exemplo: A produtividade subiu, claro — a redação de peças e a revisão contratual ficaram muito mais rápidas. Mas o ganho de verdade foi cultural: as pessoas pararam de usar escondido e passaram a discutir abertamente o que a ferramenta erra.\n\nEntrevistadora: E a política institucional?\n\nMaria Exemplo: Foi essencial. A política interna que adotamos deixou claro que nenhum dado de cliente entra sem anonimização. Isso resolveu metade do medo de confidencialidade. A responsabilidade final continua do advogado, e a política reforça isso.\n\nEntrevistadora: Há resistência?\n\nMaria Exemplo: Alguma, dos sócios mais antigos, mas vai cedendo conforme veem resultado. A divisão de gerações existe, mas treinamento aproxima.\n"
+    },
+    {
+      "id": "doc-6",
+      "name": "ENT-06 — Zé Ninguém, associado sênior (Banca Exemplo Advogados, Rio de Janeiro)",
+      "content": "ENT-06 — Zé Ninguém, associado sênior (Banca Exemplo Advogados, Rio de Janeiro)\n\nEntrevistadora: Qual sua visão?\n\nZé Ninguém: Ambivalente, sinceramente. Reconheço o ganho de produtividade — automatizar a parte repetitiva de contrato me devolveu horas da semana. Mas convivo com o receio do erro.\n\nEntrevistadora: Que tipo de erro?\n\nZé Ninguém: A alucinação. A ferramenta afirma com toda a certeza uma coisa falsa. Em pesquisa de jurisprudência isso é veneno. Então uso, mas confiro tudo, o que às vezes anula o ganho de tempo.\n\nEntrevistadora: E a pressão do mercado?\n\nZé Ninguém: Existe. Cliente hoje pergunta por que a conta é tão alta se a IA faz. A cobrança por hora está mesmo ameaçada. Como sênior, eu fico entre o sócio que resiste e o júnior que abraça.\n\nEntrevistadora: O escritório treina?\n\nZé Ninguém: Pouco. Falta política e falta capacitação. Acabo sendo autodidata.\n"
+    },
+    {
+      "id": "doc-7",
+      "name": "ENT-07 — Dr. João da Silva Fictício, sócio de gestão e inovação (Tal, Qual & Associados, São Paulo)",
+      "content": "ENT-07 — Dr. João da Silva Fictício, sócio de gestão e inovação (Tal, Qual & Associados, São Paulo)\n\nEntrevistadora: O senhor lidera a inovação no escritório. Como conduz isso?\n\nJoão da Silva Fictício: Com governança. Fui eu que escrevi a política interna de uso de IA. A regra de ouro é simples: produtividade sim, sigilo do cliente sempre. Nenhum dado identificável entra na ferramenta.\n\nEntrevistadora: Quais ganhos o senhor mede?\n\nJoão da Silva Fictício: Medimos tempo. A pesquisa jurídica que tomava um dia caiu para uma hora. A automação de minutas repetitivas liberou os associados para trabalho estratégico. É produtividade pura.\n\nEntrevistadora: E o modelo de negócio?\n\nJoão da Silva Fictício: Aí está a revolução de verdade. A cobrança por hora não sobrevive a isso — estamos migrando para honorário por valor entregue. E repensando a formação: o estagiário não vai mais aprender copiando precedente, vai ter que pensar desde cedo. Isso muda a pirâmide do escritório.\n\nEntrevistadora: Resistência?\n\nJoão da Silva Fictício: Muita, dos sócios da velha guarda. É uma divisão geracional clássica. Por isso aposto em treinamento contínuo: oficina, manual, gente acompanhando. Sem capacitação, a política vira letra morta.\n\nEntrevistadora: Uma frase de fecho?\n\nJoão da Silva Fictício: Escritório que não governar a IA vai ser governado por ela.\n"
+    },
+    {
+      "id": "doc-8",
+      "name": "GF-01 — Grupo focal com associados de diferentes escritórios (São Paulo)",
+      "content": "GF-01 — Grupo focal com associados de diferentes escritórios (São Paulo)\n\nModeradora: Vamos abrir: a IA generativa ajuda ou atrapalha?\n\nParticipante 1: Ajuda demais na produtividade. A pesquisa jurídica virou questão de minutos.\n\nParticipante 2: Mas é perigosa. Já vi alucinação séria — acórdão inventado com número falso. Não dá para confiar cego.\n\nParticipante 3: O problema maior, para mim, é confidencialidade. A gente lida com dado sensível de cliente; jogar isso na nuvem é temerário.\n\nParticipante 1: Concordo, mas com política clara dá. No meu escritório a política interna resolveu muita coisa.\n\nParticipante 4: No meu não tem política nenhuma, é cada um por si. E ninguém treina ninguém.\n\nParticipante 2: E tem o racha de geração: sócio sênior trava, júnior abraça. Vira queda de braço.\n\nParticipante 3: Sem falar na cobrança. Se a máquina faz rápido, como justificar a hora? O modelo de negócio inteiro está em xeque.\n\nParticipante 4: E o estagiário? Estou com medo de não ter mais espaço para quem começa.\n"
+    },
+    {
+      "id": "doc-9",
+      "name": "DOC-01 — Política interna de uso de IA generativa (Tal, Qual & Associados)",
+      "content": "DOC-01 — Política interna de uso de IA generativa (Tal, Qual & Associados)\n\n1. Objetivo. Esta política estabelece regras para o uso de ferramentas de IA generativa pelos profissionais de Tal, Qual & Associados, conciliando ganho de produtividade e proteção do cliente.\n\n2. Confidencialidade. É vedado inserir em qualquer ferramenta dado que identifique cliente, parte ou caso sem anonimização prévia. O sigilo profissional é inegociável.\n\n3. Responsabilidade. A revisão e a assinatura de toda peça permanecem do advogado responsável. A ferramenta é apoio, nunca autor.\n\n4. Verificação. Toda informação jurídica gerada — especialmente jurisprudência e citações — deve ser conferida na fonte oficial, dado o risco de alucinação.\n\n5. Capacitação. O escritório oferecerá treinamento periódico obrigatório sobre uso responsável.\n\n6. Usos permitidos. Pesquisa jurídica, automação de minutas repetitivas, revisão contratual e resumo de decisões, observadas as regras acima.\n\nAprovada pela sócia fundadora Dra. Fulana de Tal e pelo sócio de gestão Dr. João da Silva Fictício, São Paulo.\n"
+    }
+  ],
+  "categories": [
+    {
+      "id": "cat-tipo",
+      "name": "Tipo de documento",
+      "kind": "select",
+      "options": [
+        "Entrevista",
+        "Grupo focal",
+        "Documento institucional",
+        "Não informado"
+      ],
+      "description": "Distingue a natureza da fonte (kind=select).",
+      "color": 0,
+      "position": 0
+    },
+    {
+      "id": "cat-cargo",
+      "name": "Cargo/função",
+      "kind": "select",
+      "options": [
+        "Sócio(a)",
+        "Associado(a) sênior",
+        "Associado(a) júnior",
+        "Estagiário(a)",
+        "Não se aplica",
+        "Não informado"
+      ],
+      "description": "Posição hierárquica do entrevistado (kind=select).",
+      "color": 1,
+      "position": 1
+    },
+    {
+      "id": "cat-escritorio",
+      "name": "Escritório",
+      "kind": "select",
+      "options": [
+        "Tal, Qual & Associados",
+        "Banca Exemplo Advogados",
+        "Misto / vários",
+        "Não informado"
+      ],
+      "description": "Organização de origem (kind=select).",
+      "color": 2,
+      "position": 2
+    },
+    {
+      "id": "cat-data",
+      "name": "Data de coleta",
+      "kind": "date",
+      "options": [],
+      "description": "Data da entrevista/coleta (kind=date, DD/MM/AAAA).",
+      "color": 3,
+      "position": 3
+    },
+    {
+      "id": "cat-posicao",
+      "name": "Posição sobre uso de IA",
+      "kind": "single",
+      "options": [
+        "Favorável",
+        "Cético",
+        "Ambivalente",
+        "Outros",
+        "Não informado"
+      ],
+      "description": "Atitude predominante (kind=single, com Outros).",
+      "color": 4,
+      "position": 4
+    },
+    {
+      "id": "cat-areas",
+      "name": "Áreas de aplicação citadas",
+      "kind": "checkbox",
+      "options": [
+        "Pesquisa jurídica",
+        "Redação de peças",
+        "Revisão contratual",
+        "Resumo de decisões",
+        "Organização/gestão",
+        "Atendimento ao cliente",
+        "Outros",
+        "Não informado"
+      ],
+      "description": "Usos mencionados (kind=checkbox, multi-valor).",
+      "color": 5,
+      "position": 5
+    },
+    {
+      "id": "cat-resumo",
+      "name": "Resumo analítico",
+      "kind": "text",
+      "options": [],
+      "description": "Síntese livre do conteúdo (kind=text).",
+      "color": 6,
+      "position": 6
+    }
+  ],
+  "doc_values": [
+    {
+      "id": "v1",
+      "document_id": "doc-1",
+      "category_id": "cat-tipo",
+      "value": "Entrevista",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v2",
+      "document_id": "doc-1",
+      "category_id": "cat-cargo",
+      "value": "Sócio(a)",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v3",
+      "document_id": "doc-1",
+      "category_id": "cat-escritorio",
+      "value": "Tal, Qual & Associados",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v4",
+      "document_id": "doc-1",
+      "category_id": "cat-data",
+      "value": "12/02/2026",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v5",
+      "document_id": "doc-1",
+      "category_id": "cat-posicao",
+      "value": "Ambivalente",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v6",
+      "document_id": "doc-1",
+      "category_id": "cat-areas",
+      "value": "Pesquisa jurídica | Redação de peças | Revisão contratual",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v7",
+      "document_id": "doc-1",
+      "category_id": "cat-resumo",
+      "value": "Sócia fundadora que resistiu e hoje adota com cautela. Reconhece produtividade, mas seu freio real é a confidencialidade de clientes de M&A. Defende política interna e teme o fim da cobrança por hora.",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v8",
+      "document_id": "doc-2",
+      "category_id": "cat-tipo",
+      "value": "Entrevista",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v9",
+      "document_id": "doc-2",
+      "category_id": "cat-cargo",
+      "value": "Associado(a) júnior",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v10",
+      "document_id": "doc-2",
+      "category_id": "cat-escritorio",
+      "value": "Tal, Qual & Associados",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v11",
+      "document_id": "doc-2",
+      "category_id": "cat-data",
+      "value": "14/02/2026",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v12",
+      "document_id": "doc-2",
+      "category_id": "cat-posicao",
+      "value": "Favorável",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v13",
+      "document_id": "doc-2",
+      "category_id": "cat-areas",
+      "value": "Pesquisa jurídica | Revisão contratual",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v14",
+      "document_id": "doc-2",
+      "category_id": "cat-resumo",
+      "value": "Associado júnior entusiasta, usa como rotina; aprendeu sozinho. Aponta falta de treinamento, medo de alucinação e insegurança sobre o futuro do júnior.",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v15",
+      "document_id": "doc-3",
+      "category_id": "cat-tipo",
+      "value": "Entrevista",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v16",
+      "document_id": "doc-3",
+      "category_id": "cat-cargo",
+      "value": "Sócio(a)",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v17",
+      "document_id": "doc-3",
+      "category_id": "cat-escritorio",
+      "value": "Banca Exemplo Advogados",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v18",
+      "document_id": "doc-3",
+      "category_id": "cat-data",
+      "value": "18/02/2026",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v19",
+      "document_id": "doc-3",
+      "category_id": "cat-posicao",
+      "value": "Cético",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v20",
+      "document_id": "doc-3",
+      "category_id": "cat-areas",
+      "value": "Pesquisa jurídica",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v21",
+      "document_id": "doc-3",
+      "category_id": "cat-resumo",
+      "value": "Sócio cético que proíbe o uso por confidencialidade e responsabilidade. Assume ser parte da resistência sênior; critica a ausência de política na Banca Exemplo.",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v22",
+      "document_id": "doc-4",
+      "category_id": "cat-tipo",
+      "value": "Entrevista",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v23",
+      "document_id": "doc-4",
+      "category_id": "cat-cargo",
+      "value": "Estagiário(a)",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v24",
+      "document_id": "doc-4",
+      "category_id": "cat-escritorio",
+      "value": "Banca Exemplo Advogados",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v25",
+      "document_id": "doc-4",
+      "category_id": "cat-data",
+      "value": "20/02/2026",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v26",
+      "document_id": "doc-4",
+      "category_id": "cat-posicao",
+      "value": "Ambivalente",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v27",
+      "document_id": "doc-4",
+      "category_id": "cat-areas",
+      "value": "Pesquisa jurídica | Resumo de decisões",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v28",
+      "document_id": "doc-4",
+      "category_id": "cat-resumo",
+      "value": "Estagiária que usa escondido do sócio. Sem treinamento, insegura com o erro da ferramenta e com medo concreto de perder espaço na carreira.",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v29",
+      "document_id": "doc-5",
+      "category_id": "cat-tipo",
+      "value": "Entrevista",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v30",
+      "document_id": "doc-5",
+      "category_id": "cat-cargo",
+      "value": "Sócio(a)",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v31",
+      "document_id": "doc-5",
+      "category_id": "cat-escritorio",
+      "value": "Tal, Qual & Associados",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v32",
+      "document_id": "doc-5",
+      "category_id": "cat-data",
+      "value": "25/02/2026",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v33",
+      "document_id": "doc-5",
+      "category_id": "cat-posicao",
+      "value": "Favorável",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v34",
+      "document_id": "doc-5",
+      "category_id": "cat-areas",
+      "value": "Redação de peças | Revisão contratual | Organização/gestão",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v35",
+      "document_id": "doc-5",
+      "category_id": "cat-resumo",
+      "value": "Sócia favorável com método: lidera treinamento na filial. Mostra como política e capacitação reduzem o medo de confidencialidade e aproximam as gerações.",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v36",
+      "document_id": "doc-6",
+      "category_id": "cat-tipo",
+      "value": "Entrevista",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v37",
+      "document_id": "doc-6",
+      "category_id": "cat-cargo",
+      "value": "Associado(a) sênior",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v38",
+      "document_id": "doc-6",
+      "category_id": "cat-escritorio",
+      "value": "Banca Exemplo Advogados",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v39",
+      "document_id": "doc-6",
+      "category_id": "cat-data",
+      "value": "28/02/2026",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v40",
+      "document_id": "doc-6",
+      "category_id": "cat-posicao",
+      "value": "Ambivalente",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v41",
+      "document_id": "doc-6",
+      "category_id": "cat-areas",
+      "value": "Pesquisa jurídica | Revisão contratual",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v42",
+      "document_id": "doc-6",
+      "category_id": "cat-resumo",
+      "value": "Associado sênior dividido: usa pela produtividade, mas confere tudo por medo de alucinação. Sente a pressão de preço do cliente e a falta de política e capacitação.",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v43",
+      "document_id": "doc-7",
+      "category_id": "cat-tipo",
+      "value": "Entrevista",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v44",
+      "document_id": "doc-7",
+      "category_id": "cat-cargo",
+      "value": "Sócio(a)",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v45",
+      "document_id": "doc-7",
+      "category_id": "cat-escritorio",
+      "value": "Tal, Qual & Associados",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v46",
+      "document_id": "doc-7",
+      "category_id": "cat-data",
+      "value": "03/03/2026",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v47",
+      "document_id": "doc-7",
+      "category_id": "cat-posicao",
+      "value": "Favorável",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v48",
+      "document_id": "doc-7",
+      "category_id": "cat-areas",
+      "value": "Pesquisa jurídica | Redação de peças | Organização/gestão",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v49",
+      "document_id": "doc-7",
+      "category_id": "cat-resumo",
+      "value": "Sócio de inovação que governa o uso por política. Vê a maior ruptura no modelo de negócio (fim da hora) e na formação do júnior; aposta em treinamento contínuo.",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v50",
+      "document_id": "doc-8",
+      "category_id": "cat-tipo",
+      "value": "Grupo focal",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v51",
+      "document_id": "doc-8",
+      "category_id": "cat-cargo",
+      "value": "Não se aplica",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v52",
+      "document_id": "doc-8",
+      "category_id": "cat-escritorio",
+      "value": "Misto / vários",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v53",
+      "document_id": "doc-8",
+      "category_id": "cat-data",
+      "value": "06/03/2026",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v54",
+      "document_id": "doc-8",
+      "category_id": "cat-posicao",
+      "value": "Outros",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v55",
+      "document_id": "doc-8",
+      "category_id": "cat-areas",
+      "value": "Pesquisa jurídica | Atendimento ao cliente",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v56",
+      "document_id": "doc-8",
+      "category_id": "cat-resumo",
+      "value": "Grupo focal que sintetiza os eixos: produtividade x alucinação, confidencialidade, racha geracional, ausência de política/treinamento e ameaça ao modelo de negócio.",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v57",
+      "document_id": "doc-9",
+      "category_id": "cat-tipo",
+      "value": "Documento institucional",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v58",
+      "document_id": "doc-9",
+      "category_id": "cat-cargo",
+      "value": "Não se aplica",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v59",
+      "document_id": "doc-9",
+      "category_id": "cat-escritorio",
+      "value": "Tal, Qual & Associados",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v60",
+      "document_id": "doc-9",
+      "category_id": "cat-data",
+      "value": "10/03/2026",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v61",
+      "document_id": "doc-9",
+      "category_id": "cat-posicao",
+      "value": "Não informado",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v62",
+      "document_id": "doc-9",
+      "category_id": "cat-areas",
+      "value": "Pesquisa jurídica | Redação de peças | Revisão contratual | Resumo de decisões",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v63",
+      "document_id": "doc-9",
+      "category_id": "cat-resumo",
+      "value": "Política interna que opera os achados: confidencialidade com anonimização, responsabilidade do advogado, verificação contra alucinação, capacitação e usos permitidos.",
+      "set_by": "user-admin",
+      "author_name": "Admin",
+      "layer": "final"
+    },
+    {
+      "id": "v64",
+      "document_id": "doc-1",
+      "category_id": "cat-posicao",
+      "value": "Cético",
+      "set_by": null,
+      "author_name": "Marina",
+      "layer": "individual"
+    },
+    {
+      "id": "v65",
+      "document_id": "doc-1",
+      "category_id": "cat-posicao",
+      "value": "Ambivalente",
+      "set_by": null,
+      "author_name": "Rafael",
+      "layer": "individual"
+    },
+    {
+      "id": "v66",
+      "document_id": "doc-1",
+      "category_id": "cat-posicao",
+      "value": "Ambivalente",
+      "set_by": null,
+      "author_name": "Júlia",
+      "layer": "individual"
+    },
+    {
+      "id": "v67",
+      "document_id": "doc-1",
+      "category_id": "cat-areas",
+      "value": "Pesquisa jurídica | Revisão contratual",
+      "set_by": null,
+      "author_name": "Marina",
+      "layer": "individual"
+    },
+    {
+      "id": "v68",
+      "document_id": "doc-1",
+      "category_id": "cat-areas",
+      "value": "Pesquisa jurídica | Redação de peças | Revisão contratual",
+      "set_by": null,
+      "author_name": "Rafael",
+      "layer": "individual"
+    },
+    {
+      "id": "v69",
+      "document_id": "doc-1",
+      "category_id": "cat-areas",
+      "value": "Pesquisa jurídica | Redação de peças | Revisão contratual",
+      "set_by": null,
+      "author_name": "Júlia",
+      "layer": "individual"
+    },
+    {
+      "id": "v70",
+      "document_id": "doc-2",
+      "category_id": "cat-posicao",
+      "value": "Favorável",
+      "set_by": null,
+      "author_name": "Marina",
+      "layer": "individual"
+    },
+    {
+      "id": "v71",
+      "document_id": "doc-2",
+      "category_id": "cat-posicao",
+      "value": "Favorável",
+      "set_by": null,
+      "author_name": "Rafael",
+      "layer": "individual"
+    },
+    {
+      "id": "v72",
+      "document_id": "doc-3",
+      "category_id": "cat-posicao",
+      "value": "Cético",
+      "set_by": null,
+      "author_name": "Marina",
+      "layer": "individual"
+    },
+    {
+      "id": "v73",
+      "document_id": "doc-3",
+      "category_id": "cat-posicao",
+      "value": "Cético",
+      "set_by": null,
+      "author_name": "Júlia",
+      "layer": "individual"
+    },
+    {
+      "id": "v74",
+      "document_id": "doc-4",
+      "category_id": "cat-posicao",
+      "value": "Ambivalente",
+      "set_by": null,
+      "author_name": "Rafael",
+      "layer": "individual"
+    },
+    {
+      "id": "v75",
+      "document_id": "doc-4",
+      "category_id": "cat-posicao",
+      "value": "Favorável",
+      "set_by": null,
+      "author_name": "Júlia",
+      "layer": "individual"
+    },
+    {
+      "id": "v76",
+      "document_id": "doc-6",
+      "category_id": "cat-posicao",
+      "value": "Ambivalente",
+      "set_by": null,
+      "author_name": "Rafael",
+      "layer": "individual"
+    },
+    {
+      "id": "v77",
+      "document_id": "doc-6",
+      "category_id": "cat-posicao",
+      "value": "Cético",
+      "set_by": null,
+      "author_name": "Júlia",
+      "layer": "individual"
+    },
+    {
+      "id": "v78",
+      "document_id": "doc-8",
+      "category_id": "cat-posicao",
+      "value": "Outros",
+      "set_by": null,
+      "author_name": "Rafael",
+      "layer": "individual"
+    },
+    {
+      "id": "v79",
+      "document_id": "doc-8",
+      "category_id": "cat-posicao",
+      "value": "Ambivalente",
+      "set_by": null,
+      "author_name": "Júlia",
+      "layer": "individual"
+    }
+  ],
+  "codes": [
+    {
+      "id": "code-a0",
+      "parent_id": null,
+      "name": "Adoção e motivação",
+      "hue": 0,
+      "depth": 0,
+      "position": 0,
+      "hue_deg": 210
+    },
+    {
+      "id": "code-a1",
+      "parent_id": "code-a0",
+      "name": "Ganhos de produtividade",
+      "hue": 0,
+      "depth": 1,
+      "position": 1,
+      "hue_deg": 210
+    },
+    {
+      "id": "code-a1a",
+      "parent_id": "code-a1",
+      "name": "Aceleração de pesquisa jurídica",
+      "hue": 0,
+      "depth": 2,
+      "position": 2,
+      "hue_deg": 210
+    },
+    {
+      "id": "code-a1b",
+      "parent_id": "code-a1",
+      "name": "Automação de tarefas repetitivas",
+      "hue": 0,
+      "depth": 2,
+      "position": 3,
+      "hue_deg": 210
+    },
+    {
+      "id": "code-a2",
+      "parent_id": "code-a0",
+      "name": "Pressão competitiva do mercado",
+      "hue": 0,
+      "depth": 1,
+      "position": 4,
+      "hue_deg": 210
+    },
+    {
+      "id": "code-a3",
+      "parent_id": "code-a0",
+      "name": "Experimentação individual",
+      "hue": 0,
+      "depth": 1,
+      "position": 5,
+      "hue_deg": 210
+    },
+    {
+      "id": "code-b0",
+      "parent_id": null,
+      "name": "Riscos e resistência",
+      "hue": 1,
+      "depth": 0,
+      "position": 6,
+      "hue_deg": 350
+    },
+    {
+      "id": "code-b1",
+      "parent_id": "code-b0",
+      "name": "Medo de alucinação/erro",
+      "hue": 1,
+      "depth": 1,
+      "position": 7,
+      "hue_deg": 350
+    },
+    {
+      "id": "code-b2",
+      "parent_id": "code-b0",
+      "name": "Resistência de sócios seniores",
+      "hue": 1,
+      "depth": 1,
+      "position": 8,
+      "hue_deg": 350
+    },
+    {
+      "id": "code-b3",
+      "parent_id": "code-b0",
+      "name": "Confidencialidade do cliente",
+      "hue": 1,
+      "depth": 1,
+      "position": 9,
+      "hue_deg": 350
+    },
+    {
+      "id": "code-b4",
+      "parent_id": "code-b0",
+      "name": "Responsabilidade profissional",
+      "hue": 1,
+      "depth": 1,
+      "position": 10,
+      "hue_deg": 350
+    },
+    {
+      "id": "code-c0",
+      "parent_id": null,
+      "name": "Mudança cultural e governança",
+      "hue": 2,
+      "depth": 0,
+      "position": 11,
+      "hue_deg": 140
+    },
+    {
+      "id": "code-c1",
+      "parent_id": "code-c0",
+      "name": "Divisão geracional",
+      "hue": 2,
+      "depth": 1,
+      "position": 12,
+      "hue_deg": 140
+    },
+    {
+      "id": "code-c2",
+      "parent_id": "code-c0",
+      "name": "Treinamento e capacitação",
+      "hue": 2,
+      "depth": 1,
+      "position": 13,
+      "hue_deg": 140
+    },
+    {
+      "id": "code-c3",
+      "parent_id": "code-c0",
+      "name": "Política institucional de uso",
+      "hue": 2,
+      "depth": 1,
+      "position": 14,
+      "hue_deg": 140
+    },
+    {
+      "id": "code-f0",
+      "parent_id": null,
+      "name": "Impacto no modelo de negócio",
+      "hue": 3,
+      "depth": 0,
+      "position": 15,
+      "hue_deg": 40
+    },
+    {
+      "id": "code-f1",
+      "parent_id": "code-f0",
+      "name": "Cobrança por hora ameaçada",
+      "hue": 3,
+      "depth": 1,
+      "position": 16,
+      "hue_deg": 40
+    },
+    {
+      "id": "code-f2",
+      "parent_id": "code-f0",
+      "name": "Futuro de júnior e estagiário",
+      "hue": 3,
+      "depth": 1,
+      "position": 17,
+      "hue_deg": 40
+    },
+    {
+      "id": "code-d0",
+      "parent_id": null,
+      "name": "Citação emblemática",
+      "hue": 4,
+      "depth": 0,
+      "position": 18,
+      "hue_deg": 275
+    },
+    {
+      "id": "code-e0",
+      "parent_id": null,
+      "name": "Censura",
+      "hue": 5,
+      "depth": 0,
+      "position": 19,
+      "hue_deg": -2,
+      "is_redaction": true
+    },
+    {
+      "id": "code-e1",
+      "parent_id": "code-e0",
+      "name": "Nomes",
+      "hue": 5,
+      "depth": 1,
+      "position": 20,
+      "hue_deg": -2,
+      "is_redaction": true
+    },
+    {
+      "id": "code-e2",
+      "parent_id": "code-e0",
+      "name": "Localização/empresa",
+      "hue": 5,
+      "depth": 1,
+      "position": 21,
+      "hue_deg": -2,
+      "is_redaction": true
+    }
+  ],
+  "codings": [
+    {
+      "id": "c1",
+      "document_id": "doc-1",
+      "code_id": "code-a2",
+      "span_start": 351,
+      "span_end": 418,
+      "quote": "Foi a pressão do mercado que abriu a porta, não foi convicção minha",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c2",
+      "document_id": "doc-1",
+      "code_id": "code-a2",
+      "span_start": 351,
+      "span_end": 418,
+      "quote": "Foi a pressão do mercado que abriu a porta, não foi convicção minha",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c3",
+      "document_id": "doc-1",
+      "code_id": "code-a2",
+      "span_start": 351,
+      "span_end": 418,
+      "quote": "Foi a pressão do mercado que abriu a porta, não foi convicção minha",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c4",
+      "document_id": "doc-1",
+      "code_id": "code-a2",
+      "span_start": 351,
+      "span_end": 418,
+      "quote": "Foi a pressão do mercado que abriu a porta, não foi convicção minha",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c5",
+      "document_id": "doc-1",
+      "code_id": "code-a1a",
+      "span_start": 740,
+      "span_end": 817,
+      "quote": "Uma pesquisa de jurisprudência que levava uma tarde inteira hoje sai num café",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c6",
+      "document_id": "doc-1",
+      "code_id": "code-a1a",
+      "span_start": 740,
+      "span_end": 817,
+      "quote": "Uma pesquisa de jurisprudência que levava uma tarde inteira hoje sai num café",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c7",
+      "document_id": "doc-1",
+      "code_id": "code-a1a",
+      "span_start": 740,
+      "span_end": 817,
+      "quote": "Uma pesquisa de jurisprudência que levava uma tarde inteira hoje sai num café",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c8",
+      "document_id": "doc-1",
+      "code_id": "code-a1a",
+      "span_start": 740,
+      "span_end": 817,
+      "quote": "Uma pesquisa de jurisprudência que levava uma tarde inteira hoje sai num café",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c9",
+      "document_id": "doc-1",
+      "code_id": "code-a1b",
+      "span_start": 846,
+      "span_end": 959,
+      "quote": "formatar contrato, revisar cláusula padrão, montar minuta de petição simples — isso a ferramenta despacha sozinha",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c10",
+      "document_id": "doc-1",
+      "code_id": "code-a1b",
+      "span_start": 846,
+      "span_end": 959,
+      "quote": "formatar contrato, revisar cláusula padrão, montar minuta de petição simples — isso a ferramenta despacha sozinha",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c11",
+      "document_id": "doc-1",
+      "code_id": "code-a1b",
+      "span_start": 846,
+      "span_end": 959,
+      "quote": "formatar contrato, revisar cláusula padrão, montar minuta de petição simples — isso a ferramenta despacha sozinha",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c12",
+      "document_id": "doc-1",
+      "code_id": "code-a3",
+      "span_start": 1113,
+      "span_end": 1180,
+      "quote": "Eu testo em casa, no meu computador, antes de liberar para a equipe",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c13",
+      "document_id": "doc-1",
+      "code_id": "code-a3",
+      "span_start": 1113,
+      "span_end": 1180,
+      "quote": "Eu testo em casa, no meu computador, antes de liberar para a equipe",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c14",
+      "document_id": "doc-1",
+      "code_id": "code-a3",
+      "span_start": 1113,
+      "span_end": 1180,
+      "quote": "Eu testo em casa, no meu computador, antes de liberar para a equipe",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c15",
+      "document_id": "doc-1",
+      "code_id": "code-b1",
+      "span_start": 1369,
+      "span_end": 1416,
+      "quote": "a máquina inventou o acórdão, com número e tudo",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c16",
+      "document_id": "doc-1",
+      "code_id": "code-b1",
+      "span_start": 1369,
+      "span_end": 1416,
+      "quote": "a máquina inventou o acórdão, com número e tudo",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c17",
+      "document_id": "doc-1",
+      "code_id": "code-b1",
+      "span_start": 1369,
+      "span_end": 1416,
+      "quote": "a máquina inventou o acórdão, com número e tudo",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c18",
+      "document_id": "doc-1",
+      "code_id": "code-b1",
+      "span_start": 1369,
+      "span_end": 1416,
+      "quote": "a máquina inventou o acórdão, com número e tudo",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c19",
+      "document_id": "doc-1",
+      "code_id": "code-b3",
+      "span_start": 1475,
+      "span_end": 1557,
+      "quote": "eu jamais jogaria os dados de um caso de M&A do meu cliente numa ferramenta dessas",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c20",
+      "document_id": "doc-1",
+      "code_id": "code-b3",
+      "span_start": 1475,
+      "span_end": 1557,
+      "quote": "eu jamais jogaria os dados de um caso de M&A do meu cliente numa ferramenta dessas",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c21",
+      "document_id": "doc-1",
+      "code_id": "code-b3",
+      "span_start": 1475,
+      "span_end": 1557,
+      "quote": "eu jamais jogaria os dados de um caso de M&A do meu cliente numa ferramenta dessas",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c22",
+      "document_id": "doc-1",
+      "code_id": "code-b3",
+      "span_start": 1475,
+      "span_end": 1557,
+      "quote": "eu jamais jogaria os dados de um caso de M&A do meu cliente numa ferramenta dessas",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c23",
+      "document_id": "doc-1",
+      "code_id": "code-b4",
+      "span_start": 1636,
+      "span_end": 1703,
+      "quote": "o advogado assina a peça, a responsabilidade é dele, não da máquina",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c24",
+      "document_id": "doc-1",
+      "code_id": "code-b4",
+      "span_start": 1636,
+      "span_end": 1703,
+      "quote": "o advogado assina a peça, a responsabilidade é dele, não da máquina",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c25",
+      "document_id": "doc-1",
+      "code_id": "code-b4",
+      "span_start": 1636,
+      "span_end": 1703,
+      "quote": "o advogado assina a peça, a responsabilidade é dele, não da máquina",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c26",
+      "document_id": "doc-1",
+      "code_id": "code-b2",
+      "span_start": 1783,
+      "span_end": 1821,
+      "quote": "Os sócios mais seniores torcem o nariz",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c27",
+      "document_id": "doc-1",
+      "code_id": "code-b2",
+      "span_start": 1783,
+      "span_end": 1821,
+      "quote": "Os sócios mais seniores torcem o nariz",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c28",
+      "document_id": "doc-1",
+      "code_id": "code-b2",
+      "span_start": 1783,
+      "span_end": 1821,
+      "quote": "Os sócios mais seniores torcem o nariz",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c29",
+      "document_id": "doc-1",
+      "code_id": "code-c1",
+      "span_start": 1920,
+      "span_end": 1996,
+      "quote": "os associados júnior já chegam usando, os sócios de cabelo branco desconfiam",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c30",
+      "document_id": "doc-1",
+      "code_id": "code-c1",
+      "span_start": 1920,
+      "span_end": 1996,
+      "quote": "os associados júnior já chegam usando, os sócios de cabelo branco desconfiam",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c31",
+      "document_id": "doc-1",
+      "code_id": "code-c1",
+      "span_start": 1920,
+      "span_end": 1996,
+      "quote": "os associados júnior já chegam usando, os sócios de cabelo branco desconfiam",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c32",
+      "document_id": "doc-1",
+      "code_id": "code-c1",
+      "span_start": 1920,
+      "span_end": 1996,
+      "quote": "os associados júnior já chegam usando, os sócios de cabelo branco desconfiam",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c33",
+      "document_id": "doc-1",
+      "code_id": "code-c3",
+      "span_start": 2091,
+      "span_end": 2141,
+      "quote": "Criamos uma política interna de uso no ano passado",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c34",
+      "document_id": "doc-1",
+      "code_id": "code-c3",
+      "span_start": 2091,
+      "span_end": 2141,
+      "quote": "Criamos uma política interna de uso no ano passado",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c35",
+      "document_id": "doc-1",
+      "code_id": "code-c3",
+      "span_start": 2091,
+      "span_end": 2141,
+      "quote": "Criamos uma política interna de uso no ano passado",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c36",
+      "document_id": "doc-1",
+      "code_id": "code-c3",
+      "span_start": 2091,
+      "span_end": 2141,
+      "quote": "Criamos uma política interna de uso no ano passado",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c37",
+      "document_id": "doc-1",
+      "code_id": "code-c2",
+      "span_start": 1182,
+      "span_end": 1227,
+      "quote": "Ninguém me ensinou — fui aprendendo no tatear",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c38",
+      "document_id": "doc-1",
+      "code_id": "code-c2",
+      "span_start": 1182,
+      "span_end": 1227,
+      "quote": "Ninguém me ensinou — fui aprendendo no tatear",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c39",
+      "document_id": "doc-1",
+      "code_id": "code-c2",
+      "span_start": 1182,
+      "span_end": 1227,
+      "quote": "Ninguém me ensinou — fui aprendendo no tatear",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c40",
+      "document_id": "doc-1",
+      "code_id": "code-f1",
+      "span_start": 2476,
+      "span_end": 2532,
+      "quote": "O modelo de honorário por hora está com os dias contados",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c41",
+      "document_id": "doc-1",
+      "code_id": "code-f1",
+      "span_start": 2476,
+      "span_end": 2532,
+      "quote": "O modelo de honorário por hora está com os dias contados",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c42",
+      "document_id": "doc-1",
+      "code_id": "code-f1",
+      "span_start": 2476,
+      "span_end": 2532,
+      "quote": "O modelo de honorário por hora está com os dias contados",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c43",
+      "document_id": "doc-1",
+      "code_id": "code-f1",
+      "span_start": 2476,
+      "span_end": 2532,
+      "quote": "O modelo de honorário por hora está com os dias contados",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c44",
+      "document_id": "doc-1",
+      "code_id": "code-f2",
+      "span_start": 2586,
+      "span_end": 2657,
+      "quote": "se a máquina faz o trabalho do estagiário, para que serve o estagiário?",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c45",
+      "document_id": "doc-1",
+      "code_id": "code-f2",
+      "span_start": 2586,
+      "span_end": 2657,
+      "quote": "se a máquina faz o trabalho do estagiário, para que serve o estagiário?",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c46",
+      "document_id": "doc-1",
+      "code_id": "code-f2",
+      "span_start": 2586,
+      "span_end": 2657,
+      "quote": "se a máquina faz o trabalho do estagiário, para que serve o estagiário?",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c47",
+      "document_id": "doc-1",
+      "code_id": "code-f2",
+      "span_start": 2586,
+      "span_end": 2657,
+      "quote": "se a máquina faz o trabalho do estagiário, para que serve o estagiário?",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c48",
+      "document_id": "doc-1",
+      "code_id": "code-d0",
+      "span_start": 2790,
+      "span_end": 2888,
+      "quote": "Não dá para colocar o gênio de volta na lâmpada — mas dá para ensinar o gênio a respeitar o sigilo",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c49",
+      "document_id": "doc-1",
+      "code_id": "code-d0",
+      "span_start": 2790,
+      "span_end": 2888,
+      "quote": "Não dá para colocar o gênio de volta na lâmpada — mas dá para ensinar o gênio a respeitar o sigilo",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c50",
+      "document_id": "doc-1",
+      "code_id": "code-d0",
+      "span_start": 2790,
+      "span_end": 2888,
+      "quote": "Não dá para colocar o gênio de volta na lâmpada — mas dá para ensinar o gênio a respeitar o sigilo",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c51",
+      "document_id": "doc-2",
+      "code_id": "code-a1",
+      "span_start": 660,
+      "span_end": 695,
+      "quote": "É um ganho de produtividade absurdo",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c52",
+      "document_id": "doc-2",
+      "code_id": "code-a1",
+      "span_start": 660,
+      "span_end": 695,
+      "quote": "É um ganho de produtividade absurdo",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c53",
+      "document_id": "doc-2",
+      "code_id": "code-a1",
+      "span_start": 660,
+      "span_end": 695,
+      "quote": "É um ganho de produtividade absurdo",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c54",
+      "document_id": "doc-2",
+      "code_id": "code-c1",
+      "span_start": 333,
+      "span_end": 392,
+      "quote": "a gente, mais novo, já chegou usando; eles ainda desconfiam",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c55",
+      "document_id": "doc-2",
+      "code_id": "code-c1",
+      "span_start": 333,
+      "span_end": 392,
+      "quote": "a gente, mais novo, já chegou usando; eles ainda desconfiam",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c56",
+      "document_id": "doc-2",
+      "code_id": "code-c1",
+      "span_start": 333,
+      "span_end": 392,
+      "quote": "a gente, mais novo, já chegou usando; eles ainda desconfiam",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c57",
+      "document_id": "doc-2",
+      "code_id": "code-a1a",
+      "span_start": 521,
+      "span_end": 567,
+      "quote": "agora a busca de jurisprudência sai em minutos",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c58",
+      "document_id": "doc-2",
+      "code_id": "code-a1a",
+      "span_start": 521,
+      "span_end": 567,
+      "quote": "agora a busca de jurisprudência sai em minutos",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c59",
+      "document_id": "doc-2",
+      "code_id": "code-a1a",
+      "span_start": 521,
+      "span_end": 567,
+      "quote": "agora a busca de jurisprudência sai em minutos",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c60",
+      "document_id": "doc-2",
+      "code_id": "code-a1b",
+      "span_start": 585,
+      "span_end": 658,
+      "quote": "automatizar coisa repetitiva, tipo padronizar contrato e revisar cláusula",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c61",
+      "document_id": "doc-2",
+      "code_id": "code-a1b",
+      "span_start": 585,
+      "span_end": 658,
+      "quote": "automatizar coisa repetitiva, tipo padronizar contrato e revisar cláusula",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c62",
+      "document_id": "doc-2",
+      "code_id": "code-c2",
+      "span_start": 780,
+      "span_end": 826,
+      "quote": "Ninguém me ensinou, eu fui na tentativa e erro",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c63",
+      "document_id": "doc-2",
+      "code_id": "code-c2",
+      "span_start": 780,
+      "span_end": 826,
+      "quote": "Ninguém me ensinou, eu fui na tentativa e erro",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c64",
+      "document_id": "doc-2",
+      "code_id": "code-c2",
+      "span_start": 780,
+      "span_end": 826,
+      "quote": "Ninguém me ensinou, eu fui na tentativa e erro",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c65",
+      "document_id": "doc-2",
+      "code_id": "code-b1",
+      "span_start": 906,
+      "span_end": 960,
+      "quote": "Já vi a ferramenta inventar um acórdão que não existia",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c66",
+      "document_id": "doc-2",
+      "code_id": "code-b1",
+      "span_start": 906,
+      "span_end": 960,
+      "quote": "Já vi a ferramenta inventar um acórdão que não existia",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c67",
+      "document_id": "doc-2",
+      "code_id": "code-b1",
+      "span_start": 906,
+      "span_end": 960,
+      "quote": "Já vi a ferramenta inventar um acórdão que não existia",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c68",
+      "document_id": "doc-2",
+      "code_id": "code-f1",
+      "span_start": 1170,
+      "span_end": 1218,
+      "quote": "o modelo de cobrar por hora não se sustenta mais",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c69",
+      "document_id": "doc-2",
+      "code_id": "code-f1",
+      "span_start": 1170,
+      "span_end": 1218,
+      "quote": "o modelo de cobrar por hora não se sustenta mais",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c70",
+      "document_id": "doc-2",
+      "code_id": "code-f1",
+      "span_start": 1170,
+      "span_end": 1218,
+      "quote": "o modelo de cobrar por hora não se sustenta mais",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c71",
+      "document_id": "doc-2",
+      "code_id": "code-f2",
+      "span_start": 1229,
+      "span_end": 1275,
+      "quote": "vão contratar menos estagiário por causa disso",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c72",
+      "document_id": "doc-2",
+      "code_id": "code-f2",
+      "span_start": 1229,
+      "span_end": 1275,
+      "quote": "vão contratar menos estagiário por causa disso",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c73",
+      "document_id": "doc-2",
+      "code_id": "code-f2",
+      "span_start": 1229,
+      "span_end": 1275,
+      "quote": "vão contratar menos estagiário por causa disso",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c74",
+      "document_id": "doc-3",
+      "code_id": "code-b2",
+      "span_start": 164,
+      "span_end": 205,
+      "quote": "Sou cético, e não tenho vergonha de dizer",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c75",
+      "document_id": "doc-3",
+      "code_id": "code-b2",
+      "span_start": 164,
+      "span_end": 205,
+      "quote": "Sou cético, e não tenho vergonha de dizer",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c76",
+      "document_id": "doc-3",
+      "code_id": "code-b2",
+      "span_start": 164,
+      "span_end": 205,
+      "quote": "Sou cético, e não tenho vergonha de dizer",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c77",
+      "document_id": "doc-3",
+      "code_id": "code-b4",
+      "span_start": 227,
+      "span_end": 275,
+      "quote": "O sócio que assina a peça é o responsável, ponto",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c78",
+      "document_id": "doc-3",
+      "code_id": "code-b4",
+      "span_start": 227,
+      "span_end": 275,
+      "quote": "O sócio que assina a peça é o responsável, ponto",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c79",
+      "document_id": "doc-3",
+      "code_id": "code-b4",
+      "span_start": 227,
+      "span_end": 275,
+      "quote": "O sócio que assina a peça é o responsável, ponto",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c80",
+      "document_id": "doc-3",
+      "code_id": "code-b1",
+      "span_start": 360,
+      "span_end": 401,
+      "quote": "um caso de acórdão fabricado pela máquina",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c81",
+      "document_id": "doc-3",
+      "code_id": "code-b1",
+      "span_start": 360,
+      "span_end": 401,
+      "quote": "um caso de acórdão fabricado pela máquina",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c82",
+      "document_id": "doc-3",
+      "code_id": "code-b1",
+      "span_start": 360,
+      "span_end": 401,
+      "quote": "um caso de acórdão fabricado pela máquina",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c83",
+      "document_id": "doc-3",
+      "code_id": "code-b3",
+      "span_start": 575,
+      "span_end": 662,
+      "quote": "Colocar informação de um cliente numa ferramenta na nuvem é, para mim, quebra de sigilo",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c84",
+      "document_id": "doc-3",
+      "code_id": "code-b3",
+      "span_start": 575,
+      "span_end": 662,
+      "quote": "Colocar informação de um cliente numa ferramenta na nuvem é, para mim, quebra de sigilo",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c85",
+      "document_id": "doc-3",
+      "code_id": "code-b3",
+      "span_start": 575,
+      "span_end": 662,
+      "quote": "Colocar informação de um cliente numa ferramenta na nuvem é, para mim, quebra de sigilo",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c86",
+      "document_id": "doc-3",
+      "code_id": "code-a2",
+      "span_start": 803,
+      "span_end": 884,
+      "quote": "ela vem dos clientes, que comparam preço e velocidade com escritórios que já usam",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c87",
+      "document_id": "doc-3",
+      "code_id": "code-a2",
+      "span_start": 803,
+      "span_end": 884,
+      "quote": "ela vem dos clientes, que comparam preço e velocidade com escritórios que já usam",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c88",
+      "document_id": "doc-3",
+      "code_id": "code-a2",
+      "span_start": 803,
+      "span_end": 884,
+      "quote": "ela vem dos clientes, que comparam preço e velocidade com escritórios que já usam",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c89",
+      "document_id": "doc-3",
+      "code_id": "code-c1",
+      "span_start": 958,
+      "span_end": 988,
+      "quote": "Os jovens daqui reclamam disso",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c90",
+      "document_id": "doc-3",
+      "code_id": "code-c1",
+      "span_start": 958,
+      "span_end": 988,
+      "quote": "Os jovens daqui reclamam disso",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c91",
+      "document_id": "doc-3",
+      "code_id": "code-c3",
+      "span_start": 1045,
+      "span_end": 1111,
+      "quote": "Aqui na Banca Exemplo não há nada escrito, e acho isso um problema",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c92",
+      "document_id": "doc-3",
+      "code_id": "code-c3",
+      "span_start": 1045,
+      "span_end": 1111,
+      "quote": "Aqui na Banca Exemplo não há nada escrito, e acho isso um problema",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c93",
+      "document_id": "doc-3",
+      "code_id": "code-c3",
+      "span_start": 1045,
+      "span_end": 1111,
+      "quote": "Aqui na Banca Exemplo não há nada escrito, e acho isso um problema",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c94",
+      "document_id": "doc-4",
+      "code_id": "code-a3",
+      "span_start": 218,
+      "span_end": 255,
+      "quote": "É experimentação minha mesmo, em casa",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c95",
+      "document_id": "doc-4",
+      "code_id": "code-a3",
+      "span_start": 218,
+      "span_end": 255,
+      "quote": "É experimentação minha mesmo, em casa",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c96",
+      "document_id": "doc-4",
+      "code_id": "code-a3",
+      "span_start": 218,
+      "span_end": 255,
+      "quote": "É experimentação minha mesmo, em casa",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c97",
+      "document_id": "doc-4",
+      "code_id": "code-a1a",
+      "span_start": 257,
+      "span_end": 320,
+      "quote": "Ajuda muito a resumir decisão longa e a achar precedente rápido",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c98",
+      "document_id": "doc-4",
+      "code_id": "code-a1a",
+      "span_start": 257,
+      "span_end": 320,
+      "quote": "Ajuda muito a resumir decisão longa e a achar precedente rápido",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c99",
+      "document_id": "doc-4",
+      "code_id": "code-a1a",
+      "span_start": 257,
+      "span_end": 320,
+      "quote": "Ajuda muito a resumir decisão longa e a achar precedente rápido",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c100",
+      "document_id": "doc-4",
+      "code_id": "code-c2",
+      "span_start": 385,
+      "span_end": 409,
+      "quote": "Que nada. Ninguém ensina",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c101",
+      "document_id": "doc-4",
+      "code_id": "code-c2",
+      "span_start": 385,
+      "span_end": 409,
+      "quote": "Que nada. Ninguém ensina",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c102",
+      "document_id": "doc-4",
+      "code_id": "code-c2",
+      "span_start": 385,
+      "span_end": 409,
+      "quote": "Que nada. Ninguém ensina",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c103",
+      "document_id": "doc-4",
+      "code_id": "code-b1",
+      "span_start": 496,
+      "span_end": 555,
+      "quote": "já vi a ferramenta errar e ter uma confiança enorme no erro",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c104",
+      "document_id": "doc-4",
+      "code_id": "code-b1",
+      "span_start": 496,
+      "span_end": 555,
+      "quote": "já vi a ferramenta errar e ter uma confiança enorme no erro",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c105",
+      "document_id": "doc-4",
+      "code_id": "code-f2",
+      "span_start": 680,
+      "span_end": 737,
+      "quote": "fico pensando se vão precisar de estagiário daqui a pouco",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c106",
+      "document_id": "doc-4",
+      "code_id": "code-f2",
+      "span_start": 680,
+      "span_end": 737,
+      "quote": "fico pensando se vão precisar de estagiário daqui a pouco",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c107",
+      "document_id": "doc-4",
+      "code_id": "code-f2",
+      "span_start": 680,
+      "span_end": 737,
+      "quote": "fico pensando se vão precisar de estagiário daqui a pouco",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c108",
+      "document_id": "doc-5",
+      "code_id": "code-c2",
+      "span_start": 229,
+      "span_end": 327,
+      "quote": "eu puxei a fila do treinamento: montei oficinas para a equipe aprender a usar com responsabilidade",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c109",
+      "document_id": "doc-5",
+      "code_id": "code-c2",
+      "span_start": 229,
+      "span_end": 327,
+      "quote": "eu puxei a fila do treinamento: montei oficinas para a equipe aprender a usar com responsabilidade",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c110",
+      "document_id": "doc-5",
+      "code_id": "code-c2",
+      "span_start": 229,
+      "span_end": 327,
+      "quote": "eu puxei a fila do treinamento: montei oficinas para a equipe aprender a usar com responsabilidade",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c111",
+      "document_id": "doc-5",
+      "code_id": "code-a1",
+      "span_start": 384,
+      "span_end": 412,
+      "quote": "A produtividade subiu, claro",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c112",
+      "document_id": "doc-5",
+      "code_id": "code-a1",
+      "span_start": 384,
+      "span_end": 412,
+      "quote": "A produtividade subiu, claro",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c113",
+      "document_id": "doc-5",
+      "code_id": "code-a1",
+      "span_start": 384,
+      "span_end": 412,
+      "quote": "A produtividade subiu, claro",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c114",
+      "document_id": "doc-5",
+      "code_id": "code-a1b",
+      "span_start": 415,
+      "span_end": 483,
+      "quote": "a redação de peças e a revisão contratual ficaram muito mais rápidas",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c115",
+      "document_id": "doc-5",
+      "code_id": "code-a1b",
+      "span_start": 415,
+      "span_end": 483,
+      "quote": "a redação de peças e a revisão contratual ficaram muito mais rápidas",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c116",
+      "document_id": "doc-5",
+      "code_id": "code-c3",
+      "span_start": 694,
+      "span_end": 788,
+      "quote": "A política interna que adotamos deixou claro que nenhum dado de cliente entra sem anonimização",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c117",
+      "document_id": "doc-5",
+      "code_id": "code-c3",
+      "span_start": 694,
+      "span_end": 788,
+      "quote": "A política interna que adotamos deixou claro que nenhum dado de cliente entra sem anonimização",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c118",
+      "document_id": "doc-5",
+      "code_id": "code-c3",
+      "span_start": 694,
+      "span_end": 788,
+      "quote": "A política interna que adotamos deixou claro que nenhum dado de cliente entra sem anonimização",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c119",
+      "document_id": "doc-5",
+      "code_id": "code-b3",
+      "span_start": 743,
+      "span_end": 788,
+      "quote": "nenhum dado de cliente entra sem anonimização",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c120",
+      "document_id": "doc-5",
+      "code_id": "code-b3",
+      "span_start": 743,
+      "span_end": 788,
+      "quote": "nenhum dado de cliente entra sem anonimização",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c121",
+      "document_id": "doc-5",
+      "code_id": "code-b3",
+      "span_start": 743,
+      "span_end": 788,
+      "quote": "nenhum dado de cliente entra sem anonimização",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c122",
+      "document_id": "doc-5",
+      "code_id": "code-b3",
+      "span_start": 790,
+      "span_end": 839,
+      "quote": "Isso resolveu metade do medo de confidencialidade",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c123",
+      "document_id": "doc-5",
+      "code_id": "code-b3",
+      "span_start": 790,
+      "span_end": 839,
+      "quote": "Isso resolveu metade do medo de confidencialidade",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c124",
+      "document_id": "doc-5",
+      "code_id": "code-b4",
+      "span_start": 841,
+      "span_end": 886,
+      "quote": "A responsabilidade final continua do advogado",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c125",
+      "document_id": "doc-5",
+      "code_id": "code-b4",
+      "span_start": 841,
+      "span_end": 886,
+      "quote": "A responsabilidade final continua do advogado",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c126",
+      "document_id": "doc-5",
+      "code_id": "code-c1",
+      "span_start": 1038,
+      "span_end": 1092,
+      "quote": "A divisão de gerações existe, mas treinamento aproxima",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c127",
+      "document_id": "doc-5",
+      "code_id": "code-c1",
+      "span_start": 1038,
+      "span_end": 1092,
+      "quote": "A divisão de gerações existe, mas treinamento aproxima",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c128",
+      "document_id": "doc-5",
+      "code_id": "code-c1",
+      "span_start": 1038,
+      "span_end": 1092,
+      "quote": "A divisão de gerações existe, mas treinamento aproxima",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c129",
+      "document_id": "doc-6",
+      "code_id": "code-a1",
+      "span_start": 153,
+      "span_end": 187,
+      "quote": "Reconheço o ganho de produtividade",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c130",
+      "document_id": "doc-6",
+      "code_id": "code-a1",
+      "span_start": 153,
+      "span_end": 187,
+      "quote": "Reconheço o ganho de produtividade",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c131",
+      "document_id": "doc-6",
+      "code_id": "code-a1",
+      "span_start": 153,
+      "span_end": 187,
+      "quote": "Reconheço o ganho de produtividade",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c132",
+      "document_id": "doc-6",
+      "code_id": "code-a1b",
+      "span_start": 190,
+      "span_end": 260,
+      "quote": "automatizar a parte repetitiva de contrato me devolveu horas da semana",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c133",
+      "document_id": "doc-6",
+      "code_id": "code-a1b",
+      "span_start": 190,
+      "span_end": 260,
+      "quote": "automatizar a parte repetitiva de contrato me devolveu horas da semana",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c134",
+      "document_id": "doc-6",
+      "code_id": "code-a1a",
+      "span_start": 414,
+      "span_end": 443,
+      "quote": "Em pesquisa de jurisprudência",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c135",
+      "document_id": "doc-6",
+      "code_id": "code-a1a",
+      "span_start": 414,
+      "span_end": 443,
+      "quote": "Em pesquisa de jurisprudência",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c136",
+      "document_id": "doc-6",
+      "code_id": "code-a2",
+      "span_start": 589,
+      "span_end": 649,
+      "quote": "Cliente hoje pergunta por que a conta é tão alta se a IA faz",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c137",
+      "document_id": "doc-6",
+      "code_id": "code-a2",
+      "span_start": 589,
+      "span_end": 649,
+      "quote": "Cliente hoje pergunta por que a conta é tão alta se a IA faz",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c138",
+      "document_id": "doc-6",
+      "code_id": "code-a2",
+      "span_start": 589,
+      "span_end": 649,
+      "quote": "Cliente hoje pergunta por que a conta é tão alta se a IA faz",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c139",
+      "document_id": "doc-6",
+      "code_id": "code-f1",
+      "span_start": 651,
+      "span_end": 690,
+      "quote": "A cobrança por hora está mesmo ameaçada",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c140",
+      "document_id": "doc-6",
+      "code_id": "code-f1",
+      "span_start": 651,
+      "span_end": 690,
+      "quote": "A cobrança por hora está mesmo ameaçada",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c141",
+      "document_id": "doc-6",
+      "code_id": "code-f1",
+      "span_start": 651,
+      "span_end": 690,
+      "quote": "A cobrança por hora está mesmo ameaçada",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c142",
+      "document_id": "doc-6",
+      "code_id": "code-c1",
+      "span_start": 705,
+      "span_end": 760,
+      "quote": "eu fico entre o sócio que resiste e o júnior que abraça",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c143",
+      "document_id": "doc-6",
+      "code_id": "code-c1",
+      "span_start": 705,
+      "span_end": 760,
+      "quote": "eu fico entre o sócio que resiste e o júnior que abraça",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c144",
+      "document_id": "doc-6",
+      "code_id": "code-c2",
+      "span_start": 820,
+      "span_end": 854,
+      "quote": "Falta política e falta capacitação",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c145",
+      "document_id": "doc-6",
+      "code_id": "code-c2",
+      "span_start": 820,
+      "span_end": 854,
+      "quote": "Falta política e falta capacitação",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c146",
+      "document_id": "doc-6",
+      "code_id": "code-c2",
+      "span_start": 820,
+      "span_end": 854,
+      "quote": "Falta política e falta capacitação",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c147",
+      "document_id": "doc-6",
+      "code_id": "code-c3",
+      "span_start": 820,
+      "span_end": 854,
+      "quote": "Falta política e falta capacitação",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c148",
+      "document_id": "doc-6",
+      "code_id": "code-c3",
+      "span_start": 820,
+      "span_end": 854,
+      "quote": "Falta política e falta capacitação",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c149",
+      "document_id": "doc-7",
+      "code_id": "code-b3",
+      "span_start": 316,
+      "span_end": 387,
+      "quote": "sigilo do cliente sempre. Nenhum dado identificável entra na ferramenta",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c150",
+      "document_id": "doc-7",
+      "code_id": "code-b3",
+      "span_start": 316,
+      "span_end": 387,
+      "quote": "sigilo do cliente sempre. Nenhum dado identificável entra na ferramenta",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c151",
+      "document_id": "doc-7",
+      "code_id": "code-b3",
+      "span_start": 316,
+      "span_end": 387,
+      "quote": "sigilo do cliente sempre. Nenhum dado identificável entra na ferramenta",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c152",
+      "document_id": "doc-7",
+      "code_id": "code-a1a",
+      "span_start": 474,
+      "span_end": 530,
+      "quote": "A pesquisa jurídica que tomava um dia caiu para uma hora",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c153",
+      "document_id": "doc-7",
+      "code_id": "code-a1a",
+      "span_start": 474,
+      "span_end": 530,
+      "quote": "A pesquisa jurídica que tomava um dia caiu para uma hora",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c154",
+      "document_id": "doc-7",
+      "code_id": "code-a1a",
+      "span_start": 474,
+      "span_end": 530,
+      "quote": "A pesquisa jurídica que tomava um dia caiu para uma hora",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c155",
+      "document_id": "doc-7",
+      "code_id": "code-a1b",
+      "span_start": 532,
+      "span_end": 614,
+      "quote": "A automação de minutas repetitivas liberou os associados para trabalho estratégico",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c156",
+      "document_id": "doc-7",
+      "code_id": "code-a1b",
+      "span_start": 532,
+      "span_end": 614,
+      "quote": "A automação de minutas repetitivas liberou os associados para trabalho estratégico",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c157",
+      "document_id": "doc-7",
+      "code_id": "code-f1",
+      "span_start": 735,
+      "span_end": 775,
+      "quote": "A cobrança por hora não sobrevive a isso",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c158",
+      "document_id": "doc-7",
+      "code_id": "code-f1",
+      "span_start": 735,
+      "span_end": 775,
+      "quote": "A cobrança por hora não sobrevive a isso",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c159",
+      "document_id": "doc-7",
+      "code_id": "code-f1",
+      "span_start": 735,
+      "span_end": 775,
+      "quote": "A cobrança por hora não sobrevive a isso",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c160",
+      "document_id": "doc-7",
+      "code_id": "code-f2",
+      "span_start": 855,
+      "span_end": 940,
+      "quote": "o estagiário não vai mais aprender copiando precedente, vai ter que pensar desde cedo",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c161",
+      "document_id": "doc-7",
+      "code_id": "code-f2",
+      "span_start": 855,
+      "span_end": 940,
+      "quote": "o estagiário não vai mais aprender copiando precedente, vai ter que pensar desde cedo",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c162",
+      "document_id": "doc-7",
+      "code_id": "code-f2",
+      "span_start": 855,
+      "span_end": 940,
+      "quote": "o estagiário não vai mais aprender copiando precedente, vai ter que pensar desde cedo",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c163",
+      "document_id": "doc-7",
+      "code_id": "code-b2",
+      "span_start": 1033,
+      "span_end": 1066,
+      "quote": "Muita, dos sócios da velha guarda",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c164",
+      "document_id": "doc-7",
+      "code_id": "code-b2",
+      "span_start": 1033,
+      "span_end": 1066,
+      "quote": "Muita, dos sócios da velha guarda",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c165",
+      "document_id": "doc-7",
+      "code_id": "code-c1",
+      "span_start": 1068,
+      "span_end": 1101,
+      "quote": "É uma divisão geracional clássica",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c166",
+      "document_id": "doc-7",
+      "code_id": "code-c1",
+      "span_start": 1068,
+      "span_end": 1101,
+      "quote": "É uma divisão geracional clássica",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c167",
+      "document_id": "doc-7",
+      "code_id": "code-c1",
+      "span_start": 1068,
+      "span_end": 1101,
+      "quote": "É uma divisão geracional clássica",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c168",
+      "document_id": "doc-7",
+      "code_id": "code-c2",
+      "span_start": 1112,
+      "span_end": 1179,
+      "quote": "aposto em treinamento contínuo: oficina, manual, gente acompanhando",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c169",
+      "document_id": "doc-7",
+      "code_id": "code-c2",
+      "span_start": 1112,
+      "span_end": 1179,
+      "quote": "aposto em treinamento contínuo: oficina, manual, gente acompanhando",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c170",
+      "document_id": "doc-7",
+      "code_id": "code-c2",
+      "span_start": 1112,
+      "span_end": 1179,
+      "quote": "aposto em treinamento contínuo: oficina, manual, gente acompanhando",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c171",
+      "document_id": "doc-7",
+      "code_id": "code-d0",
+      "span_start": 1289,
+      "span_end": 1347,
+      "quote": "Escritório que não governar a IA vai ser governado por ela",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c172",
+      "document_id": "doc-7",
+      "code_id": "code-d0",
+      "span_start": 1289,
+      "span_end": 1347,
+      "quote": "Escritório que não governar a IA vai ser governado por ela",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c173",
+      "document_id": "doc-7",
+      "code_id": "code-d0",
+      "span_start": 1289,
+      "span_end": 1347,
+      "quote": "Escritório que não governar a IA vai ser governado por ela",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c174",
+      "document_id": "doc-8",
+      "code_id": "code-a1",
+      "span_start": 152,
+      "span_end": 181,
+      "quote": "Ajuda demais na produtividade",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c175",
+      "document_id": "doc-8",
+      "code_id": "code-a1",
+      "span_start": 152,
+      "span_end": 181,
+      "quote": "Ajuda demais na produtividade",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c176",
+      "document_id": "doc-8",
+      "code_id": "code-a1a",
+      "span_start": 183,
+      "span_end": 227,
+      "quote": "A pesquisa jurídica virou questão de minutos",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c177",
+      "document_id": "doc-8",
+      "code_id": "code-a1a",
+      "span_start": 183,
+      "span_end": 227,
+      "quote": "A pesquisa jurídica virou questão de minutos",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c178",
+      "document_id": "doc-8",
+      "code_id": "code-b1",
+      "span_start": 287,
+      "span_end": 321,
+      "quote": "acórdão inventado com número falso",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c179",
+      "document_id": "doc-8",
+      "code_id": "code-b1",
+      "span_start": 287,
+      "span_end": 321,
+      "quote": "acórdão inventado com número falso",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c180",
+      "document_id": "doc-8",
+      "code_id": "code-b3",
+      "span_start": 415,
+      "span_end": 489,
+      "quote": "A gente lida com dado sensível de cliente; jogar isso na nuvem é temerário",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c181",
+      "document_id": "doc-8",
+      "code_id": "code-b3",
+      "span_start": 415,
+      "span_end": 489,
+      "quote": "A gente lida com dado sensível de cliente; jogar isso na nuvem é temerário",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c182",
+      "document_id": "doc-8",
+      "code_id": "code-c3",
+      "span_start": 545,
+      "span_end": 602,
+      "quote": "No meu escritório a política interna resolveu muita coisa",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c183",
+      "document_id": "doc-8",
+      "code_id": "code-c3",
+      "span_start": 545,
+      "span_end": 602,
+      "quote": "No meu escritório a política interna resolveu muita coisa",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c184",
+      "document_id": "doc-8",
+      "code_id": "code-c2",
+      "span_start": 672,
+      "span_end": 696,
+      "quote": "E ninguém treina ninguém",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c185",
+      "document_id": "doc-8",
+      "code_id": "code-c2",
+      "span_start": 672,
+      "span_end": 696,
+      "quote": "E ninguém treina ninguém",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c186",
+      "document_id": "doc-8",
+      "code_id": "code-c1",
+      "span_start": 741,
+      "span_end": 774,
+      "quote": "sócio sênior trava, júnior abraça",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c187",
+      "document_id": "doc-8",
+      "code_id": "code-c1",
+      "span_start": 741,
+      "span_end": 774,
+      "quote": "sócio sênior trava, júnior abraça",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c188",
+      "document_id": "doc-8",
+      "code_id": "code-f1",
+      "span_start": 886,
+      "span_end": 927,
+      "quote": "O modelo de negócio inteiro está em xeque",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c189",
+      "document_id": "doc-8",
+      "code_id": "code-f1",
+      "span_start": 886,
+      "span_end": 927,
+      "quote": "O modelo de negócio inteiro está em xeque",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c190",
+      "document_id": "doc-8",
+      "code_id": "code-f2",
+      "span_start": 962,
+      "span_end": 1016,
+      "quote": "Estou com medo de não ter mais espaço para quem começa",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c191",
+      "document_id": "doc-8",
+      "code_id": "code-f2",
+      "span_start": 962,
+      "span_end": 1016,
+      "quote": "Estou com medo de não ter mais espaço para quem começa",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c192",
+      "document_id": "doc-9",
+      "code_id": "code-c3",
+      "span_start": 89,
+      "span_end": 163,
+      "quote": "Esta política estabelece regras para o uso de ferramentas de IA generativa",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c193",
+      "document_id": "doc-9",
+      "code_id": "code-c3",
+      "span_start": 89,
+      "span_end": 163,
+      "quote": "Esta política estabelece regras para o uso de ferramentas de IA generativa",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c194",
+      "document_id": "doc-9",
+      "code_id": "code-b3",
+      "span_start": 292,
+      "span_end": 399,
+      "quote": "É vedado inserir em qualquer ferramenta dado que identifique cliente, parte ou caso sem anonimização prévia",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c195",
+      "document_id": "doc-9",
+      "code_id": "code-b3",
+      "span_start": 292,
+      "span_end": 399,
+      "quote": "É vedado inserir em qualquer ferramenta dado que identifique cliente, parte ou caso sem anonimização prévia",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c196",
+      "document_id": "doc-9",
+      "code_id": "code-b4",
+      "span_start": 460,
+      "span_end": 532,
+      "quote": "A revisão e a assinatura de toda peça permanecem do advogado responsável",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c197",
+      "document_id": "doc-9",
+      "code_id": "code-b4",
+      "span_start": 460,
+      "span_end": 532,
+      "quote": "A revisão e a assinatura de toda peça permanecem do advogado responsável",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c198",
+      "document_id": "doc-9",
+      "code_id": "code-b1",
+      "span_start": 662,
+      "span_end": 725,
+      "quote": "deve ser conferida na fonte oficial, dado o risco de alucinação",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c199",
+      "document_id": "doc-9",
+      "code_id": "code-b1",
+      "span_start": 662,
+      "span_end": 725,
+      "quote": "deve ser conferida na fonte oficial, dado o risco de alucinação",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c200",
+      "document_id": "doc-9",
+      "code_id": "code-c2",
+      "span_start": 744,
+      "span_end": 822,
+      "quote": "O escritório oferecerá treinamento periódico obrigatório sobre uso responsável",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c201",
+      "document_id": "doc-9",
+      "code_id": "code-c2",
+      "span_start": 744,
+      "span_end": 822,
+      "quote": "O escritório oferecerá treinamento periódico obrigatório sobre uso responsável",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c202",
+      "document_id": "doc-9",
+      "code_id": "code-a1b",
+      "span_start": 864,
+      "span_end": 896,
+      "quote": "automação de minutas repetitivas",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c203",
+      "document_id": "doc-9",
+      "code_id": "code-a1b",
+      "span_start": 864,
+      "span_end": 896,
+      "quote": "automação de minutas repetitivas",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c204",
+      "document_id": "doc-1",
+      "code_id": "code-a0",
+      "span_start": 219,
+      "span_end": 585,
+      "quote": "eu resisti no começo. Hoje eu diria que já me rendi, mas cercada de regra por todo lado. A verdade é que a gente não tinha escolha. Foi a pressão do mercado que abriu a porta, não foi convicção minha: os próprios clientes começaram a perguntar se usávamos inteligência artificial e por que ainda cobrávamos tantas horas por uma pesquisa que a máquina faz em minutos.",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c205",
+      "document_id": "doc-1",
+      "code_id": "code-a0",
+      "span_start": 219,
+      "span_end": 585,
+      "quote": "eu resisti no começo. Hoje eu diria que já me rendi, mas cercada de regra por todo lado. A verdade é que a gente não tinha escolha. Foi a pressão do mercado que abriu a porta, não foi convicção minha: os próprios clientes começaram a perguntar se usávamos inteligência artificial e por que ainda cobrávamos tantas horas por uma pesquisa que a máquina faz em minutos.",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c206",
+      "document_id": "doc-1",
+      "code_id": "code-a0",
+      "span_start": 219,
+      "span_end": 585,
+      "quote": "eu resisti no começo. Hoje eu diria que já me rendi, mas cercada de regra por todo lado. A verdade é que a gente não tinha escolha. Foi a pressão do mercado que abriu a porta, não foi convicção minha: os próprios clientes começaram a perguntar se usávamos inteligência artificial e por que ainda cobrávamos tantas horas por uma pesquisa que a máquina faz em minutos.",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c207",
+      "document_id": "doc-1",
+      "code_id": "code-a1",
+      "span_start": 666,
+      "span_end": 960,
+      "quote": "Produtividade, sem dúvida. O que mudou a vida da equipe foi a velocidade. Uma pesquisa de jurisprudência que levava uma tarde inteira hoje sai num café. E as tarefas repetitivas — formatar contrato, revisar cláusula padrão, montar minuta de petição simples — isso a ferramenta despacha sozinha.",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c208",
+      "document_id": "doc-1",
+      "code_id": "code-a1",
+      "span_start": 666,
+      "span_end": 960,
+      "quote": "Produtividade, sem dúvida. O que mudou a vida da equipe foi a velocidade. Uma pesquisa de jurisprudência que levava uma tarde inteira hoje sai num café. E as tarefas repetitivas — formatar contrato, revisar cláusula padrão, montar minuta de petição simples — isso a ferramenta despacha sozinha.",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c209",
+      "document_id": "doc-1",
+      "code_id": "code-a1",
+      "span_start": 666,
+      "span_end": 960,
+      "quote": "Produtividade, sem dúvida. O que mudou a vida da equipe foi a velocidade. Uma pesquisa de jurisprudência que levava uma tarde inteira hoje sai num café. E as tarefas repetitivas — formatar contrato, revisar cláusula padrão, montar minuta de petição simples — isso a ferramenta despacha sozinha.",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c210",
+      "document_id": "doc-1",
+      "code_id": "code-b0",
+      "span_start": 1275,
+      "span_end": 1704,
+      "quote": "Aí mora o meu medo. Eu já vi um colega citar uma jurisprudência que simplesmente não existia: a máquina inventou o acórdão, com número e tudo. Isso me apavora. Mais grave ainda é a confidencialidade: eu jamais jogaria os dados de um caso de M&A do meu cliente numa ferramenta dessas, não sei onde isso vai parar. E tem a questão de quem responde se der errado: o advogado assina a peça, a responsabilidade é dele, não da máquina.",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c211",
+      "document_id": "doc-1",
+      "code_id": "code-b0",
+      "span_start": 1275,
+      "span_end": 1704,
+      "quote": "Aí mora o meu medo. Eu já vi um colega citar uma jurisprudência que simplesmente não existia: a máquina inventou o acórdão, com número e tudo. Isso me apavora. Mais grave ainda é a confidencialidade: eu jamais jogaria os dados de um caso de M&A do meu cliente numa ferramenta dessas, não sei onde isso vai parar. E tem a questão de quem responde se der errado: o advogado assina a peça, a responsabilidade é dele, não da máquina.",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c212",
+      "document_id": "doc-1",
+      "code_id": "code-c0",
+      "span_start": 1762,
+      "span_end": 2014,
+      "quote": "Há, e ela tem idade. Os sócios mais seniores torcem o nariz — alguns acham que é moda passageira, outros se sentem ameaçados. É uma divisão geracional clara: os associados júnior já chegam usando, os sócios de cabelo branco desconfiam. Eu fico no meio.",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c213",
+      "document_id": "doc-1",
+      "code_id": "code-c0",
+      "span_start": 1762,
+      "span_end": 2014,
+      "quote": "Há, e ela tem idade. Os sócios mais seniores torcem o nariz — alguns acham que é moda passageira, outros se sentem ameaçados. É uma divisão geracional clara: os associados júnior já chegam usando, os sócios de cabelo branco desconfiam. Eu fico no meio.",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c214",
+      "document_id": "doc-1",
+      "code_id": "code-f0",
+      "span_start": 2367,
+      "span_end": 2706,
+      "quote": "Esse é o elefante na sala. Se a pesquisa que eu cobrava seis horas agora leva trinta minutos, como eu cobro? O modelo de honorário por hora está com os dias contados, isso é fato. E me preocupa o futuro dos mais novos: se a máquina faz o trabalho do estagiário, para que serve o estagiário? Vamos ter que reinventar como se forma advogado.",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c215",
+      "document_id": "doc-1",
+      "code_id": "code-f0",
+      "span_start": 2367,
+      "span_end": 2706,
+      "quote": "Esse é o elefante na sala. Se a pesquisa que eu cobrava seis horas agora leva trinta minutos, como eu cobro? O modelo de honorário por hora está com os dias contados, isso é fato. E me preocupa o futuro dos mais novos: se a máquina faz o trabalho do estagiário, para que serve o estagiário? Vamos ter que reinventar como se forma advogado.",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c216",
+      "document_id": "doc-3",
+      "code_id": "code-b0",
+      "span_start": 164,
+      "span_end": 420,
+      "quote": "Sou cético, e não tenho vergonha de dizer. Vejo muito modismo. O sócio que assina a peça é o responsável, ponto — não vou terceirizar isso para um robô que inventa jurisprudência. Já me mostraram um caso de acórdão fabricado pela máquina; aquilo me bastou.",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c217",
+      "document_id": "doc-3",
+      "code_id": "code-b0",
+      "span_start": 164,
+      "span_end": 420,
+      "quote": "Sou cético, e não tenho vergonha de dizer. Vejo muito modismo. O sócio que assina a peça é o responsável, ponto — não vou terceirizar isso para um robô que inventa jurisprudência. Já me mostraram um caso de acórdão fabricado pela máquina; aquilo me bastou.",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c218",
+      "document_id": "doc-3",
+      "code_id": "code-b0",
+      "span_start": 164,
+      "span_end": 420,
+      "quote": "Sou cético, e não tenho vergonha de dizer. Vejo muito modismo. O sócio que assina a peça é o responsável, ponto — não vou terceirizar isso para um robô que inventa jurisprudência. Já me mostraram um caso de acórdão fabricado pela máquina; aquilo me bastou.",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c219",
+      "document_id": "doc-6",
+      "code_id": "code-b1",
+      "span_start": 344,
+      "span_end": 458,
+      "quote": "A alucinação. A ferramenta afirma com toda a certeza uma coisa falsa. Em pesquisa de jurisprudência isso é veneno.",
+      "layer": "individual",
+      "author_name": "Rafael"
+    },
+    {
+      "id": "c220",
+      "document_id": "doc-6",
+      "code_id": "code-b1",
+      "span_start": 344,
+      "span_end": 458,
+      "quote": "A alucinação. A ferramenta afirma com toda a certeza uma coisa falsa. Em pesquisa de jurisprudência isso é veneno.",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c221",
+      "document_id": "doc-6",
+      "code_id": "code-b1",
+      "span_start": 344,
+      "span_end": 458,
+      "quote": "A alucinação. A ferramenta afirma com toda a certeza uma coisa falsa. Em pesquisa de jurisprudência isso é veneno.",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c222",
+      "document_id": "doc-7",
+      "code_id": "code-c3",
+      "span_start": 202,
+      "span_end": 388,
+      "quote": "Com governança. Fui eu que escrevi a política interna de uso de IA. A regra de ouro é simples: produtividade sim, sigilo do cliente sempre. Nenhum dado identificável entra na ferramenta.",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c223",
+      "document_id": "doc-7",
+      "code_id": "code-c3",
+      "span_start": 202,
+      "span_end": 388,
+      "quote": "Com governança. Fui eu que escrevi a política interna de uso de IA. A regra de ouro é simples: produtividade sim, sigilo do cliente sempre. Nenhum dado identificável entra na ferramenta.",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c224",
+      "document_id": "doc-7",
+      "code_id": "code-c3",
+      "span_start": 202,
+      "span_end": 388,
+      "quote": "Com governança. Fui eu que escrevi a política interna de uso de IA. A regra de ouro é simples: produtividade sim, sigilo do cliente sempre. Nenhum dado identificável entra na ferramenta.",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c225",
+      "document_id": "doc-7",
+      "code_id": "code-f0",
+      "span_start": 703,
+      "span_end": 977,
+      "quote": "Aí está a revolução de verdade. A cobrança por hora não sobrevive a isso — estamos migrando para honorário por valor entregue. E repensando a formação: o estagiário não vai mais aprender copiando precedente, vai ter que pensar desde cedo. Isso muda a pirâmide do escritório.",
+      "layer": "individual",
+      "author_name": "Marina"
+    },
+    {
+      "id": "c226",
+      "document_id": "doc-7",
+      "code_id": "code-f0",
+      "span_start": 703,
+      "span_end": 977,
+      "quote": "Aí está a revolução de verdade. A cobrança por hora não sobrevive a isso — estamos migrando para honorário por valor entregue. E repensando a formação: o estagiário não vai mais aprender copiando precedente, vai ter que pensar desde cedo. Isso muda a pirâmide do escritório.",
+      "layer": "individual",
+      "author_name": "Júlia"
+    },
+    {
+      "id": "c227",
+      "document_id": "doc-7",
+      "code_id": "code-f0",
+      "span_start": 703,
+      "span_end": 977,
+      "quote": "Aí está a revolução de verdade. A cobrança por hora não sobrevive a isso — estamos migrando para honorário por valor entregue. E repensando a formação: o estagiário não vai mais aprender copiando precedente, vai ter que pensar desde cedo. Isso muda a pirâmide do escritório.",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c228",
+      "document_id": "doc-1",
+      "code_id": "code-e1",
+      "span_start": 14,
+      "span_end": 27,
+      "quote": "Fulana de Tal",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c229",
+      "document_id": "doc-1",
+      "code_id": "code-e1",
+      "span_start": 187,
+      "span_end": 200,
+      "quote": "Fulana de Tal",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c230",
+      "document_id": "doc-1",
+      "code_id": "code-e1",
+      "span_start": 651,
+      "span_end": 664,
+      "quote": "Fulana de Tal",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c231",
+      "document_id": "doc-1",
+      "code_id": "code-e1",
+      "span_start": 1046,
+      "span_end": 1059,
+      "quote": "Fulana de Tal",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c232",
+      "document_id": "doc-1",
+      "code_id": "code-e1",
+      "span_start": 1260,
+      "span_end": 1273,
+      "quote": "Fulana de Tal",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c233",
+      "document_id": "doc-1",
+      "code_id": "code-e1",
+      "span_start": 1747,
+      "span_end": 1760,
+      "quote": "Fulana de Tal",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c234",
+      "document_id": "doc-1",
+      "code_id": "code-e1",
+      "span_start": 2071,
+      "span_end": 2084,
+      "quote": "Fulana de Tal",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c235",
+      "document_id": "doc-1",
+      "code_id": "code-e1",
+      "span_start": 2352,
+      "span_end": 2365,
+      "quote": "Fulana de Tal",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c236",
+      "document_id": "doc-1",
+      "code_id": "code-e1",
+      "span_start": 2775,
+      "span_end": 2788,
+      "quote": "Fulana de Tal",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c237",
+      "document_id": "doc-2",
+      "code_id": "code-e1",
+      "span_start": 9,
+      "span_end": 26,
+      "quote": "Beltrano de Souza",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c238",
+      "document_id": "doc-2",
+      "code_id": "code-e1",
+      "span_start": 135,
+      "span_end": 152,
+      "quote": "Beltrano de Souza",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c239",
+      "document_id": "doc-2",
+      "code_id": "code-e1",
+      "span_start": 428,
+      "span_end": 445,
+      "quote": "Beltrano de Souza",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c240",
+      "document_id": "doc-2",
+      "code_id": "code-e1",
+      "span_start": 753,
+      "span_end": 770,
+      "quote": "Beltrano de Souza",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c241",
+      "document_id": "doc-2",
+      "code_id": "code-e1",
+      "span_start": 1055,
+      "span_end": 1072,
+      "quote": "Beltrano de Souza",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c242",
+      "document_id": "doc-3",
+      "code_id": "code-e1",
+      "span_start": 13,
+      "span_end": 27,
+      "quote": "Sicrano Modelo",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c243",
+      "document_id": "doc-3",
+      "code_id": "code-e1",
+      "span_start": 148,
+      "span_end": 162,
+      "quote": "Sicrano Modelo",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c244",
+      "document_id": "doc-3",
+      "code_id": "code-e1",
+      "span_start": 462,
+      "span_end": 476,
+      "quote": "Sicrano Modelo",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c245",
+      "document_id": "doc-3",
+      "code_id": "code-e1",
+      "span_start": 776,
+      "span_end": 790,
+      "quote": "Sicrano Modelo",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c246",
+      "document_id": "doc-3",
+      "code_id": "code-e1",
+      "span_start": 1029,
+      "span_end": 1043,
+      "quote": "Sicrano Modelo",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c247",
+      "document_id": "doc-4",
+      "code_id": "code-e1",
+      "span_start": 9,
+      "span_end": 25,
+      "quote": "Joana das Couves",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c248",
+      "document_id": "doc-4",
+      "code_id": "code-e1",
+      "span_start": 143,
+      "span_end": 159,
+      "quote": "Joana das Couves",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c249",
+      "document_id": "doc-4",
+      "code_id": "code-e1",
+      "span_start": 367,
+      "span_end": 383,
+      "quote": "Joana das Couves",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c250",
+      "document_id": "doc-4",
+      "code_id": "code-e1",
+      "span_start": 600,
+      "span_end": 616,
+      "quote": "Joana das Couves",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c251",
+      "document_id": "doc-4",
+      "code_id": "code-e1",
+      "span_start": 195,
+      "span_end": 206,
+      "quote": "Dr. Sicrano",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c252",
+      "document_id": "doc-5",
+      "code_id": "code-e1",
+      "span_start": 14,
+      "span_end": 27,
+      "quote": "Maria Exemplo",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c253",
+      "document_id": "doc-5",
+      "code_id": "code-e1",
+      "span_start": 125,
+      "span_end": 138,
+      "quote": "Maria Exemplo",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c254",
+      "document_id": "doc-5",
+      "code_id": "code-e1",
+      "span_start": 369,
+      "span_end": 382,
+      "quote": "Maria Exemplo",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c255",
+      "document_id": "doc-5",
+      "code_id": "code-e1",
+      "span_start": 664,
+      "span_end": 677,
+      "quote": "Maria Exemplo",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c256",
+      "document_id": "doc-5",
+      "code_id": "code-e1",
+      "span_start": 949,
+      "span_end": 962,
+      "quote": "Maria Exemplo",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c257",
+      "document_id": "doc-6",
+      "code_id": "code-e1",
+      "span_start": 9,
+      "span_end": 19,
+      "quote": "Zé Ninguém",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c258",
+      "document_id": "doc-6",
+      "code_id": "code-e1",
+      "span_start": 114,
+      "span_end": 124,
+      "quote": "Zé Ninguém",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c259",
+      "document_id": "doc-6",
+      "code_id": "code-e1",
+      "span_start": 332,
+      "span_end": 342,
+      "quote": "Zé Ninguém",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c260",
+      "document_id": "doc-6",
+      "code_id": "code-e1",
+      "span_start": 569,
+      "span_end": 579,
+      "quote": "Zé Ninguém",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c261",
+      "document_id": "doc-6",
+      "code_id": "code-e1",
+      "span_start": 801,
+      "span_end": 811,
+      "quote": "Zé Ninguém",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c262",
+      "document_id": "doc-7",
+      "code_id": "code-e1",
+      "span_start": 13,
+      "span_end": 35,
+      "quote": "João da Silva Fictício",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c263",
+      "document_id": "doc-7",
+      "code_id": "code-e1",
+      "span_start": 178,
+      "span_end": 200,
+      "quote": "João da Silva Fictício",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c264",
+      "document_id": "doc-7",
+      "code_id": "code-e1",
+      "span_start": 435,
+      "span_end": 457,
+      "quote": "João da Silva Fictício",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c265",
+      "document_id": "doc-7",
+      "code_id": "code-e1",
+      "span_start": 679,
+      "span_end": 701,
+      "quote": "João da Silva Fictício",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c266",
+      "document_id": "doc-7",
+      "code_id": "code-e1",
+      "span_start": 1009,
+      "span_end": 1031,
+      "quote": "João da Silva Fictício",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c267",
+      "document_id": "doc-7",
+      "code_id": "code-e1",
+      "span_start": 1265,
+      "span_end": 1287,
+      "quote": "João da Silva Fictício",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c268",
+      "document_id": "doc-9",
+      "code_id": "code-e1",
+      "span_start": 998,
+      "span_end": 1016,
+      "quote": "Dra. Fulana de Tal",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c269",
+      "document_id": "doc-9",
+      "code_id": "code-e1",
+      "span_start": 1040,
+      "span_end": 1066,
+      "quote": "Dr. João da Silva Fictício",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c270",
+      "document_id": "doc-1",
+      "code_id": "code-e2",
+      "span_start": 46,
+      "span_end": 68,
+      "quote": "Tal, Qual & Associados",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c271",
+      "document_id": "doc-1",
+      "code_id": "code-e2",
+      "span_start": 70,
+      "span_end": 79,
+      "quote": "São Paulo",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c272",
+      "document_id": "doc-2",
+      "code_id": "code-e2",
+      "span_start": 46,
+      "span_end": 68,
+      "quote": "Tal, Qual & Associados",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c273",
+      "document_id": "doc-2",
+      "code_id": "code-e2",
+      "span_start": 70,
+      "span_end": 79,
+      "quote": "São Paulo",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c274",
+      "document_id": "doc-3",
+      "code_id": "code-e2",
+      "span_start": 36,
+      "span_end": 59,
+      "quote": "Banca Exemplo Advogados",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c275",
+      "document_id": "doc-3",
+      "code_id": "code-e2",
+      "span_start": 61,
+      "span_end": 75,
+      "quote": "Rio de Janeiro",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c276",
+      "document_id": "doc-4",
+      "code_id": "code-e2",
+      "span_start": 39,
+      "span_end": 62,
+      "quote": "Banca Exemplo Advogados",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c277",
+      "document_id": "doc-4",
+      "code_id": "code-e2",
+      "span_start": 64,
+      "span_end": 78,
+      "quote": "Rio de Janeiro",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c278",
+      "document_id": "doc-5",
+      "code_id": "code-e2",
+      "span_start": 36,
+      "span_end": 58,
+      "quote": "Tal, Qual & Associados",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c279",
+      "document_id": "doc-5",
+      "code_id": "code-e2",
+      "span_start": 67,
+      "span_end": 75,
+      "quote": "Brasília",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c280",
+      "document_id": "doc-5",
+      "code_id": "code-e2",
+      "span_start": 220,
+      "span_end": 228,
+      "quote": "Brasília",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c281",
+      "document_id": "doc-6",
+      "code_id": "code-e2",
+      "span_start": 39,
+      "span_end": 62,
+      "quote": "Banca Exemplo Advogados",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c282",
+      "document_id": "doc-6",
+      "code_id": "code-e2",
+      "span_start": 64,
+      "span_end": 78,
+      "quote": "Rio de Janeiro",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c283",
+      "document_id": "doc-7",
+      "code_id": "code-e2",
+      "span_start": 65,
+      "span_end": 87,
+      "quote": "Tal, Qual & Associados",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c284",
+      "document_id": "doc-7",
+      "code_id": "code-e2",
+      "span_start": 89,
+      "span_end": 98,
+      "quote": "São Paulo",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c285",
+      "document_id": "doc-8",
+      "code_id": "code-e2",
+      "span_start": 62,
+      "span_end": 71,
+      "quote": "São Paulo",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c286",
+      "document_id": "doc-9",
+      "code_id": "code-e2",
+      "span_start": 51,
+      "span_end": 73,
+      "quote": "Tal, Qual & Associados",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c287",
+      "document_id": "doc-9",
+      "code_id": "code-e2",
+      "span_start": 187,
+      "span_end": 209,
+      "quote": "Tal, Qual & Associados",
+      "layer": "final",
+      "author_name": "Admin"
+    },
+    {
+      "id": "c288",
+      "document_id": "doc-9",
+      "code_id": "code-e2",
+      "span_start": 1068,
+      "span_end": 1077,
+      "quote": "São Paulo",
+      "layer": "final",
+      "author_name": "Admin"
+    }
+  ],
+  "memos": [
+    {
+      "scope": "project",
+      "target_id": "file-project",
+      "author_name": "Admin",
+      "content": "Anotações gerais do projeto (DADOS FICTÍCIOS — demonstração do QualiLab).\n\nA pergunta que guia a pesquisa é: por que alguns escritórios abraçam a IA generativa e outros travam? No começo a hipótese era pura questão de geração; as entrevistas mostram algo mais complexo — confidencialidade do cliente, pressão de preço e o grau de governança de cada banca.\n\nCorpus: sete entrevistas (ENT-01 a ENT-07), um grupo focal (GF-01) e a política interna (DOC-01), de fevereiro a março de 2026. Dois escritórios fictícios: Tal, Qual & Associados (São Paulo / Brasília) e Banca Exemplo Advogados (Rio). Marina, Rafael e Júlia codificaram em separado; o gabarito foi fechado na Reconciliação.\n\nTodos os nomes de pessoas e escritórios são claramente fantásticos (Fulana de Tal, Beltrano, Sicrano, Banca Exemplo...) justamente para deixar evidente que NADA aqui é dado real — é material de demonstração."
+    },
+    {
+      "scope": "document",
+      "target_id": "doc-1",
+      "author_name": "Marina",
+      "content": "Entrevista-chave da demo: foi codificada com TODOS os códigos, de propósito, para a primeira tela já mostrar como os grifos coloridos, a sobreposição e a censura aparecem. A Fulana de Tal resume bem a tensão central: rendeu-se à produtividade, mas trava na confidencialidade de M&A."
+    },
+    {
+      "scope": "document",
+      "target_id": "doc-2",
+      "author_name": "Rafael",
+      "content": "Contraponto geracional puro: o Beltrano já chegou usando, trata como corretor ortográfico. Mesmo entusiasmado, admite zero treinamento e medo de alucinação — nem quem gosta se sente seguro."
+    },
+    {
+      "scope": "document",
+      "target_id": "doc-3",
+      "author_name": "Júlia",
+      "content": "O cético da amostra. Útil para a Reconciliação porque proíbe o uso por dois motivos distintos (confidencialidade e responsabilidade), que às vezes a gente codificava junto e às vezes separado."
+    },
+    {
+      "scope": "document",
+      "target_id": "doc-4",
+      "author_name": "Rafael",
+      "content": "Visão de quem está na base da pirâmide: usa escondido do sócio, sem treinamento, e com medo concreto de a vaga sumir. Bom para o código Futuro de júnior e estagiário."
+    },
+    {
+      "scope": "document",
+      "target_id": "doc-5",
+      "author_name": "Marina",
+      "content": "Caso 'modelo': mostra que política + treinamento dissolvem boa parte do medo. Liga bem Treinamento e capacitação com Confidencialidade do cliente."
+    },
+    {
+      "scope": "document",
+      "target_id": "doc-6",
+      "author_name": "Júlia",
+      "content": "O ambivalente típico: usa pela produtividade mas confere tudo, ao ponto de anular o ganho de tempo. Ótimo exemplo de co-ocorrência Produtividade x Medo de alucinação."
+    },
+    {
+      "scope": "document",
+      "target_id": "doc-7",
+      "author_name": "Marina",
+      "content": "O sócio de inovação costura quase todos os eixos: governança, negócio, formação. Útil para a aba Co-ocorrência por concentrar muitos códigos diferentes no mesmo documento."
+    },
+    {
+      "scope": "document",
+      "target_id": "doc-8",
+      "author_name": "Rafael",
+      "content": "Grupo focal funciona como síntese: cada participante puxa um eixo. Bom para mostrar vários códigos num documento só sem nome de pessoa para censurar."
+    },
+    {
+      "scope": "document",
+      "target_id": "doc-9",
+      "author_name": "Júlia",
+      "content": "A política interna é o documento institucional que 'responde' às entrevistas: cada cláusula corresponde a um achado (confidencialidade, responsabilidade, verificação, capacitação)."
+    },
+    {
+      "scope": "code",
+      "target_id": "code-a0",
+      "author_name": "Admin",
+      "content": "Família sobre o que leva (ou não) à adoção. Usar nos trechos que falam da decisão de adotar, não nos ganhos concretos (esses vão em Ganhos de produtividade)."
+    },
+    {
+      "scope": "code",
+      "target_id": "code-a1",
+      "author_name": "Admin",
+      "content": "Ganho de eficiência em geral. Quando dá para especificar, prefira os filhos Aceleração de pesquisa jurídica ou Automação de tarefas repetitivas."
+    },
+    {
+      "scope": "code",
+      "target_id": "code-a2",
+      "author_name": "Admin",
+      "content": "Pressão externa, sobretudo de clientes comparando preço e velocidade. Não confundir com a pressão interna entre gerações (Divisão geracional)."
+    },
+    {
+      "scope": "code",
+      "target_id": "code-b1",
+      "author_name": "Admin",
+      "content": "Alucinação = a ferramenta afirma com confiança algo falso (acórdão inventado). Aparece quase sempre junto de Ganhos de produtividade — daí a co-ocorrência forte."
+    },
+    {
+      "scope": "code",
+      "target_id": "code-b3",
+      "author_name": "Admin",
+      "content": "Confidencialidade do cliente é o freio mais citado pelos sêniores. Costuma co-ocorrer com Política institucional de uso (a regra que tenta resolver o medo)."
+    },
+    {
+      "scope": "code",
+      "target_id": "code-c1",
+      "author_name": "Admin",
+      "content": "Divisão geracional: sênior trava, júnior abraça. Marcar mesmo quando aparece de forma implícita ('a gente' x 'os sócios')."
+    },
+    {
+      "scope": "code",
+      "target_id": "code-c3",
+      "author_name": "Admin",
+      "content": "Política institucional de uso: tanto a existência quanto a AUSÊNCIA de regra escrita. Os dois casos importam para o argumento sobre governança."
+    },
+    {
+      "scope": "code",
+      "target_id": "code-f1",
+      "author_name": "Admin",
+      "content": "Cobrança por hora ameaçada: o núcleo do impacto no negócio. Tende a co-ocorrer com Aceleração de pesquisa (a tarefa que encolheu)."
+    },
+    {
+      "scope": "code",
+      "target_id": "code-d0",
+      "author_name": "Admin",
+      "content": "Reservado para frases-síntese citaveis no relatório. Não abusar: só a 'frase de fecho' de cada entrevistado."
+    },
+    {
+      "scope": "code",
+      "target_id": "code-e0",
+      "author_name": "Admin",
+      "content": "Censura/anonimização. Os filhos Nomes e Localização/empresa marcam tudo que identifica pessoa ou banca — demonstram o mascaramento na exportação e no leitor publicado."
+    }
+  ]
+}

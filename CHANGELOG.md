@@ -14,6 +14,360 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.46 (26/08/2026)
+
+### O destaque do trecho agora acontece em duas fases: a frase, depois o trecho
+
+- Ao pular para um trecho (da Leitura, da busca global, dos Gráficos), primeiro a **frase ou
+  parágrafo inteira** pulsa uma vez, suave — é o que leva o olho à região certa da página —
+  e então o **trecho exato** pisca duas vezes, mais forte, com o segundo pisco de propósito
+  mais tardio, quando o olhar já assentou.
+- O destaque continua neutro (escurece em fundo claro, clareia em fundo escuro) e some sozinho
+  sem deixar rastro; quem usa "reduzir movimento" recebe só o véu parado sobre o trecho.
+
+## 1.4.45 (26/08/2026)
+
+### O app instalado passou a abrir offline desde a primeira visita
+
+- **O que acontecia.** Instalar o QualiLab como aplicativo e abri-lo **sem rede** (ou com o
+  endereço fora do ar) podia dar a página de erro do navegador — "não consigo chegar a esta
+  página" — mesmo com o app prometendo funcionar offline. O truque: a cópia offline só era
+  guardada quando a página era **recarregada** ao menos uma vez depois de instalada; quem
+  instalava e usava direto, sem F5, ficava sem cópia nenhuma.
+- **O que mudou.** A cópia do aplicativo é guardada **no momento da instalação**. O
+  comportamento com rede não muda em nada: continua vindo sempre a versão mais nova.
+
+## 1.4.44 (26/08/2026)
+
+### O "pisca" que mostra o trecho ao chegar na Codificação ficou visível de verdade
+
+- **O que acontecia.** Ao clicar num trecho (na Leitura, na busca global, nos Gráficos), o
+  leitor rolava até ele e o destacava com um pisca — que quase ninguém via. Dois motivos: o
+  pisca inteiro durava 0,6 segundo e acontecia **enquanto os olhos ainda estavam se achando**
+  depois do salto da rolagem; e, no tema claro, o clarão branco deixava o trecho **igual à
+  página** — um destaque que funciona sumindo.
+- **O que mudou.** São **três piscos em 1,6 segundo**, com o último de propósito mais tarde
+  (quando o olhar já assentou); e a cor do pisca **segue o fundo**: escurece no tema claro e
+  no sepia, clareia no escuro. Continua neutro — cor com matiz se leria como cor de código.
+- Quem usa "reduzir movimento" no sistema segue recebendo o destaque parado, sem piscar.
+
+## 1.4.43 (26/08/2026)
+
+### O banner falso "ResizeObserver loop..." parou de aparecer
+
+- **O que acontecia.** De vez em quando (visto no app instalado como PWA, ao abrir ou
+  redimensionar a janela) surgia a faixa vermelha *"Algo falhou de forma inesperada:
+  ResizeObserver loop completed with undelivered notifications"* — sem que nada tivesse
+  falhado de verdade.
+- **De onde vinha.** Essa frase é um **aviso do navegador**, não um erro do QualiLab: ela
+  aparece quando um componente que reage a mudança de tamanho (os Gráficos, por exemplo)
+  ajusta o layout no mesmo instante em que é medido. O navegador a entrega pelo mesmo canal
+  dos erros reais, e o QualiLab a exibia como se fosse um.
+- **O que mudou.** O aviso passa a ser ignorado pelo detector de erros. Erros de verdade
+  continuam virando banner, exatamente como antes.
+
+## 1.4.42 (26/08/2026)
+
+### PWA: trocar de tela deixou de abrir janelas do navegador
+
+- **O que acontecia.** Com o QualiLab **instalado como aplicativo** (Edge recente), clicar nas
+  abas do cabeçalho — Leitura, Memos, Gráficos… — abria uma **janela nova do navegador**, como
+  se cada aba fosse um link para outro site. O app em aba normal do navegador nunca teve isso.
+- **De onde vinha.** Não era do QualiLab: o Edge ganhou em 2026 um recurso que decide sozinho
+  se uma navegação ligada a um aplicativo instalado fica no app ou vai para o navegador — e,
+  sem instrução em contrário no manifesto do app, ele resolvia a dúvida abrindo janela nova.
+- **O que mudou.** O manifesto do aplicativo agora declara essa instrução
+  (`launch_handler: navigate-existing`): navegação do QualiLab fica **na janela que já está
+  aberta**.
+- **Se ainda acontecer com você.** O navegador só relê o manifesto de um app instalado de tempos
+  em tempos. Para valer na hora: desinstale e reinstale o aplicativo. Alternativa sem reinstalar:
+  `edge://apps` → QualiLab → Detalhes → desligue o **tratamento de links**.
+
+## 1.4.41 (24/08/2026)
+
+### Minha conta: o card de IA parou de ser uma parede de texto
+
+- **O que acontecia.** O card **IA: sua chave e modelo** tinha mais explicação do que controle:
+  cinco blocos de texto de ajuda empurravam o Provedor, a chave, o Modelo e o botão **Salvar**
+  para baixo. Num modal isso quer dizer rolar para achar aquilo que você foi ali fazer.
+- **O que mudou.** As explicações passaram a vir **recolhidas**, cada uma atrás de uma seta:
+  *como isso funciona*, *como preencher*, *como escolher*, *Custo estimado (calculadora)* e
+  *ajustes do modelo*. **Nada foi removido** — é um clique para abrir, e o texto é o mesmo.
+- **O que continua à vista, de propósito.** Além dos controles, a frase que diz **para onde o seu
+  material vai** — e ela muda conforme a sua configuração: com o Ollama local, que nada sai da sua
+  máquina; com a sua chave, que a chamada não passa por servidor nenhum do QualiLab; sem chave,
+  que ela passa por uma função no servidor deste projeto. Essa frase não fica atrás de clique.
+
+## 1.4.40 (24/08/2026)
+
+### Clicar num trecho na Leitura abre o documento, ali mesmo
+
+- **O que acontecia.** Na **Leitura ▸ Trechos**, clicar num trecho levava você para a tela de
+  **Codificação**. Ler um trecho no contexto em que ele foi feito é leitura, não codificação — e
+  a troca de tela ainda arrastava junto o documento que estava aberto na Codificação.
+- **O que mudou.** O clique passa a abrir o documento na sub-aba **Documentos**, na mesma tela,
+  rolando até o trecho e destacando ele. A Codificação fica exatamente onde estava.
+- **Como ir para a Codificação.** Continua existindo: clique num grifo do leitor e use o botão
+  **abrir na Codificação →**.
+- **O que ainda não funciona.** Com a caixa **grifos** desmarcada não há grifo para destacar,
+  então o documento abre no topo, sem rolar até o trecho.
+
+### O destaque do trecho ficou visível
+
+- **O que acontecia.** Ao saltar para um trecho (daqui ou da **busca global**), o destaque era um
+  anel azul que aparecia e desvanecia uma vez. Ele chegava no mesmo instante em que a página
+  acabava de rolar, então quando o olho pousava no lugar já tinha passado.
+- **O que mudou.** Agora ele **pisca duas vezes**, em branco translúcido sobre o trecho. Branco
+  porque uma cor se confunde com a cor do próprio código; e como um véu por cima, o texto
+  continua legível e a cor do código volta intacta quando o destaque acaba.
+- Quem configurou o sistema para **menos movimento** recebe o destaque parado, sem piscar.
+
+### Arquivos `.qualilab` no Windows: o tipo agora tem nome
+
+- Com o app **instalado**, o Explorer passa a mostrar **Projeto QualiLab** como tipo do arquivo,
+  em vez do genérico "Arquivo QUALILAB".
+- **O ícone do arquivo ainda não.** Declaramos um ícone próprio para o tipo, como o padrão da web
+  prevê, mas o Chrome no Windows não repassa esse ícone ao sistema hoje — o arquivo continua com
+  a folha em branco. A declaração fica: no dia em que ele passar a repassar, o ícone aparece sem
+  precisar de nova versão.
+
+## 1.4.39 (24/08/2026)
+
+### Categorias que se recolhem, na tela de Codificação
+
+- Cada categoria do painel direito ganhou uma seta ao lado do nome: clicar no rótulo recolhe.
+- **Por que isso ajuda.** A descrição de uma categoria é a *instrução de codificação* — quando
+  ela é um verbete completo (definição, o que conta como cada valor, fronteiras, o que ignorar),
+  duas ou três categorias seguidas empurram as demais para fora da vista, e achar a que falta
+  responder vira rolagem.
+- **Recolhida, a linha continua respondendo**: mostra o valor atual à direita, ou um traço quando
+  ainda não há resposta. O texto inteiro aparece ao passar o mouse.
+- **Todas começam abertas**, como sempre — recolher é escolha sua, e nada muda se você não mexer.
+  O estado vale enquanto você está na tela; trocar de tela reabre tudo.
+
+### Reconciliação: quem não é dono do projeto agora tem o que fazer na aba Categorias
+
+- **O que acontecia.** Na aba **Códigos**, qualquer pesquisador podia agir — *Concordo com este
+  código* registra uma codificação sua no trecho. Na aba **Categorias**, só o dono do projeto
+  tinha ação (preencher o gabarito): os demais abriam a tela, viam a comparação de respostas e
+  não tinham gesto nenhum.
+- **O que mudou.** Cada categoria ganhou **Sua resposta**: você registra ou muda a sua ali mesmo,
+  com as respostas da equipe lado a lado. É exatamente a resposta que você preencheria na tela de
+  Codificação — **não mexe no gabarito**, que continua sendo consolidado pelo dono do projeto.
+- Vale nos dois modos da aba: um documento por vez e **(Todos os documentos)**.
+- **Uma ressalva honesta.** Ali você responde *vendo* a resposta dos outros, o que influencia. É o
+  esperado numa tela de reconciliação, cujo objetivo é justamente convergir — e o botão *Concordo
+  com este código* já funcionava assim. Quem precisa medir concordância sem essa influência usa a
+  **codificação cega**, que esconde esta tela para os pesquisadores.
+- **O que ainda não existe.** Um botão *Discordo* na aba Códigos. Hoje o app sabe registrar
+  concordância (uma codificação sua no trecho) e não tem onde guardar uma discordância — então
+  quem revisou e discordou fica indistinguível de quem ainda não olhou. Está desenhado para uma
+  próxima versão.
+
+## 1.4.38 (24/08/2026)
+
+### Codificar ficou visível: a barra flutuante de seleção
+
+Selecionou um trecho no leitor? Agora aparece uma **barra flutuante** colada à seleção, com os
+seus códigos **recentes** em um clique e o botão **"aplicar código"** (o mesmo menu completo do
+botão direito). O botão direito continua funcionando exatamente como antes — a barra é a porta
+de entrada para quem chega, e o caminho para quem usa trackpad ou tablet. Junto:
+
+- **Teclas 1 a 9**: com um trecho selecionado, aplicam um dos códigos recentes. A lista numerada
+  aparece no painel Codificar, ao lado da árvore.
+- **Minimapa do documento**: uma coluna fina na borda direita do leitor mostra ONDE estão os
+  grifos (na cor de cada código) e as ocorrências da busca. Clique para ir. Em documento de
+  dezenas de páginas, é navegação de verdade.
+- **Toque (tablet)**: a seleção por toque agora também abre a barra flutuante.
+
+### O app agora é instalável (PWA) e abre sem internet
+
+- **Instalar como aplicativo**: o QualiLab ganhou manifesto e ícone próprios. No Chrome/Edge,
+  use "Instalar QualiLab" na barra de endereço: ele vira uma janela própria, com ícone no menu
+  iniciar/dock.
+- **Abre offline**: depois da primeira visita, digitar o endereço sem internet abre o app
+  normalmente (antes dava a página de erro do navegador). As bibliotecas de PDF/OCR/planilha
+  também ficam guardadas depois do primeiro uso. Quando uma versão nova estiver disponível, a
+  barra de status avisa e um clique atualiza.
+- **Instalado, o duplo clique num `.qualilab` abre no QualiLab** (Chrome/Edge, com o app
+  instalado), como um .docx abre no Word.
+- **Os dados do rascunho ficaram mais seguros**: o app agora pede ao navegador armazenamento
+  **persistente** para projetos locais com conteúdo (sem isso, o navegador pode limpar os dados
+  sob pressão de disco, sem avisar).
+
+### Paleta de comandos, atalhos com mapa e uma barra de status
+
+- **Ctrl+K** abre a paleta de comandos: digite parte do nome de um documento, de uma tela ou de
+  uma ação (baixar .qualilab, pesquisar em tudo) e vá direto. Num corpus de 100+ documentos, é
+  mais rápido que qualquer menu.
+- **?** mostra o mapa de atalhos de teclado — eles existiam (Ctrl+Z, Delete, setas nas árvores)
+  e não havia onde descobri-los.
+- **Barra de status** no rodapé: o "✓ salvo", a fila de envio da nuvem, o uso do armazenamento
+  do rascunho e a versão saíram do cabeçalho para um rodapé fino, sempre no mesmo lugar. O
+  cabeçalho ficou só com o que é navegação e identidade.
+- Apagar um grifo agora mostra um aviso discreto com **desfazer** (8 segundos), em vez de exigir
+  atenção a mais um diálogo.
+
+### Cabeçalho reorganizado e dois nomes melhores
+
+- As telas do cabeçalho estão **agrupadas por assunto** (codificar · ler e organizar · analisar ·
+  publicar), com divisórias finas; a aba ativa é marcada por um sublinhado, não mais por um
+  bloco cheio.
+- **"Codificar Automaticamente" agora se chama "Auto-codificação"**, e **"MCP/RAG" agora se
+  chama "Explorar com IA"**. As telas são as mesmas; só os nomes mudaram (o antigo era o rótulo
+  mais comprido da barra, e MCP/RAG é sigla de infraestrutura que não dizia nada a quem chega).
+- O **tema ganhou o modo "automático"** (segue o claro/escuro do sistema) e é o padrão para quem
+  nunca escolheu; o botão alterna automático → claro → escuro.
+- Clicar no logotipo não abre mais o GitHub numa aba nova (o link segue no rodapé da tela de
+  entrada).
+
+### Primeiros passos mais fáceis
+
+- **Corpus de exemplo em um clique**: num projeto sem documentos, o botão "experimentar com um
+  corpus de exemplo" carrega um projeto sintético pequeno para você ver grifos, gráficos e
+  relatório funcionando antes de trazer o seu material.
+- Um card discreto de **primeiros passos** (enviar documento → criar código → grifar) risca os
+  itens conforme você avança e some quando termina (ou no ✕, para sempre).
+- As telas vazias passaram a dizer **o que fazer** para deixarem de estar vazias, e as telas que
+  cruzam o projeto inteiro mostram um "carregando" de verdade em vez de parecerem vazias
+  enquanto a nuvem responde.
+- A pílula do projeto ganhou, no hub, um card **"Onde ficam os dados deste projeto"**, com a
+  resposta honesta por modo (arquivo, nuvem, rascunho).
+
+### Leitura e aparência
+
+- **Largura de leitura** virou o padrão do leitor (coluna de ~65 caracteres, a regra tipográfica
+  clássica); o botão de largura devolve a coluna cheia, e a sua preferência salva continua
+  valendo.
+- Hifenização automática em português no leitor; a troca de tema do leitor ficou suave.
+- **Gráficos**: opção "**texturas nas barras**" (hachuras) para distinguir cores parecidas —
+  útil para daltonismo, e sai junto no SVG/PNG exportado. Contagens grandes agora usam ponto de
+  milhar (2.332). A **nuvem de palavras** passou a usar a serifada do leitor.
+- Impressão do Relatório com margens de página e um rodapé com projeto, versão e data.
+- Ícones do cromo (tema, busca, ações do documento) viraram desenhos de traço únicos, iguais em
+  qualquer sistema — antes eram caracteres de texto, que cada sistema desenha de um jeito.
+- Tamanhos de letra, cantos e sombras foram postos numa escala única; os textos da interface
+  respeitam o tamanho de fonte configurado no navegador; e os menores textos subiram para um
+  piso legível.
+
+## 1.4.37 (23/08/2026)
+
+### Lista de documentos embaralhada em projeto da nuvem que veio de importação
+
+- **O que acontecia.** Num projeto da **nuvem** criado por importação em lote (abrir um
+  `.qualilab`, "enviar para a nuvem", importar `.qdpx`, planilha ou Taguette), a lista de
+  documentos saía numa ordem que não era nem a de importação nem a alfabética. Aparecia com
+  mais força na **Reconciliação ▸ Categorias ▸ "(Todos os documentos)"**, que percorre o corpus
+  inteiro: com 80 documentos a lista podia começar no meio, e achar um exigia rolar tudo. Não
+  havia erro na tela, e o problema não aparecia em projeto montado documento a documento — só
+  nos importados.
+- **Por quê.** Ao importar, o servidor grava os documentos em blocos, e todos os do mesmo bloco
+  ficam com exatamente o mesmo horário de criação. Como a lista era ordenada por esse horário,
+  os empatados saíam em ordem imprevisível — e ela podia até mudar de uma abertura para outra.
+- **O que mudou.** Os dois modos "(Todos os documentos)" da Reconciliação (Categorias e Códigos)
+  passaram a listar em **ordem alfabética**, com números lidos como número (`turno 2` antes de
+  `turno 10`) — a mesma regra que a lista de documentos da tela de Leitura já usava. A ordem que
+  vem do servidor também ficou estável, então a mesma tela não muda de ordem sozinha.
+- **O que ainda não mudou.** Na nuvem, a opção **"ordem de importação"** do seletor da lista de
+  documentos continua sem conseguir reproduzir a ordem original do arquivo importado, pelo mesmo
+  motivo acima. Ordenar por nome funciona normalmente.
+
+### Grifo sobreposto podia mudar de cor sozinho (nuvem)
+
+- **O que acontecia.** Quando dois códigos marcam o mesmo trecho, o leitor pinta o trecho com a
+  cor de um deles. Na nuvem, a lista de trechos de um documento chegava sem ordem definida, e a
+  cor escolhida dependia dessa ordem — então o mesmo trecho podia aparecer com uma cor hoje e
+  com a outra ao reabrir o documento, sem nada ter mudado no projeto. (Trecho censurado nunca foi
+  afetado: ele tem prioridade sobre os demais.)
+- **O que mudou.** Os trechos passam a chegar sempre na mesma ordem, então a cor de um trecho
+  sobreposto fica estável. A lista de trechos que aparece ao transformar um código em família
+  também deixou de mudar de ordem a cada vez que o diálogo é aberto.
+
+### Não dava para responder as categorias vendo o trabalho de todos
+
+- **O que acontecia.** Na Codificação de um projeto coletivo, o filtro **"Ver:"** começa em
+  **"Individuais (todos)"**. Nesse estado os códigos funcionam normalmente — você vê os grifos de
+  toda a equipe e continua marcando os seus. As **categorias**, na mesma tela e no mesmo filtro,
+  ficavam bloqueadas: os botões de valor apareciam e não respondiam ao clique. Como esse é o
+  filtro em que a tela abre, na prática era impossível preencher atributo nenhum sem descobrir
+  sozinho que era preciso trocar o filtro para "Minhas". O aviso que explicava isso ficava no
+  alto do painel e saía de vista assim que você rolava até uma categoria com descrição longa.
+- **O que mudou.** Em "Individuais (todos)" o campo passou a ser **seu**: mostra e edita a sua
+  resposta, como em "Minhas". Logo abaixo dele aparecem, **apenas para leitura**, as respostas
+  dos outros pesquisadores e o gabarito, quando existirem — assim o filtro que promete mostrar
+  o trabalho de todos passa a mostrá-lo também nas categorias, e não só nos grifos.
+- **O que continua igual, de propósito.** Ver **"Final / gabarito"** ou a resposta de **outro
+  pesquisador** segue somente leitura. O motivo é que o app grava sempre no seu nome: editar ali
+  mudaria a **sua** resposta enquanto a tela mostra a de outra pessoa. O gabarito continua sendo
+  consolidado na Reconciliação.
+
+### A nota do trecho aparece ao passar o mouse, e a busca volta a destacar onde você está
+
+- **Nota ao passar o mouse.** A nota analítica de um trecho só era alcançável por clique (pelo
+  menu do botão direito, ou pelo ● na Leitura ▸ Trechos), então quem estava lendo não tinha como
+  saber que ela existia. Agora ela aparece na etiqueta que surge ao passar o mouse sobre o
+  trecho, abaixo do código e do autor a que pertence. Notas longas são encurtadas.
+- **A etiqueta ficou legível.** Ela juntava todas as codificações do trecho numa linha só, o que
+  com três códigos de nome longo já saia ilegível. Agora é uma linha por codificação. Quando a
+  codificação não tem autor registrado, aparece "sem autor" em vez de um campo vazio.
+- **Busca do leitor.** A ocorrência em que você está voltou a ficar destacada. A busca achava e
+  navegava normalmente, mas todas as ocorrências ficavam com a mesma aparência, então não dava
+  para ver em qual delas você estava.
+
+### Clicar num gráfico abria a Leitura na aba errada
+
+- **O que acontecia.** Nos **Gráficos**, clicar numa barra ou numa célula (Frequência, Cobertura,
+  Co-ocorrência e Código × atributo) leva à Leitura para mostrar os trechos daquele código. Ela
+  abria na sub-aba **Documentos**, que mostra o documento inteiro — e o código em que você clicou
+  simplesmente não aparecia. Era preciso trocar de sub-aba à mão, sem nada indicar isso.
+- **O que mudou.** O clique passa a abrir direto na sub-aba **Trechos**, com o código (e, na
+  co-ocorrência, o par) já selecionados, e o filtro de categorias do gráfico continua viajando
+  junto.
+
+### Clicar num trecho da Leitura abria o documento errado
+
+- **O que acontecia.** Na **Leitura ▸ Trechos**, clicar num trecho deveria abrir a Codificação
+  naquele documento, rolando até o trecho. Em vez disso abria o documento que **já estava
+  aberto**, e o trecho nunca era alcançado. O mesmo valia para o botão **"codificar →"** da
+  Leitura ▸ Documentos e para o salto da **busca global**: sempre que a navegação precisava
+  trocar de tela **e** de documento ao mesmo tempo, o documento não trocava.
+- **Por quê.** O endereço da página (o que aparece depois do `#`) guarda a tela e o documento.
+  Ao trocar de tela, o app gravava nesse endereço o documento **anterior**, e em seguida lia o
+  próprio endereço de volta — desfazendo a troca que o clique tinha acabado de fazer.
+- **O que mudou.** A troca de tela e de documento passou a ser gravada de uma vez só, e o app
+  deixou de tratar como ordem sua a mudança de endereço que ele mesmo acabou de fazer. Continuam
+  funcionando normalmente o botão **voltar** do navegador e abrir um link colado.
+
+## 1.4.36 (22/08/2026)
+
+### Reconciliação de categorias: a mesma resposta deixou de aparecer como divergência
+
+- **O que acontecia.** Numa categoria do tipo **Caixa de Seleção**, o app guarda os valores
+  marcados num campo só, na ordem em que você clicou. A Reconciliação comparava esse campo como
+  texto puro, então `T1 | T3` e `T3 | T1` — a **mesma** resposta — apareciam como respostas
+  diferentes. Ninguém via erro nenhum: parecia divergência legítima entre codificadores,
+  justamente na categoria de múltipla marcação, que é onde comparar equipe mais importa.
+- **O que mudou.** A comparação passou a ser por conjunto de valores marcados: a ordem não conta
+  mais. Isso vale também para o que já estava gravado — arquivos antigos e projetos vindos de
+  outra ferramenta. E as respostas novas passam a ser gravadas sempre na ordem da lista de
+  opções, para a tela mostrar sempre a mesma coisa.
+
+### A Reconciliação passou a dizer se os codificadores concordam ENTRE SI
+
+- **O que acontecia.** A única pergunta que a tela sabia fazer era "esta resposta é igual ao
+  gabarito?". Num projeto recém-importado, em que ninguém consolidou gabarito ainda, isso pintava
+  **todo mundo de ✗ vermelho** — a tela acusava desacordo onde não havia nada com o que comparar.
+- **O que mudou.** Enquanto não há gabarito, cada categoria (e cada documento, no modo "todos os
+  documentos") diz se os codificadores **concordam** ou **divergem** entre si, e com quantos
+  valores distintos. O marcador de cada resposta fica neutro (·) em vez de vermelho. Resposta em
+  branco não conta como divergência: não responder não é discordar.
+
+### Quem só responde categorias agora aparece no "Ver:"
+
+- A lista de codificadores saía apenas das codificações de trecho, então um pesquisador que
+  preenche atributos do documento sem grifar nada simplesmente não existia para o app: não
+  aparecia no seletor "Ver:" nem era nomeado na Reconciliação.
+
 ## 1.4.35 (22/08/2026)
 
 ### Correção de segurança: abrir um `.qualilab` de terceiro não expõe mais a sua sessão

@@ -106,7 +106,7 @@ Uma linha por recurso: aqui é o inventário. O **passo a passo** de cada um est
 | **Codificação** | o leitor com os grifos, mais os painéis de categorias e de códigos |
 | **Reconciliação** | *(coletivo)* agrupa as codificações sobrepostas, mostra quem concorda e consolida o gabarito |
 | **Leitura** | reler o resultado: o documento inteiro com os grifos no contexto, ou todos os trechos de um código |
-| **Gráficos** | frequência, nuvem de palavras, co-ocorrência, cobertura, código × atributo, tempo e concordância entre codificadores. Clicar numa barra abre a Leitura naquele código |
+| **Gráficos** | frequência, nuvem de palavras, co-ocorrência, cobertura, código × atributo, tempo e concordância entre codificadores. Clicar numa barra abre a Leitura naquele código. Opção de **texturas nas barras** (hachuras) para distinguir cores parecidas — útil para daltonismo, e sai junto no SVG/PNG exportado |
 | **Memos** | nota analítica por projeto, documento, código **ou trecho**, compartilhada e co-editável |
 | **Esquema** | organizar códigos e categorias em lote |
 | **Relatório** | o hub de publicação (abaixo) |
@@ -134,9 +134,9 @@ Um selo no cabeçalho mostra o estado o tempo todo — **✔︎** ativada, **~~I
 
 | Recurso | O que é |
 |---|---|
-| **Codificar Automaticamente** | cinco assistentes: **Sugerir Codificação** (segunda codificadora, recall) · **Sugerir Categorização** (preenche categorias existentes) · **Definir Categoria** (escreve a instrução a partir do gabarito que você já deu) · **Organizar Códigos** · **Repetir Codificação** (esta **sem IA**: acha ocorrências exatas). Em todos: a IA **propõe**, você aprova ou recusa **item a item**, nada é gravado sem confirmação |
+| **Auto-codificação** | cinco assistentes: **Sugerir Codificação** (segunda codificadora, recall) · **Sugerir Categorização** (preenche categorias existentes) · **Definir Categoria** (escreve a instrução a partir do gabarito que você já deu) · **Organizar Códigos** · **Repetir Codificação** (esta **sem IA**: acha ocorrências exatas). Em todos: a IA **propõe**, você aprova ou recusa **item a item**, nada é gravado sem confirmação |
 | **Analisar com IA** | conversa sobre o material que você recorta (documentos, trechos por código, ou os dois), citando as fontes, com postura metodológica escolhível e prompts salvos |
-| **MCP/RAG** *(experimental)* | a IA **pede** o material em vez de receber um recorte pronto, por ferramentas de só-leitura; **cada chamada aparece na tela**, lida do dado e não da narração do modelo |
+| **Explorar com IA** *(experimental)* | a IA **pede** o material em vez de receber um recorte pronto, por ferramentas de só-leitura; **cada chamada aparece na tela**, lida do dado e não da narração do modelo |
 | **Prompt visível e editável** | o **⚙ Configurar Prompt** mostra o que será enviado, seção por seção, com o modelo ativo, a estimativa de tokens e o **custo em R$** — antes de enviar |
 | **Modo cego** | a IA responde **sem ver** o seu gabarito e o painel devolve um placar de concordância: deixa de ser conferente e vira régua |
 | **Memória do projeto** | diário de insights entre sessões; a IA propõe, você aprova, e cada entrada tem interruptor de uso |
@@ -159,7 +159,7 @@ Em projeto coletivo as três respeitam a camada escolhida; em todas, os trechos 
 
 *Experimental, e não faz parte do app: vive num repositório próprio, de onde qualquer pessoa instala.*
 
-Se você já paga uma assinatura de Claude ou de ChatGPT, dá para usá-la: em vez de o QualiLab falar com o modelo pela sua chave, **o cliente que você já usa** alcança o corpus. [**LuizPF42/QualiLab-plugin**](https://github.com/LuizPF42/QualiLab-plugin) empacota um servidor **MCP de só-leitura**, distribuído em [**LuizPF42/QualiLab-plugin**](https://github.com/LuizPF42/QualiLab-plugin). O assistente ganha as **mesmas ferramentas** da tela MCP/RAG — literalmente o mesmo código, extraído do `index.html` —, com o mesmo vocabulário e as mesmas regras de conduta.
+Se você já paga uma assinatura de Claude ou de ChatGPT, dá para usá-la: em vez de o QualiLab falar com o modelo pela sua chave, **o cliente que você já usa** alcança o corpus. [**LuizPF42/QualiLab-plugin**](https://github.com/LuizPF42/QualiLab-plugin) empacota um servidor **MCP de só-leitura**. O assistente ganha as **mesmas ferramentas** da tela Explorar com IA (a MCP/RAG de até a v1.4.37) — literalmente o mesmo código, extraído do `index.html` —, com o mesmo vocabulário e as mesmas regras de conduta.
 
 Você aponta uma **pasta**, não um arquivo: o assistente lista os projetos que estão lá e abre o que você pedir. **Nenhuma ferramenta escreve.** A censura vale igual, com uma ressalva honesta: no chat do Claude a máscara é fronteira real, porque o servidor é o único caminho até o corpus; num cliente **agêntico** ele tem ferramentas de arquivo próprias e o `.qualilab` carrega o texto cru, então ali ela é convenção respeitada, não tranca.
 
@@ -219,6 +219,8 @@ Não há etapa de build. Basta abrir o arquivo:
 ```
 https://luizpf42.github.io/QualiLab
 ```
+
+**Instalável como aplicativo (PWA):** em Chrome/Edge, "Instalar QualiLab" na barra de endereço dá janela própria e ícone no menu iniciar/dock. Instalado, o app **abre sem internet desde a primeira visita** (a cópia offline é guardada na instalação; com rede, vem sempre a versão mais nova, e a barra de status avisa quando há atualização) e o **duplo clique num `.qualilab` abre no QualiLab**, como um `.docx` abre no Word.
 
 **Para usar offline:** baixe o `index.html` e dê duplo clique pra abrir direto no navegador (`file://`), **sem precisar de servidor**: ele só importa bibliotecas externas via URL `https://` (nunca por caminho de arquivo local), então não bate no bloqueio clássico de módulo ES via `file://`. Em Chrome/Edge dá pra usar inclusive o modo **Arquivo local**, que salva o projeto como `.qualilab` visível no disco, ao lado do `index.html`.
 
