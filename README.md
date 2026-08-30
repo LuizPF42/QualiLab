@@ -20,7 +20,7 @@ Acesse a ferramenta **[aqui](https://luizpf42.github.io/QualiLab)** / Instale co
 
 > ⚠️ **Leia antes de usar com dados reais.** O QualiLab é um projeto **pessoal e experimental**, sob licença **MIT, SEM QUALQUER GARANTIA**, que **não passou por auditoria de segurança**; **bugs são esperados**. E ele **não anonimiza** o seu material: a censura mascara só o que **você** marcou à mão, e só em algumas saídas. Para onde cada modo de uso leva os seus dados está em **[Onde os seus dados ficam](#onde-os-seus-dados-ficam)**; o que a ferramenta não faz por você, em **[Limites e responsabilidade](#limites-e-responsabilidade)**.
 >
-> **Isenção.** O QualiLab é um projeto pessoal de Luiz Pimenta Filho. **Não representa posição nem implica responsabilidade de qualquer instituição (incluindo a FGV).** O autor **não se responsabiliza** por perda de dados, vazamento, uso indevido ou quaisquer consequências do uso do software. Use por sua conta e risco, com as cautelas éticas e legais que a sua pesquisa exige.
+> **Isenção.** O QualiLab é um projeto pessoal de **[Luiz Pimenta Filho](https://orcid.org/0000-0002-5165-6232)**, no âmbito do **[LabDados / FGV Direito SP](https://direitosp.fgv.br/nucleos-de-pesquisa/laboratorio-dados-pesquisa-empirica-direito-labdados)**. **Não representa posição nem implica responsabilidade de qualquer instituição (incluindo a FGV).** O autor **não se responsabiliza** por perda de dados, vazamento, uso indevido ou quaisquer consequências do uso do software. Use por sua conta e risco, com as cautelas éticas e legais que a sua pesquisa exige.
 
 ---
 
@@ -433,7 +433,7 @@ O backlog completo é mantido no repositório de desenvolvimento, com o raciocí
 
 ## Créditos, referência e licença
 
-O QualiLab foi desenvolvido por **[Luiz Pimenta Filho](https://orcid.org/0000-0002-5165-6232)** no âmbito do **LabDados / FGV Direito SP** como projeto pessoal. Não representa posição institucional da FGV, que não tem qualquer responsabilidade pelo software.
+O QualiLab foi desenvolvido por **[Luiz Pimenta Filho](https://orcid.org/0000-0002-5165-6232)** no âmbito do **[LabDados / FGV Direito SP](https://direitosp.fgv.br/nucleos-de-pesquisa/laboratorio-dados-pesquisa-empirica-direito-labdados)** como projeto pessoal. Não representa posição institucional da FGV, que não tem qualquer responsabilidade pelo software.
 
 A maior parte do código deste projeto foi escrita com assistência do [Claude Code](https://claude.com/claude-code) (Anthropic).
 
