@@ -6,7 +6,7 @@
 
 **Guia completo de uso, do primeiro acesso à publicação dos resultados.**
 
-Este manual ensina a *usar* o QualiLab passo a passo. Para a lista de recursos e a parte técnica (instalação, Supabase, formatos), veja o [README](README.md). Para contribuir com o código, veja o [CLAUDE.md](CLAUDE.md).
+Este manual ensina a *usar* o QualiLab passo a passo. Para a lista de recursos e a parte técnica (instalação, Supabase, formatos), veja o [README](../README.md). Para contribuir com o código, veja o [repositório no GitHub](https://github.com/LuizPF42/QualiLab).
 
 > O QualiLab roda inteiro no navegador, num único arquivo. Não há instalação, login obrigatório nem servidor próprio. Você pode começar agora mesmo em **[luizpf42.github.io/QualiLab](https://luizpf42.github.io/QualiLab)**. Quer experimentar antes de ler? Os **[Primeiros 5 minutos](#primeiros-5-minutos)** colocam você a codificar já.
 
@@ -194,9 +194,10 @@ Em **projeto individual**, tudo já vai direto para o gabarito. Em **projeto col
 | Forma | Como | Quando usar |
 |---|---|---|
 | **Online** | Abra [luizpf42.github.io/QualiLab](https://luizpf42.github.io/QualiLab) | O caminho normal |
-| **Offline** | [Baixe o `index.html`](https://github.com/LuizPF42/QualiLab/releases) e dê duplo clique | Sem internet, dados sensíveis |
+| **Instalado (offline)** | [Instale como aplicativo](#instalar-como-aplicativo-e-abrir-sem-internet) — no Windows, **pelo Edge** | Abrir sem internet, janela própria, duplo clique no `.qualilab` |
+| **Arquivo único** | [Baixe o `index.html`](https://github.com/LuizPF42/QualiLab/releases/download/alpha/index.html) e dê duplo clique | Sem internet e sem instalar nada; dados sensíveis |
 
-Ao baixar, o arquivo abre direto no navegador (`file://`) sem precisar de servidor. Ele só busca as bibliotecas externas pela internet **na primeira vez**. (Se a sua política de navegador bloquear, sirva com `python -m http.server 8000` na pasta do arquivo.)
+Ao baixar o arquivo único, ele abre direto no navegador (`file://`) sem precisar de servidor. Ele só busca as bibliotecas externas pela internet **na primeira vez**. (Se a sua política de navegador bloquear, sirva com `python -m http.server 8000` na pasta do arquivo.)
 
 > **Chrome ou Edge** são recomendados: só neles funciona o **modo Arquivo local** (salvar um `.qualilab` visível no disco) e o **backup automático em pasta**. Firefox e Safari funcionam, mas caem para o modo rascunho (`localStorage`).
 
@@ -1278,7 +1279,7 @@ Quando a resposta for "não confio", não troque por outra promessa. Troque por 
 
 Para constar, o que as políticas *dizem* hoje (e pode mudar): camadas **gratuitas e de consumidor** (inclusive a **chave grátis do Google AI Studio**) costumam **treinar** com o seu conteúdo, e o próprio Google avisa "não envie informações sensíveis"; as **APIs da OpenAI e da Anthropic** dizem **não** treinar por padrão, mas **retêm** por dias. Serve para escolher entre opções de baixo risco, não para confiar dado sensível a uma promessa.
 
-**Ollama local, na prática.** Como o navegador chama o `localhost` direto (sem passar pelo servidor), duas regras de segurança do navegador entram em jogo: é preciso **autorizar a origem do app** ao iniciar o Ollama (com `OLLAMA_ORIGINS`) e, se o app estiver em **HTTPS**, alguns navegadores bloqueiam a chamada a `http://localhost`. O caminho mais confiável é **rodar o app localmente** (o `index.html` baixado, ou `python -m http.server 8000`). Aí não há conflito. Os detalhes técnicos estão no [README](README.md).
+**Ollama local, na prática.** Como o navegador chama o `localhost` direto (sem passar pelo servidor), duas regras de segurança do navegador entram em jogo: é preciso **autorizar a origem do app** ao iniciar o Ollama (com `OLLAMA_ORIGINS`) e, se o app estiver em **HTTPS**, alguns navegadores bloqueiam a chamada a `http://localhost`. O caminho mais confiável é **rodar o app localmente** (o `index.html` baixado, ou `python -m http.server 8000`). Aí não há conflito. Os detalhes técnicos estão no [README](../README.md).
 
 > **Para dado vedado**, a única combinação que mantém tudo na sua máquina é o **Ollama local com o app rodando localmente**, offline. Modelos locais pequenos são menos precisos, mas nas tarefas que exigem um formato estrito o QualiLab já ativa um modo que força a saída correta.
 
@@ -1433,4 +1434,4 @@ PDFs muito visuais (colunas, tabelas, digitalizações) podem extrair mal. Tabel
 
 ---
 
-<p align="center"><sub>QualiLab, o seu laboratório de pesquisa qualitativa. Desenvolvido por Luiz Pimenta Filho (LabDados / FGV Direito SP). Licença MIT.</sub></p>
+<p align="center"><sub>QualiLab, o seu laboratório de pesquisa qualitativa. Desenvolvido por <a href="https://orcid.org/0000-0002-5165-6232">Luiz Pimenta Filho</a> (LabDados / FGV Direito SP). Licença MIT.</sub></p>

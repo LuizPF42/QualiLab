@@ -12,7 +12,7 @@ QualiLab é uma ferramenta **gratuita e de código aberto** para análise qualit
 
 > Inspirado por **[Taguette](https://www.taguette.org/about.html)**, **[Magnolia](https://www.caledavis.eu/magnolia.html)**, **[QualCoder](https://github.com/ccbogel/qualcoder)** e **[OpenQDA](https://openqda.org/)** — projetos que merecem o seu apoio; os créditos estão [no fim](#créditos-referência-e-licença).
 
-Acesse a ferramenta **[aqui](https://luizpf42.github.io/QualiLab)** / Baixe a ferramenta **[aqui](https://github.com/LuizPF42/QualiLab/releases/download/alpha/index.html)**
+Acesse a ferramenta **[aqui](https://luizpf42.github.io/QualiLab)** / Instale como aplicativo **[aqui](docs/MANUAL.md#instalar-como-aplicativo-e-abrir-sem-internet)** — abre sem internet, ganha janela e ícone próprios, e o duplo clique num `.qualilab` passa a abrir no QualiLab; **no Windows, instale pelo Edge**.
 
 📖 **Novo por aqui?** Comece pelo **[Manual de uso](https://luizpf42.github.io/QualiLab/manual.html)**: guia completo, passo a passo, de todas as telas. · 📝 **O que mudou em cada versão:** [`CHANGELOG.md`](CHANGELOG.md)
 
@@ -220,7 +220,7 @@ Não há etapa de build. Basta abrir o arquivo:
 https://luizpf42.github.io/QualiLab
 ```
 
-**Instalável como aplicativo (PWA):** "Instalar QualiLab" na barra de endereço dá janela própria e ícone no menu iniciar/dock. Instalado, o app **abre sem internet desde a primeira visita** (a cópia offline é guardada na instalação; com rede, vem sempre a versão mais nova, e a barra de status avisa quando há atualização) e o **duplo clique num `.qualilab` abre no QualiLab**, como um `.docx` abre no Word. **No Windows, instale pelo Edge**: é ele que registra o `.qualilab` no sistema com nome de tipo e ícone próprios — pelo Chrome a instalação funciona, mas os ícones dos `.qualilab` saem **quebrados** — a folha em branco genérica do Explorer (limitação do Chrome no Windows, não do QualiLab). O que é um PWA, por que instalar e o passo a passo estão no manual, em "Instalar como aplicativo".
+**Instalável como aplicativo (PWA):** "Instalar QualiLab" na barra de endereço dá janela própria e ícone no menu iniciar/dock. Instalado, o app **abre sem internet desde a primeira visita** (a cópia offline é guardada na instalação; com rede, vem sempre a versão mais nova, e a barra de status avisa quando há atualização) e o **duplo clique num `.qualilab` abre no QualiLab**, como um `.docx` abre no Word. **No Windows, instale pelo Edge**: é ele que registra o `.qualilab` no sistema com nome de tipo e ícone próprios — pelo Chrome a instalação funciona, mas os ícones dos `.qualilab` saem **quebrados** — a folha em branco genérica do Explorer (limitação do Chrome no Windows, não do QualiLab). O que é um PWA, por que instalar e o passo a passo estão no manual, em **[Instalar como aplicativo](docs/MANUAL.md#instalar-como-aplicativo-e-abrir-sem-internet)**.
 
 **Para usar offline:** baixe o `index.html` e dê duplo clique pra abrir direto no navegador (`file://`), **sem precisar de servidor**: ele só importa bibliotecas externas via URL `https://` (nunca por caminho de arquivo local), então não bate no bloqueio clássico de módulo ES via `file://`. Em Chrome/Edge dá pra usar inclusive o modo **Arquivo local**, que salva o projeto como `.qualilab` visível no disco, ao lado do `index.html`.
 
@@ -433,7 +433,7 @@ O backlog completo é mantido no repositório de desenvolvimento, com o raciocí
 
 ## Créditos, referência e licença
 
-O QualiLab foi desenvolvido por **Luiz Pimenta Filho** no âmbito do **LabDados / FGV Direito SP** como projeto pessoal. Não representa posição institucional da FGV, que não tem qualquer responsabilidade pelo software.
+O QualiLab foi desenvolvido por **[Luiz Pimenta Filho](https://orcid.org/0000-0002-5165-6232)** no âmbito do **LabDados / FGV Direito SP** como projeto pessoal. Não representa posição institucional da FGV, que não tem qualquer responsabilidade pelo software.
 
 A maior parte do código deste projeto foi escrita com assistência do [Claude Code](https://claude.com/claude-code) (Anthropic).
 
