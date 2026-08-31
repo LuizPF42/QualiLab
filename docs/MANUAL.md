@@ -810,7 +810,33 @@ Clique no **seu nome** no cabeçalho para abrir **Minha conta** (funciona **em t
 - Alterar a **senha** (só contas com e-mail; some nos modos rascunho/arquivo).
 - Ver **todos os seus projetos** num lugar só, com ações diretas: abrir, renomear (admin), sair ou excluir (admin).
 - Configurar a sua **chave/modelo de IA** (BYOK), incluindo o **Ollama local** (ver [seção 17](#17-codificar-e-analisar-com-ia)).
+- Escolher o **idioma da interface** (português ou inglês) — ver abaixo.
 - **Sair da conta** (só no modo nuvem).
+
+### Idioma da interface
+
+O QualiLab existe em **português e inglês**, e o padrão vem do **seu navegador**: navegador em
+português abre em português, qualquer outro idioma abre em inglês. Você não precisa configurar
+nada — o seletor em **Minha conta** serve para escolher o contrário. Trocar **recarrega a**
+**página**.
+
+Três coisas que vale saber:
+
+- A escolha é **sua e fica neste navegador**. Ela **não viaja no projeto**: dois pesquisadores da
+  mesma equipe podem ler o **mesmo** projeto em idiomas diferentes.
+- **Números e datas acompanham o idioma** (em inglês, `1.234` aparece como `1,234`).
+- **O que você escreveu não muda de idioma**, e isso é de propósito: nomes de documentos, de
+  códigos e de categorias, os valores que você preencheu e os seus memos são material de
+  pesquisa e saem como você os escreveu. As respostas **Sim/Não**, **Não informado** e **Outros**
+  ganham rótulo traduzido na tela **sem mudar o que está gravado** — assim uma resposta
+  preenchida em português e outra em inglês continuam sendo a **mesma** resposta na comparação
+  entre codificadores.
+
+Duas exceções, e as duas são deliberadas: os **pedidos que o QualiLab faz à IA** continuam em
+português (e as respostas dela também), e a marca de **trecho censurado** continua em português
+dentro dos **arquivos exportados**, para que o mesmo arquivo não mude de conteúdo conforme o
+navegador de quem o gerou. Já o **apêndice de transparência** acompanha a interface: quem
+trabalha em inglês entrega um apêndice em inglês.
 
 > É por Minha conta que você chega à configuração de IA em **qualquer modo**, inclusive offline, para apontar o **Ollama local**.
 

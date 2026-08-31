@@ -6,6 +6,49 @@ e decisões internas) está nos commits e no `CLAUDE.md`.
 A versão aparece no canto direito do cabeçalho e no rodapé da tela de entrada. **Cite esse
 número ao relatar um problema**: sem ele não há como saber qual build o seu navegador carregou.
 
+> **Este arquivo é próprio deste repositório desde ago/2026** e descreve só o aplicativo
+> publicado aqui. O QualiLab dentro do assistente (extensão do Claude Desktop, plugin) tem
+> numeração e changelog próprios, no repositório `QualiLab-plugin` — ele leva as mesmas
+> ferramentas de leitura para dentro do seu assistente, e é outro produto.
+>
+> Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
+> gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
+
+## 1.4.48 (31/08/2026)
+
+### O QualiLab agora fala inglês
+
+A interface inteira passou a existir em **português e inglês**. Não é uma tradução parcial:
+todas as telas, as sub-abas, os menus, as mensagens de erro, as confirmações, os resumos de
+importação, os avisos, os textos de ajuda e os modais estão nos dois idiomas.
+
+- **O idioma vem do seu navegador, e você não precisa configurar nada**: navegador em português
+  abre em português; qualquer outro idioma abre em inglês.
+- **Para escolher o contrário, vá em "Minha conta"** — o seletor de idioma fica lá. Trocar
+  recarrega a página. A escolha é sua e fica no seu navegador: ela **não viaja no projeto**, e
+  dois pesquisadores da mesma equipe podem ler o MESMO projeto em idiomas diferentes.
+- **Números e datas acompanham o idioma.** Em inglês, `1.234` deixa de aparecer como `1.234`
+  (que ali significaria "um vírgula dois") e passa a `1,234`; as datas saem no formato local.
+- **Os seus dados não mudam de idioma, e isso é de propósito.** O que você escreveu — nomes de
+  documentos, de códigos e de categorias, os valores que preencheu, os seus memos — é material
+  de pesquisa e sai exatamente como você o escreveu. As respostas "Sim/Não", "Não informado" e
+  "Outros" agora têm rótulo traduzido na tela **sem mudar o que está gravado**, para que uma
+  resposta preenchida em português e outra em inglês continuem sendo a MESMA resposta na
+  comparação entre codificadores.
+- **O apêndice de transparência (leitor ATI) acompanha a interface**: quem trabalha em inglês
+  entrega um apêndice em inglês, com a declaração de uso de IA junto. A marca de trecho
+  censurado (`[trecho censurado]`) **continua em português nos arquivos exportados**, para que
+  o mesmo arquivo não mude de conteúdo conforme o navegador de quem o gerou.
+- **Os pedidos que o QualiLab faz à IA continuam em português**, e portanto as respostas dela
+  também. Traduzi-los muda o comportamento do modelo, e isso é uma decisão que precisa ser
+  medida antes de tomada — não entrou nesta versão.
+
+### Correções que vieram junto
+
+- Na Leitura, a lista de documentos está à **esquerda** desde uma versão anterior, mas o texto
+  do estado vazio ainda mandava procurá-la à direita.
+- Em projetos importados de outras ferramentas, um trecho sem autor aparecia como "sem autor"
+  numa tela e como "anônimo" nas outras — agora é uma grafia só, em todas.
 ## 1.4.47 (30/08/2026)
 
 ### Um convite visível para instalar o QualiLab como aplicativo
@@ -21,13 +64,6 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
   lhe importar.
 - A faixa **só aparece quando instalar é possível de verdade**: some no Firefox e no Safari, que
   não instalam, e some assim que você instala. Ela não muda nada de onde os seus dados ficam.
-> **Este arquivo é próprio deste repositório desde ago/2026** e descreve só o aplicativo
-> publicado aqui. O QualiLab dentro do assistente (extensão do Claude Desktop, plugin) tem
-> numeração e changelog próprios, no repositório `QualiLab-plugin` — ele leva as mesmas
-> ferramentas de leitura para dentro do seu assistente, e é outro produto.
->
-> Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
-> gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
 ## 1.4.46 (26/08/2026)
 
