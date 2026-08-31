@@ -468,3 +468,19 @@ MIT License: free to use, modify and distribute, with or without commercial purp
 ```
 Copyright (c) 2026 Luiz Pimenta Filho
 ```
+
+### Third-party licenses
+
+QualiLab being MIT does not change what the licenses of the libraries it uses ask for — and the two
+things coexist without conflict. The full list, with who is who, is in
+**[`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md)**.
+
+What decides obligation is a single distinction: **what is embedded in the `docs/index.html` is
+redistributed by us; what comes from a CDN is not** (there QualiLab only points at a URL, and it is
+the researcher's browser that fetches the file). That is why the notices for the embedded
+components — htm, under Apache-2.0, and the three fonts, under the SIL Open Font License 1.1 —
+**travel inside the file itself**, and not merely in a repository file: the copy a person
+downloads is the `index.html` alone, and the OFL asks for the notice in *each copy*. Both notices
+are an **invariant of the file**, and the check runs **in this repository**, on every push:
+[`scripts/check_index.py`](scripts/check_index.py) rejects a `docs/index.html` from which either
+of them has gone missing.

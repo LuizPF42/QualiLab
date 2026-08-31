@@ -8,6 +8,8 @@
 
 [![DOI](https://zenodo.org/badge/1274527946.svg)](https://doi.org/10.5281/zenodo.21935682)
 
+🇬🇧 [English version](README.en.md)
+
 QualiLab é uma ferramenta **gratuita e de código aberto** para análise qualitativa de dados. Roda inteira em um único arquivo `index.html`, sem instalação, sem servidor próprio, sem assinatura.
 
 > Inspirado por **[Taguette](https://www.taguette.org/about.html)**, **[Magnolia](https://www.caledavis.eu/magnolia.html)**, **[QualCoder](https://github.com/ccbogel/qualcoder)** e **[OpenQDA](https://openqda.org/)** — projetos que merecem o seu apoio; os créditos estão [no fim](#créditos-referência-e-licença).
@@ -461,3 +463,18 @@ MIT License: livre para usar, modificar e distribuir, com ou sem fins comerciais
 ```
 Copyright (c) 2026 Luiz Pimenta Filho
 ```
+
+### Licenças de terceiros
+
+O QualiLab ser MIT não muda o que as licenças das bibliotecas que ele usa pedem — e as duas
+coisas convivem sem conflito. A lista completa, com quem é quem, está em
+**[`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md)**.
+
+O que decide obrigação é uma distinção só: **o que está embutido no `docs/index.html` é
+redistribuído por nós; o que vem de CDN não é** (ali o QualiLab só aponta uma URL, e quem busca
+o arquivo é o navegador do pesquisador). Por isso os avisos dos componentes embutidos — o htm,
+sob Apache-2.0, e as três fontes, sob SIL Open Font License 1.1 — **viajam dentro do próprio
+arquivo**, e não apenas num arquivo do repositório: a cópia que a pessoa baixa é o `index.html`
+sozinho, e a OFL pede o aviso em *cada cópia*. Os dois avisos são **invariante do arquivo**, e a
+checagem roda **neste repositório**, a cada push: o [`scripts/check_index.py`](scripts/check_index.py)
+recusa um `docs/index.html` de que qualquer um deles tenha sumido.

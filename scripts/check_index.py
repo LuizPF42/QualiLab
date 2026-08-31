@@ -19,6 +19,17 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent.parent
 INDEX = RAIZ / "index.html"
 
+# Os avisos de licenca dos componentes EMBUTIDOS no arquivo. Eles nao sao decoracao: o que
+# esta embutido e redistribuido por nos, e a copia que a pessoa baixa e o index.html SOZINHO
+# — a OFL-1.1 pede o aviso em *cada copia*, e a Apache-2.0 pede que os avisos sejam
+# preservados. Um THIRD-PARTY-NOTICES.md no repositorio nao acompanha o artefato.
+# Presenca, nao conteudo: quem compara o texto inteiro do bloco das fontes e o
+# vendor-fonts.py --check. Aqui o que se recusa e o arquivo em que a marca SUMIU.
+AVISOS = [
+    ("htm 3.1.1 — Apache-2.0", "o aviso de licenca do htm (Apache-2.0), no <head>"),
+    ("AVISOS:BEGIN", "o bloco de licenca das fontes embutidas (SIL OFL-1.1)"),
+]
+
 CURVAS = "“”‘’"          # " " ' '
 ABRE_MODULO = '<script type="module">'
 FECHA = "</script>"
@@ -80,6 +91,14 @@ def checar(texto: str, bruto: bytes):
             f"dentro de template literal escreva <\\/script>."
         )
 
+    # 5. os avisos de licenca dos componentes embutidos (ver AVISOS, acima).
+    for marca, oque in AVISOS:
+        if marca not in texto:
+            erros.append(
+                f"sumiu {oque}: a marca {marca!r} nao esta no arquivo. O que e embutido e "
+                f"REDISTRIBUIDO por nos, e a copia que a pessoa baixa e este arquivo sozinho."
+            )
+
     return erros, modulo
 
 
@@ -115,7 +134,7 @@ def main():
             print(f"  - {e}", file=sys.stderr)
         return 1
 
-    print(f"ok — {caminho.name}: sem BOM, sem aspa curva em atributo, {FECHA} balanceado.")
+    print(f"ok — {caminho.name}: sem BOM, sem aspa curva em atributo, {FECHA} balanceado, avisos de licenca no lugar.")
     return 0
 
 
