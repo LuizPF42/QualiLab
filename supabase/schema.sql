@@ -311,6 +311,12 @@ create table if not exists public.join_attempts (
 );
 create index if not exists join_attempts_user_idx on public.join_attempts (user_id, attempted_at);
 alter table public.join_attempts enable row level security;
+-- REVOGA o grant que o Supabase da por DEFAULT a toda tabela nova em public. A RLS ja nega
+-- (esta ligada e sem policy nenhuma), entao isto e defesa em profundidade — e GRANT e RLS sao
+-- camadas ORTOGONAIS, como o cabecalho do pgTAP 003 explica. Achado ao rodar a suite pela
+-- primeira vez, em ago/2026: a assercao "join_attempts continua sem grant direto" era FALSA
+-- no banco, e passava despercebida porque o arquivo nunca tinha chegado a executar.
+revoke all on public.join_attempts from anon, authenticated;
 
 -- IMPORTANTE (contrato com o front): codigo inexistente agora retorna NULL em vez de
 -- raise — um raise desfaria a transacao inteira e apagaria o registro da tentativa,
