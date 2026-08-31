@@ -6,6 +6,8 @@
 
 **Guia completo de uso, do primeiro acesso à publicação dos resultados.**
 
+🇬🇧 [English version](MANUAL.en.md)
+
 Este manual ensina a *usar* o QualiLab passo a passo. Para a lista de recursos e a parte técnica (instalação, Supabase, formatos), veja o [README](../README.md). Para contribuir com o código, veja o [repositório no GitHub](https://github.com/LuizPF42/QualiLab).
 
 > O QualiLab roda inteiro no navegador, num único arquivo. Não há instalação, login obrigatório nem servidor próprio. Você pode começar agora mesmo em **[luizpf42.github.io/QualiLab](https://luizpf42.github.io/QualiLab)**. Quer experimentar antes de ler? Os **[Primeiros 5 minutos](#primeiros-5-minutos)** colocam você a codificar já.
@@ -1008,7 +1010,13 @@ entre trinta.
 - **Desinstalar é um clique** (no menu ⋯ da janela do app), e não apaga os seus arquivos
   `.qualilab`.
 
-**Como instalar — e, no Windows, prefira o Edge.** Abra o endereço do QualiLab e procure
+**Como instalar — e, no Windows, prefira o Edge.** O caminho mais curto é a faixa
+**"Instalar o QualiLab"** na tela de entrada, que abre a janela de instalação do navegador. No
+Windows, se você estiver no Chrome, o botão em destaque é **"Instalar pelo Edge"**: ele abre o
+Edge no mesmo endereço, e é de lá que você instala (o porquê está logo abaixo). Instalar no
+próprio Chrome continua a um clique, em "Instalar aqui". (A faixa só aparece quando instalar é
+possível de verdade — some no Firefox e no Safari, que não instalam, e some depois que você
+instala.) O caminho de sempre continua valendo: procure
 **"Instalar QualiLab"** na barra de endereço (o ícone de instalar, à direita da URL; no Edge,
 também em ⋯ → **Aplicativos** → **Instalar este site como um aplicativo**). Recomendamos
 **fortemente instalar pelo Edge** no Windows, e o motivo é concreto: o Edge registra o QualiLab

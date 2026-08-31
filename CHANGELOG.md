@@ -6,6 +6,21 @@ e decisões internas) está nos commits e no `CLAUDE.md`.
 A versão aparece no canto direito do cabeçalho e no rodapé da tela de entrada. **Cite esse
 número ao relatar um problema**: sem ele não há como saber qual build o seu navegador carregou.
 
+## 1.4.47 (30/08/2026)
+
+### Um convite visível para instalar o QualiLab como aplicativo
+
+- A tela de entrada passou a mostrar uma faixa **"Instalar o QualiLab"**, com um botão que abre
+  a janela de instalação do navegador. Até agora esse convite só existia num **ícone pequeno na
+  barra de endereço**, que quase ninguém encontra — instalado, o QualiLab ganha janela própria,
+  **abre sem internet** e o duplo clique num `.qualilab` passa a abrir nele.
+- **No Windows, quem estiver no Chrome recebe "Instalar pelo Edge" em destaque** — e o link abre
+  o Edge no mesmo endereço, mesmo você estando no Chrome. Instalar ali mesmo continua a um
+  clique, em "Instalar aqui": funciona igual, só deixa o ícone dos arquivos `.qualilab` quebrado
+  no Explorer (é limitação do Chrome, não do QualiLab). A escolha continua sua — o ícone pode não
+  lhe importar.
+- A faixa **só aparece quando instalar é possível de verdade**: some no Firefox e no Safari, que
+  não instalam, e some assim que você instala. Ela não muda nada de onde os seus dados ficam.
 > **Este arquivo é próprio deste repositório desde ago/2026** e descreve só o aplicativo
 > publicado aqui. O QualiLab dentro do assistente (extensão do Claude Desktop, plugin) tem
 > numeração e changelog próprios, no repositório `QualiLab-plugin` — ele leva as mesmas
