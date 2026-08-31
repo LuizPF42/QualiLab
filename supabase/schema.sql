@@ -54,7 +54,7 @@ create table if not exists public.members (
   project_id   uuid not null references public.projects(id) on delete cascade,
   user_id      uuid not null,
   display_name text not null default 'anonimo',
-  role         text not null default 'member',   -- admin | member
+  role         text not null default 'member',   -- admin | member | viewer
   joined_at    timestamptz not null default now(),
   unique (project_id, user_id)
 );
@@ -201,6 +201,27 @@ returns boolean language sql security definer stable set search_path = public as
   select exists (select 1 from public.members where project_id = p and user_id = auth.uid() and role = 'admin');
 $$;
 
+-- PAPEL 'viewer' (somente leitura, ago/2026): le tudo o que um membro le — as MESMAS restricoes
+-- de blind e restrict_docs continuam valendo, nao ha caminho de visibilidade novo — e nao muda
+-- material nenhum. E o orientador, o parecerista, o colega que le e devolve leitura.
+-- can_edit e a fronteira: onde uma policy de ESCRITA dizia is_member, hoje diz can_edit.
+create or replace function public.can_edit(p uuid)
+returns boolean language sql security definer stable set search_path = public as $$
+  select exists (select 1 from public.members
+                 where project_id = p and user_id = auth.uid() and role <> 'viewer');
+$$;
+
+-- A EXCECAO DO VIEWER E O MEMO — ele COMENTA —, mas a tabela `memos` guarda DUAS coisas
+-- diferentes: nota E configuracao do estudo (os seis ai_*, o ai_prompt e o cloud_stopwords).
+-- Configuracao nao e comentario: mexer nela muda o que a IA recebe e o que a nuvem de palavras
+-- ignora, ou seja decisao metodologica. Esta funcao e a linha entre as duas, e ela e a mesma
+-- distincao que o MEMO_PROJECT_SCOPES do cliente ja fazia por outro motivo.
+-- ESCOPO NOVO DE NOTA entra aqui; escopo novo de CONFIG nao entra, e fica fechado por default.
+create or replace function public.memo_is_note(p_scope text)
+returns boolean language sql immutable set search_path = public as $$
+  select p_scope in ('project','document','code','coding');
+$$;
+
 -- ---------- RPCs ----------
 -- codigo de convite com 10 chars hex (16^10 ~ 1,1 trilhao de combinacoes; os 6 antigos
 -- eram enumeraveis, 16,7M). p_mode validado — antes qualquer string era aceita.
@@ -337,8 +358,10 @@ create or replace function public.set_member_role(p_project uuid, p_user uuid, p
 returns void language plpgsql security definer set search_path = public as $$
 begin
   if not public.is_admin(p_project) then raise exception 'Apenas administradores podem alterar papéis'; end if;
-  if p_role not in ('admin','member') then raise exception 'Papel inválido'; end if;
-  if p_role = 'member'
+  if p_role not in ('admin','member','viewer') then raise exception 'Papel inválido'; end if;
+  -- a guarda do ULTIMO ADMIN olha "deixa de ser admin", nao "vira member": presa ao literal
+  -- 'member' ela deixaria promover o unico admin a viewer, e o projeto ficaria sem ninguem.
+  if p_role <> 'admin'
      and exists (select 1 from public.members where project_id = p_project and user_id = p_user and role = 'admin')
      and (select count(*) from public.members where project_id = p_project and role = 'admin') <= 1
   then raise exception 'O projeto precisa de ao menos um administrador'; end if;
@@ -476,13 +499,13 @@ create policy documents_select on public.documents for select
 -- Sob distribuicao restritiva o corpus e do admin -- que e o fluxo que a restricao sustenta.
 -- Projeto SEM restricao segue igual: qualquer membro adiciona documento.
 create policy documents_insert on public.documents for insert with check (
-  public.is_member(project_id)
+  public.can_edit(project_id)
   and (public.is_admin(project_id)
        or not coalesce((select pr.restrict_docs from public.projects pr where pr.id = project_id), false))
 );
 create policy documents_update on public.documents for update
-  using (public.is_member(project_id) and public.can_see_doc(project_id, id))
-  with check (public.is_member(project_id) and public.can_see_doc(project_id, id));
+  using (public.can_edit(project_id) and public.can_see_doc(project_id, id))
+  with check (public.can_edit(project_id) and public.can_see_doc(project_id, id));
 create policy documents_delete on public.documents for delete using (public.is_admin(project_id));
 
 create or replace function public.documents_guard()
@@ -507,9 +530,9 @@ drop policy if exists codes_insert on public.codes;
 drop policy if exists codes_update on public.codes;
 drop policy if exists codes_delete on public.codes;
 create policy codes_select on public.codes for select using (public.is_member(project_id));
-create policy codes_insert on public.codes for insert with check (public.is_member(project_id));
+create policy codes_insert on public.codes for insert with check (public.can_edit(project_id));
 create policy codes_update on public.codes for update
-  using (public.is_member(project_id)) with check (public.is_member(project_id));
+  using (public.can_edit(project_id)) with check (public.can_edit(project_id));
 create policy codes_delete on public.codes for delete using (public.is_admin(project_id));
 
 -- codings: o servidor passa a ser a autoridade (antes uma unica policy for all deixava
@@ -535,18 +558,18 @@ create policy codings_select on public.codings for select using (
   and public.can_see_authored(project_id, created_by)
 );
 create policy codings_insert on public.codings for insert with check (
-  public.is_member(project_id)
+  public.can_edit(project_id)
   and public.can_see_doc(project_id, document_id)
   and (created_by = auth.uid() or public.is_admin(project_id))
   and (layer <> 'final' or public.is_admin(project_id))
 );
 create policy codings_update on public.codings for update
-  using (public.is_member(project_id) and public.can_see_doc(project_id, document_id)
+  using (public.can_edit(project_id) and public.can_see_doc(project_id, document_id)
          and (created_by = auth.uid() or public.is_admin(project_id)))
-  with check (public.is_member(project_id) and public.can_see_doc(project_id, document_id)
+  with check (public.can_edit(project_id) and public.can_see_doc(project_id, document_id)
          and (created_by = auth.uid() or public.is_admin(project_id)));
 create policy codings_delete on public.codings for delete
-  using (public.is_member(project_id) and public.can_see_doc(project_id, document_id)
+  using (public.can_edit(project_id) and public.can_see_doc(project_id, document_id)
          and (created_by = auth.uid() or public.is_admin(project_id)));
 
 -- categorias: membros leem; apenas admins escrevem
@@ -571,9 +594,9 @@ create policy doc_values_select on public.doc_values for select using (
   and public.can_see_authored(project_id, set_by)
 );
 create policy doc_values_own on public.doc_values for all
-  using (public.is_member(project_id) and public.can_see_doc(project_id, document_id)
+  using (public.can_edit(project_id) and public.can_see_doc(project_id, document_id)
          and set_by = auth.uid() and layer = 'individual')
-  with check (public.is_member(project_id) and public.can_see_doc(project_id, document_id)
+  with check (public.can_edit(project_id) and public.can_see_doc(project_id, document_id)
          and set_by = auth.uid() and layer = 'individual');
 create policy doc_values_final on public.doc_values for all
   using (public.is_admin(project_id) and layer = 'final')
@@ -613,17 +636,17 @@ do $$ begin
   create policy "pdfs_insert" on storage.objects for insert to authenticated
     with check ( bucket_id='pdfs' and exists (select 1 from public.documents d
       where d.id::text = split_part(storage.objects.name,'.',1)
-        and public.is_member(d.project_id) and public.can_see_doc(d.project_id, d.id)) );
+        and public.can_edit(d.project_id) and public.can_see_doc(d.project_id, d.id)) );
   drop policy if exists "pdfs_update" on storage.objects;
   create policy "pdfs_update" on storage.objects for update to authenticated
     using ( bucket_id='pdfs' and exists (select 1 from public.documents d
       where d.id::text = split_part(storage.objects.name,'.',1)
-        and public.is_member(d.project_id) and public.can_see_doc(d.project_id, d.id)) );
+        and public.can_edit(d.project_id) and public.can_see_doc(d.project_id, d.id)) );
   drop policy if exists "pdfs_delete" on storage.objects;
   create policy "pdfs_delete" on storage.objects for delete to authenticated
     using ( bucket_id='pdfs' and exists (select 1 from public.documents d
       where d.id::text = split_part(storage.objects.name,'.',1)
-        and public.is_member(d.project_id) and public.can_see_doc(d.project_id, d.id)) );
+        and public.can_edit(d.project_id) and public.can_see_doc(d.project_id, d.id)) );
 end $$;
 
 -- ---------- realtime ----------
@@ -672,10 +695,20 @@ alter table public.memos add constraint memos_scope_check check (scope in ('proj
 alter table public.memos enable row level security;
 -- nota UNICA compartilhada (co-editavel de proposito): nao travo quem edita, mas o servidor
 -- carimba updated_by (trigger memos_provenance) pra a autoria da ultima edicao nao ser forjavel.
+-- A POLICY UNICA `for all` VIROU DUAS por causa do viewer, e nao e cosmetico: em `for all` o
+-- USING governa tambem o SELECT, entao exigir can_edit ali tiraria a LEITURA dele. Com uma
+-- policy de SELECT propria (policies permissivas se somam em OR), a leitura fica intacta e so a
+-- escrita ganha a condicao. O viewer escreve memo que e NOTA; config do estudo, nao.
 drop policy if exists memos_all on public.memos;
-create policy memos_all on public.memos for all
-  using (public.is_member(project_id) and public.memo_visible(project_id, scope, target_id))
-  with check (public.is_member(project_id) and public.memo_visible(project_id, scope, target_id));
+drop policy if exists memos_select on public.memos;
+drop policy if exists memos_write on public.memos;
+create policy memos_select on public.memos for select
+  using (public.is_member(project_id) and public.memo_visible(project_id, scope, target_id));
+create policy memos_write on public.memos for all
+  using (public.is_member(project_id) and public.memo_visible(project_id, scope, target_id)
+         and (public.can_edit(project_id) or public.memo_is_note(scope)))
+  with check (public.is_member(project_id) and public.memo_visible(project_id, scope, target_id)
+         and (public.can_edit(project_id) or public.memo_is_note(scope)));
 alter table public.memos add column if not exists updated_by uuid;
 create or replace function public.memos_provenance()
 returns trigger language plpgsql security definer set search_path = public as $$
@@ -809,13 +842,13 @@ create policy ia_results_select on public.ia_results for select using (public.is
 -- grava por addIaResultsBulk, entao um .qualilab com historico entrando num projeto 'all' vira
 -- linha recusada — numero sem motivo passa por bug.
 create policy ia_results_insert on public.ia_results for insert
-  with check (public.is_member(project_id) and (created_by = auth.uid() or created_by is null)
+  with check (public.can_edit(project_id) and (created_by = auth.uid() or created_by is null)
               and public.can_use_ai(project_id));
 create policy ia_results_update on public.ia_results for update
-  using (public.is_member(project_id) and (created_by = auth.uid() or public.is_admin(project_id)))
-  with check (public.is_member(project_id) and (created_by = auth.uid() or public.is_admin(project_id)));
+  using (public.can_edit(project_id) and (created_by = auth.uid() or public.is_admin(project_id)))
+  with check (public.can_edit(project_id) and (created_by = auth.uid() or public.is_admin(project_id)));
 create policy ia_results_delete on public.ia_results for delete
-  using (public.is_member(project_id) and (created_by = auth.uid() or public.is_admin(project_id)));
+  using (public.can_edit(project_id) and (created_by = auth.uid() or public.is_admin(project_id)));
 
 -- ---------- diario de insights da IA: memoria persistente e curada do projeto ----------
 -- Lista de memorias curtas (fatos/decisoes/insights) que a IA propoe e o pesquisador
@@ -848,13 +881,13 @@ drop policy if exists ia_memory_update on public.ia_memory;
 drop policy if exists ia_memory_delete on public.ia_memory;
 create policy ia_memory_select on public.ia_memory for select using (public.is_member(project_id));
 create policy ia_memory_insert on public.ia_memory for insert
-  with check (public.is_member(project_id) and (created_by = auth.uid() or created_by is null)
+  with check (public.can_edit(project_id) and (created_by = auth.uid() or created_by is null)
               and public.can_use_ai(project_id));
 create policy ia_memory_update on public.ia_memory for update
-  using (public.is_member(project_id) and (created_by = auth.uid() or public.is_admin(project_id)))
-  with check (public.is_member(project_id) and (created_by = auth.uid() or public.is_admin(project_id)));
+  using (public.can_edit(project_id) and (created_by = auth.uid() or public.is_admin(project_id)))
+  with check (public.can_edit(project_id) and (created_by = auth.uid() or public.is_admin(project_id)));
 create policy ia_memory_delete on public.ia_memory for delete
-  using (public.is_member(project_id));
+  using (public.can_edit(project_id));
 
 -- toggle de active aberto a qualquer membro (a policy de update acima nao cobre
 -- memoria alheia de proposito); o SupabaseStore.setMemoryActive chama esta RPC.
@@ -864,7 +897,9 @@ declare v_pid uuid;
 begin
   select project_id into v_pid from public.ia_memory where id = p_id;
   if v_pid is null then raise exception 'Memória não encontrada'; end if;
-  if not public.is_member(v_pid) then raise exception 'Apenas membros do projeto podem alterar a memória'; end if;
+  -- o gate vai AQUI e nao so na policy: a RPC e security definer, entao sem ele ela seria a
+  -- porta de fuga do viewer para o toggle de "usar na análise".
+  if not public.can_edit(v_pid) then raise exception 'Somente leitura: este papel não altera a memória do projeto'; end if;
   update public.ia_memory set active = p_active where id = p_id;
 end; $$;
 grant execute on function public.set_memory_active(uuid, boolean) to anon, authenticated;

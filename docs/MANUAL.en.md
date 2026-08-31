@@ -182,6 +182,9 @@ In an **individual project**, everything goes straight to the reference layer. I
 ### Roles (collective project)
 - **Admin**: defines the attribute scheme, edits the reference layer, manages members, sets family colors and **redaction**, edits document **text**, **imports** material and performs the **structural and destructive** operations: **deleting** documents or codes and **merging** codes (which affect the whole team's work).
 - **Member**: codes in their own layer, fills in their own attribute answers, **creates and renames** codes, and writes memos.
+- **Read-only**: reads the whole project — documents, codes, the team's codings, attributes, charts, Reconciliation and Report — and **writes memos**. They do not code, do not answer attributes, do not touch the scheme, do not upload documents and do not import; the AI screens do not appear for them. This is the role for a **supervisor**, a **reviewer**, or the colleague you ask for a second reading: their opinion comes back to the team through the memos, inside the project. **Blind coding** and **assignment** restrictions apply to them exactly as they apply to a member.
+
+> **How to assign it:** in **Project ▸ Members** ("Projeto ▸ Membros"), the admin clicks **make read-only** on that person's row (and **give coding back** to undo it). They join the project with the usual access code. A project is never left without an admin: the button refuses to demote the last one. And the **study's configuration** — the AI instructions, the stance, the saved prompts and the words ignored in the word cloud — is stored as memos but is **not** commentary: it stays with whoever coordinates the project.
 
 > These restrictions are enforced by the **server**, not merely hidden in the interface: a member cannot (not even by calling the API directly) write to the reference layer, delete documents/codes, edit shared text, remove a code's redaction or import. Those actions require the admin role.
 

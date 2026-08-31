@@ -180,6 +180,9 @@ Em **projeto individual**, tudo já vai direto para o gabarito. Em **projeto col
 ### Papéis (projeto coletivo)
 - **Admin**: define o esquema de categorias, edita o gabarito, gerencia membros, define as cores de família e a **censura**, edita o **texto** dos documentos, **importa** material e faz as operações **estruturais e destrutivas**: **excluir** documentos ou códigos e **mesclar** códigos (que afetam o trabalho de toda a equipe).
 - **Membro**: codifica na sua camada, preenche as próprias respostas de categoria, **cria e renomeia** códigos, e escreve memos.
+- **Somente leitura**: lê o projeto inteiro — documentos, códigos, as codificações da equipe, categorias, gráficos, Reconciliação e Relatório — e **escreve memos**. Não codifica, não responde categoria, não mexe no esquema, não envia documento e não importa; as telas de IA não aparecem para ele. É o papel do **orientador**, do **parecerista** ou do colega a quem você pede uma segunda leitura: a opinião dele volta para a equipe pelos memos, dentro do projeto. As restrições de **codificação cega** e de **distribuição** continuam valendo para ele como valem para um membro.
+
+> **Como atribuir:** em **Projeto ▸ Membros**, o admin clica em **tornar somente leitura** na linha da pessoa (e em **devolver a codificação** para desfazer). Ela entra no projeto com o mesmo código de acesso de sempre. O projeto nunca fica sem admin: o botão recusa rebaixar o último que existe. E a **configuração do estudo** — as instruções da IA, a postura, os prompts salvos e as palavras ignoradas na nuvem — é guardada como memo mas **não** é comentário: fica com quem coordena.
 
 > Essas restrições são impostas pelo **servidor**, não apenas escondidas na interface: um membro não consegue (nem por chamada direta à API) escrever no gabarito, excluir documentos/códigos, editar o texto compartilhado, remover a censura de um código ou importar. Essas ações exigem o papel de admin.
 

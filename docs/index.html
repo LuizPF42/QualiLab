@@ -913,7 +913,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.48';
+const QUALILAB_VERSION = '1.4.49';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -3082,6 +3082,13 @@ const MSG_PT = {
   'lang.pt': 'Português',
   'lang.en': 'English',
   'lang.hint': 'Vale só para a interface deste navegador: o material da pesquisa e o que você escreve não são traduzidos.',
+  // -- papel somente leitura (viewer) --
+  'err.readOnly': 'O seu papel neste projeto é somente leitura: você lê tudo e comenta nos memos, mas não altera o material.',
+  'readOnly.pill': 'somente leitura',
+  'readOnly.tip': 'Você lê todo o projeto e pode escrever memos; codificação, categorias, esquema e documentos ficam com quem coordena.',
+  'proj.role.viewer': 'Somente leitura',
+  'proj.makeViewer': 'tornar somente leitura',
+  'proj.makeMemberBack': 'devolver a codificação',
 };
 /* ============ CATALOGO EN ============
    Mesmas chaves do msg-pt.js, sem excecao: o scripts/check_i18n.py compara os dois conjuntos nos
@@ -5104,6 +5111,13 @@ const MSG_EN = {
   'lang.pt': 'Português',
   'lang.en': 'English',
   'lang.hint': 'Applies to the interface in this browser only: your research material and what you write are not translated.',
+  // -- the read-only role (viewer) --
+  'err.readOnly': 'Your role in this project is read-only: you read everything and comment in the memos, but you do not change the material.',
+  'readOnly.pill': 'read-only',
+  'readOnly.tip': 'You read the whole project and can write memos; coding, attributes, the scheme and the documents stay with whoever coordinates it.',
+  'proj.role.viewer': 'Read-only',
+  'proj.makeViewer': 'make read-only',
+  'proj.makeMemberBack': 'give coding back',
 };
 const HUES = [210, 28, 150, 350, 268, 184, 322, 70, 48, 96, 122, 238, 295, 8];
 function codeColor(hue, depth, hueDeg, dark=false, sat=null){
@@ -12835,7 +12849,7 @@ function App(){
   // aviso de tela pequena (.small-warn, so aparece <=720px por CSS — aqui so guardamos o "fechei")
   const [smallWarnHidden, setSmallWarnHidden] = useState(false);
   const [importMsg, setImportMsg] = useState(null);
-  const [role, setRole] = useState('member');  // papel do usuário no projeto: admin | member
+  const [role, setRole] = useState('member');  // papel do usuário no projeto: admin | member | viewer
   const [members, setMembers] = useState([]);   // membros do projeto (gestão de admins)
 
   const activeDoc = docs.find(d=>d.id===activeId) || null;
@@ -12844,6 +12858,12 @@ function App(){
   const { swWaiting, applySwUpdate, persisted } = useChrome({ project, activeDocName: activeDoc?.name,
     queuePending: queue.pending, storeMode: store?.mode, hasDocs: docs.length>0 });
   const isAdmin = role==='admin';
+  /* SOMENTE LEITURA (ago/2026): o terceiro papel. Ele LE tudo o que um membro lê — blind e
+     distribuição continuam valendo igual — e não muda material nenhum; a exceção é o MEMO,
+     que é o que faz dele um comentarista (orientador, parecerista) em vez de um espectador.
+     Aqui isto é só UX: quem recusa é a RLS (`can_edit`), e é ela a garantia. O que este flag
+     evita é o botão que só serve para produzir banner vermelho. */
+  const readOnly = role==='viewer';
   // FR-05: "modo foco" do admin — UI-only, o servidor continua tratando como admin (RLS intacta).
   const focusMode = isAdmin && userMode;   // admin agindo como usuário: esconde abas/controles de admin, fixa "Ver: minhas"
   const adminUI = isAdmin && !userMode;    // mostrar controles de admin no cliente? (não em foco)
@@ -13499,6 +13519,7 @@ function App(){
   async function renameDoc(id, name){ const nm=(name||'').trim(); if(!nm) return; await store.renameDocument(id, nm); setDocs(d=>d.map(x=>x.id===id?{...x,name:nm}:x)); }
 
   async function setValue(catId, value){
+    if(readOnly) return setErr(t('err.readOnly'));
     try{
       if(projectMode==='individual') await store.setFinalValue(project.id, activeId, catId, value);
       else await store.setDocValue(project.id, activeId, catId, value);
@@ -13669,6 +13690,7 @@ function App(){
     catch(e){ setErr(t('err.code.create',{e:e.message||e})); return null; }
   };
   async function applyCode(codeId, selection){
+    if(readOnly) return setErr(t('err.readOnly'));
     const s = selection || sel;
     if(!s) return;
     // PDF-BLOCK: se esta codificação veio do OCR de área (região pendente amarrada a ESTA seleção),
@@ -14702,7 +14724,7 @@ function App(){
   <div class="app">
     <header class="top">
       <${TopNav} project=${project} mainView=${mainView} projectMode=${projectMode}
-        focusMode=${focusMode} blindLock=${blindLock} aiLock=${aiLock} theme=${theme}
+        focusMode=${focusMode} blindLock=${blindLock} aiLock=${aiLock} readOnly=${readOnly} theme=${theme}
         onView=${setMainView} onCycleTheme=${cycleTheme} />
       <div class="top-row">
         ${project && (()=>{ /* pilula do projeto: cor + rotulo + tooltip por estado de conexao */
@@ -14770,7 +14792,7 @@ function App(){
           </div>`}
         </div>`}
         ${project && html`<div style="position:relative">
-          <button class="btn sm ghost" onClick=${()=>alternaMenu('importar')}>${t('import.menu')}</button>
+          ${!readOnly && html`<button class="btn sm ghost" onClick=${()=>alternaMenu('importar')}>${t('import.menu')}</button>`}
           ${(menu==='importar') && html`<div>
             <div onClick=${()=>setMenu(null)} style="position:fixed;inset:0;z-index:40"></div>
             <div class="exmenu">
@@ -14878,7 +14900,7 @@ function App(){
           <div style="position:relative">
             ${(projRestrict && !isAdmin)
               ? html`<span class="meta" title=${t('doc.restricted.tip')}>${t('doc.restricted')}</span>`
-              : html`<button class="btn sm" title=${t('doc.add.tip')} onClick=${()=>alternaMenu('enviar')}>${t('doc.add')}</button>`}
+              : !readOnly && html`<button class="btn sm" title=${t('doc.add.tip')} onClick=${()=>alternaMenu('enviar')}>${t('doc.add')}</button>`}
             ${(menu==='enviar') && html`<div>
               <div onClick=${()=>setMenu(null)} style="position:fixed;inset:0;z-index:40"></div>
               <div class="exmenu" style="left:0;right:auto;min-width:248px">
@@ -14915,6 +14937,8 @@ function App(){
             </div>`}
           </div>`}
 
+          ${readOnly && html`<span class="pill" style="background:var(--surface);cursor:help;flex:none"
+            title=${t('readOnly.tip')}>${t('readOnly.pill')}</span>`}
           ${activeHealth && !activeHealth.ok && !edicao.ativa && html`<span class="pill mode-offline" style="cursor:help;flex:none"
             title=${t('health.tip',{list:activeHealth.flags.join('\n• ')})}>⚠︎ ${t('health.pill')}</span>`}
           <div class="grow"></div>
@@ -15001,7 +15025,7 @@ function App(){
           codings=${visibleCodings.filter(c=>c.document_id===activeId && !c.pdf_region)} codeById=${codeById}
           matches=${searchMatches} containerRef=${readerRef} darkMode=${darkMode} />`}
         </div>
-        ${sel && !edicao.ativa && !pdf.mostrando && !ctxMenu && html`<${SelectionToolbar} sel=${sel}
+        ${sel && !edicao.ativa && !pdf.mostrando && !ctxMenu && !readOnly && html`<${SelectionToolbar} sel=${sel}
           recent=${recentCodesRef.current.map(id=>codeById[id]).filter(Boolean)}
           onApply=${(id)=>applyCode(id)} onCancel=${()=>{ setSel(null); window.getSelection()?.removeAllRanges(); }}
           onMenu=${(x,y)=>setCtxMenu({ x, y, sel, quote:sel.quote, boundRight: readerRef.current?.getBoundingClientRect?.().right || window.innerWidth })} />`}
@@ -15020,14 +15044,14 @@ function App(){
         </div>
         <div class="pane-body scroll">
           ${rtab==='categorias' && html`<${CategoriesPanel} cats=${cats} values=${values} activeDoc=${activeDoc}
-                 canEditSchema=${adminUI} userId=${user?.id} projectMode=${projectMode} viewCoder=${viewCoder}
+                 canEditSchema=${adminUI && !readOnly} readOnly=${readOnly} userId=${user?.id} projectMode=${projectMode} viewCoder=${viewCoder}
                  onSet=${setValue} onAdd=${addCategory} onUpd=${updCategory} onDel=${delCategory}
                  dragCatId=${dragCatId} setDragCatId=${setDragCatId} onReorder=${reorderCategories} />`}
           ${rtab==='codigos' && html`<${CodesPanel} codes=${codes} codeById=${codeById} count=${codingCount} sel=${sel}
                  selCode=${selCode} setSelCode=${setSelCode} codePath=${codePath}
                  checklist=${{ docs:docs.length>0, codes:codes.length>0, coded:codings.length>0 }}
                  recentCodes=${recentCodesRef.current.map(id=>codeById[id]).filter(Boolean)}
-                 onAdd=${addCodeUI} onDel=${delCode} onApply=${applyCode} onUpd=${updCode} onSetColor=${setCodeColor} onSetSat=${setCodeSat} onSetRedaction=${setCodeRedaction} isAdmin=${adminUI}
+                 onAdd=${addCodeUI} onDel=${delCode} onApply=${applyCode} onUpd=${updCode} onSetColor=${setCodeColor} onSetSat=${setCodeSat} onSetRedaction=${setCodeRedaction} isAdmin=${adminUI && !readOnly} readOnly=${readOnly}
                  onCodeContext=${(code,x,y)=>setCodeCtx({code,x,y})}
                  store=${store} project=${project} reload=${reloadWrite} />`}
           ${rtab==='memos' && html`<${CodingMemosPanel} project=${project} activeDoc=${activeDoc} focusedCoding=${focusedCoding} selCode=${selCode}
@@ -15192,7 +15216,7 @@ function App(){
        por um quadro antes de sair, e um quadro basta para ele montar e disparar o que dispara ao
        montar. Cair no ULTIMO braco do ternario e o desvio SILENCIOSO que a spec pede (mesmo
        precedente do 'mcp' no app publico). */
-    : mainView==='ia_codificar' && !aiLock ? html`<div class="split">
+    : mainView==='ia_codificar' && !aiLock && !readOnly ? html`<div class="split">
       <!-- CODIFICAR AUTOMATICAMENTE: tela inteira (config | resultado). 3 abas de IA (operações
            inline no turno da IA) + a aba "Repetir Codificação", que é mecânica e roda sem IA -->
       <${IACodificarPanel} project=${project} docs=${docs} codes=${codes} codeById=${codeById} codePath=${codePath}
@@ -15201,7 +15225,7 @@ function App(){
         reload=${reloadWrite} loadAll=${loadAll} onAdd=${addCode} memos=${memos} onSetMemo=${saveMemo}
         memory=${aiMemory} onAddMemory=${addMemory} onToggleMemory=${toggleMemoryActive} onDeleteMemory=${deleteMemory} />
     </div>`
-    : mainView==='mcp' && !aiLock ? html`<div class="split">
+    : mainView==='mcp' && !aiLock && !readOnly ? html`<div class="split">
       <!-- MCP/RAG: chat sobre o laco agentico. Sem painel de configuracao de proposito — o
            material nao e escolhido antes da pergunta; o modelo pede o que precisa pelos tools -->
       <${AgentPanel} project=${project} projectMode=${projectMode} docs=${docs} codes=${codes} cats=${cats}
@@ -15504,7 +15528,7 @@ function App(){
     onCancel=${()=>setPendImport(null)} onConfirm=${doImportQuote} />`}
 
   ${ui.paleta && html`<${CommandPalette} docs=${docs} activeId=${activeId}
-    gates=${{ projectMode, focusMode, blindLock, aiLock }}
+    gates=${{ projectMode, focusMode, blindLock, aiLock, readOnly }}
     onView=${setMainView}
     onPickDoc=${(id)=>{ if(mainView==='visualizar') setVizSelDoc(id); else { setActiveId(id); if(mainView!=='codificar') setMainView('codificar'); } }}
     actions=${[
@@ -16333,11 +16357,16 @@ function ProjectModal({ mode, user, project, projectMode, isAdmin, members, hasD
         return html`<div class="docitem" key=${m.user_id}>
           <div style="flex:1;min-width:0">
             <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${authorLabel(m.display_name)}${isMe?t('proj.you'):''}</div>
-            <div class="meta">${m.role==='admin'?t('proj.role.admin'):t('proj.role.member')}</div>
+            <div class="meta">${m.role==='admin'?t('proj.role.admin'):m.role==='viewer'?t('proj.role.viewer'):t('proj.role.member')}</div>
           </div>
+          ${/* TRES papeis nao cabem num botao que alterna: com dois estados o 'viewer' ficaria
+               inatribuivel. Dois botoes, e cada um nomeia o EFEITO em vez do papel. */''}
           ${isAdmin && html`<button class="btn sm ghost" disabled=${lastAdmin}
             title=${lastAdmin?t('proj.lastAdmin'):''}
             onClick=${()=>onSetRole(m.user_id, m.role==='admin'?'member':'admin')}>${m.role==='admin'?t('proj.makeMember'):t('proj.makeAdmin')}</button>`}
+          ${isAdmin && html`<button class="btn sm ghost" disabled=${lastAdmin}
+            title=${lastAdmin?t('proj.lastAdmin'):t('readOnly.tip')}
+            onClick=${()=>onSetRole(m.user_id, m.role==='viewer'?'member':'viewer')}>${m.role==='viewer'?t('proj.makeMemberBack'):t('proj.makeViewer')}</button>`}
           ${isMe
             ? html`<button class="btn sm ghost" style="color:var(--danger)" onClick=${()=>onRemoveMember(m.user_id)}>${t('proj.leave')}</button>`
             : isAdmin && html`<button class="icon-btn" title=${t('proj.removeMember')} disabled=${lastAdmin}
@@ -16742,7 +16771,11 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
    `id:'mcp'` desta lista e uma das marcas OBRIGATORIAS do scripts/estavel_core.py — ele aborta a
    geracao do app publico se ela sumir. Foi por isso que a marca deixou de ser `onView('mcp')` na
    extracao do TopNav: ao mexer em linha que os geradores procuram, confira o corte. */
-function visibleViews({ projectMode, focusMode, blindLock, aiLock }){
+/* `readOnly` esconde as MESMAS tres telas que o aiLock (S7) esconde, e por um motivo
+   proprio: elas existem para PROPOR mudanca que o papel nao pode aplicar, e salvar conversa
+   ou memoria e escrita que a RLS recusa. Os dois motivos somam aqui em vez de o viewer
+   acender o aiLock — sao coisas diferentes, e o selo de IA do cabecalho fala do PROJETO. */
+function visibleViews({ projectMode, focusMode, blindLock, aiLock, readOnly }){
   const groups = [];
   const g1 = [{ id:'codificar', label:t('nav.coding') }];
   if(projectMode==='collective' && !focusMode && !blindLock) g1.push({ id:'reconciliar', label:t('nav.reconcile') });
@@ -16751,7 +16784,7 @@ function visibleViews({ projectMode, focusMode, blindLock, aiLock }){
   if(!focusMode) g2.push({ id:'esquema', label:t('nav.scheme') });
   groups.push(g2);
   const g3 = [{ id:'graficos', label:t('nav.charts') }];
-  if(!aiLock){
+  if(!aiLock && !readOnly){
     g3.push({ id:'ia_codificar', label:t('nav.autocoding') });
     g3.push({ id:'ia_analisar', label:t('nav.analyze') });
     g3.push({ id:'mcp', label:t('nav.explore') });
@@ -16761,9 +16794,9 @@ function visibleViews({ projectMode, focusMode, blindLock, aiLock }){
   return groups;
 }
 
-function TopNav({ project, mainView, projectMode, focusMode, blindLock, aiLock, theme,
+function TopNav({ project, mainView, projectMode, focusMode, blindLock, aiLock, readOnly, theme,
                   onView, onCycleTheme }){
-  const groups = visibleViews({ projectMode, focusMode, blindLock, aiLock });
+  const groups = visibleViews({ projectMode, focusMode, blindLock, aiLock, readOnly });
   /* navegacao por setas dentro da barra (padrao de tablist): ← → circulam o foco entre os
      botoes; Enter/Espaco ja ativam por serem <button>. Mesmo espirito do useTreeKeys. */
   const onSegKeys = (e)=>{
@@ -17157,7 +17190,7 @@ function CatOtherAnswers({ cat, values, userId }){
   </div>`;
 }
 
-function CategoriesPanel({ cats, values, activeDoc, canEditSchema, userId, projectMode, viewCoder, onSet, onAdd, onUpd, onDel, dragCatId, setDragCatId, onReorder }){
+function CategoriesPanel({ cats, values, activeDoc, canEditSchema, readOnly, userId, projectMode, viewCoder, onSet, onAdd, onUpd, onDel, dragCatId, setDragCatId, onReorder }){
   // CATEGORIAS COLAPSAVEIS (ago/2026), no padrao das secoes do MemoNav: caret + clique no
   // rotulo. Elas nascem ABERTAS de proposito — a tela existe para ser preenchida, e comecar
   // fechada esconderia o trabalho de quem ja usa o painel; o colapso serve para domar o
@@ -17187,7 +17220,10 @@ function CategoriesPanel({ cats, values, activeDoc, canEditSchema, userId, proje
   // leitura: setDocValue sempre grava sob o uid do usuario ATUAL, entao "corrigir" o que
   // aparece ali sobrescreveria a PROPRIA resposta de quem edita, nao a da pessoa exibida — o
   // campo mostraria um valor e mudaria outro. O gabarito se edita na Reconciliação, nao aqui.
-  const isOwnView = projectMode==='individual' || viewCoder==='mine' || viewCoder==='all';
+  // SOMENTE LEITURA entra pela MESMA porta do recorte "Ver: fulano": ali o campo ja fica em
+  // leitura porque a resposta exibida nao e a de quem edita. O motivo e outro, o efeito e o
+  // mesmo — e reusar a porta evita um segundo caminho de desabilitar campo nesta tela.
+  const isOwnView = !readOnly && (projectMode==='individual' || viewCoder==='mine' || viewCoder==='all');
   const valOf = (catId)=>{
     const final = ()=> values.find(v=>v.category_id===catId && v.layer==='final');
     if(projectMode==='individual') return final();
@@ -17484,7 +17520,7 @@ function ConvertToFamilyModal({ parent, childName, codings, onCancel, onConfirm 
   </div></div>`;
 }
 
-function CodesPanel({ codes, codeById, count, sel, selCode, setSelCode, codePath, onAdd, onDel, onApply, onUpd, onSetColor, onSetSat, onSetRedaction, isAdmin, store, project, reload, onCodeContext, checklist, recentCodes }){
+function CodesPanel({ codes, codeById, count, sel, selCode, setSelCode, codePath, onAdd, onDel, onApply, onUpd, onSetColor, onSetSat, onSetRedaction, isAdmin, readOnly, store, project, reload, onCodeContext, checklist, recentCodes }){
   const treeKeys = useTreeKeys();
   const tops = codes.filter(c=>!c.parent_id);
   const childrenOf = (id)=>codes.filter(c=>c.parent_id===id);
@@ -17494,10 +17530,10 @@ function CodesPanel({ codes, codeById, count, sel, selCode, setSelCode, codePath
     <p class="h">${t('codes.title')}</p>
     <p class="hint" dangerouslySetInnerHTML=${{__html: mdLite(t('codes.hint'))}}></p>
 
-    <div class="row" style="gap:6px;margin-bottom:10px;flex-wrap:wrap">
+${!readOnly && html`<div class="row" style="gap:6px;margin-bottom:10px;flex-wrap:wrap">
       <button class="btn sm" onClick=${()=>onAdd(selected)} disabled=${!selected} title=${selected?t('codes.childOf',{name:selected.name}):t('codes.pickOne')}>${t('codes.sub')}${selected?t('codes.sub.of',{name:selected.name}):''}</button>
       <button class="btn sm ghost" onClick=${()=>onAdd(null)} title=${t('codes.top.tip')}>${t('codes.top')}</button>
-    </div>
+    </div>`}
 
     ${sel && html`<div class="banner warn" style="margin:0 0 10px">${t('codes.selected')}</div>`}
     ${/* RECENTES numerados: codificacao tematica e repetitiva (o mesmo codigo cai em varios
@@ -19780,7 +19816,11 @@ function agreementState(group, userId){
 
 /* Os tres estados acima em botao. Componente proprio porque os DOIS cards da aba Codigos (o de um
    documento e o de todos) mostram exatamente o mesmo gesto — a regra visual fica num lugar so. */
-function AgreeButton({ state, onAgree, onUndo }){
+/* Com `readOnly` os dois gestos de escrita desta tela somem (concordar e desfazer a
+   concordancia). A TELA fica: e nela que se VE onde a equipe divergiu, que e o que um
+   orientador abre para ler. */
+function AgreeButton({ state, onAgree, onUndo, readOnly }){
+  if(readOnly) return state.kind==='none' ? null : html`<span class="author">${state.kind==='own'?t('rec.own'):t('rec.agreed')}</span>`;
   if(state.kind === 'own') return html`<span class="author" title=${t('rec.own.tip')}>${t('rec.own')}</span>`;
   if(state.kind === 'agreed') return html`<span class="row" style="gap:6px">
     <span class="author" style="background:var(--teal-soft);color:var(--teal-deep)" title=${t('rec.agreed.tip')}>${t('rec.agreed')}</span>

@@ -14,6 +14,38 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.49 (31/08/2026)
+
+### Um papel de somente leitura, para quem lê e comenta
+
+Um projeto na nuvem agora tem **três papéis**, e não dois. Além de administrador e pesquisador,
+existe o **somente leitura** — pensado para o orientador, o parecerista, o membro do comitê de
+ética, o colega a quem você pede uma segunda opinião.
+
+- **Ele lê o projeto inteiro**: os documentos, o livro de códigos, as codificações da equipe, as
+  categorias, os gráficos, a Reconciliação e o Relatório. As mesmas restrições que já existiam
+  continuam valendo para ele: sob **codificação cega** ele vê só o que um pesquisador cego veria,
+  e sob **distribuição** só os documentos atribuídos a ele.
+- **Ele não muda material nenhum**: não codifica, não cria nem renomeia código, não responde
+  categoria, não envia nem edita documento, não consolida gabarito, não importa.
+- **Mas ele COMENTA**, e é isso que faz o papel valer: pode escrever **memos** — a nota de um
+  trecho, a de um documento, a de um código e a memória do projeto. É por aí que a leitura dele
+  volta para a equipe, dentro do projeto, em vez de num e-mail à parte.
+- **As telas de IA somem para ele**, do mesmo jeito que somem para quem desativou a IA no
+  projeto: elas existem para propor mudanças que ele não pode aplicar.
+- **A configuração do estudo fica com quem coordena.** As instruções que a IA recebe, a postura
+  de análise, os prompts salvos e as palavras ignoradas na nuvem são guardados como memos, mas
+  não são comentário — são decisão de método, e o papel de leitura não mexe neles.
+
+**Como atribuir:** em **Projeto ▸ Membros**, o administrador clica em "tornar somente leitura" na
+linha da pessoa (e "devolver a codificação" para desfazer). Ela entra no projeto normalmente,
+com o mesmo código de acesso. Um projeto nunca fica sem administrador: o botão recusa rebaixar o
+último que existe.
+
+Quem já usa o QualiLab **não é afetado**: ninguém muda de papel sozinho, e os projetos que já
+existiam continuam com os mesmos administradores e pesquisadores de antes. As restrições são
+impostas pelo **servidor**, não apenas escondidas na interface.
+
 ## 1.4.48 (31/08/2026)
 
 ### O QualiLab agora fala inglês
