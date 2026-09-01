@@ -2,13 +2,13 @@
   <a href="https://luizpf42.github.io/QualiLab"><img src="images/logo.png" alt="QualiLab" width="180"></a>
 </p>
 
+<p align="center"><b>🇧🇷 Português</b> · <a href="README.en.md">🇬🇧 English</a></p>
+
 # QualiLab
 
 **o seu laboratório de pesquisa qualitativa / your own lab for qualitative research**
 
 [![DOI](https://zenodo.org/badge/1274527946.svg)](https://doi.org/10.5281/zenodo.21935682)
-
-🇬🇧 [English version](README.en.md)
 
 QualiLab é uma ferramenta **gratuita e de código aberto** para análise qualitativa de dados. Roda inteira em um único arquivo `index.html`, sem instalação, sem servidor próprio, sem assinatura.
 

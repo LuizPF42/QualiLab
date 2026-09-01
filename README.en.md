@@ -2,13 +2,13 @@
   <a href="https://luizpf42.github.io/QualiLab"><img src="images/logo.png" alt="QualiLab" width="180"></a>
 </p>
 
+<p align="center"><a href="README.md">🇧🇷 Português</a> · <b>🇬🇧 English</b></p>
+
 # QualiLab
 
 **o seu laboratório de pesquisa qualitativa / your own lab for qualitative research**
 
 [![DOI](https://zenodo.org/badge/1274527946.svg)](https://doi.org/10.5281/zenodo.21935682)
-
-🇧🇷 [Versão em português](README.md)
 
 > 🌐 **A note on language:** since v1.4.48 the **application interface exists in English**, and it follows your browser — a browser set to Portuguese opens in Portuguese, any other language opens in English, and the picker in **My account** overrides that. What stays in Portuguese is deliberate: the requests QualiLab makes to the AI (translating them changes the model's behaviour, and that has to be measured first) and the redacted-passage marker inside exported files (so the same file does not change content depending on who exported it). Interface labels below sometimes give the Portuguese wording in quotes: the **screenshots are still of the Portuguese interface**, so those quotes are there to match the images, not because the tool is Portuguese-only. The [`CHANGELOG.md`](CHANGELOG.md) remains in Portuguese, as does the contributor guide, which lives in the development repository.
 
