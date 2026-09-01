@@ -14,6 +14,29 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.50 (01/09/2026)
+
+### Convite com papel já definido
+
+Até agora, quem entrava no projeto pelo código de acesso sempre nascia **pesquisador** — outro
+papel exigia um segundo passo do administrador, depois que a pessoa já tinha entrado. Agora dá
+para fixar o papel **antes**.
+
+- Em **Projeto ▸ Convite com papel fixo**, o administrador escolhe o papel (administrador,
+  pesquisador ou somente leitura) e gera um código próprio. Quem entrar com ele já recebe aquele
+  papel, sem ajuste depois.
+- **Opcionalmente, trave o convite a um e-mail**: só quem se cadastrar ou entrar com aquele
+  e-mail consegue usar o código — os demais recebem a mesma mensagem de "código inválido" de
+  sempre, para não revelar a quem o convite se destina.
+- **O QualiLab não manda e-mail nenhum sozinho.** A entrega do código é sempre sua: copie e
+  cole onde quiser, ou use "abrir e-mail", que só monta a mensagem e abre a **sua própria** caixa
+  de saída — nada passa pelo servidor do QualiLab.
+- Convites podem ser de uso único (o padrão) ou reutilizáveis, e ficam listados para revogar a
+  qualquer momento.
+
+O código de acesso do projeto continua funcionando exatamente como antes (entra como
+pesquisador); o convite com papel é um caminho a mais, não uma troca.
+
 ## 1.4.49 (31/08/2026)
 
 ### Um papel de somente leitura, para quem lê e comenta

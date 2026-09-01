@@ -913,7 +913,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.49';
+const QUALILAB_VERSION = '1.4.50';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -2561,6 +2561,28 @@ const MSG_PT = {
   'proj.copied': 'Copiado ✓',
   'proj.copyFail': 'Não deu; copie ao lado',
   'proj.copyCode': 'Copiar código',
+  'invite.title': 'Convite com papel fixo',
+  'invite.hint': 'O papel já vem definido no código — quem entrar com ele recebe o papel escolhido, sem precisar de ajuste depois. O QualiLab nunca manda e-mail nenhum: você compartilha o código (ou usa "abrir e-mail", que abre a **sua própria** caixa de saída).',
+  'invite.role': 'Papel',
+  'invite.emailOpt': 'E-mail (opcional — trava o convite a essa pessoa)',
+  'invite.create': 'Gerar convite',
+  'invite.multi': 'Reutilizável (várias pessoas podem entrar com o mesmo código)',
+  'invite.loading': 'Carregando convites…',
+  'invite.empty': 'Nenhum convite gerado ainda.',
+  'invite.copy': 'copiar código',
+  'invite.copied': 'copiado ✓',
+  'invite.copyFail': 'não copiou — copie na tela',
+  'invite.mailBtn': 'abrir e-mail',
+  'invite.revoke': 'revogar',
+  'invite.revokeAsk': 'Revogar este convite? Quem ainda não usou o código deixa de conseguir entrar com ele.',
+  'invite.for': 'para {email}',
+  'invite.generic': 'qualquer pessoa com o código',
+  'invite.usesLeft': '{used}/{max} uso(s)',
+  'invite.status.revoked': 'revogado',
+  'invite.status.expired': 'expirado',
+  'invite.status.used': 'esgotado',
+  'invite.mail.subject': 'Convite para o projeto "{project}" no QualiLab',
+  'invite.mail.body': 'Olá! Você foi convidado(a) para o projeto "{project}" no QualiLab, com o papel de {role}.\n\nPara entrar: abra o QualiLab → Meus projetos → Entrar com código, e use:\n\n{code}',
   'proj.type': 'Tipo do projeto',
   'proj.type.ind': 'Individual',
   'proj.type.col': 'Coletivo',
@@ -4590,6 +4612,28 @@ const MSG_EN = {
   'proj.copied': 'Copied ✓',
   'proj.copyFail': 'Did not work; copy it beside',
   'proj.copyCode': 'Copy code',
+  'invite.title': 'Role-locked invite',
+  'invite.hint': 'The role already travels with the code — whoever joins with it gets the role you picked, nothing to adjust afterward. QualiLab never sends an email itself: you share the code (or use "open email", which opens **your own** outbox).',
+  'invite.role': 'Role',
+  'invite.emailOpt': 'Email (optional — locks the invite to that person)',
+  'invite.create': 'Generate invite',
+  'invite.multi': 'Reusable (several people can join with the same code)',
+  'invite.loading': 'Loading invites…',
+  'invite.empty': 'No invites generated yet.',
+  'invite.copy': 'copy code',
+  'invite.copied': 'copied ✓',
+  'invite.copyFail': "didn't copy — copy it from the screen",
+  'invite.mailBtn': 'open email',
+  'invite.revoke': 'revoke',
+  'invite.revokeAsk': "Revoke this invite? Anyone who hasn't used the code yet will no longer be able to join with it.",
+  'invite.for': 'for {email}',
+  'invite.generic': 'anyone with the code',
+  'invite.usesLeft': '{used}/{max} use(s)',
+  'invite.status.revoked': 'revoked',
+  'invite.status.expired': 'expired',
+  'invite.status.used': 'used up',
+  'invite.mail.subject': 'Invitation to the "{project}" project on QualiLab',
+  'invite.mail.body': 'Hi! You have been invited to the "{project}" project on QualiLab, with the role of {role}.\n\nTo join: open QualiLab → My projects → Join with a code, and use:\n\n{code}',
   'proj.type': 'Project type',
   'proj.type.ind': 'Individual',
   'proj.type.col': 'Collective',
@@ -10909,6 +10953,10 @@ function LocalStore(){
     async listAssignments(){ return P([]); },
     async setAssignment(){ return P(); },
     async replaceAssignments(){ return P(); },
+    // CONVITES: nao ha EQUIPE em rascunho (usuario unico, sempre admin) — stubs inertes.
+    async createInvite(){ return P(null); },
+    async listInvites(){ return P([]); },
+    async revokeInvite(){ return P(); },
     /* S7 — EXCECAO ANOTADA a regra de ouro #5 (stub inerte nos tres stores): `restrict_ai` NAO e
        inerte aqui. blind/restrict_docs governam EQUIPE, que rascunho nao tem; este governa o
        CORPUS, que viaja junto — sem isto, salvar como .qualilab e reabrir seria a rota de fuga da
@@ -11078,6 +11126,10 @@ async function createFileStore(fileHandle, isNew){
     async listAssignments(){ return []; },
     async setAssignment(){},
     async replaceAssignments(){},
+    // CONVITES: idem — sem equipe num arquivo, stubs inertes.
+    async createInvite(){ return null; },
+    async listInvites(){ return []; },
+    async revokeInvite(){},
     /* S7 — ver a nota longa no LocalStore: `restrict_ai` NAO e stub inerte (excecao anotada a
        regra de ouro #5). Aqui e o caso que a spec chama de rota de fuga: um projeto declarado,
        salvo como .qualilab e reaberto neste store, voltava com os paineis abertos. */
@@ -11420,6 +11472,12 @@ function SupabaseStore(sb){
     async listMembers(pid){ try{ return must(await sb.from('members').select('user_id,display_name,role,joined_at').eq('project_id',pid).order('joined_at')); }catch(e){ return []; } },
     async setMemberRole(pid, userId, role){ must(await sb.rpc('set_member_role',{ p_project:pid, p_user:userId, p_role:role })); },
     async removeMember(pid, userId){ must(await sb.rpc('remove_member',{ p_project:pid, p_user:userId })); },
+    // CONVITES: papel (e opcionalmente e-mail) fixado pelo admin ANTES de a pessoa entrar.
+    // Nunca dispara e-mail pelo servidor — a entrega do codigo/link e do admin, por fora
+    // (ver InvitesCard em hub-do-projeto.js, que so monta um mailto: no navegador dele).
+    async createInvite(pid, role, opts={}){ return must(await sb.rpc('create_invite',{ p_project:pid, p_role:role, p_email:opts.email||null, p_max_uses:opts.maxUses||1, p_expires_hours:opts.expiresHours||null })); },
+    async listInvites(pid){ try{ return must(await sb.rpc('list_invites',{ p_project:pid })); }catch(e){ return []; } },
+    async revokeInvite(id){ must(await sb.rpc('revoke_invite',{ p_invite:id })); },
     async renameProject(pid, pn){ must(await sb.rpc('rename_project',{ p_project:pid, p_name:pn })); },
     async deleteProject(pid){ must(await sb.rpc('delete_project',{ p_project:pid })); },
     async setProjectMode(pid, pmode, authorName){ must(await sb.rpc('set_project_mode',{ p_project:pid, p_mode:pmode, p_author:authorName||'pesquisador' })); },
@@ -15493,7 +15551,7 @@ function App(){
     blind=${projBlind} restrict=${projRestrict} onToggle=${toggleAssignment} onReplace=${replaceAssignments}
     onSetFlags=${changeProjectFlags} onClose=${()=>setAssignOpen(false)} />`}
 
-  ${projEdit && html`<${ProjectModal} mode=${mode} storeMode=${store?.mode} user=${user} project=${project} projectMode=${projectMode}
+  ${projEdit && html`<${ProjectModal} store=${store} mode=${mode} storeMode=${store?.mode} user=${user} project=${project} projectMode=${projectMode}
     isAdmin=${isAdmin} members=${members} hasDocs=${docs.length>0}
     canAssign=${mode==='cloud' && projectMode==='collective' && isAdmin}
     blind=${projBlind} restrict=${projRestrict} nAssignments=${assignments.length}
@@ -16245,7 +16303,114 @@ function AssignModal({ docs, members, assignments, allCodings, blind, restrict, 
   </div>`;
 }
 
-function ProjectModal({ mode, user, project, projectMode, isAdmin, members, hasDocs,
+/* ---------- Convite com papel fixo (admin decide ANTES de a pessoa entrar) ----------
+   O código genérico do projeto (pill acima) sempre entra como 'member' — quem quiser outro
+   papel hoje só consegue promovendo DEPOIS, na lista de Membros. Este card resolve isso sem
+   acrescentar e-mail enviado pelo SERVIDOR: gera um código PRÓPRIO (RPC create_invite) que já
+   carrega o papel e, opcionalmente, um e-mail que trava quem pode resgatar. A entrega é sempre
+   do ADMIN — "abrir e-mail" só monta um mailto: (abre a caixa DELE), nunca dispara nada daqui.
+   Componente autocontido (estado próprio, sem tocar App()) — mesmo padrão dos outros modais
+   deste arquivo; carrega a lista sozinho porque só existe consumidor aqui. */
+function InvitesCard({ store, project, isAdmin }){
+  const pid = project?.id;
+  const [invites, setInvites] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [role, setRole] = useState('member');
+  const [email, setEmail] = useState('');
+  const [multi, setMulti] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+  const [copiedId, setCopiedId] = useState(null);
+
+  const load = useCallback(async ()=>{
+    if(!pid || !store?.listInvites) return;
+    setLoading(true);
+    try{ setInvites(await store.listInvites(pid)); } finally { setLoading(false); }
+  }, [store, pid]);
+  useEffect(()=>{ load(); }, [load]);
+
+  async function create(){
+    setErr(null); setBusy(true);
+    try{
+      await store.createInvite(pid, role, { email: email.trim()||undefined, maxUses: multi?9999:1 });
+      setEmail(''); await load();
+    }catch(e){ setErr(String(e?.message||e)); }
+    finally{ setBusy(false); }
+  }
+  async function revoke(id){
+    if(!confirm(t('invite.revokeAsk'))) return;
+    try{ await store.revokeInvite(id); await load(); }
+    catch(e){ setErr(String(e?.message||e)); }
+  }
+  async function copyCode(inv){
+    try{ await navigator.clipboard.writeText(inv.code); setCopiedId(inv.id); }
+    catch(e){ setCopiedId(inv.id+':fail'); }
+    setTimeout(()=>setCopiedId(null), 2500);
+  }
+  function mailtoFor(inv){
+    const roleLabel = inv.role==='admin'?t('proj.role.admin'):inv.role==='viewer'?t('proj.role.viewer'):t('proj.role.member');
+    const subject = t('invite.mail.subject',{project:project?.name||''});
+    const body = t('invite.mail.body',{project:project?.name||'', role:roleLabel, code:inv.code});
+    const to = inv.email||'';
+    return 'mailto:'+encodeURIComponent(to)+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+  }
+  function statusOf(inv){
+    if(inv.revoked_at) return {label:t('invite.status.revoked'), color:'var(--ink-soft)', dead:true};
+    if(inv.expires_at && new Date(inv.expires_at).getTime() < Date.now()) return {label:t('invite.status.expired'), color:'var(--ink-soft)', dead:true};
+    if(inv.use_count >= inv.max_uses) return {label:t('invite.status.used'), color:'var(--ink-soft)', dead:true};
+    return null;
+  }
+
+  if(!isAdmin) return null;
+  return html`<div class="card" style="margin-bottom:12px">
+    <div class="field-label">${t('invite.title')}</div>
+    <p class="hint" style="margin:0 0 10px" dangerouslySetInnerHTML=${{__html: mdLite(t('invite.hint'))}}></p>
+
+    <div class="row" style="gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:6px">
+      <div class="field" style="min-width:130px">
+        <div class="field-label">${t('invite.role')}</div>
+        <select class="opt" value=${role} onChange=${e=>setRole(e.target.value)}>
+          <option value="member">${t('proj.role.member')}</option>
+          <option value="admin">${t('proj.role.admin')}</option>
+          <option value="viewer">${t('proj.role.viewer')}</option>
+        </select>
+      </div>
+      <div class="field" style="flex:1 1 220px">
+        <div class="field-label">${t('invite.emailOpt')}</div>
+        <input class="txtin" type="email" value=${email} placeholder=${t('auth.email.ph')}
+          onInput=${e=>setEmail(e.target.value)} />
+      </div>
+      <button class="btn sm primary" disabled=${busy} onClick=${create}>${t('invite.create')}</button>
+    </div>
+    <label style="display:flex;gap:7px;align-items:center;margin:0 0 10px;cursor:pointer">
+      <input type="checkbox" checked=${multi} onChange=${e=>setMulti(e.target.checked)} />
+      <span class="meta">${t('invite.multi')}</span>
+    </label>
+    ${err && html`<div class="banner err" style="margin:0 0 10px">${err}</div>`}
+
+    ${loading && !invites.length ? html`<span class="meta">${t('invite.loading')}</span>`
+      : !invites.length ? html`<span class="meta">${t('invite.empty')}</span>`
+      : invites.map(inv=>{
+          const st = statusOf(inv);
+          const roleLabel = inv.role==='admin'?t('proj.role.admin'):inv.role==='viewer'?t('proj.role.viewer'):t('proj.role.member');
+          return html`<div class="docitem" key=${inv.id} style=${st?'opacity:.55':''}>
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap">
+                <span style="font-family:var(--mono);letter-spacing:.08em">${inv.code}</span>
+                <span class="pill" style="font-size:10.5px">${roleLabel}</span>
+                ${st && html`<span class="pill" style="font-size:10.5px">${st.label}</span>`}
+              </div>
+              <div class="meta">${inv.email?t('invite.for',{email:inv.email}):t('invite.generic')} · ${t('invite.usesLeft',{used:inv.use_count,max:inv.max_uses})}</div>
+            </div>
+            ${!st && html`<button class="btn sm ghost" onClick=${()=>copyCode(inv)}>${copiedId===inv.id?t('invite.copied'):copiedId===(inv.id+':fail')?t('invite.copyFail'):t('invite.copy')}</button>`}
+            ${!st && inv.email && html`<a class="btn sm ghost" href=${mailtoFor(inv)}>${t('invite.mailBtn')}</a>`}
+            ${!st && html`<button class="icon-btn" title=${t('invite.revoke')} onClick=${()=>revoke(inv.id)}>🗑</button>`}
+          </div>`;
+        })}
+  </div>`;
+}
+
+function ProjectModal({ store, mode, user, project, projectMode, isAdmin, members, hasDocs,
                         canAssign, onOpenAssign, blind, restrict, nAssignments, restrictAi, onSetAi,
                         onClose, onSetMode, onSetRole, onRemoveMember, onRename, onClear, onDelete,
                         onSaveCloud, onClearCloud, onResetCloud, onReconnectCloud, canFolderBackup, backupStatus, onEnableFolderBackup, onDisableFolderBackup,
@@ -16297,6 +16462,9 @@ function ProjectModal({ mode, user, project, projectMode, isAdmin, members, hasD
         <button class="btn sm" onClick=${copyCode}>${copied==='ok'?t('proj.copied'):copied==='fail'?t('proj.copyFail'):t('proj.copyCode')}</button>
       </div>
     </div>`}
+
+    <!-- CONVITE COM PAPEL FIXO (admin) -->
+    ${cloud && html`<${InvitesCard} store=${store} project=${project} isAdmin=${isAdmin} />`}
 
     <!-- TIPO DO PROJETO -->
     <div class="card" style="margin-bottom:12px">

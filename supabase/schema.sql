@@ -318,12 +318,39 @@ alter table public.join_attempts enable row level security;
 -- no banco, e passava despercebida porque o arquivo nunca tinha chegado a executar.
 revoke all on public.join_attempts from anon, authenticated;
 
+-- ---------- CONVITES (papel fixado ANTES de entrar) ----------
+-- Resolve "o admin quer travar o papel do convidado antes dele entrar" sem acrescentar
+-- envio de e-mail pelo SERVIDOR: o convite e so um CODIGO — como o codigo generico do
+-- projeto (linha acima, que ja funciona sem SMTP nenhum) — so que carrega um PAPEL, e
+-- opcionalmente um E-MAIL, que trava quem pode resgatar. A entrega do codigo/link fica
+-- por conta do admin (compartilha por fora do app; a UI oferece um mailto: que abre a
+-- CAIXA DELE, nunca um envio pelo servidor — ver src/telas/hub-do-projeto.js).
+create table if not exists public.project_invites (
+  id           uuid primary key default gen_random_uuid(),
+  project_id   uuid not null references public.projects(id) on delete cascade,
+  code         text not null unique,
+  role         text not null default 'member',   -- admin | member | viewer (mesma lista do set_member_role)
+  email        text,                              -- null = convite generico (qualquer um com o codigo); preenchido = nominal
+  created_by   uuid not null,
+  created_at   timestamptz not null default now(),
+  expires_at   timestamptz,
+  max_uses     int not null default 1,
+  use_count    int not null default 0,
+  revoked_at   timestamptz
+);
+create index if not exists project_invites_project_idx on public.project_invites (project_id);
+alter table public.project_invites enable row level security;
+-- mesma defesa em profundidade do join_attempts, logo acima: RLS ligada SEM policy
+-- nenhuma, e o grant que o Supabase da por padrao a toda tabela nova em public e revogado
+-- explicitamente — so as RPCs security definer abaixo tocam esta tabela.
+revoke all on public.project_invites from anon, authenticated;
+
 -- IMPORTANTE (contrato com o front): codigo inexistente agora retorna NULL em vez de
 -- raise — um raise desfaria a transacao inteira e apagaria o registro da tentativa,
 -- inutilizando o throttle. O SupabaseStore.joinProject checa o null e monta a mensagem.
 create or replace function public.join_project(p_code text, p_display text)
 returns public.projects language plpgsql security definer set search_path = public as $$
-declare v_proj public.projects; v_recent int;
+declare v_proj public.projects; v_recent int; v_inv public.project_invites;
 begin
   delete from public.join_attempts where attempted_at < now() - interval '1 day';
   select count(*) into v_recent from public.join_attempts
@@ -331,6 +358,31 @@ begin
   if v_recent >= 20 then
     raise exception 'Muitas tentativas com código inválido — aguarde e tente novamente mais tarde';
   end if;
+
+  -- CONVITE tem PRECEDENCIA sobre o codigo generico do projeto: os codigos vivem em
+  -- namespaces (tabelas) diferentes, entao testar os dois nao muda nada pra quem usa o
+  -- codigo velho — so passa a reconhecer TAMBEM um codigo de convite.
+  select * into v_inv from public.project_invites
+    where code = upper(trim(p_code))
+      and revoked_at is null
+      and (expires_at is null or expires_at > now())
+      and use_count < max_uses;
+  if v_inv.id is not null then
+    -- convite NOMINAL: so o e-mail declarado resgata. Quem tenta com outro e-mail recebe o
+    -- MESMO contrato de "codigo invalido" do resto da funcao — nunca "existe um convite pra
+    -- outro e-mail", que vazaria quem a pesquisa esta tentando recrutar.
+    if v_inv.email is not null and lower(coalesce(auth.email(),'')) <> lower(v_inv.email) then
+      insert into public.join_attempts (user_id) values (auth.uid());
+      return null;
+    end if;
+    select * into v_proj from public.projects where id = v_inv.project_id;
+    insert into public.members (project_id, user_id, display_name, role)
+      values (v_proj.id, auth.uid(), coalesce(nullif(p_display,''),'anonimo'), v_inv.role)
+      on conflict (project_id, user_id) do update set display_name = excluded.display_name;
+    update public.project_invites set use_count = use_count + 1 where id = v_inv.id;
+    return v_proj;
+  end if;
+
   select * into v_proj from public.projects where code = upper(trim(p_code));
   if v_proj.id is null then
     insert into public.join_attempts (user_id) values (auth.uid());
@@ -340,6 +392,41 @@ begin
     values (v_proj.id, auth.uid(), coalesce(nullif(p_display,''),'anonimo'))
     on conflict (project_id, user_id) do update set display_name = excluded.display_name;
   return v_proj;
+end; $$;
+
+create or replace function public.create_invite(p_project uuid, p_role text, p_email text default null, p_max_uses int default 1, p_expires_hours int default null)
+returns public.project_invites language plpgsql security definer set search_path = public as $$
+declare v_code text; v_inv public.project_invites;
+begin
+  if not public.is_admin(p_project) then raise exception 'Apenas administradores podem criar convites'; end if;
+  if p_role not in ('admin','member','viewer') then raise exception 'Papel inválido'; end if;
+  v_code := upper(substr(replace(gen_random_uuid()::text,'-',''),1,10));
+  insert into public.project_invites (project_id, code, role, email, created_by, max_uses, expires_at)
+    values (p_project, v_code, p_role, nullif(trim(coalesce(p_email,'')),''), auth.uid(),
+            greatest(coalesce(p_max_uses,1),1),
+            case when p_expires_hours is not null then now() + (p_expires_hours || ' hours')::interval else null end)
+    returning * into v_inv;
+  return v_inv;
+end; $$;
+
+-- so lista pra quem e admin do projeto — nao raise (leitura vazia pra quem nao pode ver
+-- e mais barato que exception, e a UI so chama isto com o botao ja escondido de non-admin).
+create or replace function public.list_invites(p_project uuid)
+returns setof public.project_invites language sql security definer stable set search_path = public as $$
+  select * from public.project_invites
+    where project_id = p_project and public.is_admin(p_project)
+    order by created_at desc;
+$$;
+
+create or replace function public.revoke_invite(p_invite uuid)
+returns void language plpgsql security definer set search_path = public as $$
+declare v_pid uuid;
+begin
+  select project_id into v_pid from public.project_invites where id = p_invite;
+  if v_pid is null or not public.is_admin(v_pid) then
+    raise exception 'Apenas administradores podem revogar convites';
+  end if;
+  update public.project_invites set revoked_at = now() where id = p_invite;
 end; $$;
 
 drop function if exists public.my_projects();
@@ -462,6 +549,9 @@ grant execute on function public.rename_project(uuid,text)        to anon, authe
 grant execute on function public.delete_project(uuid)             to anon, authenticated;
 grant execute on function public.set_project_mode(uuid,text,text) to anon, authenticated;
 grant execute on function public.set_project_flags(uuid,boolean,boolean,text) to anon, authenticated;
+grant execute on function public.create_invite(uuid,text,text,int,int) to anon, authenticated;
+grant execute on function public.list_invites(uuid)                   to anon, authenticated;
+grant execute on function public.revoke_invite(uuid)                  to anon, authenticated;
 -- can_use_ai roda DENTRO das policies de ia_results/ia_memory, e policy roda como o usuario
 -- que chamou — sem este grant o insert falha por permissao da funcao, nao pela regra.
 grant execute on function public.can_use_ai(uuid)                 to anon, authenticated;
@@ -1002,6 +1092,7 @@ grant select, insert, update, delete on
 -- escrita a ela (default privileges so valem para tabelas criadas APOS o statement).
 grant select on public.ai_prices to anon, authenticated;
 -- join_attempts NAO recebe grant direto: so a RPC security-definer join_project a toca.
+-- project_invites idem: so create_invite/list_invites/revoke_invite/join_project a tocam.
 -- Alinha tabelas FUTURAS (proximas migracoes) ao mesmo contrato (idempotente).
 alter default privileges in schema public
   grant select, insert, update, delete on tables to authenticated;
