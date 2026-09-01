@@ -785,7 +785,15 @@ To turn AI off in the project (and not merely declare it), see [17.7](#177-turni
 *(Collective project, cloud mode.)*
 
 ### Inviting people
-Open the **project pill** (header) → there is the **access code**. Share it; whoever receives it joins via **"My projects" → Join with a code** ("Entrar com código"). In cloud mode, the code also shows in the pill itself (`nuvem · Project · CODE · coletivo ▾`).
+Open the **project pill** (header) → there is the **access code**. Share it; whoever receives it joins via **"My projects" → Join with a code** ("Entrar com código"). In cloud mode, the code also shows in the pill itself (`nuvem · Project · CODE · coletivo ▾`). Whoever joins with the access code always joins as a **researcher**.
+
+#### Role-locked invite
+*(Admin only, cloud mode.)* When the person should join with a different role — a co-supervisor as **admin**, a reviewer as **read-only** — use the **Role-locked invite** card, just below the access code. Pick the role, click **Generate invite** and share the code that appears: whoever joins with it already gets that role, with nothing for you to adjust afterward.
+
+- **Email (optional)**: fill it in and the invite is **locked** to that person — only someone joining with that email address can use the code. Anyone else gets the usual "invalid code" message, which is deliberate: the app never reveals who an invite is meant for.
+- **QualiLab sends no email at all.** Delivery is yours: copy the code and send it through whatever channel you like, or click **open email** — that only composes the message (with the code and the role already written) and opens **your own** outbox, in your own mail program. Nothing goes through the server.
+- Invites are **single-use** by default; tick **reusable** to let the same code serve several people (useful for a whole class joining with the same role).
+- Invites are listed in the card, with the role, the recipient and how many times they have been used. **Revoke** (🗑) invalidates the code for anyone who has not joined yet.
 
 ### Managing members and the project
 Still in the project pill, the admin can: see the **member list** and change roles (**admin/member**), **rename**, **clear content**, **delete** the project, change its **type** and adjust the **connection** (Supabase credentials).

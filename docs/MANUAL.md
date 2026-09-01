@@ -783,7 +783,15 @@ Para desligar a IA do projeto (e não só declará-la), veja [17.7](#177-desliga
 *(Projeto coletivo, modo nuvem.)*
 
 ### Convidar pessoas
-Abra a **pílula do projeto** (cabeçalho) → ali está o **código de acesso**. Compartilhe-o; quem recebe entra por **"Meus projetos" → Entrar com código**. No modo nuvem, o código também aparece na própria pílula (`nuvem · Projeto · CÓDIGO · coletivo ▾`).
+Abra a **pílula do projeto** (cabeçalho) → ali está o **código de acesso**. Compartilhe-o; quem recebe entra por **"Meus projetos" → Entrar com código**. No modo nuvem, o código também aparece na própria pílula (`nuvem · Projeto · CÓDIGO · coletivo ▾`). Quem entra pelo código de acesso entra sempre como **pesquisador**.
+
+#### Convite com papel fixo
+*(Só admin, modo nuvem.)* Quando a pessoa já deve entrar com outro papel — um coorientador como **administrador**, um parecerista como **somente leitura** —, use o card **Convite com papel fixo**, logo abaixo do código de acesso. Escolha o papel, clique em **Gerar convite** e compartilhe o código que aparece: quem entrar com ele já recebe aquele papel, sem você precisar ajustar depois.
+
+- **E-mail (opcional)**: preenchendo, o convite fica **travado** naquela pessoa — só quem entrar com aquele e-mail consegue usar o código. Quem tentar com outro recebe a mesma mensagem de "código inválido" de sempre, que é deliberado: o app não revela a quem o convite se destina.
+- **O QualiLab não envia e-mail nenhum.** A entrega é sua: copie o código e mande pelo canal que quiser, ou clique em **abrir e-mail** — isso só monta a mensagem (com o código e o papel já escritos) e abre **a sua própria** caixa de saída, no seu programa de e-mail. Nada passa pelo servidor.
+- Por padrão o convite é de **uso único**; marque **reutilizável** para o mesmo código servir a várias pessoas (útil para uma turma inteira que entra com o mesmo papel).
+- Os convites ficam listados no card, com o papel, o destinatário e quantas vezes foram usados. **Revogar** (🗑) invalida o código para quem ainda não entrou.
 
 ### Gerenciar membros e o projeto
 Ainda na pílula do projeto, o admin pode: ver a **lista de membros** e mudar papéis (**admin/membro**), **renomear**, **limpar conteúdo**, **excluir** o projeto, mudar o **tipo** e ajustar a **conexão** (credenciais Supabase).
