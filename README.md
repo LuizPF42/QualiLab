@@ -157,6 +157,19 @@ Um selo no cabeçalho mostra o estado o tempo todo — **✔︎** ativada, **~~I
 
 Em projeto coletivo as três respeitam a camada escolhida; em todas, os trechos de **censura** saem mascarados, e ATI e W3C ainda oferecem **anonimizar a autoria**.
 
+### Trilha de auditoria e espelhos
+
+O QualiLab mantém um **histórico do projeto**: uma lista, em ordem de tempo, do que **alterou** o projeto, com data e autor. Funciona assim:
+
+- **O que entra é operação, não cada clique.** Importar um arquivo, mesclar ou dividir um código, excluir um documento, um código ou uma categoria, limpar o conteúdo, editar o texto de um documento, aplicar um lote (Repetir Codificação e as telas de IA), consolidar na Reconciliação, mudar o tipo ou a configuração do projeto, entrar e sair da equipe, exportar, espelhar e restaurar. Cada linha guarda **nomes e contagens** ("Excluiu o documento X: 12 codificações apagadas junto"), nunca o texto do corpus.
+- **O que não entra, de propósito.** Codificar um trecho de cada vez não vira linha: a própria codificação já guarda autor, data e origem (manual ou sugerida por IA). Ler, navegar e o tempo de tela também não: o histórico registra o que mudou o projeto, não o comportamento das pessoas.
+- **Onde se lê.** Em **Memos ▸ Histórico do projeto**, com filtro por tipo de operação e busca por texto (digite o nome de um código para ver o que já aconteceu com ele), e para exportar em CSV. No **Relatório**, uma caixa ligada por padrão acrescenta às três saídas um resumo do processo: quantas importações, mesclagens, exclusões, aplicações em lote, consolidações e exportações, desde quando.
+- **Ele não desfaz nada.** É registro, não máquina do tempo: diz *o que* aconteceu, não *como estava*. Quem devolve o estado é o **espelho** (abaixo).
+- **Na nuvem é só-acréscimo**: nem o administrador edita ou apaga uma linha pela interface do banco. Sob codificação cega, cada pessoa vê os próprios eventos e os de equipe; o administrador vê tudo. Entrar, sair e mudar de papel são gravados pelo próprio servidor, na mesma transação, então nem um cliente desatualizado pula o registro.
+- **Ele viaja no `.qualilab`** e sobrevive ao "Limpar conteúdo"; reimportar o mesmo arquivo não o duplica. O QDPX não tem onde guardá-lo, e o menu de exportação avisa. Não é prova forense: quem opera o servidor, ou o dono do arquivo, sempre pode alterá-lo. O histórico começa na versão 1.4.51; o que veio antes não foi gravado, e a primeira linha diz isso.
+
+O **espelho** é a outra metade: um retrato do projeto inteiro (documentos, categorias, códigos, codificações, memos, conversas e memórias de IA) que se pode **restaurar**. Você cria um à mão, com rótulo, na pílula do projeto; e o QualiLab cria um sozinho **antes** de limpar, excluir, mesclar, dividir, editar texto e restaurar (no máximo um a cada 10 minutos; ficam os 5 automáticos mais recentes, e o automático tem interruptor, ligado por padrão, porque cada espelho é uma cópia do texto e da análise). Restaurar espelha o estado atual antes, devolve o projeto ao retrato e **grava a restauração no histórico, que nunca é restaurado**. O espelho não guarda os PDFs originais nem é backup externo: mora no mesmo lugar do projeto.
+
 ### Apontar o seu assistente para o corpus
 
 *Experimental, e não faz parte do app: vive num repositório próprio, de onde qualquer pessoa instala.*

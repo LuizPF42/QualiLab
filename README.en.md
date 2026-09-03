@@ -159,6 +159,19 @@ A badge in the header shows the state at all times — **✔︎** enabled, **~~I
 
 In a collective project all three respect the chosen layer; in all of them, **redacted** passages come out masked, and ATI and W3C additionally offer **author anonymization**.
 
+### Audit trail and mirrors
+
+QualiLab keeps a **project history**: a list, in time order, of what **changed** the project, with date and author. It works like this:
+
+- **What goes in is an operation, not every click.** Importing a file, merging or splitting a code, deleting a document, a code or an attribute, clearing the content, editing a document's text, applying a batch (Repeat Coding and the AI screens), consolidating in Reconciliation, changing the project's type or settings, joining and leaving the team, exporting, mirroring and restoring. Each line keeps **names and counts** ("Deleted document X: 12 codings deleted with it"), never the corpus text.
+- **What stays out, on purpose.** Coding one passage at a time does not become a line: the coding itself already keeps author, date and origin (manual or suggested by AI). Reading, navigating and screen time stay out too: the history records what changed the project, not people's behaviour.
+- **Where it is read.** In **Memos ▸ Project history**, with a filter by operation type and a text search (type a code's name to see what has already happened to it), and to export as CSV. In the **Report**, a checkbox on by default adds to the three outputs a summary of the process: how many imports, merges, deletions, batch applications, consolidations and exports, since when.
+- **It undoes nothing.** It is a record, not a time machine: it says *what* happened, not *how things were*. What brings a state back is the **mirror** (below).
+- **In the cloud it is append-only**: not even the administrator edits or deletes a line through the database interface. Under blind coding, each person sees their own events and the team ones; the administrator sees everything. Joining, leaving and role changes are written by the server itself, in the same transaction, so not even an outdated client skips the record.
+- **It travels in the `.qualilab`** and survives "Clear content"; re-importing the same file does not duplicate it. QDPX has nowhere to keep it, and the export menu says so. It is not forensic proof: whoever operates the server, or owns the file, can always alter it. The history starts at version 1.4.51; what came before was not recorded, and the first line says so.
+
+The **mirror** is the other half: a snapshot of the whole project (documents, attributes, codes, codings, memos, AI conversations and memories) that can be **restored**. You create one by hand, with a label, from the project pill; and QualiLab creates one on its own **before** clearing, deleting, merging, splitting, editing text and restoring (at most one every 10 minutes; the 5 most recent automatic ones are kept, and the automatic mirror has a switch, on by default, because each mirror is a copy of the text and the analysis). Restoring mirrors the current state first, brings the project back to the snapshot and **records the restoration in the history, which is never restored**. A mirror keeps neither the original PDFs nor is it an external backup: it lives where the project lives.
+
 ### Pointing your assistant at the corpus
 
 *Experimental, and not part of the app: it lives in its own repository, from which anyone can install it.*
