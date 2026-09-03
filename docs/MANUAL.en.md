@@ -709,6 +709,14 @@ In the [Interactive Report (ATI)](#121-interactive-report-ati), the **passage no
 - **Saved conversations** ("Conversas salvas"): each [Analyze with AI](#173-analyze-with-ai-assisted-reading-of-the-material) conversation you kept, opened in full on click.
 - **Project memory** ("Memória do projeto"), the AI's **insights journal**: short memories (facts/decisions) that enter the context across sessions; you add them by hand or approve the ones the AI suggests, and toggle which ones to use.
 
+### 11.1. Project history (the audit trail)
+
+The last entry in the column, outside the AI sections, is the **Project history** ("Histórico do projeto"): the **audit trail of the process**. It is a list of sentences, newest first, with what **changed** the project, each with date and author: file imports and merges, code merges and splits, deletions (document, code, attribute, clear content), text edits with highlight re-anchoring, bulk applications (Repeat Coding and the AI screens), Reconciliation consolidations, changes of project type and settings, members joining and leaving (in the cloud) and exports. There is a **filter by operation** and a **text search**: type a code's name to see what has already happened to it. **Export CSV** downloads the whole list (readable sentence + detail as JSON).
+
+What the history does **not** do, written at the top of the screen: it **does not undo** anything (it is a record, not a time machine; Ctrl+Z still undoes only the last coding), it **does not keep the content** of what was deleted (only names and counts: no passage of the corpus travels in it) and it **does not record** reading or navigation. Coding applied one by one does not enter either: it is already recorded in the coding itself, with author and date.
+
+It **travels in the `.qualilab`** and **survives "Clear content"**; re-importing the same file does not duplicate it. In the cloud it is **append-only** (nobody edits or deletes a line through the API, not even the administrator) and it follows the visibility of codings: under [blind coding](#13-collaboration), each researcher sees their own events and the team events, and the administrator sees everything. The history starts at the first event recorded after version 1.4.51; the first line says that what came before was not recorded. Its summary goes into the [Report](#126-process-history).
+
 ---
 
 ## 12. Report
@@ -777,6 +785,12 @@ The block also carries its own limit: it describes **what went through QualiLab*
 Unchecking the box, the block simply does not go out, and the app does not insist. Worth knowing: if you used AI and do not declare it, that is your choice about how to report your research — the tool offers the honest path as the default and polices no one.
 
 To turn AI off in the project (and not merely declare it), see [17.7](#177-turning-ai-off-in-this-project).
+
+### 12.6. Process history
+
+Next to the AI checkbox there is **"Include the process history"**, also **on by default**. With it checked, the three outputs carry a summary of what the [project history](#111-project-history-the-audit-trail) records: how many operations, since when and of which kind (imports, code merges and splits, deletions, text edits, bulk applications and how many of them by AI, consolidations, settings changes, exports). It is the block a reviewer or a committee reads to learn **how** the project reached the published state.
+
+Like the AI block, it **reports and carries its own limit**: it says that it records operations done through QualiLab, not reading or navigation, and that it does not keep the content of what was deleted. Unchecking the box, the block does not go out.
 
 ---
 
@@ -863,7 +877,7 @@ The **export ▾** ("exportar ▾") and **import ▾** ("importar ▾") menus si
 ### Export (the "exportar ▾" menu)
 | Item | What it is |
 |---|---|
-| **.qualilab (full project, native)** | Everything (documents, attributes, values, codes, codings, memos) to reopen in QualiLab. It is the project's complete backup |
+| **.qualilab (full project, native)** | Everything (documents, attributes, values, codes, codings, memos, AI conversations and memories, and the project history) to reopen in QualiLab. It is the project's complete backup |
 | **JSON (project)** | The complete project with layers and authors |
 | **CSV (coded passages)** | One passage per row (document, code, layer, author) |
 | **CSV (attributes per document)** | One document per row, with the attribute values. **It has a way back**: fill it in the spreadsheet and re-import, see [below](#filling-attributes-in-a-spreadsheet-and-bringing-them-back-step-by-step) |
@@ -879,7 +893,7 @@ The **export ▾** ("exportar ▾") and **import ▾** ("importar ▾") menus si
 ### Import (the "importar ▾" menu)
 | Item | What it brings |
 |---|---|
-| **.qualilab** | Merges an exported project. Into a **collective** destination, it preserves each source researcher's answers; the reference layer becomes the reference layer |
+| **.qualilab** | Merges an exported project. Into a **collective** destination, it preserves each source researcher's answers; the reference layer becomes the reference layer. The project history that comes in the file enters without duplicates (re-importing does not repeat it) |
 | **QDPX** | A REFI-QDA project from other tools. The attribute type the source **declares** (number, Yes/No, date) is respected; what it declares only as text is **inferred** (review it in the scheme). Attribute values enter through **both forms** the standard admits (written on the document itself, or in a "case" pointing to it), and if some attribute arrives **with no value at all** the summary says which. Includes hardened import of ATLAS.ti `.qdpx` files with PDFs |
 | **.sqlite3 (Taguette)** | Taguette's native project: documents, tags (hierarchy by `/` or `.`) and passages. No attributes and no per-passage author |
 | **.qdc (REFI-QDA codebook)** | The codebook only |
@@ -1463,6 +1477,7 @@ Very visual PDFs (columns, tables, scans) can extract poorly. Tables are not rec
 - **Reconciliation**: the screen where the team consolidates the reference layer (collective project).
 - **Memo**: an analytic note per project/document/code/passage.
 - **Redaction** ("censura"): a code that masks sensitive passages in the transparency outputs and in what goes to the AI. The work formats (`.qualilab`, QDPX, QDC, CSV, JSON) leave complete — see [5.5](#55-redaction-masking-sensitive-passages).
+- **Project history** ("Histórico do projeto"): the audit trail of the process, in the Memos tab: the list of operations that changed the project (imports, merges, deletions, bulk applications, consolidations, exports), with date and author. It undoes nothing and keeps no deleted content — see [11.1](#111-project-history-the-audit-trail).
 - **Co-occurrence**: two codes applied to the same passage (or overlapping).
 - **Mode (storage)**: where the data lives (file, draft or cloud).
 - **Project type**: individual (no reconciliation) or collective.

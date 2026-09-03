@@ -14,6 +14,41 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.51 (02/09/2026)
+
+### Histórico do projeto: a trilha de auditoria do processo
+
+O QualiLab passa a **registrar as operações que alteram o projeto** e a mostrá-las numa lista,
+em **Memos ▸ Histórico do projeto**. Cada linha é uma frase com data e autor: "Importou QDPX
+(REFI-QDA): 16 documento(s), 90 código(s), 2332 codificação(ões)", "Mesclou "Prazo" em Demora:
+41 codificação(ões) movida(s)", "Excluiu o documento X: 12 codificação(ões) apagada(s) junto",
+"Aplicou em lote pela tela Sugerir Codificação: 8 item(ns)", "Consolidou 3 codificação(ões) na
+camada final", "Exportou QDPX (REFI-QDA)". Entram: importações e mesclagens de arquivo, mesclagens
+e divisões de código, exclusões (documento, código, categoria, limpar conteúdo), edição de texto
+com reancoragem dos grifos, aplicações em lote (Repetir Codificação e as três telas de IA),
+consolidações da Reconciliação, mudanças de tipo e configuração do projeto, entradas e saídas de
+membros e mudanças de papel (na nuvem) e exportações.
+
+- **O que ele NÃO é**, escrito no alto da própria tela: não desfaz nada, não guarda o conteúdo do
+  que foi apagado (só nomes e contagens: nenhum trecho do corpus viaja nele) e não registra
+  leitura nem navegação. A codificação aplicada uma a uma também não entra: ela já fica registrada
+  na própria codificação, com autor e data.
+- **Filtro por operação e busca por texto**: digite o nome de um código para ver o que já
+  aconteceu com ele (as mesclagens, divisões e exclusões que o citam).
+- **Exportar CSV** baixa a lista inteira, com a frase legível e o detalhe em JSON.
+- **Viaja no `.qualilab`** e **sobrevive ao "Limpar conteúdo"**; reimportar o mesmo arquivo não
+  duplica o histórico. O QDPX não tem onde guardá-lo, e o menu exportar ▾ avisa.
+- **Na nuvem é só-acréscimo**: nem o administrador edita ou apaga uma linha pela API. Sob
+  codificação cega, cada pesquisador vê os próprios eventos e os de equipe, e o administrador vê
+  tudo. Entradas, saídas e mudanças de papel são gravadas pelo próprio servidor. Quem hospeda o
+  próprio Supabase precisa aplicar o `supabase/schema.sql` atualizado.
+- **No Relatório**, a caixa **"Incluir o histórico do processo"** (ligada por padrão) acrescenta
+  às três saídas um resumo do que o histórico registra: quantas importações, mesclagens,
+  exclusões, aplicações em lote, consolidações e exportações, e desde quando. Ele relata, não
+  promete.
+- O histórico começa no primeiro evento depois desta versão. O que aconteceu antes não foi
+  gravado, e a primeira linha diz isso.
+
 ## 1.4.50 (01/09/2026)
 
 ### Convite com papel já definido

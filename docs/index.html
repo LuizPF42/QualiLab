@@ -913,7 +913,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.50';
+const QUALILAB_VERSION = '1.4.51';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -3111,6 +3111,134 @@ const MSG_PT = {
   'proj.role.viewer': 'Somente leitura',
   'proj.makeViewer': 'tornar somente leitura',
   'proj.makeMemberBack': 'devolver a codificação',
+  // -- TRILHA DE AUDITORIA (S4): a secao "Historico do projeto" da aba Memos, as frases de cada
+  //    operacao (activityText), o bloco do Relatorio (activityStatement) e o CSV --
+  'mn.activity': 'Histórico do projeto',
+  'act.title': 'Histórico do projeto',
+  'act.hint': '**Registro das operações que alteraram o projeto**: importações, mesclagens e divisões de código, exclusões, edições de texto, aplicações em lote, consolidações, mudanças de configuração e exportações. Ele **não desfaz** nada, **não guarda o conteúdo** do que foi apagado e **não registra** leitura nem navegação. Codificação aplicada uma a uma não entra: ela já fica registrada na própria codificação, com autor e data.',
+  'act.empty': 'Nenhuma operação registrada ainda.',
+  'act.loadError': 'Não foi possível carregar o histórico: {e}',
+  'act.filter.all': 'todas as operações',
+  'act.filter.q': 'código, documento ou pessoa',
+  'act.count': '{n} de {total}',
+  'act.export': 'Exportar CSV',
+  'act.unnamed': '(sem nome)',
+  'act.nothing': 'nada',
+  'act.rejected': '{n} linha(s) recusada(s) pelo servidor.',
+  'act.subcodes': 'e {n} subcódigo(s)',
+  'act.failed': '({n} falharam)',
+  'act.model': 'com {model}',
+  'act.inDoc': 'em {name}',
+  'act.before': '(antes: {v})',
+  'act.merge.aiOff': 'O arquivo vinha de um projeto com os recursos de IA desativados.',
+  'act.fmt.qdpx': 'QDPX (REFI-QDA)',
+  'act.fmt.qualilab': 'arquivo .qualilab',
+  'act.fmt.taguette': 'projeto do Taguette',
+  'act.fmt.qdc': 'codebook QDC',
+  'act.fmt.sheet': 'planilha (documentos)',
+  'act.fmt.sheet_attrs': 'planilha (categorias)',
+  'act.fmt.sheet_codings': 'planilha (trechos)',
+  'act.fmt.zotero': 'pasta do Zotero',
+  'act.fmt.json': 'JSON do projeto',
+  'act.fmt.csv_codings': 'CSV de trechos',
+  'act.fmt.csv_attrs': 'CSV de atributos',
+  'act.fmt.ati': 'Relatório Interativo (ATI)',
+  'act.fmt.w3c': 'Web Annotation (W3C)',
+  'act.fmt.report': 'Relatório Padrão',
+  'act.fmt.cloud': 'projeto para a nuvem',
+  'act.screen.repeat': 'Repetir Codificação',
+  'act.screen.ai_codes': 'Sugerir Codificação',
+  'act.screen.ai_values': 'Sugerir Categorização',
+  'act.screen.ai_organize': 'Organizar Códigos',
+  'act.ai.none': 'ativados para todos',
+  'act.ai.members': 'desativados para os membros (o admin mantém)',
+  'act.ai.all': 'desativados para todos',
+  'act.role.admin': 'administrador',
+  'act.role.member': 'membro',
+  'act.role.viewer': 'somente leitura',
+  'act.n.documents': '{n} documento(s)',
+  'act.n.categories': '{n} categoria(s)',
+  'act.n.codes': '{n} código(s)',
+  'act.n.codings': '{n} codificação(ões)',
+  'act.n.memos': '{n} memo(s)',
+  'act.n.conversations': '{n} conversa(s) de IA',
+  'act.n.memories': '{n} memória(s)',
+  'act.n.activity': '{n} evento(s) do histórico',
+  'act.n.filled': '{n} resposta(s) preenchida(s)',
+  'act.n.changed': '{n} alterada(s)',
+  'act.n.erased': '{n} apagada(s)',
+  'act.n.newCategories': '{n} categoria(s) nova(s)',
+  'act.n.newOptions': '{n} opção(ões) nova(s)',
+  'act.n.newCodes': '{n} código(s) novo(s)',
+  'act.n.ignored': '{n} linha(s) ignorada(s)',
+  'act.n.noTag': '{n} grifo(s) sem tag',
+  'act.n.brokenAnchors': '{n} âncora(s) quebrada(s)',
+  'act.n.noFile': '{n} referência(s) sem arquivo',
+  'act.n.badPdf': '{n} PDF(s) ilegível(is)',
+  'act.op.trail_started': 'Histórico iniciado. O que aconteceu antes deste registro não foi gravado.',
+  'act.op.import': 'Importou {format}: {list}.',
+  'act.op.merge_file': 'Mesclou o arquivo {file}: {list}.',
+  'act.op.codes_merged': 'Mesclou {list} em {name}: {n} codificação(ões) movida(s).',
+  'act.op.code_split': 'Dividiu {name} em {list}: {moved} codificação(ões) movida(s), {copied} copiada(s).',
+  'act.op.code_deleted': 'Excluiu o código {name}{sub}: {n} codificação(ões) apagada(s) em cascata.',
+  'act.op.document_deleted': 'Excluiu o documento {name}: {n} codificação(ões) apagada(s) junto.',
+  'act.op.category_deleted': 'Excluiu a categoria {name}: {n} resposta(s) apagada(s) junto.',
+  'act.op.project_cleared': 'Limpou o conteúdo do projeto: {list}.',
+  'act.op.text_edited': 'Editou o texto de {name}: {remapped} grifo(s) reancorado(s), {affected} dentro do trecho editado.',
+  'act.op.bulk_coding': 'Aplicou em lote pela tela {screen}: {n} item(ns){failed}{model}.',
+  'act.op.reconcile': 'Consolidou {n} codificação(ões) na camada final{where}.',
+  'act.op.mode_changed': 'Tipo do projeto alterado para {to}{from}.',
+  'act.op.flags_changed': 'Configuração do projeto alterada: {list}.',
+  'act.flag.blindOn': 'codificação cega ligada',
+  'act.flag.blindOff': 'codificação cega desligada',
+  'act.flag.restrictOn': 'distribuição restrita ligada',
+  'act.flag.restrictOff': 'distribuição restrita desligada',
+  'act.flag.ai': 'recursos de IA {v}',
+  'act.op.project_renamed': 'Projeto renomeado para {to}{from}.',
+  'act.op.member_joined': '{who} entrou no projeto como {role}.',
+  'act.op.member_left': '{who} saiu do projeto.',
+  'act.op.member_removed': '{who} foi removido do projeto.',
+  'act.op.role_changed': 'Papel de {who} alterado para {to}{from}.',
+  'act.op.export': 'Exportou {format}.',
+  'act.lbl.trail_started': 'início do histórico',
+  'act.lbl.import': 'importação',
+  'act.lbl.merge_file': 'mesclagem de arquivo',
+  'act.lbl.codes_merged': 'mesclagem de códigos',
+  'act.lbl.code_split': 'divisão de código',
+  'act.lbl.code_deleted': 'exclusão de código',
+  'act.lbl.document_deleted': 'exclusão de documento',
+  'act.lbl.category_deleted': 'exclusão de categoria',
+  'act.lbl.project_cleared': 'limpeza do conteúdo',
+  'act.lbl.text_edited': 'edição de texto',
+  'act.lbl.bulk_coding': 'aplicação em lote',
+  'act.lbl.reconcile': 'consolidação',
+  'act.lbl.mode_changed': 'tipo do projeto',
+  'act.lbl.flags_changed': 'configuração do projeto',
+  'act.lbl.project_renamed': 'renomeação do projeto',
+  'act.lbl.member_joined': 'entrada de membro',
+  'act.lbl.member_removed': 'saída de membro',
+  'act.lbl.role_changed': 'papel de membro',
+  'act.lbl.export': 'exportação',
+  'act.stmt.none': 'Não há operações registradas no histórico deste projeto.',
+  'act.stmt.head': 'O histórico do projeto registra {n} operação(ões) desde {date}.',
+  'act.stmt.list': 'Entre elas: {list}.',
+  'act.stmt.imports': '{n} importação(ões)',
+  'act.stmt.merges': '{n} mesclagem(ns) de código',
+  'act.stmt.splits': '{n} divisão(ões) de código',
+  'act.stmt.deletions': '{n} exclusão(ões) de documento, código ou categoria',
+  'act.stmt.edits': '{n} edição(ões) de texto com reancoragem dos grifos',
+  'act.stmt.bulk': '{n} aplicação(ões) em lote ({ai} por IA)',
+  'act.stmt.reconcile': '{n} consolidação(ões) na camada final',
+  'act.stmt.settings': '{n} mudança(s) de tipo ou configuração do projeto',
+  'act.stmt.exports': '{n} exportação(ões)',
+  'act.stmt.cap': 'O histórico registra operações feitas pelo QualiLab (importações, mesclagens, exclusões, aplicações em lote, consolidações, exportações), não a leitura nem a navegação, e não guarda o conteúdo do que foi apagado.',
+  'rep.trailBox': '**Incluir o histórico do processo**: acrescenta ao artefato um resumo do que o histórico do projeto registra (quantas importações, mesclagens, exclusões, aplicações em lote, consolidações e exportações, e desde quando).',
+  'rep.trail': 'Histórico do processo.',
+  'ati.trail': 'Histórico do processo',
+  'q.activity': 'registro no histórico',
+  'qdpx.loss.trail': 'O histórico do projeto ({n} evento(s)) fica de fora: o REFI-QDA não tem onde guardá-lo. Ele viaja só no .qualilab.',
+  'imp.activity': ' Histórico: {n} evento(s) novo(s){rep}.',
+  'imp.activity.rep': ', {n} já registrado(s)',
 };
 /* ============ CATALOGO EN ============
    Mesmas chaves do msg-pt.js, sem excecao: o scripts/check_i18n.py compara os dois conjuntos nos
@@ -5162,6 +5290,134 @@ const MSG_EN = {
   'proj.role.viewer': 'Read-only',
   'proj.makeViewer': 'make read-only',
   'proj.makeMemberBack': 'give coding back',
+  // -- AUDIT TRAIL (S4): the "Project history" section of the Memos tab, one sentence per
+  //    operation (activityText), the Report block (activityStatement) and the CSV --
+  'mn.activity': 'Project history',
+  'act.title': 'Project history',
+  'act.hint': '**A record of the operations that changed the project**: imports, code merges and splits, deletions, text edits, bulk applications, consolidations, settings changes and exports. It **does not undo** anything, **does not keep the content** of what was deleted and **does not record** reading or navigation. Codings applied one by one are not listed: each is already recorded in the coding itself, with author and date.',
+  'act.empty': 'No operations recorded yet.',
+  'act.loadError': 'Could not load the history: {e}',
+  'act.filter.all': 'all operations',
+  'act.filter.q': 'code, document or person',
+  'act.count': '{n} of {total}',
+  'act.export': 'Export CSV',
+  'act.unnamed': '(unnamed)',
+  'act.nothing': 'nothing',
+  'act.rejected': '{n} row(s) refused by the server.',
+  'act.subcodes': 'and {n} subcode(s)',
+  'act.failed': '({n} failed)',
+  'act.model': 'with {model}',
+  'act.inDoc': 'in {name}',
+  'act.before': '(before: {v})',
+  'act.merge.aiOff': 'The file came from a project with the AI features turned off.',
+  'act.fmt.qdpx': 'QDPX (REFI-QDA)',
+  'act.fmt.qualilab': '.qualilab file',
+  'act.fmt.taguette': 'Taguette project',
+  'act.fmt.qdc': 'QDC codebook',
+  'act.fmt.sheet': 'spreadsheet (documents)',
+  'act.fmt.sheet_attrs': 'spreadsheet (attributes)',
+  'act.fmt.sheet_codings': 'spreadsheet (passages)',
+  'act.fmt.zotero': 'Zotero folder',
+  'act.fmt.json': 'project JSON',
+  'act.fmt.csv_codings': 'codings CSV',
+  'act.fmt.csv_attrs': 'attributes CSV',
+  'act.fmt.ati': 'Interactive Report (ATI)',
+  'act.fmt.w3c': 'Web Annotation (W3C)',
+  'act.fmt.report': 'Standard Report',
+  'act.fmt.cloud': 'project to the cloud',
+  'act.screen.repeat': 'Repeat Coding',
+  'act.screen.ai_codes': 'Suggest Coding',
+  'act.screen.ai_values': 'Suggest Attributes',
+  'act.screen.ai_organize': 'Organize Codes',
+  'act.ai.none': 'enabled for everyone',
+  'act.ai.members': 'disabled for members (the admin keeps them)',
+  'act.ai.all': 'disabled for everyone',
+  'act.role.admin': 'administrator',
+  'act.role.member': 'member',
+  'act.role.viewer': 'read-only',
+  'act.n.documents': '{n} document(s)',
+  'act.n.categories': '{n} attribute(s)',
+  'act.n.codes': '{n} code(s)',
+  'act.n.codings': '{n} coding(s)',
+  'act.n.memos': '{n} memo(s)',
+  'act.n.conversations': '{n} AI conversation(s)',
+  'act.n.memories': '{n} memory(ies)',
+  'act.n.activity': '{n} history event(s)',
+  'act.n.filled': '{n} answer(s) filled in',
+  'act.n.changed': '{n} changed',
+  'act.n.erased': '{n} erased',
+  'act.n.newCategories': '{n} new attribute(s)',
+  'act.n.newOptions': '{n} new option(s)',
+  'act.n.newCodes': '{n} new code(s)',
+  'act.n.ignored': '{n} row(s) ignored',
+  'act.n.noTag': '{n} highlight(s) without a tag',
+  'act.n.brokenAnchors': '{n} broken anchor(s)',
+  'act.n.noFile': '{n} reference(s) without a file',
+  'act.n.badPdf': '{n} unreadable PDF(s)',
+  'act.op.trail_started': 'History started. Whatever happened before this record was not logged.',
+  'act.op.import': 'Imported {format}: {list}.',
+  'act.op.merge_file': 'Merged the file {file}: {list}.',
+  'act.op.codes_merged': 'Merged {list} into {name}: {n} coding(s) moved.',
+  'act.op.code_split': 'Split {name} into {list}: {moved} coding(s) moved, {copied} copied.',
+  'act.op.code_deleted': 'Deleted the code {name}{sub}: {n} coding(s) deleted in cascade.',
+  'act.op.document_deleted': 'Deleted the document {name}: {n} coding(s) deleted with it.',
+  'act.op.category_deleted': 'Deleted the attribute {name}: {n} answer(s) deleted with it.',
+  'act.op.project_cleared': 'Cleared the project contents: {list}.',
+  'act.op.text_edited': 'Edited the text of {name}: {remapped} coding(s) re-anchored, {affected} inside the edited passage.',
+  'act.op.bulk_coding': 'Applied in bulk from {screen}: {n} item(s){failed}{model}.',
+  'act.op.reconcile': 'Consolidated {n} coding(s) into the reference layer{where}.',
+  'act.op.mode_changed': 'Project type changed to {to}{from}.',
+  'act.op.flags_changed': 'Project settings changed: {list}.',
+  'act.flag.blindOn': 'blind coding turned on',
+  'act.flag.blindOff': 'blind coding turned off',
+  'act.flag.restrictOn': 'restricted assignment turned on',
+  'act.flag.restrictOff': 'restricted assignment turned off',
+  'act.flag.ai': 'AI features {v}',
+  'act.op.project_renamed': 'Project renamed to {to}{from}.',
+  'act.op.member_joined': '{who} joined the project as {role}.',
+  'act.op.member_left': '{who} left the project.',
+  'act.op.member_removed': '{who} was removed from the project.',
+  'act.op.role_changed': 'Role of {who} changed to {to}{from}.',
+  'act.op.export': 'Exported {format}.',
+  'act.lbl.trail_started': 'history start',
+  'act.lbl.import': 'import',
+  'act.lbl.merge_file': 'file merge',
+  'act.lbl.codes_merged': 'code merge',
+  'act.lbl.code_split': 'code split',
+  'act.lbl.code_deleted': 'code deletion',
+  'act.lbl.document_deleted': 'document deletion',
+  'act.lbl.category_deleted': 'attribute deletion',
+  'act.lbl.project_cleared': 'contents cleared',
+  'act.lbl.text_edited': 'text edit',
+  'act.lbl.bulk_coding': 'bulk application',
+  'act.lbl.reconcile': 'consolidation',
+  'act.lbl.mode_changed': 'project type',
+  'act.lbl.flags_changed': 'project settings',
+  'act.lbl.project_renamed': 'project rename',
+  'act.lbl.member_joined': 'member joined',
+  'act.lbl.member_removed': 'member left',
+  'act.lbl.role_changed': 'member role',
+  'act.lbl.export': 'export',
+  'act.stmt.none': 'No operations are recorded in the history of this project.',
+  'act.stmt.head': 'The project history records {n} operation(s) since {date}.',
+  'act.stmt.list': 'Among them: {list}.',
+  'act.stmt.imports': '{n} import(s)',
+  'act.stmt.merges': '{n} code merge(s)',
+  'act.stmt.splits': '{n} code split(s)',
+  'act.stmt.deletions': '{n} deletion(s) of documents, codes or attributes',
+  'act.stmt.edits': '{n} text edit(s) with re-anchoring of the codings',
+  'act.stmt.bulk': '{n} bulk application(s) ({ai} by AI)',
+  'act.stmt.reconcile': '{n} consolidation(s) into the reference layer',
+  'act.stmt.settings': '{n} change(s) to the project type or settings',
+  'act.stmt.exports': '{n} export(s)',
+  'act.stmt.cap': 'The history records operations performed through QualiLab (imports, merges, deletions, bulk applications, consolidations, exports), not reading or navigation, and it does not keep the content of what was deleted.',
+  'rep.trailBox': '**Include the process history**: adds to the artefact a summary of what the project history records (how many imports, merges, deletions, bulk applications, consolidations and exports, and since when).',
+  'rep.trail': 'Process history.',
+  'ati.trail': 'Process history',
+  'q.activity': 'history record',
+  'qdpx.loss.trail': 'The project history ({n} event(s)) stays behind: REFI-QDA has nowhere to keep it. It travels only in the .qualilab.',
+  'imp.activity': ' History: {n} new event(s){rep}.',
+  'imp.activity.rep': ', {n} already recorded',
 };
 const HUES = [210, 28, 150, 350, 268, 184, 322, 70, 48, 96, 122, 238, 295, 8];
 function codeColor(hue, depth, hueDeg, dark=false, sat=null){
@@ -7247,7 +7503,7 @@ const QDPX_SET_REDACTION = 'QualiLab::Redaction';
    Called from doExport, which builds allV/allC from the STORE — not from the screen state,
    which is empty on the Codificação view (AGG_VIEWS). Reading the state here would make the
    warning silently disappear on the most used screen. */
-function qdpxDataLoss(cats, allV, allC){
+function qdpxDataLoss(cats, allV, allC, nActivity){
   const perdas = [];
   const cods = allC || [], vals = allV || [];
   const finais = cods.filter(c => c.layer === 'final').length;
@@ -7260,6 +7516,10 @@ function qdpxDataLoss(cats, allV, allC){
   const comValor = new Set(vals.filter(v => String(v.value || '').trim()).map(v => v.category_id));
   const cx = (cats || []).filter(c => c.kind === 'checkbox' && comValor.has(c.id)).map(c => c.name);
   if(cx.length) perdas.push(`Categoria de caixa de seleção (${cx.join(', ')}) sai como texto único juntado por "${CAT_MULTI_SEP}": o REFI-QDA não tem múltipla escolha, e na volta o tipo é re-inferido.`);
+  // TRILHA (S4): o padrao nao tem casa para log de eventos (medido no Project.xsd, spec §1) — e nao
+  // se inventa uma. Condicionada a haver eventos, como as tres acima.
+  const nAct = Number(nActivity) || 0;
+  if(nAct) perdas.push(t('qdpx.loss.trail', { n:nAct }));
   return perdas;
 }
 
@@ -8437,7 +8697,7 @@ function reflowOcrText(raw){
   return out.join('\n').replace(/[ \t]{2,}/g,' ').replace(/\n{3,}/g,'\n\n').trim();
 }
 
-async function importQualilab(file, store, projectId, projectMode, onProgress){
+async function importQualilab(file, store, projectId, projectMode, onProgress, origin){
   let parsed;
   try{ parsed = await readQualilabFile(new Uint8Array(await file.arrayBuffer())); }
   catch(e){
@@ -8446,7 +8706,7 @@ async function importQualilab(file, store, projectId, projectMode, onProgress){
     if(/Failed to fetch|dynamically imported|NetworkError|Load failed/i.test(m)) throw new Error('Não consegui carregar a biblioteca de leitura do arquivo (rede/CDN). O arquivo NÃO tem problema. Verifique a conexão e tente de novo.');
     throw new Error('Arquivo .qualilab inválido ('+(e.message||'formato não reconhecido')+')');
   }
-  return mergeQualilabDb(parsed.db, store, projectId, projectMode, onProgress, parsed.pdfs, parsed.pdfIndex);
+  return mergeQualilabDb(parsed.db, store, projectId, projectMode, onProgress, parsed.pdfs, parsed.pdfIndex, origin || { file:file.name, via:'import' });
 }
 /* nucleo do merge de um .qualilab (objeto ja parseado) num projeto ATIVO — extraido de
    importQualilab pra poder ser chamado tambem sem passar por arquivo (ex.: "enviar pra
@@ -8532,7 +8792,7 @@ function iaOrigemNotice(r){
   return p.join('');
 }
 
-async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pdfs, pdfIdx){
+async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pdfs, pdfIdx, origin){
   const codLayer = projectMode==='individual' ? 'final' : 'individual';
   if(!db || !Array.isArray(db.documents)) throw new Error('Arquivo .qualilab sem o formato esperado');
 
@@ -8546,6 +8806,7 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
   const tick = makeProgressTicker(onProgress, total);
   let linhasRecusadas = 0;   // linhas recusadas pelo servidor num lote (ver bulkFails)
   let conversas = 0, memorias = 0, conversasRepetidas = 0, memoriasRepetidas = 0;
+  let activityEntries = 0, activityRepeated = 0;   // TRILHA (S4): eventos que entraram / ja registrados (dedup por id)
   /* S7 — a chave do DESTINO, lida UMA vez e ANTES das escritas. Ela decide duas coisas: se as
      conversas/memorias do arquivo entram (abaixo), e a frase de divergencia de declaracao (no
      fim). Ler no fim serviria para a frase e chegaria tarde demais para o gate. */
@@ -8821,6 +9082,38 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
         for(const r of iaRows){ await store.addIaResult(projectId, r); await tick(); }
       }
     }
+
+    /* TRILHA DE AUDITORIA (S4): viaja no .qualilab e entra por DEDUP DE ID — resposta melhor que o
+       (ts, ator, op) que o S4 cogitava, porque o id de cliente ja existe por causa da fila e e
+       colisao-impossivel por construcao. Reimportar o mesmo arquivo tres vezes nao triplica a
+       trilha (a licao do ia_results/ia_memory acima, com chave melhor). O alvo e REMAPEADO para os
+       ids novos deste projeto quando o mapa o conhece (documento/codigo/categoria que entraram no
+       mesmo merge); alvo que nao existe mais (o documento cuja exclusao o evento registra) fica
+       com o id de origem, que so serve de chave de filtro. `actor` vai null (uuid de outro mundo),
+       o nome vai em actor_name — a mesma convencao do created_by das codificacoes importadas.
+       Sobrevive a store sem o metodo (versao velha em cache) e a arquivo antigo sem `activity`. */
+    if(store.importActivity && Array.isArray(db.activity) && db.activity.length){
+      const existing = await readExisting(store, 'listActivity', projectId);
+      const seen = new Set((existing||[]).map(e=>e && e.id).filter(Boolean));
+      const remap = (kind, id)=> kind==='document' ? (docMap[id]||id) : kind==='code' ? (codeMap[id]||id)
+                               : kind==='category' ? (catMap[id]||id) : kind==='project' ? projectId : id;
+      const novos = [];
+      for(const e of db.activity){
+        if(!e || !e.id || !e.op) continue;
+        /* O MARCO NAO VIAJA: `trail_started` e propriedade da trilha DESTE projeto (o instante em que
+           ELE passou a registrar), nunca da origem. Importa-lo faria a trilha mesclada mostrar dois
+           "Historico iniciado" e o Relatorio afirmar "desde <data da origem>" sobre um projeto que so
+           comecou a registrar agora. O marco daqui nasce preguicoso no importActivity/logActivity. */
+        if(e.op==='trail_started') continue;
+        if(seen.has(e.id)){ activityRepeated++; continue; }
+        seen.add(e.id);
+        novos.push({ ...e, target_id: e.target_id ? remap(e.target_kind, e.target_id) : null, actor:null });
+      }
+      if(novos.length){
+        const r = await store.importActivity(projectId, novos);
+        linhasRecusadas += bulkFails(r); activityEntries = novos.length - bulkFails(r);
+      }
+    }
   } finally {
     if(store.endBatch) await store.endBatch();
   }
@@ -8836,6 +9129,19 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
      §7 do REFI: avisar no ponto do import, com o que de fato aconteceu. */
   const iaOrigemSemIa = ((db._meta && db._meta.restrict_ai) || 'none') === 'all' && !iaBloqueada;
 
+  /* TRILHA (S4): o merge em si vira evento no DESTINO (spec §6) — e por isso mora AQUI, e nao na
+     App(): "Enviar para a nuvem" e o corpus de exemplo chamam este mesmo nucleo. `origin` diz de
+     onde veio (nome do arquivo e via: import / cloud / example); as contagens sao as do resumo.
+     Depois do endBatch, de proposito: em rascunho/arquivo o evento so pode ser gravado quando o
+     lote ja assentou. Falha aqui nunca aborta um merge que ja deu certo. */
+  try{
+    if(store.logActivity) await store.logActivity(projectId, { op:'merge_file', target_kind:'project', target_id:projectId,
+      detail:{ file:(origin && origin.file) || null, via:(origin && origin.via) || 'import',
+               documents:(db.documents||[]).length, categories:(db.categories||[]).length, codes:(db.codes||[]).length,
+               codings:(db.codings||[]).length, memos:(db.memos||[]).length, conversations:conversas, memories:memorias,
+               activity:activityEntries, rejected:linhasRecusadas, ai_origin_off:iaOrigemSemIa } });
+  }catch(e){}
+
   return {
     iaOrigemSemIa, iaRecusadas,
     documentos:(db.documents||[]).length, categorias:(db.categories||[]).length, codigos:(db.codes||[]).length,
@@ -8843,7 +9149,8 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
     // conversas/memorias contam o que FOI GRAVADO, nao o que veio no arquivo: sao as duas unicas
     // colecoes que o "Limpar conteudo" preserva de proposito, entao numero do arquivo e numero do
     // projeto sao coisas diferentes aqui — e e justamente o caso em que a diferenca importa.
-    conversas, memorias, conversasRepetidas, memoriasRepetidas, linhasRecusadas
+    conversas, memorias, conversasRepetidas, memoriasRepetidas, linhasRecusadas,
+    activity:activityEntries, activityRepeated
   };
 }
 
@@ -10210,7 +10517,7 @@ function aiUsageStatement({ restrictAi, aiEverEnabled, conversas, memorias, codi
 // `aiDecl` (S7) e a frase pronta do aiUsageStatement, ou null quando o pesquisador desmarcou a
 // caixa no Relatorio. Ela entra como extensao `qualilab:` porque nao ha campo normativo no W3C
 // para isto — mesmo lugar onde o memo de projeto ja mora.
-function buildWebAnnotations(docs, codes, allC, memos, project, anonymize, pageOf, aiDecl){
+function buildWebAnnotations(docs, codes, allC, memos, project, anonymize, pageOf, aiDecl, trailDecl){
   const docById={}; docs.forEach(d=>docById[d.id]=d);
   const { codeMemo, docMemo, codingMemo, projectMemo } = indexMemos(memos);
   const redactionCodeIds = new Set(codes.filter(c=>c.is_redaction).map(c=>c.id));
@@ -10268,14 +10575,15 @@ function buildWebAnnotations(docs, codes, allC, memos, project, anonymize, pageO
     // metadados não-normativos (extensão QualiLab): visão geral + fontes referenciadas
     'qualilab:overview': projectMemo || undefined,
     'qualilab:aiUsage': aiDecl || undefined,
+    'qualilab:processTrail': trailDecl || undefined,   // TRILHA (S4): a frase do activityStatement, mesma casa da declaracao de IA
     'qualilab:sources': docs.map(d=>({ id:'urn:qualilab:document:'+d.id, name:d.name, note: docMemo[d.id]||undefined })),
     first:{ id: pageId, type:'AnnotationPage', partOf: collId, startIndex: 0, items }
   };
   return collection;
 }
-function exportWebAnnotations(docs, codes, allC, memos, project, anonymize, pageOf, aiDecl){
+function exportWebAnnotations(docs, codes, allC, memos, project, anonymize, pageOf, aiDecl, trailDecl){
   download((project?.name||'projeto').replace(/[^\w\-]+/g,'_')+(anonymize?'_anon':'')+'_anotacoes.json',
-    JSON.stringify(buildWebAnnotations(docs, codes, allC, memos, project, anonymize, pageOf, aiDecl),null,2), 'application/ld+json');
+    JSON.stringify(buildWebAnnotations(docs, codes, allC, memos, project, anonymize, pageOf, aiDecl, trailDecl),null,2), 'application/ld+json');
 }
 
 /* Leitor de Transparência: página HTML auto-contida (sem rede, sem build) que mostra
@@ -10283,7 +10591,7 @@ function exportWebAnnotations(docs, codes, allC, memos, project, anonymize, page
    o excerto e a autoria — o equivalente ao overlay do ATI, mas hospedável por você (ex.:
    uma subpasta do GitHub Pages). Reaproveita buildRuns/codeColor; pré-renderiza os runs
    pra não precisar embarcar lógica do app. */
-function buildTransparencyReaderHTML(docs, codes, allC, memos, project, anonymize, pageOf, aiDecl){
+function buildTransparencyReaderHTML(docs, codes, allC, memos, project, anonymize, pageOf, aiDecl, trailDecl){
   const codeById={}; codes.forEach(c=>codeById[c.id]=c);
   const colorOf = (id)=>{ const c=codeById[id]; return c ? codeColor(c.hue, c.depth, c.hue_deg, false, c.sat) : {tint:'#eee',solid:'#888'}; };
   const { codeMemo, docMemo, codingMemo, projectMemo } = indexMemos(memos);
@@ -10349,6 +10657,7 @@ function buildTransparencyReaderHTML(docs, codes, allC, memos, project, anonymiz
      sob a restricao. Aqui quem carrega o significado e a frase. Reusa a classe .overview para nao
      inventar estilo novo dentro da pagina gerada. */
   const aiBlock = aiDecl ? `<div class="overview"><h3>${t('ati.aiUse')}</h3><div>${xmlEsc(aiDecl)}</div></div>` : '';
+  const trailBlock = trailDecl ? `<div class="overview"><h3>${t('ati.trail')}</h3><div>${xmlEsc(trailDecl)}</div></div>` : '';   // TRILHA (S4)
   const docsCtrl = docs.length>1 ? `<div class="docctrl"><span>${t('ati.nDocs',{n:docs.length})}</span><button onclick="allDocs(true)">${t('ati.expandAll')}</button><button onclick="allDocs(false)">${t('ati.collapseAll')}</button></div>` : '';
   const dataJson = JSON.stringify(anns).replace(/</g,'\\u003c');
   const title = xmlEsc(project?.name || 'Projeto QualiLab');
@@ -10405,7 +10714,7 @@ footer a{color:var(--teal)}
 </style></head><body>
 <header><h1>${title}</h1><div class="sub">${t('ati.subtitle')}</div></header>
 <div class="wrap">
-  <div class="main">${overview}${aiBlock}${legend}${docsCtrl}${docsHtml}</div>
+  <div class="main">${overview}${aiBlock}${trailBlock}${legend}${docsCtrl}${docsHtml}</div>
   <div class="aside"><div id="panel"><h3>${t('ati.note')}</h3><p class="muted">${t('ati.panelHint')}</p></div></div>
 </div>
 <footer>${t('ati.madeWith')} <a href="https://luizpf42.github.io/QualiLab/">QualiLab</a> ${t('ati.standard')}</footer>
@@ -10442,8 +10751,8 @@ document.addEventListener('click',function(e){
 });
 <\/script></body></html>`;
 }
-function exportTransparencyReader(docs, codes, allC, memos, project, anonymize, pageOf, aiDecl){
-  const htmlStr = buildTransparencyReaderHTML(docs, codes, allC, memos, project, anonymize, pageOf, aiDecl);
+function exportTransparencyReader(docs, codes, allC, memos, project, anonymize, pageOf, aiDecl, trailDecl){
+  const htmlStr = buildTransparencyReaderHTML(docs, codes, allC, memos, project, anonymize, pageOf, aiDecl, trailDecl);
   download((project?.name||'projeto').replace(/[^\w\-]+/g,'_')+(anonymize?'_anon':'')+'_transparencia.html', htmlStr, 'text/html;charset=utf-8');
 }
 
@@ -10806,6 +11115,253 @@ function applyQueue(rows, effs, keep){
   return out;
 }
 
+/* ============ TRILHA DE AUDITORIA (S4, set/2026) — as pecas puras ============
+   Registra OPERACOES que alteram o projeto, nunca linhas, nunca leitura, nunca navegacao. Spec
+   fechada em to-do/spec-trilha-auditoria.md; o levantamento do campo esta no S9 do to-do.
+
+   TRES NEGACOES QUE SAO O DESENHO, nao rodape: (1) NAO E UNDO — e registro, nao maquina do tempo,
+   e nenhuma linha da UI ganha botao de reverter; (2) NAO E VIGILANCIA — leitura, navegacao e tempo
+   de tela nao entram; (3) NAO E PROVA FORENSE — na nuvem e append-only na API, mas o operador do
+   servidor sempre pode, e em arquivo o dono do disco edita o que quiser. A trilha RELATA.
+
+   DADO, NAO PROSA. O evento guarda tokens ingleses (`op`, nivel 1 do IDIOMA) e um `detail` com
+   nomes e contagens; a FRASE e montada na LEITURA pelo catalogo PT/EN (activityText). E o oposto
+   das duas implementacoes lidas em 02/set/2026: o QualCoder grava prosa pronta no `journal` (nao
+   filtra, nao exporta em coluna, e e editavel), e o OpenQDA grava `old_values`/`new_values` linha
+   a linha, com o TEXTO do trecho dentro. Aqui o texto do corpus e PROIBIDO no detail
+   (ACTIVITY_FORBIDDEN), e isso e assercao de teste, nao convencao: a trilha viaja no .qualilab e
+   sai em CSV, entao um `quote` ali seria um segundo canal de vazamento.
+
+   ID GERADO NO CLIENTE (uid), pelo mesmo motivo da fila de escrita: replay depois de um 504 e
+   idempotente (23505 = ja entrou), e a viagem no .qualilab deduplica por id — reimportar o mesmo
+   arquivo tres vezes nao triplica a trilha (a licao paga do ia_results/ia_memory, com chave melhor).
+
+   DOIS RELOGIOS, sem eleger vencedor: `at` e o relogio do CLIENTE (o que a pessoa viu, e o que se
+   EXIBE); `created_at` e o do servidor (ordem de chegada, e o que ORDENA quando existe). Divergencia
+   entre os dois nao e erro — e a fila de escrita fazendo o trabalho dela. */
+
+/* O CATALOGO E FECHADO E CURTO de proposito (regra do S4: operacoes, nao linhas). Token novo entra
+   aqui E ganha frase nos DOIS catalogos no mesmo commit — o teste puro percorre esta lista e exige
+   frase para cada um (token sem frase e build vermelho, nao "act.op.x" na tela).
+   O que NAO entra, e por que: codificacao individual aplicada/removida (ja e dado: created_at/
+   created_by/source na propria linha; logar dobraria e reencenaria o gotcha #0), edicao de memo
+   (o conteudo E o registro, e memos_provenance ja carimba), conversa de IA (vive em ia_results com
+   o convProv; so a APLICACAO em lote entra), navegacao e leitura. */
+const ACTIVITY_OPS = [
+  'trail_started',                                   // o 1o evento do projeto (sem backfill: honestidade > completude retroativa)
+  'import', 'merge_file',                            // entrou material (formatos de terceiro / .qualilab, inclusive "enviar para a nuvem")
+  'codes_merged', 'code_split',                      // cirurgia de esquema (S1/S2), com N trechos movidos
+  'code_deleted', 'document_deleted', 'category_deleted', 'project_cleared',   // destruicao, com o que caiu em cascata
+  'text_edited',                                     // edicao do texto com remap dos grifos
+  'bulk_coding',                                     // aplicacao em lote: repetir / as 3 telas de IA
+  'reconcile',                                       // consolidacao na camada final (layer:'final')
+  'mode_changed', 'flags_changed', 'project_renamed',   // gestao do projeto — na nuvem, gravados pelo RPC
+  'member_joined', 'member_removed', 'role_changed',    // equipe — so nuvem, gravados pelo RPC
+  'export',                                          // dado SAIU do projeto (decisao ⚑1 da spec: entra, filtravel)
+];
+const ACTIVITY_KINDS = ['document', 'code', 'category', 'project', 'member'];
+/* Chaves que NUNCA entram no detail: sao conteudo de corpus ou de nota. Removidas em qualquer
+   profundidade por activityCleanDetail. `values` (contagem de respostas apagadas) e `file` (NOME do
+   arquivo importado) sao metadado e ficam. */
+const ACTIVITY_FORBIDDEN = ['quote', 'content', 'text', 'memo', 'note', 'result', 'snippet', 'excerpt'];
+const ACTIVITY_NAME_MAX = 300;
+
+/* Limpa o detail: tira as chaves proibidas (em qualquer nivel), descarta undefined e corta string
+   longa. Funcao pura de topo para o teste conseguir afirmar a propriedade que importa — nenhum
+   `quote` sobrevive, venha de onde vier. */
+function activityCleanDetail(detail, depth){
+  if(!detail || typeof detail !== 'object') return {};
+  const d = depth || 0;
+  const out = Array.isArray(detail) ? [] : {};
+  for(const k of Object.keys(detail)){
+    if(ACTIVITY_FORBIDDEN.includes(String(k).toLowerCase())) continue;
+    const v = detail[k];
+    if(v === undefined) continue;
+    if(v && typeof v === 'object'){ if(d < 4) out[k] = activityCleanDetail(v, d + 1); continue; }
+    out[k] = (typeof v === 'string') ? v.slice(0, ACTIVITY_NAME_MAX) : v;
+  }
+  return out;
+}
+
+/* Normaliza um evento antes de gravar: valida o token, gera o id de cliente, congela o nome do
+   alvo (sobrevive a exclusao), aplica a limpeza do detail e preenche ator/relogio a partir do
+   contexto do store (`ctx`). Ausencia explicita de ator (actor:null, o caso importado) e
+   preservada: e a convencao da casa para linha importada (created_by null + author_name real). */
+function activityEntry(entry, ctx){
+  const e = entry || {}, c = ctx || {};
+  if(!ACTIVITY_OPS.includes(e.op)) throw new Error('activity: op fora do catalogo: ' + e.op);
+  return {
+    id: (typeof e.id === 'string' && e.id) ? e.id : uid(),
+    op: e.op,
+    target_kind: ACTIVITY_KINDS.includes(e.target_kind) ? e.target_kind : null,
+    target_id: (e.target_id != null && e.target_id !== '') ? String(e.target_id) : null,
+    target_name: (e.target_name != null && e.target_name !== '') ? String(e.target_name).slice(0, ACTIVITY_NAME_MAX) : null,
+    layer: e.layer === 'final' ? 'final' : null,
+    detail: activityCleanDetail(e.detail),
+    actor: e.actor !== undefined ? e.actor : (c.actor !== undefined ? c.actor : null),
+    actor_name: String(e.actor_name || c.actor_name || AUTHOR_ANON),
+    at: (typeof e.at === 'string' && e.at) ? e.at : new Date().toISOString(),
+  };
+}
+
+/* ---- rotulos: token -> palavra da UI (tudo chave LITERAL, para o check_i18n enxergar) ---- */
+function activityFormatLabel(f){
+  const map = {
+    qdpx: t('act.fmt.qdpx'), qualilab: t('act.fmt.qualilab'), taguette: t('act.fmt.taguette'), qdc: t('act.fmt.qdc'),
+    sheet: t('act.fmt.sheet'), sheet_attrs: t('act.fmt.sheet_attrs'), sheet_codings: t('act.fmt.sheet_codings'),
+    zotero: t('act.fmt.zotero'), json: t('act.fmt.json'), csv_codings: t('act.fmt.csv_codings'), csv_attrs: t('act.fmt.csv_attrs'),
+    ati: t('act.fmt.ati'), w3c: t('act.fmt.w3c'), report: t('act.fmt.report'), cloud: t('act.fmt.cloud'),
+  };
+  return map[f] || String(f || '');
+}
+function activityScreenLabel(s){
+  const map = { repeat: t('act.screen.repeat'), ai_codes: t('act.screen.ai_codes'), ai_values: t('act.screen.ai_values'), ai_organize: t('act.screen.ai_organize') };
+  return map[s] || String(s || '');
+}
+function activityModeLabel(m){ return m === 'collective' ? t('proj.collective') : m === 'individual' ? t('proj.individual') : String(m || ''); }
+function activityAiLabel(v){ return v === 'all' ? t('act.ai.all') : v === 'members' ? t('act.ai.members') : v === 'none' ? t('act.ai.none') : String(v || ''); }
+function activityRoleLabel(r){ return r === 'admin' ? t('act.role.admin') : r === 'viewer' ? t('act.role.viewer') : r === 'member' ? t('act.role.member') : String(r || ''); }
+
+/* As contagens de um detail, na ordem em que fazem sentido ler, so as que existem e sao > 0.
+   E o que o resumo do import ja calcula — a trilha REUSA esses numeros, nunca recalcula. */
+function activityCounts(d){
+  const x = d || {}, p = [];
+  const n = (k)=> Number(x[k]) || 0;
+  if(n('documents'))     p.push(t('act.n.documents', { n: n('documents') }));
+  if(n('categories'))    p.push(t('act.n.categories', { n: n('categories') }));
+  if(n('codes'))         p.push(t('act.n.codes', { n: n('codes') }));
+  if(n('codings'))       p.push(t('act.n.codings', { n: n('codings') }));
+  if(n('memos'))         p.push(t('act.n.memos', { n: n('memos') }));
+  if(n('conversations')) p.push(t('act.n.conversations', { n: n('conversations') }));
+  if(n('memories'))      p.push(t('act.n.memories', { n: n('memories') }));
+  if(n('activity'))      p.push(t('act.n.activity', { n: n('activity') }));
+  if(n('filled'))        p.push(t('act.n.filled', { n: n('filled') }));
+  if(n('changed'))       p.push(t('act.n.changed', { n: n('changed') }));
+  if(n('erased'))        p.push(t('act.n.erased', { n: n('erased') }));
+  if(n('newCategories')) p.push(t('act.n.newCategories', { n: n('newCategories') }));
+  if(n('newOptions'))    p.push(t('act.n.newOptions', { n: n('newOptions') }));
+  if(n('newCodes'))      p.push(t('act.n.newCodes', { n: n('newCodes') }));
+  if(n('ignored'))       p.push(t('act.n.ignored', { n: n('ignored') }));
+  if(n('noTag'))         p.push(t('act.n.noTag', { n: n('noTag') }));
+  if(n('brokenAnchors')) p.push(t('act.n.brokenAnchors', { n: n('brokenAnchors') }));
+  if(n('noFile'))        p.push(t('act.n.noFile', { n: n('noFile') }));
+  if(n('badPdf'))        p.push(t('act.n.badPdf', { n: n('badPdf') }));
+  return p.join(', ');
+}
+
+/* op + detail -> a frase visivel. E a UNICA funcao que sabe ler o detail de cada token, e por isso
+   e ela que o teste percorre: toda op do catalogo tem de sair como frase, nunca como a chave crua.
+   Frase sem verbo de reverter, de proposito (negacao 1). */
+function activityText(e){
+  if(!e || !e.op) return '';
+  const d = e.detail || {};
+  const name = e.target_name || t('act.unnamed');
+  const n = (k)=> Number(d[k]) || 0;
+  const quoted = (arr)=> (Array.isArray(arr) ? arr : []).map(s=>'"' + s + '"').join(', ');
+  const rejected = n('rejected') ? ' ' + t('act.rejected', { n: n('rejected') }) : '';
+  switch(e.op){
+    case 'trail_started':    return t('act.op.trail_started');
+    case 'import':           return t('act.op.import', { format: activityFormatLabel(d.format), list: activityCounts(d) || t('act.nothing') }) + rejected;
+    case 'merge_file':       return t('act.op.merge_file', { file: d.file || t('act.unnamed'), list: activityCounts(d) || t('act.nothing') })
+                                  + (d.ai_origin_off ? ' ' + t('act.merge.aiOff') : '') + rejected;
+    case 'codes_merged':     return t('act.op.codes_merged', { list: quoted(d.merged), name, n: n('moved') });
+    case 'code_split':       return t('act.op.code_split', { name, list: quoted(d.into), moved: n('moved'), copied: n('copied') });
+    case 'code_deleted':     return t('act.op.code_deleted', { name, n: n('codings'), sub: n('subcodes') ? ' ' + t('act.subcodes', { n: n('subcodes') }) : '' });
+    case 'document_deleted': return t('act.op.document_deleted', { name, n: n('codings') });
+    case 'category_deleted': return t('act.op.category_deleted', { name, n: n('values') });
+    case 'project_cleared':  return t('act.op.project_cleared', { list: activityCounts(d) || t('act.nothing') });
+    case 'text_edited':      return t('act.op.text_edited', { name, remapped: n('remapped'), affected: n('affected') });
+    case 'bulk_coding':      return t('act.op.bulk_coding', { screen: activityScreenLabel(d.screen), n: n('applied'),
+                                  failed: (n('failed') || n('skipped')) ? ' ' + t('act.failed', { n: n('failed') || n('skipped') }) : '',
+                                  model: d.model ? ' ' + t('act.model', { model: d.model }) : '' });
+    case 'reconcile':        return t('act.op.reconcile', { n: n('codings'), where: e.target_name ? ' ' + t('act.inDoc', { name: e.target_name }) : '' });
+    case 'mode_changed':     return t('act.op.mode_changed', { to: activityModeLabel(d.to), from: d.from ? ' ' + t('act.before', { v: activityModeLabel(d.from) }) : '' });
+    case 'flags_changed': {
+      const p = [];
+      // chave LITERAL no primeiro argumento do t(), senao o check_i18n a le como morta (armadilha (a) da migracao EN)
+      if(d.blind)         p.push(d.blind.to ? t('act.flag.blindOn') : t('act.flag.blindOff'));
+      if(d.restrict_docs) p.push(d.restrict_docs.to ? t('act.flag.restrictOn') : t('act.flag.restrictOff'));
+      if(d.restrict_ai)   p.push(t('act.flag.ai', { v: activityAiLabel(d.restrict_ai.to) }));
+      return t('act.op.flags_changed', { list: p.join(', ') || t('act.nothing') });
+    }
+    case 'project_renamed':  return t('act.op.project_renamed', { to: d.to || name, from: d.from ? ' ' + t('act.before', { v: d.from }) : '' });
+    case 'member_joined':    return t('act.op.member_joined', { who: d.who || name, role: activityRoleLabel(d.role || 'member') });
+    case 'member_removed':   return d.self ? t('act.op.member_left', { who: d.who || name }) : t('act.op.member_removed', { who: d.who || name });
+    case 'role_changed':     return t('act.op.role_changed', { who: d.who || name, to: activityRoleLabel(d.to), from: d.from ? ' ' + t('act.before', { v: activityRoleLabel(d.from) }) : '' });
+    case 'export':           return t('act.op.export', { format: activityFormatLabel(d.format) });
+    default:                 return String(e.op);
+  }
+}
+
+/* Ordem de exibicao: mais recente primeiro. Ordena por `created_at` (ordem de chegada ao store)
+   e desempata por `at`, e depois pela posicao original — em rascunho/arquivo os eventos importados
+   de um .qualilab chegam todos com o MESMO created_at (o instante do merge), e e a posicao no
+   array que preserva a ordem em que a origem os viveu. Estavel de proposito. */
+function activitySorted(list){
+  const key = (e)=> String((e && (e.created_at || e.at)) || '');
+  return (list || []).map((e, i)=>({ e, i }))
+    .sort((a, b)=> key(b.e).localeCompare(key(a.e)) || String(b.e.at || '').localeCompare(String(a.e.at || '')) || (b.i - a.i))
+    .map(x=>x.e);
+}
+
+/* Filtro da tela: por operacao (token) e por texto livre, que casa no alvo, no ator e na frase
+   renderizada — e por isso que "o que ja aconteceu com este codigo" e uma busca pelo nome dele
+   (decisao ⚑2 da spec: absorve o S3 sem escopo de memo novo). */
+function activityFilter(list, opts){
+  const o = opts || {};
+  const q = String(o.q || '').trim().toLowerCase();
+  return (list || []).filter(e=>{
+    if(!e) return false;
+    if(o.op && e.op !== o.op) return false;
+    if(!q) return true;
+    const alvo = [e.target_name, e.actor_name, activityText(e)].filter(Boolean).join(' ').toLowerCase();
+    return alvo.includes(q);
+  });
+}
+
+/* CSV no molde do "Export Audit" do OpenQDA (id, event, model, user, created_at, old_values,
+   new_values), adaptado: sem IP nem user agent (a spec do S8 traca essa linha de proposito —
+   proveniencia fala do DADO, nao da PESSOA), com o `detail` em JSON numa coluna e a frase
+   renderizada em outra, para a planilha ser legivel sem o app. Cabecalhos em ingles: e artefato de
+   intercambio, nao tela (mesma regra do `type:`/`values:` do QDPX). */
+function activityCsv(list){
+  const header = ['id', 'at', 'actor', 'op', 'target_kind', 'target_name', 'layer', 'detail', 'description'];
+  const rows = activitySorted(list).map(e=>[
+    e.id || '', e.at || '', e.actor_name || '', e.op || '', e.target_kind || '', e.target_name || '',
+    e.layer || '', JSON.stringify(e.detail || {}), activityText(e),
+  ]);
+  return toCSV([header, ...rows]);
+}
+
+/* O bloco do Relatorio (decisao ⚑5 da spec: V1). Fonte unica das tres saidas, no molde do
+   aiUsageStatement: RELATA o que a trilha registra e leva o proprio teto junto. Cada pedaco so
+   aparece quando a contagem e > 0 — bloco que enumera zeros ensina a ignorar bloco. */
+function activityStatement(list){
+  const evs = (list || []).filter(e=>e && e.op);
+  if(!evs.length) return t('act.stmt.none') + ' ' + t('act.stmt.cap');
+  const has = (ops)=> evs.filter(e=>ops.includes(e.op)).length;
+  const started = evs.find(e=>e.op === 'trail_started');
+  const first = evs.slice().sort((a, b)=> String(a.at || '').localeCompare(String(b.at || '')))[0];
+  const since = (started || first) ? (started || first).at : null;
+  const p = [];
+  const imports = has(['import', 'merge_file']);      if(imports) p.push(t('act.stmt.imports', { n: imports }));
+  const merges = has(['codes_merged']);               if(merges) p.push(t('act.stmt.merges', { n: merges }));
+  const splits = has(['code_split']);                 if(splits) p.push(t('act.stmt.splits', { n: splits }));
+  const dels = has(['code_deleted', 'document_deleted', 'category_deleted', 'project_cleared']);
+  if(dels) p.push(t('act.stmt.deletions', { n: dels }));
+  const edits = has(['text_edited']);                 if(edits) p.push(t('act.stmt.edits', { n: edits }));
+  const bulk = evs.filter(e=>e.op === 'bulk_coding');
+  if(bulk.length) p.push(t('act.stmt.bulk', { n: bulk.length, ai: bulk.filter(e=>String((e.detail || {}).screen || '').startsWith('ai_')).length }));
+  const recon = has(['reconcile']);                   if(recon) p.push(t('act.stmt.reconcile', { n: recon }));
+  const settings = has(['mode_changed', 'flags_changed']); if(settings) p.push(t('act.stmt.settings', { n: settings }));
+  const exports = has(['export']);                    if(exports) p.push(t('act.stmt.exports', { n: exports }));
+  const ops = evs.filter(e=>e.op !== 'trail_started').length;
+  let date = '';
+  try{ date = since ? new Date(since).toLocaleDateString(QL_LOCALE()) : ''; }catch(_){ date = String(since || ''); }
+  return t('act.stmt.head', { n: ops, date: date || '?' })
+    + (p.length ? ' ' + t('act.stmt.list', { list: p.join(', ') }) : '')
+    + ' ' + t('act.stmt.cap');
+}
 /* ============ STORE LOCAL (navegador) ============ */
 // quota tipica do localStorage em CARACTERES UTF-16 (~5M chars ≈ 5-10MB conforme o navegador).
 // Base do indicador PROATIVO de uso (a pilula avisa antes de estourar; o onSaveError so pega
@@ -10922,6 +11478,33 @@ function LocalStore(){
     },
     async setMemoryActive(id,active){ const m=(db.ia_memory||[]).find(x=>x.id===id); if(m) m.active=!!active; save(); },
     async deleteMemory(id){ db.ia_memory=(db.ia_memory||[]).filter(r=>r.id!==id); save(); },
+    /* TRILHA DE AUDITORIA (S4) — ver dados/trilha-de-auditoria.js. Lista e append, e so isso: nao
+       ha update nem delete de evento em store nenhum (negacao 1 da spec: registro, nao undo).
+       `trail_started` e PREGUICOSO — nasce no primeiro evento do projeto, nunca no createProject,
+       que aqui e chamado a CADA entrada no rascunho (ver a nota do restrict_ai acima): carimbar la
+       daria um marco por boot. O ator e null de proposito (rascunho nao tem identidade uuid, e null
+       e a convencao da casa para "sem sessao", como o created_by das codificacoes); o nome vai em
+       actor_name. `created_at` e o relogio deste store (ordena); `at` e o que se exibe.
+       SOBREVIVE AO clearProject pela lista branca dele — trilha que a operacao registrada apaga nao
+       e trilha, e o project_cleared e ele mesmo um evento. */
+    async listActivity(){ return (db.activity||[]).slice(); },
+    async logActivity(pid, entry){
+      if(!db.activity) db.activity = [];
+      const now = new Date().toISOString(), ctx = { actor:null, actor_name:name };
+      if(!db.activity.length && entry?.op!=='trail_started') db.activity.push({ project_id:pid, created_at:now, ...activityEntry({ op:'trail_started' }, ctx) });
+      const e = { project_id:pid, created_at:now, ...activityEntry(entry, ctx) };
+      db.activity.push(e); save(); return e;
+    },
+    // eventos vindos de um .qualilab (JA deduplicados por id pelo merge): ator null, nome e `at` da
+    // origem preservados, created_at = AGORA (o instante em que este projeto passou a conhece-los)
+    async importActivity(pid, items){
+      if(!db.activity) db.activity = [];
+      const now = new Date().toISOString(), ctx = { actor:null, actor_name:name };
+      if(!db.activity.length && (items||[]).length) db.activity.push({ project_id:pid, created_at:now, ...activityEntry({ op:'trail_started' }, ctx) });
+      let ok=0, failed=0;
+      for(const it of (items||[])){ try{ db.activity.push({ project_id:pid, created_at:now, ...activityEntry({ ...it, actor:null }, ctx) }); ok++; }catch(e){ failed++; } }
+      save(); return { ok, failed };
+    },
     async changePassword(){ throw new Error('Sem conta no modo local'); },
     async resetPassword(){ throw new Error('Sem conta no modo local'); },
     async changeDisplayName(newName){ name = newName || name; try{ localStorage.setItem('qualilab:name', name); }catch(e){} },
@@ -10945,10 +11528,13 @@ function LocalStore(){
     async listMembers(){ return [{ user_id:'local-user', display_name:name, role:'admin' }]; },
     async setMemberRole(){ return P(); },
     async removeMember(){ return P(); },
-    async renameProject(){ return P(); },
+    // TRILHA: renomear/tipo/chave de IA sao registrados pelo PROPRIO store (na nuvem, pelo RPC).
+    // O rascunho nao persiste nome nem tipo (o App os guarda em qualilab:project), entao aqui so
+    // se conhece o valor NOVO — o detail leva `to` e o `from` fica de fora, em vez de inventado.
+    async renameProject(pid,pn){ if(pn) await this.logActivity(pid, { op:'project_renamed', target_kind:'project', target_id:pid, target_name:pn, detail:{ to:pn } }); },
     // idem FileStore: sem memos/ia_* aqui, db.memos ficava undefined até recarregar a página
     async deleteProject(){ const ids=db.documents.map(d=>d.id); db={ documents:[], categories:[], doc_values:[], codes:[], codings:[], memos:[], ia_results:[], ia_memory:[] }; ids.forEach(id=>IDB.delBlob(id)); save(); return P(); },
-    async setProjectMode(){ return P(); },
+    async setProjectMode(pid,pmode){ if(pmode) await this.logActivity(pid, { op:'mode_changed', target_kind:'project', target_id:pid, detail:{ to:pmode } }); },
     // DISTRIBUICAO/CEGO: idem createFileStore — usuario unico e sempre admin, stubs inertes.
     async listAssignments(){ return P([]); },
     async setAssignment(){ return P(); },
@@ -10968,9 +11554,11 @@ function LocalStore(){
        `ai_ever_enabled` e trava de uma via aqui tambem: so vai de false pra true. */
     async setProjectFlags(pid, { restrictAi }={}){
       if(restrictAi==='none'||restrictAi==='members'||restrictAi==='all'){
+        const from = db.restrict_ai||'none';
         db.restrict_ai = restrictAi;
         if(restrictAi !== 'all') db.ai_ever_enabled = true;
         save();
+        if(restrictAi!==from) await this.logActivity(pid, { op:'flags_changed', target_kind:'project', target_id:pid, detail:{ restrict_ai:{ from, to:restrictAi } } });
       }
       return P({ blind:false, restrict_docs:false, restrict_ai:db.restrict_ai||'none', ai_ever_enabled:!!db.ai_ever_enabled });
     },
@@ -11000,7 +11588,7 @@ function LocalStore(){
     // o db e RECONSTRUIDO por lista branca aqui, entao campo de CONFIGURACAO tem de ser repetido
     // explicitamente ou some no "Limpar conteudo" — restrict_ai/ai_ever_enabled sao decisao do
     // ESTUDO (como os memos de projeto e a config de IA), e sobrevivem a troca de corpus.
-    clearProject(){ const ids=db.documents.map(d=>d.id); const keepMemos=(db.memos||[]).filter(m=>!MEMO_MATERIAL_SCOPES.includes(m.scope)); db={ documents:[], categories:[], doc_values:[], codes:[], codings:[], memos:keepMemos, ia_results:db.ia_results||[], ia_memory:db.ia_memory||[], restrict_ai:db.restrict_ai||'none', ai_ever_enabled:!!db.ai_ever_enabled }; ids.forEach(id=>IDB.delBlob(id)); save(); return P(); },
+    clearProject(){ const ids=db.documents.map(d=>d.id); const keepMemos=(db.memos||[]).filter(m=>!MEMO_MATERIAL_SCOPES.includes(m.scope)); db={ documents:[], categories:[], doc_values:[], codes:[], codings:[], memos:keepMemos, ia_results:db.ia_results||[], ia_memory:db.ia_memory||[], restrict_ai:db.restrict_ai||'none', ai_ever_enabled:!!db.ai_ever_enabled, activity:db.activity||[] }; ids.forEach(id=>IDB.delBlob(id)); save(); return P(); },
     listCategories(){ return P(db.categories.slice().sort((a,b)=>a.position-b.position)); },
     addCategory(pid,cat){ const c={id:uid(),position:db.categories.length,...cat}; db.categories.push(c); save(); return P(c); },
     updateCategory(id,patch){ db.categories=db.categories.map(c=>c.id===id?{...c,...patch}:c); save(); return P(); },
@@ -11116,11 +11704,19 @@ async function createFileStore(fileHandle, isNew){
     async myRole(){ return 'admin'; },
     async listMembers(){ return [{user_id:'file-user',display_name:name,role:'admin',joined_at:null}]; },
     async setMemberRole(){}, async removeMember(){},
-    async renameProject(pid,pn){ db._meta.name=pn; await save(); },
+    // TRILHA: renomear, trocar o tipo e mexer na chave de IA sao registrados pelo PROPRIO store —
+    // na nuvem quem faz isso e o RPC, dentro da transacao; o App nao loga estes tres em modo nenhum.
+    async renameProject(pid,pn){
+      const from = db._meta.name; db._meta.name=pn; await save();
+      if(pn && pn!==from) await this.logActivity(pid, { op:'project_renamed', target_kind:'project', target_id:pid, target_name:pn, detail:{ from, to:pn } });
+    },
     // sempre com TODAS as chaves: recriar o db sem memos/ia_* deixava db.memos undefined
     // e a próxima listMemos()/setMemo dava TypeError
     async deleteProject(){ db={_meta:db._meta,documents:[],categories:[],doc_values:[],codes:[],codings:[],memos:[],ia_results:[],ia_memory:[]}; pdfBytes={}; pdfIndexData={}; await save(); },
-    async setProjectMode(pid,pmode){ db._meta.mode=pmode; await save(); },
+    async setProjectMode(pid,pmode){
+      const from = db._meta.mode; db._meta.mode=pmode; await save();
+      if(pmode && pmode!==from) await this.logActivity(pid, { op:'mode_changed', target_kind:'project', target_id:pid, detail:{ from, to:pmode } });
+    },
     // DISTRIBUICAO/CEGO so existem em projeto COLETIVO na nuvem (dependem de contas de varios
     // pesquisadores). Aqui ha um unico usuario, que e sempre admin: stubs inertes.
     async listAssignments(){ return []; },
@@ -11135,9 +11731,11 @@ async function createFileStore(fileHandle, isNew){
        salvo como .qualilab e reaberto neste store, voltava com os paineis abertos. */
     async setProjectFlags(pid, { restrictAi }={}){
       if(restrictAi==='none'||restrictAi==='members'||restrictAi==='all'){
+        const from = (db._meta&&db._meta.restrict_ai)||'none';
         db._meta = {...db._meta, restrict_ai:restrictAi,
                     ai_ever_enabled: restrictAi!=='all' ? true : !!(db._meta&&db._meta.ai_ever_enabled)};
         await save();
+        if(restrictAi!==from) await this.logActivity(pid, { op:'flags_changed', target_kind:'project', target_id:pid, detail:{ restrict_ai:{ from, to:restrictAi } } });
       }
       return { blind:false, restrict_docs:false, restrict_ai:(db._meta&&db._meta.restrict_ai)||'none',
                ai_ever_enabled:!!(db._meta&&db._meta.ai_ever_enabled) };
@@ -11202,6 +11800,26 @@ async function createFileStore(fileHandle, isNew){
     },
     async setMemoryActive(id,active){ const m=(db.ia_memory||[]).find(x=>x.id===id); if(m) m.active=!!active; await save(); },
     async deleteMemory(id){ db.ia_memory=(db.ia_memory||[]).filter(r=>r.id!==id); await save(); },
+    /* TRILHA DE AUDITORIA (S4) — idem LocalStore (ver a nota longa la): append-only, trail_started
+       preguicoso, ator null + actor_name. Aqui a trilha vive dentro do proprio .qualilab (db.activity),
+       entao ABRIR o arquivo traz o historico junto, sem merge nenhum. O clearProject deste store nao
+       reconstroi o db (zera campo a campo), logo a trilha sobrevive sem lista branca. */
+    async listActivity(){ return (db.activity||[]).slice(); },
+    async logActivity(pid, entry){
+      if(!db.activity) db.activity = [];
+      const now = new Date().toISOString(), ctx = { actor:null, actor_name:name };
+      if(!db.activity.length && entry?.op!=='trail_started') db.activity.push({ project_id:pid, created_at:now, ...activityEntry({ op:'trail_started' }, ctx) });
+      const e = { project_id:pid, created_at:now, ...activityEntry(entry, ctx) };
+      db.activity.push(e); await save(); return e;
+    },
+    async importActivity(pid, items){
+      if(!db.activity) db.activity = [];
+      const now = new Date().toISOString(), ctx = { actor:null, actor_name:name };
+      if(!db.activity.length && (items||[]).length) db.activity.push({ project_id:pid, created_at:now, ...activityEntry({ op:'trail_started' }, ctx) });
+      let ok=0, failed=0;
+      for(const it of (items||[])){ try{ db.activity.push({ project_id:pid, created_at:now, ...activityEntry({ ...it, actor:null }, ctx) }); ok++; }catch(e){ failed++; } }
+      await save(); return { ok, failed };
+    },
   };
 }
 /* verifica suporte e reabre último arquivo */
@@ -11225,6 +11843,18 @@ async function reopenLastFile(){
 }
 
 /* ============ STORE SUPABASE (coletivo) ============ */
+/* TRILHA (S4): a linha como o Postgres a aceita. `id`/`target_id`/`actor` sao uuid no banco; o
+   que nao for uuid vira null (target/actor) ou uuid novo (id) — derrubar o insert com 22P02 por
+   causa de um 'local' vindo de rascunho seria trocar um evento por um banner. Fica de topo para
+   ser testavel e para o importActivity e o logActivity nao divergirem. */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function activityCloudRow(pid, e){
+  const row = { project_id:pid, ...e };
+  if(!UUID_RE.test(String(row.id||''))) row.id = uid();
+  if(row.target_id && !UUID_RE.test(String(row.target_id))) row.target_id = null;
+  if(row.actor && !UUID_RE.test(String(row.actor))) row.actor = null;
+  return row;
+}
 function SupabaseStore(sb){
   let user=null, name='anonimo';
   const must = (r)=>{ if(r.error) throw r.error; return r.data; };
@@ -11878,6 +12508,50 @@ function SupabaseStore(sb){
           jobs:[{ t:'delete', table:'ia_memory', eq:{ id } }],
           effs:[{ kind:'ia_memory', act:'del', key:['id'], match:{ id } }] },
         async ()=>{ must(await sb.from('ia_memory').delete().eq('id',id)); });
+    },
+    /* TRILHA DE AUDITORIA (S4) — ver dados/trilha-de-auditoria.js. Na nuvem os RPCs de GESTAO
+       (modo, flags, renomear, entrar, sair, papel) gravam o evento deles sozinhos, dentro da mesma
+       transacao (log_activity no schema.sql): cliente velho em cache, ou chamada direta ao RPC, nao
+       tem como pular. O que passa por aqui e o resto — import, merge, exclusoes, lotes, reconciliacao,
+       export — e entra pela FILA: falha transitoria enfileira (insert com id de CLIENTE, 23505 no
+       replay = ja entrou), e recusa DEFINITIVA vai direto para `rejected` em vez de lancar. O evento
+       NUNCA aborta a operacao que registra, e tambem nunca some calado: o banner de rejeitadas e o
+       mesmo das outras escritas. Sem UPDATE nem DELETE, aqui e no banco (nao ha policy para isso).
+       O `trail_started` preguicoso le UMA vez se o projeto ja tem evento; se a leitura falhar (rede),
+       o evento entra sem o marco — evento sem marco e melhor que operacao sem evento.
+       ATOR e o uid da sessao: a policy de INSERT exige actor = auth.uid() (ou admin), entao membro
+       nao forja evento em nome de outro. `target_id` e uuid no banco; um id que nao seja uuid (o
+       'local'/'file-project' de um rascunho, ou o fallback do uid() em navegador sem randomUUID)
+       vira null em vez de derrubar o insert com 22P02. */
+    async listActivity(pid){
+      const rows = must(await sb.from('activity').select('*').eq('project_id',pid).order('created_at').order('at'));
+      return applyQueue(rows, qEffs('activity',pid), r=> r.project_id===pid);
+    },
+    async logActivity(pid, entry){
+      const ctx = { actor:user?.id||null, actor_name:name };
+      const row = activityCloudRow(pid, activityEntry(entry, ctx));
+      let first = false;
+      try{ const r = await sb.from('activity').select('id').eq('project_id',pid).limit(1); first = !r.error && !(r.data||[]).length && row.op!=='trail_started'; }catch(e){}
+      const rows = first ? [activityCloudRow(pid, activityEntry({ op:'trail_started' }, ctx)), row] : [row];
+      const item = { pid, label:t('q.activity'),
+        jobs: rows.map(r=>({ t:'insert', table:'activity', payload:r })),
+        effs: rows.map(r=>({ kind:'activity', act:'put', key:['id'], match:{ id:r.id }, row:r })),
+        ret: row };
+      // 23505 no caminho direto = o marco (ou o evento) ja entrou por outra aba/cliente: sucesso
+      const ins = async (r)=>{ const res = await sb.from('activity').insert(r); if(res.error && String(res.error.code)!=='23505') throw res.error; };
+      try{ return await writeQ(item, async ()=>{ for(const r of rows) await ins(r); return row; }); }
+      catch(e){ rejected.push({ ...item, tries:1, lastError:String(e?.message||e) }); qNotify(); return row; }
+    },
+    // eventos de um .qualilab (JA deduplicados por id pelo merge): ator null (uuid de outro mundo),
+    // nome e `at` da origem preservados; a policy so deixa ADMIN gravar ator null, como o created_by
+    // null das codificacoes importadas
+    async importActivity(pid, items){
+      const ctx = { actor:user?.id||null, actor_name:name };
+      const rows = [];
+      for(const it of (items||[])){ try{ rows.push(activityCloudRow(pid, activityEntry({ ...it, actor:null }, ctx))); }catch(e){} }
+      if(!rows.length) return { ok:0, failed:0 };
+      try{ const r = await sb.from('activity').select('id').eq('project_id',pid).limit(1); if(!r.error && !(r.data||[]).length) rows.unshift(activityCloudRow(pid, activityEntry({ op:'trail_started' }, ctx))); }catch(e){}
+      return bulkWrite('activity', rows, { chunk:200 });
     },
     // sincronizacao ao vivo: dispara onChange a cada alteracao em codings/doc_values do projeto
     realtime(projectId, onChange){
@@ -12746,6 +13420,33 @@ function useChrome({ project, activeDocName, queuePending, storeMode, hasDocs })
   };
   return { swWaiting, applySwUpdate, persisted };
 }
+
+/* TRILHA DE AUDITORIA (S4) — a lista para a tela e o `logActivity` que o App chama nos sitios de
+   escrita. Hook, e nao useState na App(), pelo mesmo motivo dos outros desta casa: o estado e
+   privado (so a aba Memos e o Relatorio o leem) e a catraca do check_structure.py nao se mexe.
+   Carrega nas DUAS telas que o exibem; logar nas demais nao recarrega nada (ninguem esta olhando).
+   `logActivity` NUNCA lanca: o evento e secundario ao trabalho que registra (spec §5), e quem cuida
+   de "nunca em silencio" e o store (na nuvem, a recusa definitiva vai para `rejected`). */
+function useActivity({ store, project, phase, mainView }){
+  const [activity, setActivity] = useState([]);
+  const [activityError, setActivityError] = useState(null);
+  const loadActivity = useCallback(async ()=>{
+    if(!store || !project || !store.listActivity){ setActivity([]); setActivityError(null); return; }
+    try{ setActivity((await store.listActivity(project.id)) || []); setActivityError(null); }
+    catch(e){ setActivity([]); setActivityError(String((e && e.message) || e)); }
+  }, [store, project]);
+  const visible = mainView==='memos' || mainView==='relatorio';
+  useEffect(()=>{ if(phase==='work' && visible) loadActivity(); }, [phase, visible, loadActivity]);
+  const logActivity = useCallback(async (entry)=>{
+    if(!store || !store.logActivity || !project) return null;
+    try{
+      const e = await store.logActivity(project.id, entry);
+      if(visible) loadActivity();
+      return e;
+    }catch(e){ try{ console.warn('trilha: evento não registrado', e); }catch(_){} return null; }
+  }, [store, project, visible, loadActivity]);
+  return { activity, activityError, loadActivity, logActivity };
+}
 /* ============================== APP ============================== */
 function App(){
   const wantCloud = !!(SUPABASE_URL && SUPABASE_ANON_KEY) && !FORCE_LOCAL;
@@ -12936,6 +13637,10 @@ function App(){
           changeProjectFlags, toggleAssignment, replaceAssignments } =
     useProjFlags({ store, project, phase, isAdmin, setViewCoder, setMainView,
                    onError: setErr, reloadProject: ()=>loadProject(store, project.id) });
+  /* TRILHA DE AUDITORIA (S4): a lista da aba Memos/Relatorio e o `logAct` que os sitios de escrita
+     chamam (imports, exclusoes, remap, limpeza, export, reconciliacao; o Esquema e as telas de IA o
+     recebem como prop `onLog`). Hook, e nao useState, para a catraca nao se mexer; nunca lanca. */
+  const { activity, activityError, logActivity: logAct } = useActivity({ store, project, phase, mainView });
   // editar o texto do documento: livre em rascunho/arquivo/individual; admin-only em coletivo na nuvem
   // (editar desloca os offsets dos grifos de TODOS os codificadores, entao so admin, que pode remapear todos).
   const canEditText = !!activeDoc && (store?.mode!=='cloud' || projectMode==='individual' || isAdmin);
@@ -13567,10 +14272,12 @@ function App(){
     const n = id===activeId ? codings.length : null; // codings do doc ativo estão no estado; de outro doc, não conta
     if(!confirm(n!=null ? t('confirm.doc.removeN',{name:d?.name||'',n}) : t('confirm.doc.remove',{name:d?.name||''}))) return;
     try{
+      let nCod = n; if(nCod==null){ try{ nCod = ((await store.listCodings(project.id, id))||[]).length; }catch(e){ nCod = undefined; } }   // TRILHA: o que cai junto
       await store.deleteDocument(id);
       try{ await store.deletePdfBlob?.(id); }catch(e){}   // PDF-BLOCK: purga bytes (nuvem; local/arquivo já purgam no deleteDocument)
       try{ await store.deletePdfIndex?.(id); }catch(e){}  // §4: purga o índice reversível persistido
       PDF_INDEX_CACHE.delete(id);
+      logAct({ op:'document_deleted', target_kind:'document', target_id:id, target_name:d?.name, detail:{ codings:nCod } });
       setDocs(x=>x.filter(y=>y.id!==id)); if(activeId===id) setActiveId(docs.find(x=>x.id!==id)?.id||null);
     }catch(e){ setErr(t('err.doc.remove',{e:String(e.message||e)})); }
   }
@@ -13597,7 +14304,9 @@ function App(){
     const cat = cats.find(c=>c.id===id);
     if(!confirm(t('confirm.cat.delete',{name:cat?.name||''}))) return;
     try{
+      let nVal; try{ const per = await mapPool(docs, 8, async (d)=> ((await store.getDocValues(d.id))||[]).filter(v=>v.category_id===id).length); nVal = per.reduce((a,x)=>a+(x||0),0); }catch(e){}   // TRILHA
       await store.deleteCategory(id); setCats(x=>x.filter(c=>c.id!==id)); setValues(v=>v.filter(x=>x.category_id!==id));
+      logAct({ op:'category_deleted', target_kind:'category', target_id:id, target_name:cat?.name, detail:{ values:nVal } });
     }catch(e){ setErr(t('err.cat.delete',{e:String(e.message||e)})); }
   }
   // reordena categorias por drag-and-drop: move draggedId pra posicao de targetId,
@@ -13675,7 +14384,16 @@ function App(){
     finally{ if(store.endBatch) await store.endBatch(); }
     setCodes(x=>x.map(c=>ids.has(c.id) ? {...c, is_redaction:value, ...huePatch} : c));
   }
-  async function delCode(id){ await store.deleteCode(id); loadProject(store,project.id); loadDoc(); }
+  async function delCode(id){
+    // TRILHA: conta o que cai em cascata ANTES de apagar (subarvore + codificacoes de cada no), lendo do
+    // store porque a Codificacao nao carrega allCodings; contagem que falhar nao impede o gesto.
+    const sub = new Set([id]); let grew = true;
+    while(grew){ grew=false; codes.forEach(c=>{ if(c.parent_id && sub.has(c.parent_id) && !sub.has(c.id)){ sub.add(c.id); grew=true; } }); }
+    let nCod; try{ const per = await mapPool([...sub], 8, async (cid)=> ((await store.listCodingsByCode(project.id, cid))||[]).length); nCod = per.reduce((a,x)=>a+(x||0),0); }catch(e){}
+    const alvo = codeById[id] ? codePath(id).join(' ▸ ') : undefined;
+    await store.deleteCode(id); loadProject(store,project.id); loadDoc();
+    logAct({ op:'code_deleted', target_kind:'code', target_id:id, target_name:alvo, detail:{ codings:nCod, subcodes:sub.size-1 } });
+  }
   function closeCtxMenu(){ setCtxMenu(null); mudaCtxNovo(CTXNEW_INITIAL); }
   async function ctxCreateAndApply(){
     const name = ctxNovo.nome.trim();
@@ -13705,6 +14423,7 @@ function App(){
   // marcados, e o que sobrar vai para um subcódigo "(geral)" — o balde que registra pendência em
   // vez de fingir classificação. No fim o pai tem filhos e nenhum trecho: virou família.
   async function doConvertToFamily({ parent, childName, keepName, forChild, sel, proprios }){
+    let geralName = null;   // TRILHA: o nome do "(geral)", quando ele nasce
     if(store.beginBatch) store.beginBatch();
     try{
       const filho = await addCode(parent, childName);
@@ -13712,12 +14431,14 @@ function App(){
       const sobra = proprios.filter(c=>!forChild.has(c.id));
       if(vaoParaFilho.length){ const r = await moveCodings(store, vaoParaFilho, filho.id); if(r.failed) throw new Error(t('err.move.failed',{n:r.failed})); }
       if(sobra.length){
-        const geral = await addCode(parent, (keepName||'').trim() || t('code.general',{name:parent.name}));
+        geralName = (keepName||'').trim() || t('code.general',{name:parent.name});
+        const geral = await addCode(parent, geralName);
         const r = await moveCodings(store, sobra, geral.id); if(r.failed) throw new Error(t('err.move.failed',{n:r.failed}));
       }
       if(sel) await applyCode(filho.id, sel);
     } finally { if(store.endBatch) await store.endBatch(); }
     setConvertTo(null);
+    logAct({ op:'code_split', target_kind:'code', target_id:parent.id, target_name:parent.name, detail:{ into:[childName].concat(geralName?[geralName]:[]), moved:proprios.length, copied:0 } });
     // loadProject exige (store, projectId); loadDoc recarrega os grifos do documento aberto, que é
     // o que mostra os trechos já sob os códigos novos. loadAll só nas telas agregadas (a de
     // Codificação não carrega o agregado do projeto de propósito).
@@ -13828,6 +14549,7 @@ function App(){
       const patch = list => list.map(c=>{ const u=updates.find(x=>x.id===c.id); return u ? {...c, span_start:u.span_start, span_end:u.span_end, quote:u.quote} : c; });
       setDocs(ds=>ds.map(x=>x.id===activeDoc.id ? {...x, content:newC} : x));   // renameDoc ja atualizou o name
       setCodings(patch); setAllCodings(patch);
+      logAct({ op:'text_edited', target_kind:'document', target_id:activeDoc.id, target_name:newTitle||activeDoc.name, detail:{ remapped:updates.length, affected } });
     }
     mudaEdicao({ativa:false});
   }
@@ -13893,6 +14615,7 @@ function App(){
   async function acceptCodingToFinal(c){
     try{
       await addFinalCoding(c.document_id, c.code_id, c.span_start, c.span_end, c.quote);
+      logAct({ op:'reconcile', layer:'final', target_kind:'document', target_id:c.document_id, target_name:docs.find(d=>d.id===c.document_id)?.name, detail:{ codings:1 } });
       closeCtxMenu(); setSel(null); window.getSelection()?.removeAllRanges();
     }catch(e){ setErr(String(e.message||e)); }
   }
@@ -14020,12 +14743,13 @@ function App(){
     try{ memos = (await store.listMemos?.(project.id))||[]; }catch(e){}
     try{ ia_results = ((await store.listIaResults?.(project.id))||[]).slice().reverse(); }catch(e){}
     try{ ia_memory = ((await store.listMemory?.(project.id))||[]).slice().reverse(); }catch(e){}
+    let activity=[]; try{ activity = (await store.listActivity?.(project.id))||[]; }catch(e){}   // TRILHA (S4): viaja; o merge deduplica por id
     /* S7: a declaracao viaja no `_meta`, que e de onde o createFileStore le — entao ABRIR este
        arquivo ja honra a chave, sem codigo novo do lado de la. `ai_ever_enabled` vai junto porque
        e trava: um projeto exportado e reaberto nao pode "esquecer" que a IA esteve disponivel. */
     return { _meta:{ id:'file-project', name:project.name||'Projeto', code:'FILE', mode:projectMode||'individual', displayName:user?.name||'pesquisador',
         restrict_ai: restrictAi||'none', ai_ever_enabled: !!aiEverEnabled },
-      documents, categories, doc_values, codes:codesOut, codings, memos, ia_results, ia_memory };
+      documents, categories, doc_values, codes:codesOut, codings, memos, ia_results, ia_memory, activity };
   }
   // junta os bytes dos PDFs originais do store ativo, por docId (vazio se nenhum) — reusado pelo
   // saveQualilab (zip do arquivo) e pelo "Enviar para a nuvem" (upload OPCIONAL, com consentimento).
@@ -14062,6 +14786,7 @@ function App(){
       if(nPdf){ setProgress(null); setBusy(t('busy.zipQualilab')); }
       const blob = await writeQualilabBlob(db, pdfs, idx);
       downloadBlob((project.name||'projeto').replace(/[^\w\-]+/g,'_')+'.qualilab', blob);
+      logAct({ op:'export', target_kind:'project', target_id:project.id, detail:{ format:'qualilab' } });
       setProgress(null); setBusy(null);
     }catch(e){ setProgress(null); setBusy(null); setErr(t('err.qualilab.save',{e:e.message||e})); }
   }
@@ -14117,7 +14842,8 @@ function App(){
         // conferidas no scripts/roundtrip/MANIFEST.md; faltava chegarem a quem clica. So
         // interrompe quando ha o que dizer: projeto de um codificador so, com uma resposta por
         // categoria e sem caixa de selecao, nao ve nada.
-        const perdas = qdpxDataLoss(cats, allV, allC);
+        let nAct = 0; try{ nAct = ((await store.listActivity?.(project.id))||[]).length; }catch(e){}
+        const perdas = qdpxDataLoss(cats, allV, allC, nAct);
         if(perdas.length && !confirm(t('confirm.qdpx.loss',{list:perdas.join('\n\n• ')}))){
           setBusy(null); setProgress(null); return;
         }
@@ -14148,6 +14874,7 @@ function App(){
         else exportTransparencyReader(docs, codes, allC, memosForExport, project, undefined, pageOfX);
       }
       setBusy(null); setProgress(null);
+      logAct({ op:'export', target_kind:'project', target_id:project.id, detail:{ format:({ json:'json', trechos:'csv_codings', documentos:'csv_attrs', qdpx:'qdpx', ati:'w3c', leitor:'ati' })[kind]||kind } });
     }catch(e){ setBusy(null); setProgress(null); setErr(t('err.export',{e:e.message||e})); }
   }
 
@@ -14176,6 +14903,7 @@ function App(){
       setErr(null);
       setBusy(null);
       setImportMsg(qdpxImportSummary(r));
+      logAct({ op:'import', target_kind:'project', target_id:project.id, detail:{ format:'qdpx', file:file.name, documents:r.documentos, categories:r.categorias, codes:r.codigos, codings:r.trechos, memos:r.memos, rejected:r.linhasRecusadas } });
     }catch(e){ setBusy(null); setProgress(null); setErr(t('err.import',{e:e.message||e})); }
   }
 
@@ -14198,7 +14926,7 @@ function App(){
     setBusy(t('busy.impQualilab'));
     setProgress({done:0,total:0});
     try{
-      const r = await importQualilab(file, store, project.id, projectMode, (done,total)=>setProgress({done,total}));
+      const r = await importQualilab(file, store, project.id, projectMode, (done,total)=>setProgress({done,total}), { file:file.name, via: file.name==='corpus-de-exemplo.qualilab' ? 'example' : 'import' });
       setProgress(null);
       const freshDocs = await store.listDocuments(project.id);
       const [cats2, codes2] = await Promise.all([store.listCategories(project.id), store.listCodes(project.id)]);
@@ -14216,6 +14944,7 @@ function App(){
         + (r.conversas ? t('imp.ai.chats',{n:r.conversas}) : '')
         + (r.memorias ? t('imp.ai.memories',{n:r.memorias}) : '')
         + '.' + iaDupNotice(r) + iaOrigemNotice(r)
+        + ((r.activity || r.activityRepeated) ? t('imp.activity',{n:r.activity||0, rep:r.activityRepeated ? t('imp.activity.rep',{n:r.activityRepeated}) : ''}) : '')
         + (r.linhasRecusadas ? t('imp.rejected',{n:r.linhasRecusadas}) : ''));
     }catch(e){ setBusy(null); setProgress(null); setErr(t('err.import.qualilab',{e:e.message||e})); }
   }
@@ -14242,6 +14971,7 @@ function App(){
         + (r.semTag ? t('imp.taguette.noTag',{n:r.semTag}) : '')
         + (r.ancorasQuebradas ? t('imp.taguette.brokenAnchor',{n:r.ancorasQuebradas}) : '')
         + (r.linhasRecusadas ? t('imp.rejected',{n:r.linhasRecusadas}) : ''));
+      logAct({ op:'import', target_kind:'project', target_id:project.id, detail:{ format:'taguette', file:file.name, documents:r.documentos, codes:r.codigos, codings:r.trechos, noTag:r.semTag, brokenAnchors:r.ancorasQuebradas, rejected:r.linhasRecusadas } });
     }catch(e){ setBusy(null); setProgress(null); setErr(t('err.import.taguette',{e:e.message||e})); }
   }
 
@@ -14256,6 +14986,7 @@ function App(){
       setErr(null);
       setBusy(null);
       setImportMsg(t('imp.done.qdc',{codes:r.codigos}) + (r.linhasRecusadas ? t('imp.rejected',{n:r.linhasRecusadas}) : ''));
+      logAct({ op:'import', target_kind:'project', target_id:project.id, detail:{ format:'qdc', file:file.name, codes:r.codigos, rejected:r.linhasRecusadas } });
     }catch(e){ setBusy(null); setProgress(null); setErr(t('err.import.qdc',{e:e.message||e})); }
   }
 
@@ -14292,6 +15023,7 @@ function App(){
       const ignMsg = r.ignoradas>0 ? t('imp.sheet.ignored',{n:r.ignoradas}) : '';
       const memoMsg = r.memos>0 ? t('imp.sheet.memos',{n:r.memos}) : '';
       setImportMsg(t('imp.done.sheet',{docs:r.documentos, cats:r.categorias, memo:memoMsg}) + ignMsg + (r.linhasRecusadas ? t('imp.rejected',{n:r.linhasRecusadas}) : ''));
+      logAct({ op:'import', target_kind:'project', target_id:project.id, detail:{ format:'sheet', file:pending.fileName, documents:r.documentos, categories:r.categorias, memos:r.memos, ignored:r.ignoradas, rejected:r.linhasRecusadas } });
     }catch(e){ setBusy(null); setProgress(null); setErr(t('err.import.sheet',{e:e.message||e})); }
   }
 
@@ -14317,6 +15049,7 @@ function App(){
   }
   // 2a etapa: o modal ja montou e aprovou o PLANO; aqui so executamos e recarregamos.
   async function doImportAttrs(plan, layer){
+    const attrFile = pendDe('attr')?.fileName || null;   // TRILHA: o nome do arquivo, antes de o pendente sumir
     setPendImport(null);
     setBusy(t('busy.updatingCats'));
     setProgress({done:0,total:0});
@@ -14342,6 +15075,7 @@ function App(){
       const camada = layer==='final' ? t('layer.reference') : t('layer.mine');
       setImportMsg(t('sheet.applied',{layer:camada, list:partes.join(', ') || t('sheet.nothing')})
         + naoAplicadas + (r.linhasRecusadas ? t('imp.rejected',{n:r.linhasRecusadas}) : ''));
+      logAct({ op:'import', target_kind:'project', target_id:project.id, layer, detail:{ format:'sheet_attrs', file:attrFile, filled:r.preenchidos, changed:r.alterados, erased:r.apagados, newCategories:r.categorias, newOptions:r.opcoes, unmatched:plan.naoCasadas.length, rejected:r.linhasRecusadas } });
     }catch(e){ setBusy(null); setProgress(null); setErr(t('err.import.attrs',{e:e.message||e})); }
   }
 
@@ -14366,6 +15100,7 @@ function App(){
   }
   // 2a etapa: o modal ja montou e aprovou o PLANO; aqui so executamos e recarregamos.
   async function doImportQuote(plan, layer){
+    const quoteFile = pendDe('quotes')?.fileName || null;   // TRILHA: idem doImportAttrs
     setPendImport(null);
     setBusy(t('busy.codingSpans'));
     setProgress({done:0,total:0});
@@ -14387,6 +15122,7 @@ function App(){
       setImportMsg(t('sheet.quotes.applied',{layer:camada, n:r.codificacoes})
         + (r.codigos ? t('sheet.quotes.newCodes',{n:r.codigos}) : '') + '.'
         + naoAplicadas + naoEncontrados + (r.linhasRecusadas ? t('imp.rejected',{n:r.linhasRecusadas}) : ''));
+      logAct({ op:'import', target_kind:'project', target_id:project.id, layer, detail:{ format:'sheet_codings', file:quoteFile, codings:r.codificacoes, newCodes:r.codigos, unmatched:plan.naoCasadas.length, notFound:plan.naoEncontrados.length, rejected:r.linhasRecusadas } });
     }catch(e){ setBusy(null); setProgress(null); setErr(t('err.import.quotes',{e:e.message||e})); }
   }
 
@@ -14452,6 +15188,7 @@ function App(){
       const pdfMsg = r.pdfFail ? t('zot.pdfFail',{n:r.pdfFail}) : '';
       setImportMsg(t('imp.done.zotero',{docs:r.documentos, cats:r.categorias, memos:r.memos})
         + notasMsg + ocrMsg + foraMsg + pdfMsg + (r.linhasRecusadas ? t('imp.rejected',{n:r.linhasRecusadas}) : ''));
+      logAct({ op:'import', target_kind:'project', target_id:project.id, detail:{ format:'zotero', file:pending.pasta, documents:r.documentos, categories:r.categorias, memos:r.memos, noFile:r.semArquivo, badPdf:r.falhaPdf, rejected:r.linhasRecusadas } });
     }catch(e){ setBusy(null); setProgress(null); setErr(t('err.import.zotero',{e:e.message||e})); }
   }
 
@@ -14459,10 +15196,13 @@ function App(){
     if(!confirm(t('confirm.project.clear'))) return;
     setBusy(t('busy.clearing'));
     try{
+      const nDocs = docs.length, nCats = cats.length, nCodes = codes.length;   // TRILHA: o que sai, contado antes
+      let nCod; try{ const per = await mapPool(docs, 8, async (d)=> ((await store.listCodings(project.id, d.id))||[]).length); nCod = per.reduce((a,x)=>a+(x||0),0); }catch(e){}
       await store.clearProject(project.id);
       setActiveId(null); setSel(null); setSelCode(null);
       await loadProject(store, project.id);
       setBusy(null); setImportMsg(t('imp.cleared'));
+      logAct({ op:'project_cleared', target_kind:'project', target_id:project.id, detail:{ documents:nDocs, categories:nCats, codes:nCodes, codings:nCod } });
     }catch(e){ setBusy(null); setErr(t('err.clear',{e:e.message||e})); }
   }
 
@@ -15176,12 +15916,14 @@ function App(){
                   codeById=${codeById} codePath=${codePath} isOwner=${isAdmin} userId=${user?.id} selCode=${recon.code}
                   onConsolidateDoc=${async (docId,codeId,start,end,quote)=>{ await addFinalCoding(docId,codeId,start,end,quote); loadAll(); }}
                   onAgreeDoc=${async (docId,codeId,start,end,quote)=>{ await addAgreementCoding(docId,codeId,start,end,quote); loadAll(); }}
+                  onConsolidated=${(n)=>logAct({ op:'reconcile', layer:'final', target_kind:'project', target_id:project.id, detail:{ codings:n } })}
                   onDelCoding=${async id=>{ await delCoding(id); loadAll(); }} />`
               : html`<${Reconcile} activeDoc=${activeDoc} codings=${codings} coders=${coders}
                   codeById=${codeById} codePath=${codePath} tab=${recon.aba}
                   cats=${cats} values=${values} isOwner=${isAdmin} userId=${user?.id} onSetFinal=${setFinalValue} onSetOwn=${setValue}
                   onConsolidate=${(codeId,start,end,quote)=>addFinalCoding(activeId,codeId,start,end,quote)}
                   onAgree=${(codeId,start,end,quote)=>addAgreementCoding(activeId,codeId,start,end,quote)}
+                  onConsolidated=${(n)=>logAct({ op:'reconcile', layer:'final', target_kind:'document', target_id:activeId, target_name:activeDoc?.name, detail:{ codings:n } })}
                   onDelCoding=${delCoding} />`}
           </div>
         </div>
@@ -15216,14 +15958,16 @@ function App(){
         <div class="pane-body scroll" style="padding:0">
           <${MemoNav} project=${project} docs=${docs} codes=${codes} codings=${allCodings} memos=${memos}
             sel=${memoSel} onSel=${setMemoSel} onRenameDoc=${renameDoc}
-            aiMemory=${aiMemory} iaResults=${iaResults} aiLock=${aiLock} />
+            aiMemory=${aiMemory} iaResults=${iaResults} aiLock=${aiLock} activityCount=${(activity||[]).length} />
         </div>
       </section>
       <${PaneResizer} which="side" />
       <!-- MEMOS direita: editor de memo OU painel de IA (memória / conversas salvas) -->
       <section class="pane" style="flex:1;min-width:0;background:var(--paper)">
         <div class="pane-body scroll" style="padding:0">
-          ${memoSel?.scope==='ai_memory'
+          ${memoSel?.scope==='activity'
+            ? html`<${ActivityPanel} activity=${activity} error=${activityError} />`
+            : memoSel?.scope==='ai_memory'
             ? html`<${MemoryPanel} memory=${aiMemory} onToggle=${toggleMemoryActive} onDelete=${deleteMemory} onAdd=${addMemory} />`
             : memoSel?.scope==='ia_results'
             ? html`<${IAResultView} result=${(iaResults||[]).find(r=>r.id===memoSel.targetId)} onDelete=${deleteIaResult} />`
@@ -15243,7 +15987,7 @@ function App(){
       ${esquemaTab==='codigos' && html`<${SchemaCodesView} codes=${codes} codeById=${codeById} codePath=${codePath} count=${schemaCodingCount}
              isAdmin=${isAdmin} store=${store} project=${project} reload=${reloadWrite} loadAll=${loadAll}
              allCodings=${allCodings} selCode=${selCode} setSelCode=${setSelCode} onUpd=${updCode} onSetColor=${setCodeColor} onSetSat=${setCodeSat} onSetRedaction=${setCodeRedaction}
-             onAdd=${addCode} onDel=${delCode} />`}
+             onAdd=${addCode} onDel=${delCode} onLog=${logAct} />`}
       ${esquemaTab==='categorias' && html`<section class="pane left" style="flex:1 1 100%;border-right:none;max-width:none">
         <div class="pane-body scroll">
           <div style="max-width:760px;margin:0 auto" class="section">
@@ -15264,7 +16008,7 @@ function App(){
         </div>
       </section>`}
     </div>`
-    : mainView==='relatorio' ? html`<${ReportView} project=${project} projectMode=${projectMode}
+    : mainView==='relatorio' ? html`<${ReportView} project=${project} projectMode=${projectMode} activity=${activity} onLog=${logAct}
         docs=${docs} cats=${cats} codes=${codes} codeById=${codeById} codePath=${codePath}
         view=${viewCoder} onView=${setViewCoder} coders=${coders} userId=${user?.id} mode=${mode}
         allCodings=${allCodings} allValues=${allValues} store=${store} memos=${memos} pdfIdx=${docPdfIdx}
@@ -15277,7 +16021,7 @@ function App(){
     : mainView==='ia_codificar' && !aiLock && !readOnly ? html`<div class="split">
       <!-- CODIFICAR AUTOMATICAMENTE: tela inteira (config | resultado). 3 abas de IA (operações
            inline no turno da IA) + a aba "Repetir Codificação", que é mecânica e roda sem IA -->
-      <${IACodificarPanel} project=${project} docs=${docs} codes=${codes} codeById=${codeById} codePath=${codePath}
+      <${IACodificarPanel} project=${project} docs=${docs} codes=${codes} codeById=${codeById} codePath=${codePath} onLog=${logAct}
         store=${store} allCodings=${allCodings} count=${schemaCodingCount} isAdmin=${isAdmin}
         cats=${cats} allValues=${allValues} projectMode=${projectMode} user=${user}
         reload=${reloadWrite} loadAll=${loadAll} onAdd=${addCode} memos=${memos} onSetMemo=${saveMemo}
@@ -15572,7 +16316,8 @@ function App(){
 
   ${sendCloudOpen && html`<${SendToCloudModal} defaultName=${project?.name||'Projeto'}
     onBuildDb=${buildQualilabDb} onGatherPdfs=${gatherPdfs} onGatherPdfIndexes=${gatherPdfIndexes} hasPdfs=${docs.some(d=>d.has_pdf)}
-    onEnter=${enterCloudFromSend} onClose=${()=>setSendCloudOpen(false)} restrictAi=${restrictAi} />`}
+    onEnter=${enterCloudFromSend} onClose=${()=>setSendCloudOpen(false)} restrictAi=${restrictAi}
+    onSent=${(proj)=>logAct({ op:'export', target_kind:'project', target_id:project.id, detail:{ format:'cloud', project:proj?.name } })} />`}
 
   ${pendDe('zotero') && html`<${ZoteroImportModal} pending=${pendDe('zotero')} localMode=${store?.mode==='local'}
     onCancel=${()=>setPendImport(null)} onConfirm=${doImportZotero} />`}
@@ -16026,7 +16771,7 @@ function AiOptInModal({ contexto, onChoose }){
    cliente Supabase (mesma URL/key globais, sempre disponiveis quando canSendToCloud e true)
    e sua propria instancia de SupabaseStore, sem tocar no store/sessao principal do App — entrar
    de fato no projeto criado continua sendo "trocar projeto" depois, fluxo ja existente. */
-function SendToCloudModal({ defaultName, onBuildDb, onGatherPdfs, onGatherPdfIndexes, hasPdfs, onEnter, onClose, restrictAi }){
+function SendToCloudModal({ defaultName, onBuildDb, onGatherPdfs, onGatherPdfIndexes, hasPdfs, onEnter, onClose, restrictAi, onSent }){
   const [step, setStep] = useState('auth'); // auth | otp | project | running | done
   const [includePdfs, setIncludePdfs] = useState(false); // enviar tb os PDFs originais? (opt-in — privacidade)
   const [authTab, setAuthTab] = useState('in'); // in | up
@@ -16089,8 +16834,10 @@ function SendToCloudModal({ defaultName, onBuildDb, onGatherPdfs, onGatherPdfInd
       const db = await onBuildDb();
       const pdfs = (includePdfs && onGatherPdfs) ? await onGatherPdfs() : null;   // PDFs só com opt-in
       const pdfIdx = (pdfs && onGatherPdfIndexes) ? await onGatherPdfIndexes() : null;   // §4: índice acompanha o PDF (mesmo opt-in)
-      await mergeQualilabDb(db, st, proj.id, pmode, (done,total)=>setProgress({done,total}), pdfs, pdfIdx);
+      // TRILHA: o destino registra o merge_file (dentro do merge, via 'cloud'); a origem registra a saida (onSent)
+      await mergeQualilabDb(db, st, proj.id, pmode, (done,total)=>setProgress({done,total}), pdfs, pdfIdx, { file:null, via:'cloud' });
       setResult({ code: proj.code, name: proj.name, proj, withPdfs: !!(pdfs && Object.keys(pdfs).length) });
+      try{ onSent?.(proj); }catch(e){}
       setStep('done');
     }catch(e){ setErr(String(e.message||e)); setStep('project'); }
     setBusy(false);
@@ -19093,7 +19840,7 @@ function OcrReviewModal({ text, img, onApply, onCancel }){
    Reaproveita RenameCode (definido mais abaixo, perto de TreeNode) mas NAO toca em
    CodesPanel/TreeNode — o painel da tela de Codificacao continua intocado de proposito. */
 function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, project, reload, loadAll,
-                            allCodings, selCode, setSelCode, onUpd, onSetColor, onSetSat, onSetRedaction, onAdd, onDel }){
+                            allCodings, selCode, setSelCode, onUpd, onSetColor, onSetSat, onSetRedaction, onAdd, onDel, onLog }){
   const [query, setQuery] = useState('');
   const [splitCode, setSplitCode] = useState(null);   // id do código aberto na tela de divisão
   const [groupConfirm, setGroupConfirm] = useState(null); // agrupar num alvo que tem trechos próprios
@@ -19229,6 +19976,8 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
           const balde = await onAdd(target, keepName.trim() || t('code.general',{name:target.name}));
           const r = await moveCodings(store, proprios, balde.id);
           if(r.failed) throw new Error(t('sch.group.moveFail',{n:r.failed}));
+          // TRILHA: o alvo virou familia e os trechos dele desceram para o balde — e uma divisao
+          onLog?.({ op:'code_split', target_kind:'code', target_id:target.id, target_name:target.name, detail:{ into:[balde.name], moved:proprios.length, copied:0 } });
         }
       }
       // markRedaction segue o ALVO, nao o groupConfirm: o "(geral)" criado acima nasce por addCode
@@ -19292,6 +20041,9 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
         // 3) exclui os mesclados (ja sem filhos nem codificacoes)
         for(const mid of mergedIds){ await store.deleteCode(mid); }
       } finally { if(store.endBatch) await store.endBatch(); }
+      // TRILHA (S4): UMA entrada pela operacao inteira, com os nomes congelados (os mesclados ja nao existem)
+      onLog?.({ op:'codes_merged', target_kind:'code', target_id:survivorId, target_name:survivor?.name,
+                detail:{ merged:mergedIds.map(id=>codeById[id]?.name).filter(Boolean), moved:allCodings.filter(c=>mergedIds.includes(c.code_id)).length } });
       await reload();
       await loadAll();
       clearSelection();
@@ -19352,7 +20104,7 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
   // a divisão é drill-in: ocupa a área inteira e volta, em vez de virar mais uma coluna espremida
   if(splitCode && codeById[splitCode]) return html`<${SplitCodeView}
     code=${codeById[splitCode]} codings=${allCodings.filter(c=>c.code_id===splitCode)}
-    store=${store} project=${project} onAdd=${onAdd} isAdmin=${isAdmin}
+    store=${store} project=${project} onAdd=${onAdd} isAdmin=${isAdmin} onLog=${onLog}
     onCancel=${()=>setSplitCode(null)}
     onDone=${async()=>{ setSplitCode(null); clearSelection(); await reload(); await loadAll(); }} />`;
 
@@ -19810,7 +20562,7 @@ function reconcileGroups(indiv){
    O que NAO copiamos: "manter codificado com o codigo original". Aqui o codigo que ganha filhos
    vira familia e nao recebe trechos — deixar a opcao seria oferecer o no misto de volta. O lugar
    do que nao se quis classificar e o "(geral)", que REGISTRA a pendencia. */
-function SplitCodeView({ code, codings, store, project, onAdd, isAdmin, onCancel, onDone }){
+function SplitCodeView({ code, codings, store, project, onAdd, isAdmin, onCancel, onDone, onLog }){
   const [names,setNames] = useState(['','']);
   const [grid,setGrid] = useState({});           // codingId -> Set de indices de coluna
   const [exclusive,setExclusive] = useState(false);
@@ -19857,6 +20609,10 @@ function SplitCodeView({ code, codings, store, project, onAdd, isAdmin, onCancel
           }
         }
       } finally { if(store.endBatch) await store.endBatch(); }
+      // TRILHA (S4): uma entrada pela divisao inteira — os subcodigos novos, o balde, quantas moveram e quantas viraram copia
+      onLog?.({ op:'code_split', target_kind:'code', target_id:code.id, target_name:code.name,
+                detail:{ into:validCols.map(v=>v.s).concat(semDestino.length ? [restName.trim() || t('code.general',{name:code.name})] : []),
+                         moved:codings.length, copied:codings.reduce((a,c)=>a+Math.max(0,marks(c.id).size-1),0) } });
       await onDone();
     }catch(e){ setErr(String(e.message||e)); }
     finally{ setBusy(false); }
@@ -20052,7 +20808,7 @@ function CatAgreeRows({ cat, finalVal, indivVals }){
   </div>`;
 }
 
-function Reconcile({ activeDoc, codings, coders, codeById, codePath, cats, values, isOwner, userId, tab, onSetFinal, onSetOwn, onConsolidate, onAgree, onDelCoding }){
+function Reconcile({ activeDoc, codings, coders, codeById, codePath, cats, values, isOwner, userId, tab, onSetFinal, onSetOwn, onConsolidate, onConsolidated, onAgree, onDelCoding }){
   if(!activeDoc) return html`<div class="card"><span class="meta">${t('rec.openDoc')}</span></div>`;
   const indiv = codings.filter(c=>c.layer!=='final');
   const finals = codings.filter(c=>c.layer==='final');
@@ -20095,7 +20851,8 @@ function Reconcile({ activeDoc, codings, coders, codeById, codePath, cats, value
       // created_by CRU aqui e correto e nao e esquecimento: "feito por MIM" e sobre a sessao
       // viva, e codificacao importada nao e sua ainda que traga o seu nome no author_name.
       const mine = pending.filter(g=>g.items.some(i=>i.created_by===userId));
-      const consolidateMany = async (list)=>{ for(const g of list){ await onConsolidate(g.codeId, g.start, g.end, activeDoc.content.slice(g.start,g.end)); } };
+      // TRILHA (S4): onConsolidated recebe o N do GESTO — um evento por clique, nao por linha
+      const consolidateMany = async (list)=>{ for(const g of list){ await onConsolidate(g.codeId, g.start, g.end, activeDoc.content.slice(g.start,g.end)); } if(list.length) onConsolidated?.(list.length); };
       return pending.length>0 && html`<div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:12px">
         <button class="btn sm" disabled=${mine.length===0}
           title=${t('rec.mine.tip')}
@@ -20131,7 +20888,7 @@ function Reconcile({ activeDoc, codings, coders, codeById, codePath, cats, value
             ? html`<span class="row" style="gap:8px">
                 <span class="author" style="background:var(--teal-soft);color:var(--teal-deep)">${t('rec.inFinal')}</span>
                 <button class="btn sm ghost" onClick=${()=>onDelCoding(fin.id)}>${t('rec.removeFinal')}</button></span>`
-            : html`<button class="btn sm primary" onClick=${()=>onConsolidate(g.codeId, g.start, g.end, quote)}>${t('rec.consolidate')}</button>`}
+            : html`<button class="btn sm primary" onClick=${async ()=>{ await onConsolidate(g.codeId, g.start, g.end, quote); onConsolidated?.(1); }}>${t('rec.consolidate')}</button>`}
         </div>
       </div>`;
     })}
@@ -20178,7 +20935,7 @@ function ReconcileCatAcrossDocs({ docs, cat, allValues, isOwner, userId, onSetFi
 }
 
 /* Bloco colapsável de UM documento na visão "todos os documentos" da aba Códigos. */
-function ReconcileDocCodes({ d, groups, finalFor, totalCoders, coders, codeById, codePath, userId, onConsolidateDoc, onAgreeDoc, onDelCoding }){
+function ReconcileDocCodes({ d, groups, finalFor, totalCoders, coders, codeById, codePath, userId, onConsolidateDoc, onConsolidated, onAgreeDoc, onDelCoding }){
   const [open, setOpen] = useState(true);
   const nameOf = (id, fallback)=> (coders.find(c=>c.id===id)||{}).name || authorLabel(fallback);
   const pend = groups.filter(g=>!finalFor(g)).length;
@@ -20213,7 +20970,7 @@ function ReconcileDocCodes({ d, groups, finalFor, totalCoders, coders, codeById,
               ? html`<span class="row" style="gap:8px">
                   <span class="author" style="background:var(--teal-soft);color:var(--teal-deep)">${t('rec.inFinal')}</span>
                   <button class="btn sm ghost" onClick=${()=>onDelCoding(fin.id)}>${t('rec.removeFinal')}</button></span>`
-              : html`<button class="btn sm primary" onClick=${()=>onConsolidateDoc(d.id, g.codeId, g.start, g.end, quote)}>${t('rec.consolidate')}</button>`}
+              : html`<button class="btn sm primary" onClick=${async ()=>{ await onConsolidateDoc(d.id, g.codeId, g.start, g.end, quote); onConsolidated?.(1); }}>${t('rec.consolidate')}</button>`}
           </div>
         </div>`;
       })}
@@ -20228,7 +20985,7 @@ function ReconcileDocCodes({ d, groups, finalFor, totalCoders, coders, codeById,
    ORDEM POR NOME (docsByName) pelo mesmo motivo do ReconcileCatAcrossDocs: esta tela nao
    oferece escolha de ordenacao, e a ordem do store embaralha em projeto IMPORTADO (empate
    de created_at no lote — ver listDocuments no store-supabase). */
-function ReconcileCodesAllDocs({ docs, allCodings, coders, codeById, codePath, isOwner, userId, selCode, onConsolidateDoc, onAgreeDoc, onDelCoding }){
+function ReconcileCodesAllDocs({ docs, allCodings, coders, codeById, codePath, isOwner, userId, selCode, onConsolidateDoc, onConsolidated, onAgreeDoc, onDelCoding }){
   // por documento: grupos individuais + finais, e os pendentes (sem equivalente no gabarito)
   const perDoc = docsByName(docs).map(d=>{
     const dc = allCodings.filter(c=>c.document_id===d.id);
@@ -20245,7 +21002,7 @@ function ReconcileCodesAllDocs({ docs, allCodings, coders, codeById, codePath, i
   const allPending = [], allMine = [];
   // o created_by cru no allMine e proposital — ver a nota gemea no reconciliar.js
   perDoc.forEach(({d, groups, finalFor})=> groups.forEach(g=>{ if(!finalFor(g)){ allPending.push({d,g}); if(g.items.some(i=>i.created_by===userId)) allMine.push({d,g}); } }));
-  const consolidateMany = async (list)=>{ for(const {d,g} of list){ await onConsolidateDoc(d.id, g.codeId, g.start, g.end, (d.content||'').slice(g.start,g.end)); } };
+  const consolidateMany = async (list)=>{ for(const {d,g} of list){ await onConsolidateDoc(d.id, g.codeId, g.start, g.end, (d.content||'').slice(g.start,g.end)); } if(list.length) onConsolidated?.(list.length); };   // TRILHA: N por gesto
   const filtTitle = selCode && selCode!=='all' ? ` · ${codePath(selCode).join(' ▸ ')}` : '';
 
   return html`<div class="section">
@@ -20265,14 +21022,14 @@ function ReconcileCodesAllDocs({ docs, allCodings, coders, codeById, codePath, i
     ${perDoc.map(({d, groups, finalFor, totalCoders})=>html`<${ReconcileDocCodes} key=${d.id}
       d=${d} groups=${groups} finalFor=${finalFor} totalCoders=${totalCoders}
       coders=${coders} codeById=${codeById} codePath=${codePath} userId=${userId}
-      onConsolidateDoc=${onConsolidateDoc} onAgreeDoc=${onAgreeDoc} onDelCoding=${onDelCoding} />`)}
+      onConsolidateDoc=${onConsolidateDoc} onConsolidated=${onConsolidated} onAgreeDoc=${onAgreeDoc} onDelCoding=${onDelCoding} />`)}
   </div>`;
 }
 
 /* ============ MemoNav — painel esquerdo da aba Memos ============
    Memo do projeto + lista de documentos + árvore de códigos. Visual idêntico
    ao painel de Codificação/Leitura (mesmas classes .node-row etc). */
-function MemoNav({ project, docs, codes, codings, memos, sel, onSel, onRenameDoc, aiMemory, iaResults, aiLock }){
+function MemoNav({ project, docs, codes, codings, memos, sel, onSel, onRenameDoc, aiMemory, iaResults, aiLock, activityCount }){
   const treeKeys = useTreeKeys();   // a11y: as linhas aqui nao tinham NENHUM elemento focavel
   const [docsOpen, setDocsOpen] = useState(false);
   const [codesOpen, setCodesOpen] = useState(false);
@@ -20414,6 +21171,14 @@ function MemoNav({ project, docs, codes, codings, memos, sel, onSel, onRenameDoc
       </div>`)}
       ${memOpen && (aiMemory||[]).length===0 && html`<div class="meta" style="padding:6px 28px">${t('mn.memory.empty')}</div>`}
     </div>
+    <!-- TRILHA DE AUDITORIA (S4): a casa que o S4 escolheu — e onde vive o que e SOBRE o projeto e
+         nao e dado. Por ultimo, depois das secoes de IA, porque e registro e nao trabalho. -->
+    <div class="node-row ${sel.scope==='activity'?'sel':''}" style="padding:8px 14px;cursor:pointer;border-bottom:1px solid var(--line-soft)"
+      onClick=${()=>onSel({scope:'activity'})}>
+      <span style="margin-right:4px">◷</span>
+      <span class="node-name" style="font-weight:600">${t('mn.activity')}</span>
+      ${(activityCount||0)>0 && html`<span class="count">${activityCount}</span>`}
+    </div>
   </div>`;
 }
 function MemoCodeNode({ code, childrenOf, sel, onSel, hasMemo, depthPad }){
@@ -20545,6 +21310,56 @@ function MemoEditor({ sel, project, codeById, codePath, codings, docs, memos, on
   </div>`;
 }
 
+/* ============ ActivityPanel — "Histórico do projeto" (painel direito da aba Memos) ============
+   Le a trilha de auditoria (dados/trilha-de-auditoria.js) e a mostra como LISTA DE FRASES, em
+   ordem cronologica inversa, com filtro por operacao e por texto e a exportacao em CSV.
+   LINHAS DE TEXTO PURO, SEM BOTAO NENHUM POR EVENTO — e a negacao 1 da spec (nao e undo) na
+   forma de tela: um log que insinua reversao e pior que nao ter log. As tres negacoes ficam
+   ESCRITAS no alto (act.hint), porque e ali que a falsa seguranca nasce.
+   O filtro por TEXTO e o que absorve o S3 ("o que ja aconteceu com ESTE codigo"): digitar o nome
+   do codigo lista as mesclagens, divisoes e exclusoes que o citam, sem escopo de memo novo.
+   A exportacao do proprio historico NAO vira evento: registrar "exportou o historico" a cada
+   exportacao encheria a trilha de eventos sobre ela mesma. */
+function ActivityPanel({ activity, error, onReload }){
+  const [op, setOp] = useState('');
+  const [q, setQ] = useState('');
+  const all = useMemo(()=> activitySorted(activity||[]), [activity]);
+  const list = useMemo(()=> activityFilter(all, { op, q }), [all, op, q]);
+  // rotulos por chave LITERAL (o scripts/check_i18n.py so enxerga t('literal')); montados dentro do
+  // componente, nao no topo do modulo, para nao depender da ordem de avaliacao dos fragmentos
+  const OP_LABELS = {
+    trail_started:t('act.lbl.trail_started'), import:t('act.lbl.import'), merge_file:t('act.lbl.merge_file'),
+    codes_merged:t('act.lbl.codes_merged'), code_split:t('act.lbl.code_split'), code_deleted:t('act.lbl.code_deleted'),
+    document_deleted:t('act.lbl.document_deleted'), category_deleted:t('act.lbl.category_deleted'),
+    project_cleared:t('act.lbl.project_cleared'), text_edited:t('act.lbl.text_edited'), bulk_coding:t('act.lbl.bulk_coding'),
+    reconcile:t('act.lbl.reconcile'), mode_changed:t('act.lbl.mode_changed'), flags_changed:t('act.lbl.flags_changed'),
+    project_renamed:t('act.lbl.project_renamed'), member_joined:t('act.lbl.member_joined'),
+    member_removed:t('act.lbl.member_removed'), role_changed:t('act.lbl.role_changed'), export:t('act.lbl.export'),
+  };
+  // so as operacoes que EXISTEM na trilha entram no seletor, na ordem do catalogo
+  const opsPresentes = ACTIVITY_OPS.filter(o=> all.some(e=>e.op===o));
+  const when = (e)=>{ try{ return new Date(e.at || e.created_at).toLocaleString(QL_LOCALE()); }catch(_){ return String(e.at||''); } };
+  const exportCsv = ()=> download('qualilab_historico.csv', '\uFEFF' + activityCsv(all), 'text/csv;charset=utf-8');
+  return html`<div class="section" style="max-width:820px;margin:0 auto">
+    <p class="h" style="margin-bottom:2px">${t('act.title')}</p>
+    <p class="hint" style="margin:0 0 12px" dangerouslySetInnerHTML=${{__html: mdLite(t('act.hint'))}}></p>
+    ${error && html`<div class="banner err" style="margin:0 0 12px">${t('act.loadError',{e:humanizeError(error)||error})}</div>`}
+    ${all.length>0 && html`<div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
+      <select class="txtin" style="width:auto;font-size:12.5px" value=${op} onChange=${e=>setOp(e.target.value)} aria-label=${t('act.filter.all')}>
+        <option value="">${t('act.filter.all')}</option>
+        ${opsPresentes.map(o=>html`<option key=${o} value=${o}>${OP_LABELS[o]||o}</option>`)}
+      </select>
+      <input class="txtin" style="flex:1;min-width:160px;font-size:12.5px" value=${q} onInput=${e=>setQ(e.target.value)} placeholder=${t('act.filter.q')} aria-label=${t('act.filter.q')} />
+      <span class="meta">${t('act.count',{n:list.length, total:all.length})}</span>
+      <button class="btn sm ghost" onClick=${exportCsv}>${t('act.export')}</button>
+    </div>`}
+    ${all.length===0 && !error && html`<div class="card"><span class="meta">${t('act.empty')}</span></div>`}
+    ${list.map(e=>html`<div key=${e.id} class="card" style="margin-bottom:8px;padding:8px 10px;${e.op==='trail_started'?'opacity:.75':''}">
+      <div class="meta" style="margin-bottom:2px">${when(e)} · ${authorLabel(e.actor_name)}${e.layer==='final' ? ' · ' + t('layer.reference') : ''}</div>
+      <div style="font-size:13px;line-height:1.5">${activityText(e)}</div>
+    </div>`)}
+  </div>`;
+}
 /* ============ CodingMemoModal — nota analítica por TRECHO (scope='coding') ============
    Aberto pelo menu de contexto do leitor sobre um grifo. É a "anotação por trecho" (base da
    transparência ativa): a nota que o export de transparência prefere sobre o memo do código.
@@ -21237,7 +22052,7 @@ const REPORT_GROUPS = [
 ];
 
 function ReportView({ project, projectMode, docs, cats, codes, codeById, codePath, allCodings, allValues, store, view, onView, coders:projCoders, userId, mode, memos, pdfIdx,
-                      restrictAi, aiEverEnabled, nConversasIa, nMemoriasIa }){
+                      restrictAi, aiEverEnabled, nConversasIa, nMemoriasIa, activity, onLog }){
   // §4: offset -> página no PDF original (mapa docPdfIdx carregado pelo App; null = sem índice)
   const pageOfR = (docId, off)=>{ const e=(pdfIdx||{})[docId]; return (e && e.index) ? pageOfOffset(e.index, off) : null; };
   const [enabled, setEnabled] = useState(()=>new Set(['credito','resumo','freq']));
@@ -21253,6 +22068,12 @@ function ReportView({ project, projectMode, docs, cats, codes, codeById, codePat
   const aiDecl = useMemo(()=> incluirIa ? aiUsageStatement({
       restrictAi, aiEverEnabled, conversas:nConversasIa, memorias:nMemoriasIa }) : null,
     [incluirIa, restrictAi, aiEverEnabled, nConversasIa, nMemoriasIa]);
+  /* TRILHA (S4, decisao ⚑5 da spec): o bloco "Historico do processo", no MESMO molde da declaracao
+     de IA — fonte unica pura (activityStatement), caixa ligada por padrao, sai nas tres saidas. E
+     onde o criterio do Kuster & Wolf vira valor citavel: quem consome a trilha e quem le o
+     Relatorio, nao a equipe. */
+  const [incluirHist, setIncluirHist] = useState(true);
+  const histDecl = useMemo(()=> incluirHist ? activityStatement(activity||[]) : null, [incluirHist, activity]);
   const toggle = (id)=> setEnabled(s=>{ const n=new Set(s); n.has(id)?n.delete(id):n.add(id); return n; });
   const on = (id)=> enabled.has(id);
 
@@ -21386,14 +22207,14 @@ function ReportView({ project, projectMode, docs, cats, codes, codeById, codePat
   }
 
   // --- modos de transparência: prévia ao vivo + exportação (só constrói no modo ativo) ---
-  const readerHTML = useMemo(()=> rmode==='ati' ? buildTransparencyReaderHTML(docs, codes, allCodings, memos||[], project, anonAuthors, pageOfR, aiDecl) : ''
-  , [rmode, docs, codes, allCodings, memos, project, anonAuthors, pdfIdx, aiDecl]);
+  const readerHTML = useMemo(()=> rmode==='ati' ? buildTransparencyReaderHTML(docs, codes, allCodings, memos||[], project, anonAuthors, pageOfR, aiDecl, histDecl) : ''
+  , [rmode, docs, codes, allCodings, memos, project, anonAuthors, pdfIdx, aiDecl, histDecl]);
   // um único build por render (texto + total saem da mesma coleção — antes construía 2×)
   const w3c = useMemo(()=>{
     if(rmode!=='w3c') return { text:'', total:0 };
-    const coll = buildWebAnnotations(docs, codes, allCodings, memos||[], project, anonAuthors, pageOfR, aiDecl);
+    const coll = buildWebAnnotations(docs, codes, allCodings, memos||[], project, anonAuthors, pageOfR, aiDecl, histDecl);
     return { text: JSON.stringify(coll, null, 2), total: coll.total||0 };
-  }, [rmode, docs, codes, allCodings, memos, project, anonAuthors, pdfIdx, aiDecl]);
+  }, [rmode, docs, codes, allCodings, memos, project, anonAuthors, pdfIdx, aiDecl, histDecl]);
   const w3cText = w3c.text, w3cTotal = w3c.total;
   const RMODES = [
     { id:'ati',    label:t('rep.m.ati'), desc:t('rep.m.ati.d') },
@@ -21405,10 +22226,10 @@ function ReportView({ project, projectMode, docs, cats, codes, codeById, codePat
     <div class="pane-head no-print" style="flex:none;justify-content:space-between;flex-wrap:wrap;gap:8px">
       <span class="field-label" style="margin:0">${(RMODES.find(m=>m.id===rmode)||{}).label}</span>
       <div class="row" style="gap:8px;flex-wrap:wrap">
-        ${rmode==='padrao' && html`<button class="btn sm" onClick=${copy} disabled=${enabled.size===0}>${copied?t('rep.copied'):t('rep.copy')}</button>
-          <button class="btn sm primary" onClick=${()=>window.print()} disabled=${enabled.size===0}>${t('rep.print')}</button>`}
-        ${rmode==='ati' && html`<button class="btn sm primary" onClick=${()=>exportTransparencyReader(docs, codes, allCodings, memos||[], project, anonAuthors, pageOfR, aiDecl)} disabled=${docs.length===0}>${t('rep.exportHtml')}</button>`}
-        ${rmode==='w3c' && html`<button class="btn sm primary" onClick=${()=>exportWebAnnotations(docs, codes, allCodings, memos||[], project, anonAuthors, pageOfR, aiDecl)} disabled=${docs.length===0}>${t('rep.exportJson')}</button>`}
+        ${rmode==='padrao' && html`<button class="btn sm" onClick=${async ()=>{ await copy(); onLog?.({ op:'export', target_kind:'project', target_id:project?.id, detail:{ format:'report', via:'copy' } }); }} disabled=${enabled.size===0}>${copied?t('rep.copied'):t('rep.copy')}</button>
+          <button class="btn sm primary" onClick=${()=>{ window.print(); onLog?.({ op:'export', target_kind:'project', target_id:project?.id, detail:{ format:'report', via:'print' } }); }} disabled=${enabled.size===0}>${t('rep.print')}</button>`}
+        ${rmode==='ati' && html`<button class="btn sm primary" onClick=${()=>{ exportTransparencyReader(docs, codes, allCodings, memos||[], project, anonAuthors, pageOfR, aiDecl, histDecl); onLog?.({ op:'export', target_kind:'project', target_id:project?.id, detail:{ format:'ati' } }); }} disabled=${docs.length===0}>${t('rep.exportHtml')}</button>`}
+        ${rmode==='w3c' && html`<button class="btn sm primary" onClick=${()=>{ exportWebAnnotations(docs, codes, allCodings, memos||[], project, anonAuthors, pageOfR, aiDecl, histDecl); onLog?.({ op:'export', target_kind:'project', target_id:project?.id, detail:{ format:'w3c' } }); }} disabled=${docs.length===0}>${t('rep.exportJson')}</button>`}
       </div>
     </div>
     <div class="pane-body scroll" style="display:flex;gap:0;align-items:flex-start">
@@ -21469,6 +22290,10 @@ function ReportView({ project, projectMode, docs, cats, codes, codeById, codePat
           <input type="checkbox" checked=${incluirIa} onChange=${()=>setIncluirIa(v=>!v)} style="margin-top:2px" />
           <span dangerouslySetInnerHTML=${{__html: mdLite(t('rep.aiBox'))}}></span>
         </label>
+        <label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer;margin-top:10px;font-size:12px;color:var(--ink-soft)">
+          <input type="checkbox" checked=${incluirHist} onChange=${()=>setIncluirHist(v=>!v)} style="margin-top:2px" />
+          <span dangerouslySetInnerHTML=${{__html: mdLite(t('rep.trailBox'))}}></span>
+        </label>
       </aside>
       <${PaneResizer} which="side" />
 
@@ -21481,6 +22306,8 @@ function ReportView({ project, projectMode, docs, cats, codes, codeById, codePat
               dela antes dos resultados, não num apêndice. Sem selo: ele é chrome do app. */''}
         ${aiDecl && html`<p style="margin:0 0 20px;padding:10px 12px;border-left:3px solid var(--line);font-size:13px;line-height:1.6;color:var(--ink-soft)">
           <b style="color:var(--ink)">${t('rep.aiDecl')}</b> ${aiDecl}</p>`}
+        ${histDecl && html`<p style="margin:0 0 20px;padding:10px 12px;border-left:3px solid var(--line);font-size:13px;line-height:1.6;color:var(--ink-soft)">
+          <b style="color:var(--ink)">${t('rep.trail')}</b> ${histDecl}</p>`}
 
         ${enabled.size===0 && html`<p class="hint no-print">${t('rep.pickSection')}</p>`}
 
@@ -23881,7 +24708,7 @@ function useOcrToggle(store, docs, docIds){
   return { includeOcr, info, maskByDoc, note, card, provLine };
 }
 
-function IAOrganizarPanel({ project, docs, codes, codeById, codePath, store, allCodings, count, isAdmin, reload, loadAll, onAdd, memos, onSetMemo, memory, onAddMemory, onToggleMemory, onDeleteMemory, tab, setTab, TABS }){
+function IAOrganizarPanel({ onLog, project, docs, codes, codeById, codePath, store, allCodings, count, isAdmin, reload, loadAll, onAdd, memos, onSetMemo, memory, onAddMemory, onToggleMemory, onDeleteMemory, tab, setTab, TABS }){
   // history: a conversa inteira. Cada turno de IA carrega seus PROPRIOS dados estruturados
   // (operacoes ja traduzidas+validadas, resumo, memorias propostas, flags) — assim as operacoes
   // aparecem INLINE no balao da IA. So o ultimo turno de IA fica acionavel; os anteriores/aplicados
@@ -24165,7 +24992,7 @@ function IAOrganizarPanel({ project, docs, codes, codeById, codePath, store, all
           await store.updateCode(ch.id, cp); Object.assign(ch, cp); stack.push({id:ch.id,depth:cd}); }
       }
     }
-    let applied=0, skipped=0;
+    let applied=0, skipped=0; const opsDone = {};   // TRILHA: quantas de cada tipo entraram
     /* A IA NAO decide destino de trecho: por filhos num codigo que TEM trechos proprios criaria o
        no misto, e resolver isso exige escolher para onde eles vao — decisao do pesquisador, nao da
        maquina. Aqui a operacao e RECUSADA e dita pelo nome, em vez de aplicada em silencio ou de
@@ -24190,32 +25017,33 @@ function IAOrganizarPanel({ project, docs, codes, codeById, codePath, store, all
             if(mv.failed) throw new Error('codificações não migradas');
             for(const mid of merged){ for(const ch of childrenOf(mid)){ await reparentSubtree(ch.id, o.survivor, survivor.depth+1, { hue:survivor.hue, hue_deg:survivor.hue_deg, sat:survivor.sat }); } }
             for(const mid of merged){ await store.deleteCode(mid); const n=byId(mid); if(n) n._deleted=true; }
-            applied++;
+            applied++; opsDone[o.op]=(opsDone[o.op]||0)+1;
           } else if(o.op==='group'){
             let parent = o.parent ? byId(o.parent) : null;
             if(!parent){ const created = await onAdd(null, o.newParentName||'Novo agrupamento'); parent = { ...created }; work.push(parent); }
             if(parent._deleted){ skipped++; continue; }
             if(temTrechosProprios(parent.id)){ recusadas.push(nameOf(parent.id)); skipped++; continue; }
             for(const id of o.children){ const ch = byId(id); if(!ch || ch._deleted || id===parent.id || isDescendantOf(parent.id, id)) continue; await reparentSubtree(id, parent.id, parent.depth+1, { hue:parent.hue, hue_deg:parent.hue_deg, sat:parent.sat }); }
-            applied++;
+            applied++; opsDone[o.op]=(opsDone[o.op]||0)+1;
           } else if(o.op==='reparent'){
             const node = byId(o.id), parent = byId(o.newParent);
             if(!node || node._deleted || !parent || parent._deleted || o.id===parent.id || isDescendantOf(parent.id, o.id)){ skipped++; continue; }
             if(temTrechosProprios(parent.id)){ recusadas.push(nameOf(parent.id)); skipped++; continue; }
             await reparentSubtree(o.id, parent.id, parent.depth+1, { hue:parent.hue, hue_deg:parent.hue_deg, sat:parent.sat });
-            applied++;
+            applied++; opsDone[o.op]=(opsDone[o.op]||0)+1;
           } else if(o.op==='rename'){
             const node = byId(o.id); if(!node || node._deleted){ skipped++; continue; }
-            await store.updateCode(o.id, { name:o.newName }); node.name=o.newName; applied++;
+            await store.updateCode(o.id, { name:o.newName }); node.name=o.newName; applied++; opsDone[o.op]=(opsDone[o.op]||0)+1;
           } else if(o.op==='promote'){
             const node = byId(o.id); if(!node || node._deleted || !node.parent_id){ skipped++; continue; }
-            await reparentSubtree(o.id, null, 0, null); applied++;
+            await reparentSubtree(o.id, null, 0, null); applied++; opsDone[o.op]=(opsDone[o.op]||0)+1;
           }
         }catch(e){ skipped++; }
       }
     } finally { if(store.endBatch) await store.endBatch(); }
     await reload(); await loadAll();
     patchTurn(turnIdx, { applied:true }); // proposta vira registro somente-leitura
+    onLog?.({ op:'bulk_coding', target_kind:'project', target_id:project.id, detail:{ screen:'ai_organize', applied, skipped, ops:opsDone, model:currentModelLabel() } });   // TRILHA (S4)
     // as recusadas por "o alvo tem trechos próprios" são ditas PELO NOME: "N ignoradas" sozinho não
     // deixa o pesquisador saber o que fazer, e aqui existe uma ação concreta (dividir aquele código)
     const nomesRec = [...new Set(recusadas)];
@@ -24475,7 +25303,7 @@ const REP_TOTAL    = 500;  // teto de propostas: varrer e barato, REVISAR e que 
 const REP_SHOW     = 8;    // ocorrencias exibidas por grupo antes do "ver mais"
 const REP_CTX      = 56;   // chars de contexto em volta, pra decidir sem sair da tela
 
-function IARepetirPanel({ project, docs, codes, codeById, codePath, store, allCodings, projectMode, reload, loadAll, tab, setTab, TABS }){
+function IARepetirPanel({ onLog, project, docs, codes, codeById, codePath, store, allCodings, projectMode, reload, loadAll, tab, setTab, TABS }){
   const [selCodes, setSelCodes] = useState([]);
   // palavra inteira LIGADA por padrao (decisao do autor): e a unica opcao cujo default difere da
   // busca global. Sem isso "Tal" casa dentro de "Total" e a lista enche de ruido.
@@ -24573,6 +25401,7 @@ function IARepetirPanel({ project, docs, codes, codeById, codePath, store, allCo
       }
     }catch(e){ setErr(String(e?.message||e)); setBusy(false); return; }
     await reload(); await loadAll();
+    onLog?.({ op:'bulk_coding', target_kind:'project', target_id:project.id, detail:{ screen:'repeat', applied:ok, failed:fail } });   // TRILHA (S4): sem modelo — a aba nao usa IA
     const done = new Set(pending.map(hk));
     setRes(r=> r && ({ ...r, groups:r.groups.map(g=>({ ...g, hits:g.hits.map(h=> done.has(hk(h)) ? {...h, done:true} : h) })) }));
     setApplyMsg(t('repeat.applied',{n:ok, fail:fail?t('repeat.applied.fail',{n:fail}):''}));
@@ -24793,7 +25622,7 @@ async function runBlind(alvos, sistemaDe, catFromRef, onProgress){
    NAO cria categorias (decisao do autor): le o texto dos documentos + o esquema de categorias e
    propoe doc_values, revisados item a item e aplicados via setDocValue/setFinalValue (mesmo caminho
    manual, espelhando projectMode). Censura mascarada no material. Espelha o IAOrganizarPanel. */
-function IACategorizarPanel({ project, docs, cats, codePath, allValues, store, isAdmin, projectMode, user, reload, loadAll, allCodings, codes, memos, onSetMemo, memory, onAddMemory, onToggleMemory, onDeleteMemory, tab, setTab, TABS }){
+function IACategorizarPanel({ onLog, project, docs, cats, codePath, allValues, store, isAdmin, projectMode, user, reload, loadAll, allCodings, codes, memos, onSetMemo, memory, onAddMemory, onToggleMemory, onDeleteMemory, tab, setTab, TABS }){
   const [history, setHistory] = useState([]);
   const [decided, setDecided] = useState({});
   const [instruction, setInstruction] = useState('');
@@ -25092,6 +25921,7 @@ function IACategorizarPanel({ project, docs, cats, codePath, allValues, store, i
       for(const {v,i} of toApply){ try{ await setVal.call(store, project.id, v.docId, v.catId, v.value); saved[i]=true; applied++; }catch(e){ skipped++; } }
     } finally { if(store.endBatch) await store.endBatch(); }
     await reload(); await loadAll();
+    onLog?.({ op:'bulk_coding', target_kind:'project', target_id:project.id, detail:{ screen:'ai_values', applied, skipped, model:currentModelLabel(), blind:!!cego } });   // TRILHA (S4)
     // #27: so conclui (somente-leitura) sem falhas; parcial mantem interativo e guarda os salvos.
     patchTurn(turnIdx, skipped===0 ? { applied:true, saved } : { saved });
     setApplyMsg(`${applied} valor(es) aplicado(s)${skipped?`, ${skipped} falhou(aram); clique em Aplicar de novo para tentar só os pendentes`:''}. Confira na aba Codificação (Categorias do documento) ou no Esquema.`);
@@ -26019,7 +26849,7 @@ function IADefinirPanel({ project, docs, cats, allValues, store, isAdmin, user, 
    quote->span com buildMatchIndex/findQuoteSpan (mesmo motor do import) e aplica via addCoding.
    Espelha o IACategorizarPanel: ve o que JA esta codificado (nao repropoe), revisao item a item,
    censura mascarada no material, salvamento generico do parseAIJson cobre truncamento. */
-function IACodificacaoPanel({ project, docs, codes, codeById, codePath, store, allCodings, isAdmin, projectMode, user, reload, loadAll, memos, onSetMemo, memory, onAddMemory, onToggleMemory, onDeleteMemory, tab, setTab, TABS }){
+function IACodificacaoPanel({ onLog, project, docs, codes, codeById, codePath, store, allCodings, isAdmin, projectMode, user, reload, loadAll, memos, onSetMemo, memory, onAddMemory, onToggleMemory, onDeleteMemory, tab, setTab, TABS }){
   const [history, setHistory] = useState([]);
   const [decided, setDecided] = useState({});
   const [instruction, setInstruction] = useState('');
@@ -26212,6 +27042,7 @@ function IACodificacaoPanel({ project, docs, codes, codeById, codePath, store, a
       for(const {o,i} of toApply){ try{ await store.addCoding(project.id, { document_id:o.docId, code_id:o.codeId, span_start:o.start, span_end:o.end, quote:o.quote, layer, source:CODING_SOURCES.AI }); saved[i]=true; applied++; }catch(e){ skipped++; } }
     } finally { if(store.endBatch) await store.endBatch(); }
     await reload(); await loadAll();
+    onLog?.({ op:'bulk_coding', target_kind:'project', target_id:project.id, detail:{ screen:'ai_codes', applied, skipped, model:currentModelLabel() } });   // TRILHA (S4)
     // #27: so marca como concluido (somente-leitura) quando NADA falhou; havendo falha, mantem o turno
     // interativo (via !t.applied) e guarda os indices salvos pra reaplicar SO os pendentes.
     patchTurn(turnIdx, skipped===0 ? { applied:true, saved } : { saved });

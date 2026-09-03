@@ -707,6 +707,14 @@ No [Relatório Interativo (ATI)](#121-relatório-interativo-ati), a **nota de tr
 - **Conversas salvas**: cada conversa do [Analisar com IA](#173-analisar-com-ia-leitura-assistida-do-material) que você guardou, aberta por inteiro ao clicar.
 - **Memória do projeto**, o **diário de insights da IA**: memórias curtas (fatos/decisões) que entram no contexto entre sessões; você adiciona à mão ou aprova as que a IA sugere, e liga/desliga quais usar.
 
+### 11.1. Histórico do projeto (a trilha de auditoria)
+
+A última entrada da coluna, fora das seções de IA, é o **Histórico do projeto**: a **trilha de auditoria do processo**. É uma lista de frases, da mais recente para a mais antiga, com o que **alterou** o projeto, cada uma com data e autor: importações e mesclagens de arquivo, mesclagens e divisões de código, exclusões (documento, código, categoria, limpar conteúdo), edições de texto com reancoragem dos grifos, aplicações em lote (Repetir Codificação e as telas de IA), consolidações da Reconciliação, mudanças de tipo e configuração, entradas e saídas de membros (na nuvem) e exportações. Há um **filtro por operação** e uma **busca por texto**: digite o nome de um código para ver o que já aconteceu com ele. **Exportar CSV** baixa a lista inteira (frase legível + detalhe em JSON).
+
+O que o histórico **não** faz, e está escrito no alto da tela: **não desfaz** nada (é registro, não máquina do tempo; o Ctrl+Z segue desfazendo só a última codificação), **não guarda o conteúdo** do que foi apagado (só nomes e contagens: nenhum trecho do corpus viaja nele) e **não registra** leitura nem navegação. A codificação aplicada uma a uma não entra: ela já fica registrada na própria codificação, com autor e data.
+
+Ele **viaja no `.qualilab`** e **sobrevive ao "Limpar conteúdo"**; reimportar o mesmo arquivo não o duplica. Na nuvem é **só-acréscimo** (ninguém edita nem apaga uma linha pela API, nem o administrador) e segue a visibilidade das codificações: sob [codificação cega](#13-colaboração), cada pesquisador vê os próprios eventos e os de equipe, e o administrador vê tudo. O histórico começa no primeiro evento registrado depois da versão 1.4.51; a primeira linha diz que o que veio antes não foi gravado. O resumo dele entra no [Relatório](#126-histórico-do-processo).
+
 ---
 
 ## 12. Relatório
@@ -775,6 +783,12 @@ O bloco também carrega o seu próprio limite: ele descreve **o que passou pelo 
 Desmarcando a caixa, o bloco simplesmente não sai, e o app não insiste. Vale saber que, se você usou IA e não declara, isso é uma escolha sua sobre como reportar a sua pesquisa — a ferramenta oferece o caminho honesto como padrão e não fiscaliza ninguém.
 
 Para desligar a IA do projeto (e não só declará-la), veja [17.7](#177-desligar-a-ia-neste-projeto).
+
+### 12.6. Histórico do processo
+
+Ao lado da caixa de IA há **"Incluir o histórico do processo"**, também **ligada por padrão**. Com ela marcada, as três saídas levam um resumo do que o [histórico do projeto](#111-histórico-do-projeto-a-trilha-de-auditoria) registra: quantas operações, desde quando e de que tipo (importações, mesclagens e divisões de código, exclusões, edições de texto, aplicações em lote e quantas delas por IA, consolidações, mudanças de configuração, exportações). É o bloco que um parecerista ou um comitê lê para saber **como** o projeto chegou ao estado publicado.
+
+Como o bloco de IA, ele **relata e leva o próprio limite junto**: diz que registra operações feitas pelo QualiLab, não a leitura nem a navegação, e que não guarda o conteúdo do que foi apagado. Desmarcando a caixa, o bloco não sai.
 
 ---
 
@@ -862,7 +876,7 @@ Os menus **exportar ▾** e **importar ▾** ficam no cabeçalho (aparecem quand
 ### Exportar (menu "exportar ▾")
 | Item | O que é |
 |---|---|
-| **.qualilab (projeto completo, nativo)** | Tudo (documentos, categorias, valores, códigos, codificações, memos) para reabrir no QualiLab. É o backup completo do projeto |
+| **.qualilab (projeto completo, nativo)** | Tudo (documentos, categorias, valores, códigos, codificações, memos, conversas e memórias de IA e o histórico do projeto) para reabrir no QualiLab. É o backup completo do projeto |
 | **JSON (projeto)** | Projeto completo com camadas e autores |
 | **CSV (trechos codificados)** | Um trecho por linha (documento, código, camada, autor) |
 | **CSV (atributos por documento)** | Um documento por linha, com os valores de categoria. **Tem caminho de volta**: preencha na planilha e reimporte, ver [abaixo](#preencher-categorias-numa-planilha-e-trazer-de-volta-passo-a-passo) |
@@ -878,7 +892,7 @@ Os menus **exportar ▾** e **importar ▾** ficam no cabeçalho (aparecem quand
 ### Importar (menu "importar ▾")
 | Item | O que traz |
 |---|---|
-| **.qualilab** | Mescla um projeto exportado. Em destino **coletivo**, preserva a resposta de cada pesquisador de origem; o gabarito vira gabarito |
+| **.qualilab** | Mescla um projeto exportado. Em destino **coletivo**, preserva a resposta de cada pesquisador de origem; o gabarito vira gabarito. O histórico do projeto que vier no arquivo entra sem duplicar (reimportar não o repete) |
 | **QDPX** | Projeto REFI-QDA de outras ferramentas. O tipo de categoria que a origem **declara** (número, Sim/Não, data) é respeitado; o que ela declara só como texto é **inferido** (revise no esquema). Os valores de atributo entram **das duas formas** que o padrão admite (gravados no próprio documento ou num "caso" que aponta para ele), e se alguma categoria chegar **sem nenhum valor** o resumo diz quais. Inclui importação reforçada de `.qdpx` do **ATLAS.ti** com PDFs |
 | **.sqlite3 (Taguette)** | Projeto nativo do Taguette: documentos, tags (hierarquia por `/` ou `.`) e trechos. Sem atributos nem autor por trecho |
 | **.qdc (codebook REFI-QDA)** | Só o livro de códigos |
@@ -1464,6 +1478,7 @@ PDFs muito visuais (colunas, tabelas, digitalizações) podem extrair mal. Tabel
 - **Reconciliação**: tela onde a equipe consolida o gabarito (projeto coletivo).
 - **Memo**: nota analítica por projeto/documento/código/trecho.
 - **Censura**: código que mascara trechos sensíveis nas saídas de transparência e no que vai para a IA. Os formatos de trabalho (`.qualilab`, QDPX, QDC, CSV, JSON) saem completos, ver [5.5](#55-censura-mascarar-trechos-sensíveis).
+- **Histórico do projeto**: a trilha de auditoria do processo, na aba Memos: a lista das operações que alteraram o projeto (importações, mesclagens, exclusões, aplicações em lote, consolidações, exportações), com data e autor. Não desfaz nada nem guarda conteúdo apagado, ver [11.1](#111-histórico-do-projeto-a-trilha-de-auditoria).
 - **Co-ocorrência**: dois códigos aplicados ao mesmo trecho (ou sobrepostos).
 - **Modo (armazenamento)**: onde os dados ficam (arquivo, rascunho ou nuvem).
 - **Tipo de projeto**: individual (sem reconciliação) ou coletivo.

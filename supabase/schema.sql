@@ -280,6 +280,88 @@ returns boolean language sql security definer stable set search_path = public as
   end;
 $$;
 
+-- ---------- TRILHA DE AUDITORIA (S4, set/2026) ----------
+-- Uma linha por OPERACAO que alterou o projeto (import, mesclagem, exclusao, aplicacao em lote,
+-- consolidacao, mudanca de configuracao, export), nunca por linha de dado. A spec e a
+-- to-do/spec-trilha-auditoria.md; o levantamento do campo esta no S9 do to-do (o NVivo manda
+-- LIMPAR o log dele por desempenho, que e o preco de logar linha; o OpenQDA grava o texto do
+-- trecho em old/new_values, que e um segundo canal do corpus).
+-- APPEND-ONLY: sem policy de UPDATE nem de DELETE, e o grant e SO select+insert — o revoke abaixo
+-- desfaz o que o ALTER DEFAULT PRIVILEGES do fim do arquivo (ou o do bootstrap do Supabase) deu a
+-- tabela ao ser criada num banco que ja existia. Nao e prova forense: o operador do servidor
+-- sempre pode. A trilha RELATA.
+-- FORA da publicacao supabase_realtime de proposito (regra de ouro #11): evento nao e dado de
+-- tela quente, e cada import dispararia recarga em todo mundo.
+-- `detail` e jsonb com nomes e contagens, NUNCA texto do corpus (o cliente proibe `quote` e afins
+-- antes de gravar — src/dados/trilha-de-auditoria.js); `target_name` e o nome CONGELADO no momento
+-- do evento, para sobreviver a exclusao do alvo; `at` e o relogio do cliente (o que se exibe),
+-- `created_at` o do servidor (o que ordena). `id` vem do cliente (replay idempotente na fila e
+-- dedup por id na viagem pelo .qualilab); o default so serve ao log_activity.
+create table if not exists public.activity (
+  id          uuid primary key default gen_random_uuid(),
+  project_id  uuid not null references public.projects(id) on delete cascade,
+  op          text not null,
+  target_kind text,
+  target_id   uuid,
+  target_name text,
+  layer       text,
+  detail      jsonb not null default '{}'::jsonb,
+  actor       uuid,
+  actor_name  text not null default 'anonimo',
+  at          timestamptz not null default now(),
+  created_at  timestamptz not null default now()
+);
+create index if not exists activity_project_idx on public.activity (project_id, created_at);
+alter table public.activity enable row level security;
+revoke all on public.activity from anon, authenticated;
+grant select, insert on public.activity to authenticated;
+-- VISIBILIDADE POR REUSO, sem predicado novo (spec §4): evento que aponta um documento passa pelo
+-- can_see_doc (distribuicao restrita), e o AUTOR do evento passa pelo can_see_authored (cego) — os
+-- dois eixos que os memos ja pagaram para aprender (gotcha 1b). Consequencia aceita: sob cego o
+-- membro ve quase so os proprios eventos e o admin ve tudo; levantar o cego revela a trilha inteira,
+-- porque a policy e lida em tempo de leitura sobre as flags atuais, como as codificacoes. Evento
+-- IMPORTADO (actor null) segue o MESMO tratamento da codificacao importada sob cego (fica com o
+-- admin) — e por isso nao ha clausula propria para layer='final': o can_see_authored ja a cobre.
+-- Evento de EQUIPE (target_kind 'member') e visivel a todo membro sempre (decisao ⚑4 da spec):
+-- quem entrou e saiu nao revela codificacao de ninguem.
+drop policy if exists activity_select on public.activity;
+create policy activity_select on public.activity for select using (
+  public.is_member(project_id)
+  and (
+    target_kind = 'member'
+    or (
+      (target_kind is distinct from 'document' or target_id is null or public.can_see_doc(project_id, target_id))
+      and public.can_see_authored(project_id, actor)
+    )
+  )
+);
+-- INSERT: cada um grava so como si mesmo; admin pode gravar ator livre (a trilha que vem num
+-- .qualilab chega com actor null — a mesma excecao do created_by das codificacoes importadas).
+-- is_member, e nao can_edit, de proposito: o viewer EXPORTA, e "dado saiu do projeto" e justamente o
+-- evento que um comite de etica pergunta.
+drop policy if exists activity_insert on public.activity;
+create policy activity_insert on public.activity for insert with check (
+  public.is_member(project_id) and (actor = auth.uid() or public.is_admin(project_id))
+);
+-- O que os RPCs de gestao gravam, dentro da PROPRIA transacao (cliente velho em cache, ou chamada
+-- direta ao RPC, nao tem como pular). `trail_started` PREGUICOSO, o mesmo que o cliente faz: nasce
+-- no primeiro evento de cada projeto, sem backfill (honestidade > completude retroativa).
+-- NAO e chamavel por anon/authenticated (revoke abaixo): roda so de dentro dos RPCs security
+-- definer, que executam como o dono do banco — a mesma regra das funcoes de trigger.
+create or replace function public.log_activity(p_project uuid, p_op text, p_kind text, p_target uuid, p_name text, p_layer text, p_detail jsonb)
+returns void language plpgsql security definer set search_path = public as $$
+declare v_actor_name text;
+begin
+  select m.display_name into v_actor_name from public.members m where m.project_id = p_project and m.user_id = auth.uid();
+  v_actor_name := coalesce(v_actor_name, 'anonimo');
+  if p_op <> 'trail_started' and not exists (select 1 from public.activity a where a.project_id = p_project) then
+    insert into public.activity (project_id, op, actor, actor_name) values (p_project, 'trail_started', auth.uid(), v_actor_name);
+  end if;
+  insert into public.activity (project_id, op, target_kind, target_id, target_name, layer, detail, actor, actor_name)
+    values (p_project, p_op, p_kind, p_target, p_name, p_layer, coalesce(p_detail, '{}'::jsonb), auth.uid(), v_actor_name);
+end; $$;
+revoke execute on function public.log_activity(uuid,text,text,uuid,text,text,jsonb) from public, anon, authenticated;
+
 -- ASSINATURA MUDOU (S7): parametro com default cria SOBRECARGA, nao substituicao — dai o drop.
 -- O DEFAULT 'none' SERVE O CLIENTE VELHO, nao o novo. Cliente em cache nao tem a pergunta do t0,
 -- e a UI dele mostra os paineis de IA: nascer 'all' ali pareceria app quebrado. O cliente novo
@@ -350,8 +432,9 @@ revoke all on public.project_invites from anon, authenticated;
 -- inutilizando o throttle. O SupabaseStore.joinProject checa o null e monta a mensagem.
 create or replace function public.join_project(p_code text, p_display text)
 returns public.projects language plpgsql security definer set search_path = public as $$
-declare v_proj public.projects; v_recent int; v_inv public.project_invites;
+declare v_proj public.projects; v_recent int; v_inv public.project_invites; v_existed boolean; v_who text;
 begin
+  v_who := coalesce(nullif(p_display,''),'anonimo');
   delete from public.join_attempts where attempted_at < now() - interval '1 day';
   select count(*) into v_recent from public.join_attempts
     where user_id = auth.uid() and attempted_at > now() - interval '1 hour';
@@ -376,10 +459,15 @@ begin
       return null;
     end if;
     select * into v_proj from public.projects where id = v_inv.project_id;
+    v_existed := exists (select 1 from public.members where project_id = v_proj.id and user_id = auth.uid());
     insert into public.members (project_id, user_id, display_name, role)
-      values (v_proj.id, auth.uid(), coalesce(nullif(p_display,''),'anonimo'), v_inv.role)
+      values (v_proj.id, auth.uid(), v_who, v_inv.role)
       on conflict (project_id, user_id) do update set display_name = excluded.display_name;
     update public.project_invites set use_count = use_count + 1 where id = v_inv.id;
+    -- TRILHA (S4): so quando a linha de members NASCE — este RPC roda a cada abertura do projeto
+    if not v_existed then
+      perform public.log_activity(v_proj.id, 'member_joined', 'member', auth.uid(), v_who, null, jsonb_build_object('who', v_who, 'role', v_inv.role));
+    end if;
     return v_proj;
   end if;
 
@@ -388,9 +476,13 @@ begin
     insert into public.join_attempts (user_id) values (auth.uid());
     return null;
   end if;
+  v_existed := exists (select 1 from public.members where project_id = v_proj.id and user_id = auth.uid());
   insert into public.members (project_id, user_id, display_name)
-    values (v_proj.id, auth.uid(), coalesce(nullif(p_display,''),'anonimo'))
+    values (v_proj.id, auth.uid(), v_who)
     on conflict (project_id, user_id) do update set display_name = excluded.display_name;
+  if not v_existed then
+    perform public.log_activity(v_proj.id, 'member_joined', 'member', auth.uid(), v_who, null, jsonb_build_object('who', v_who, 'role', 'member'));
+  end if;
   return v_proj;
 end; $$;
 
@@ -449,6 +541,7 @@ $$;
 
 create or replace function public.set_member_role(p_project uuid, p_user uuid, p_role text)
 returns void language plpgsql security definer set search_path = public as $$
+declare v_old text; v_who text;
 begin
   if not public.is_admin(p_project) then raise exception 'Apenas administradores podem alterar papéis'; end if;
   if p_role not in ('admin','member','viewer') then raise exception 'Papel inválido'; end if;
@@ -458,11 +551,17 @@ begin
      and exists (select 1 from public.members where project_id = p_project and user_id = p_user and role = 'admin')
      and (select count(*) from public.members where project_id = p_project and role = 'admin') <= 1
   then raise exception 'O projeto precisa de ao menos um administrador'; end if;
+  select role, display_name into v_old, v_who from public.members where project_id = p_project and user_id = p_user;
   update public.members set role = p_role where project_id = p_project and user_id = p_user;
+  -- TRILHA (S4): na mesma transacao, so quando mudou
+  if v_old is not null and v_old is distinct from p_role then
+    perform public.log_activity(p_project, 'role_changed', 'member', p_user, v_who, null, jsonb_build_object('who', v_who, 'from', v_old, 'to', p_role));
+  end if;
 end; $$;
 
 create or replace function public.remove_member(p_project uuid, p_user uuid)
 returns void language plpgsql security definer set search_path = public as $$
+declare v_who text;
 begin
   if p_user <> auth.uid() and not public.is_admin(p_project) then
     raise exception 'Apenas administradores podem remover outros membros';
@@ -471,14 +570,25 @@ begin
      and (select count(*) from public.members where project_id = p_project and role = 'admin') <= 1 then
     raise exception 'O projeto precisa de ao menos um administrador';
   end if;
+  -- TRILHA (S4): antes do delete, porque o display_name mora na linha que vai sumir
+  select display_name into v_who from public.members where project_id = p_project and user_id = p_user;
+  if v_who is not null then
+    perform public.log_activity(p_project, 'member_removed', 'member', p_user, v_who, null, jsonb_build_object('who', v_who, 'self', p_user = auth.uid()));
+  end if;
   delete from public.members where project_id = p_project and user_id = p_user;
 end; $$;
 
 create or replace function public.rename_project(p_project uuid, p_name text)
 returns void language plpgsql security definer set search_path = public as $$
+declare v_old text;
 begin
   if not public.is_admin(p_project) then raise exception 'Apenas administradores podem renomear o projeto'; end if;
+  select name into v_old from public.projects where id = p_project;
   update public.projects set name = coalesce(nullif(p_name,''), name) where id = p_project;
+  -- TRILHA (S4): na mesma transacao, so quando o nome de fato mudou
+  if nullif(p_name,'') is not null and p_name is distinct from v_old then
+    perform public.log_activity(p_project, 'project_renamed', 'project', p_project, p_name, null, jsonb_build_object('from', v_old, 'to', p_name));
+  end if;
 end; $$;
 
 create or replace function public.delete_project(p_project uuid)
@@ -492,9 +602,11 @@ end; $$;
 -- codificador (camada final) e mantém só o gabarito das categorias.
 create or replace function public.set_project_mode(p_project uuid, p_mode text, p_author text default 'pesquisador')
 returns void language plpgsql security definer set search_path = public as $$
+declare v_old text;
 begin
   if not public.is_admin(p_project) then raise exception 'Apenas administradores podem alterar o tipo do projeto'; end if;
   if p_mode not in ('individual','collective') then raise exception 'Tipo inválido'; end if;
+  select mode into v_old from public.projects where id = p_project;
   if p_mode = 'individual' then
     delete from public.codings c using public.codings keep
       where c.project_id = p_project and keep.project_id = p_project
@@ -513,6 +625,10 @@ begin
       where project_id = p_project and layer = 'final';
   end if;
   update public.projects set mode = p_mode where id = p_project;
+  -- TRILHA (S4): na mesma transacao da conversao (que e destrutiva no sentido coletivo -> individual)
+  if v_old is distinct from p_mode then
+    perform public.log_activity(p_project, 'mode_changed', 'project', p_project, null, null, jsonb_build_object('from', v_old, 'to', p_mode));
+  end if;
 end; $$;
 
 -- ligar/desligar distribuicao restritiva e cego (admin). Precisa de RPC porque projects
@@ -522,11 +638,12 @@ end; $$;
 drop function if exists public.set_project_flags(uuid,boolean,boolean);
 create or replace function public.set_project_flags(p_project uuid, p_blind boolean default null, p_restrict boolean default null, p_restrict_ai text default null)
 returns public.projects language plpgsql security definer set search_path = public as $$
-declare v_proj public.projects;
+declare v_proj public.projects; v_old public.projects; v_detail jsonb := '{}'::jsonb;
 begin
   if not public.is_admin(p_project) then
     raise exception 'Apenas administradores alteram a distribuicao, o modo cego e o acesso a IA';
   end if;
+  select * into v_old from public.projects where id = p_project;
   update public.projects
      set blind         = coalesce(p_blind, blind),
          restrict_docs = coalesce(p_restrict, restrict_docs),
@@ -536,6 +653,20 @@ begin
                               else restrict_ai end
    where id = p_project
    returning * into v_proj;
+  -- TRILHA (S4): so as chaves que MUDARAM, cada uma com de/para (aviso que nao corresponde a
+  -- mudanca ensina a ignorar aviso — o mesmo criterio do resumo do import)
+  if v_proj.blind is distinct from v_old.blind then
+    v_detail := v_detail || jsonb_build_object('blind', jsonb_build_object('from', v_old.blind, 'to', v_proj.blind));
+  end if;
+  if v_proj.restrict_docs is distinct from v_old.restrict_docs then
+    v_detail := v_detail || jsonb_build_object('restrict_docs', jsonb_build_object('from', v_old.restrict_docs, 'to', v_proj.restrict_docs));
+  end if;
+  if v_proj.restrict_ai is distinct from v_old.restrict_ai then
+    v_detail := v_detail || jsonb_build_object('restrict_ai', jsonb_build_object('from', v_old.restrict_ai, 'to', v_proj.restrict_ai));
+  end if;
+  if v_detail <> '{}'::jsonb then
+    perform public.log_activity(p_project, 'flags_changed', 'project', p_project, null, null, v_detail);
+  end if;
   return v_proj;
 end; $$;
 
@@ -552,10 +683,6 @@ grant execute on function public.set_project_flags(uuid,boolean,boolean,text) to
 grant execute on function public.create_invite(uuid,text,text,int,int) to anon, authenticated;
 grant execute on function public.list_invites(uuid)                   to anon, authenticated;
 grant execute on function public.revoke_invite(uuid)                  to anon, authenticated;
--- can_use_ai roda DENTRO das policies de ia_results/ia_memory, e policy roda como o usuario
--- que chamou — sem este grant o insert falha por permissao da funcao, nao pela regra.
-grant execute on function public.can_use_ai(uuid)                 to anon, authenticated;
-
 -- (issue #7) Os GRANTs de tabela ficam no FIM do arquivo, depois de TODAS as tabelas —
 -- ver o bloco "GRANTS de tabela" no final.
 
@@ -889,6 +1016,14 @@ returns boolean language sql stable security definer set search_path = public as
            else true
          end;
 $$;
+-- can_use_ai roda DENTRO das policies de ia_results/ia_memory, e policy roda como o usuario
+-- que chamou — sem este grant o insert falha por permissao da funcao, nao pela regra.
+-- O GRANT MORA AQUI, colado na definicao, e nao no bloco de grants de RPC la em cima (corrigido
+-- 02/set/2026): la ele vinha ~330 linhas ANTES da funcao existir, e o arquivo, que se promete
+-- aplicavel de cima a baixo num banco novo, abortava em `function public.can_use_ai(uuid) does
+-- not exist`. Passou despercebido porque nos dois Supabase a funcao ja existia de uma aplicacao
+-- anterior; foi o pgTAP rodado num Postgres cru (scripts/pgtap-local.sh) que acusou.
+grant execute on function public.can_use_ai(uuid) to anon, authenticated;
 
 -- A trava e FORCADA aqui, e nao nos RPCs, de proposito: se quem a escrevesse fosse o cliente,
 -- bastaria chamar o RPC direto pra contorna-la. FORCA em vez de RAISE porque isto e invariante
@@ -1087,6 +1222,8 @@ grant select, insert, update, delete on
   public.doc_values, public.codes, public.codings, public.assignments,
   public.memos, public.ia_results, public.ia_memory
   to authenticated;
+-- activity (trilha de auditoria) fica FORA desta lista de proposito: e append-only, e o grant dela
+-- (so select+insert) e dado logo depois do create, na secao da trilha.
 -- ai_prices: leitura publica (preco de lista nao e segredo); escrita so service_role.
 -- O ALTER DEFAULT PRIVILEGES abaixo roda DEPOIS do create de ai_prices, entao NAO concede
 -- escrita a ela (default privileges so valem para tabelas criadas APOS o statement).
