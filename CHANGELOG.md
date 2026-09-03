@@ -14,6 +14,34 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.52 (03/09/2026)
+
+### Espelhos do projeto: um ponto de restauração antes do irreversível
+
+Um **espelho** guarda o projeto inteiro num instante (documentos, categorias, códigos,
+codificações, memos, conversas e memórias de IA), para **restaurar** depois. Fica em
+**pílula do projeto ▸ Espelhos do projeto**.
+
+- **Espelhar agora**, com um rótulo opcional, cria um espelho manual. Manuais ficam até você excluir.
+- **Antes de limpar o conteúdo, excluir documento, código ou categoria, mesclar ou dividir código
+  (no Esquema ou pela IA), editar o texto de um documento e antes de restaurar**, o QualiLab espelha
+  sozinho, no máximo um automático a cada 10 minutos; ficam os 5 automáticos mais recentes.
+- **O automático tem interruptor**, ligado por padrão, no mesmo cartão: cada espelho é uma cópia do
+  texto e da análise, e com os 5 automáticos o projeto pode ocupar cerca de 1,5× o tamanho (no modo
+  arquivo é o próprio `.qualilab` que cresce). Desligar é decisão do projeto e fica no histórico.
+- **Restaurar** volta o projeto inteiro ao estado daquele instante. O estado atual é espelhado
+  antes (dá para desfazer a própria restauração), e o histórico do projeto registra a
+  restauração em vez de voltar atrás: **o histórico nunca é restaurado**.
+- **O que o espelho não guarda**: os PDFs originais (o PDF de um documento excluído não volta;
+  o texto e a análise voltam) e o histórico. A declaração sobre uso de IA, a equipe e a
+  distribuição de documentos também não mudam ao restaurar.
+- Onde mora: no rascunho, no armazenamento do navegador (fora do limite de 5 MB do rascunho);
+  no modo arquivo, **dentro do próprio `.qualilab`** (o arquivo cresce com cada espelho); na nuvem,
+  numa tabela e num bucket próprios, onde só administradores criam, restauram e excluem. Quem
+  hospeda o próprio Supabase precisa aplicar o `supabase/schema.sql` atualizado.
+- Um espelho não é backup externo: mora no mesmo lugar do projeto. Continue exportando o
+  `.qualilab` para guardar uma cópia fora.
+
 ## 1.4.51 (02/09/2026)
 
 ### Histórico do projeto: a trilha de auditoria do processo

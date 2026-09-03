@@ -38,6 +38,10 @@ alter table public.projects add column if not exists restrict_docs boolean not n
 -- julgamento do codificador). O default 'none' e RETROCOMPATIBILIDADE de projeto ANTIGO: projeto
 -- novo nunca cai nele, porque a criacao PERGUNTA e nasce desativado.
 alter table public.projects add column if not exists restrict_ai text not null default 'none';
+-- ESPELHAR BASE: o interruptor do espelho AUTOMATICO antes das operacoes irreversiveis. Ligado por
+-- padrao (pedido do autor, 03/set/2026): quem desliga sabe o que perde, e a tela diz o custo em
+-- tamanho. Decisao do PROJETO, como restrict_ai — muda pelo set_project_flags (admin) e fica na trilha.
+alter table public.projects add column if not exists snapshots_auto boolean not null default true;
 alter table public.projects drop constraint if exists projects_restrict_ai_check;
 alter table public.projects add constraint projects_restrict_ai_check check (restrict_ai in ('none','members','all'));
 -- TRAVA DE UMA VIA. Existe porque o interruptor e REVERSIVEL, e a reversibilidade abre exatamente
@@ -362,6 +366,52 @@ begin
 end; $$;
 revoke execute on function public.log_activity(uuid,text,text,uuid,text,text,jsonb) from public, anon, authenticated;
 
+-- ---------- ESPELHAR BASE (ponto de restauracao, set/2026) ----------
+-- Um ESPELHO e o projeto inteiro num instante (o buildQualilabDb menos a trilha), que se pode
+-- restaurar. Spec: to-do/spec-espelhar-base.md. O METADADO mora nesta tabela (listar sem baixar o
+-- bucket); o RETRATO mora no bucket `snapshots`, objeto `<project_id>/<id>.json`. Membro le a lista;
+-- so ADMIN cria e apaga (restaurar e destrutivo, e criar escreve no bucket). Sem UPDATE: um espelho
+-- nao se edita, se apaga. As linhas cascateiam com o projeto; os objetos do bucket nao (o cliente
+-- os remove best-effort antes do delete_project). FORA do realtime.
+create table if not exists public.snapshots (
+  id          uuid primary key,
+  project_id  uuid not null references public.projects(id) on delete cascade,
+  at          timestamptz not null default now(),
+  reason      text not null default 'manual' check (reason in ('manual','auto')),
+  before      text,
+  label       text,
+  size        bigint not null default 0,
+  counts      jsonb not null default '{}'::jsonb,
+  created_by  uuid,
+  actor_name  text not null default 'anonimo',
+  created_at  timestamptz not null default now()
+);
+create index if not exists snapshots_project_idx on public.snapshots (project_id, at desc);
+alter table public.snapshots enable row level security;
+revoke all on public.snapshots from anon, authenticated;
+grant select, insert, delete on public.snapshots to authenticated;
+drop policy if exists snapshots_select on public.snapshots;
+create policy snapshots_select on public.snapshots for select using ( public.is_member(project_id) );
+drop policy if exists snapshots_insert on public.snapshots;
+create policy snapshots_insert on public.snapshots for insert with check ( public.is_admin(project_id) and created_by = auth.uid() );
+drop policy if exists snapshots_delete on public.snapshots;
+create policy snapshots_delete on public.snapshots for delete using ( public.is_admin(project_id) );
+-- o bucket: privado; o primeiro segmento do nome e o project_id. Qualifique storage.objects.name
+-- (gotcha #8 — 'name' cru dentro de um subselect com outra tabela liga na coluna errada).
+insert into storage.buckets (id, name, public) values ('snapshots','snapshots',false) on conflict (id) do nothing;
+drop policy if exists "snapshots_select" on storage.objects;
+create policy "snapshots_select" on storage.objects for select to authenticated
+  using ( bucket_id='snapshots' and public.is_member(split_part(storage.objects.name,'/',1)::uuid) );
+drop policy if exists "snapshots_insert" on storage.objects;
+create policy "snapshots_insert" on storage.objects for insert to authenticated
+  with check ( bucket_id='snapshots' and public.is_admin(split_part(storage.objects.name,'/',1)::uuid) );
+drop policy if exists "snapshots_update" on storage.objects;
+create policy "snapshots_update" on storage.objects for update to authenticated
+  using ( bucket_id='snapshots' and public.is_admin(split_part(storage.objects.name,'/',1)::uuid) );
+drop policy if exists "snapshots_delete" on storage.objects;
+create policy "snapshots_delete" on storage.objects for delete to authenticated
+  using ( bucket_id='snapshots' and public.is_admin(split_part(storage.objects.name,'/',1)::uuid) );
+
 -- ASSINATURA MUDOU (S7): parametro com default cria SOBRECARGA, nao substituicao — dai o drop.
 -- O DEFAULT 'none' SERVE O CLIENTE VELHO, nao o novo. Cliente em cache nao tem a pergunta do t0,
 -- e a UI dele mostra os paineis de IA: nascer 'all' ali pareceria app quebrado. O cliente novo
@@ -636,7 +686,10 @@ end; $$;
 -- ASSINATURA MUDOU (S7) — drop antes, senao ficam DUAS funcoes e o PostgREST pode resolver a
 -- ambiguidade para a errada. O grant tambem e por assinatura, e o drop leva o antigo junto.
 drop function if exists public.set_project_flags(uuid,boolean,boolean);
-create or replace function public.set_project_flags(p_project uuid, p_blind boolean default null, p_restrict boolean default null, p_restrict_ai text default null)
+-- ASSINATURA MUDOU DE NOVO (espelhar base, set/2026): + p_snapshots_auto. Cliente velho chama com os
+-- quatro nomes e o quinto cai no default (null = nao mexe), entao nada quebra em cache.
+drop function if exists public.set_project_flags(uuid,boolean,boolean,text);
+create or replace function public.set_project_flags(p_project uuid, p_blind boolean default null, p_restrict boolean default null, p_restrict_ai text default null, p_snapshots_auto boolean default null)
 returns public.projects language plpgsql security definer set search_path = public as $$
 declare v_proj public.projects; v_old public.projects; v_detail jsonb := '{}'::jsonb;
 begin
@@ -650,7 +703,8 @@ begin
          -- null = nao mexe; valor fora da lista tambem nao (o check ja barraria, mas aqui a
          -- chamada parcial de blind/restrict nao pode falhar por causa de um terceiro campo)
          restrict_ai   = case when p_restrict_ai in ('none','members','all') then p_restrict_ai
-                              else restrict_ai end
+                              else restrict_ai end,
+         snapshots_auto = coalesce(p_snapshots_auto, snapshots_auto)
    where id = p_project
    returning * into v_proj;
   -- TRILHA (S4): so as chaves que MUDARAM, cada uma com de/para (aviso que nao corresponde a
@@ -663,6 +717,9 @@ begin
   end if;
   if v_proj.restrict_ai is distinct from v_old.restrict_ai then
     v_detail := v_detail || jsonb_build_object('restrict_ai', jsonb_build_object('from', v_old.restrict_ai, 'to', v_proj.restrict_ai));
+  end if;
+  if v_proj.snapshots_auto is distinct from v_old.snapshots_auto then
+    v_detail := v_detail || jsonb_build_object('snapshots_auto', jsonb_build_object('from', v_old.snapshots_auto, 'to', v_proj.snapshots_auto));
   end if;
   if v_detail <> '{}'::jsonb then
     perform public.log_activity(p_project, 'flags_changed', 'project', p_project, null, null, v_detail);
@@ -679,7 +736,7 @@ grant execute on function public.remove_member(uuid,uuid)         to anon, authe
 grant execute on function public.rename_project(uuid,text)        to anon, authenticated;
 grant execute on function public.delete_project(uuid)             to anon, authenticated;
 grant execute on function public.set_project_mode(uuid,text,text) to anon, authenticated;
-grant execute on function public.set_project_flags(uuid,boolean,boolean,text) to anon, authenticated;
+grant execute on function public.set_project_flags(uuid,boolean,boolean,text,boolean) to anon, authenticated;
 grant execute on function public.create_invite(uuid,text,text,int,int) to anon, authenticated;
 grant execute on function public.list_invites(uuid)                   to anon, authenticated;
 grant execute on function public.revoke_invite(uuid)                  to anon, authenticated;
@@ -1223,7 +1280,8 @@ grant select, insert, update, delete on
   public.memos, public.ia_results, public.ia_memory
   to authenticated;
 -- activity (trilha de auditoria) fica FORA desta lista de proposito: e append-only, e o grant dela
--- (so select+insert) e dado logo depois do create, na secao da trilha.
+-- (so select+insert) e dado logo depois do create, na secao da trilha. `snapshots` idem: sem
+-- update (select+insert+delete), grant dado na secao do espelhar base.
 -- ai_prices: leitura publica (preco de lista nao e segredo); escrita so service_role.
 -- O ALTER DEFAULT PRIVILEGES abaixo roda DEPOIS do create de ai_prices, entao NAO concede
 -- escrita a ela (default privileges so valem para tabelas criadas APOS o statement).

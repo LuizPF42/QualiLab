@@ -1130,6 +1130,17 @@ Vale, então, a mesma lógica de confiança da [seção 17.5](#175-para-onde-vã
 
 > **PDF original na nuvem.** Guardar os *bytes* do PDF original na nuvem (para "ver original"/OCR em outro aparelho) é **opcional** e pede um **consentimento explícito** no envio, porque aí quem administra o banco passa a poder abrir o **PDF inteiro**, não só o texto que você codificou. Sem marcar, sobe só o texto e a codificação. Para dado sensível, mantenha o PDF no **modo arquivo**.
 
+### Espelhos do projeto (ponto de restauração)
+Um **espelho** é o projeto inteiro num instante (documentos, categorias, códigos, codificações, memos, conversas e memórias de IA), guardado ao lado do projeto para **restaurar** depois. Fica em **pílula do projeto → Espelhos do projeto**.
+
+- **Espelhar agora** (com um rótulo opcional) cria um espelho manual; manuais ficam até você excluir.
+- **Automáticos**: antes de limpar o conteúdo, excluir documento, código ou categoria, mesclar ou dividir código (no Esquema ou pela IA), editar o texto de um documento e antes de restaurar, o QualiLab espelha sozinho, no máximo um a cada 10 minutos. Ficam os 5 automáticos mais recentes.
+- **O automático tem interruptor** no mesmo cartão, ligado por padrão: cada espelho é uma cópia do texto e da análise (sem os PDFs) e, com os 5 automáticos, o projeto pode ocupar cerca de 1,5× o tamanho; no modo arquivo é o próprio `.qualilab` que cresce. Desligar é decisão do projeto (administrador) e fica no histórico; os manuais continuam disponíveis.
+- **Restaurar** troca o projeto inteiro pelo retrato. O estado atual é espelhado antes (dá para desfazer a própria restauração), e o [histórico do projeto](#111-histórico-do-projeto-a-trilha-de-auditoria) registra a restauração: **ele nunca é restaurado**, é o registro de que a restauração aconteceu. Restaurar é ato de administrador.
+- **O que o espelho não guarda**: os PDFs originais (o PDF de um documento excluído não volta; o texto e a análise voltam) e o histórico. A [declaração sobre uso de IA](#175-para-onde-vão-os-seus-dados-provedores-e-configuração), a equipe e a distribuição de documentos não mudam ao restaurar.
+- **Onde mora**: no rascunho, no armazenamento do navegador (fora do limite do `localStorage`); no modo arquivo, **dentro do próprio `.qualilab`**, então o arquivo cresce com cada espelho; na nuvem, numa tabela e num bucket próprios, e só administradores criam, restauram e excluem.
+- **Não é backup externo**: perdido o lugar do projeto, perdem-se os dois. Para uma cópia fora, continue exportando o `.qualilab` (abaixo).
+
 ### Backup automático em pasta (modo rascunho, Chrome/Edge)
 Mantém um `backup-automatico.qualilab` sempre atualizado numa pasta sua, como espelho do `localStorage`. Ative em **pílula do projeto → Backup automático em pasta → Escolher pasta…**.
 

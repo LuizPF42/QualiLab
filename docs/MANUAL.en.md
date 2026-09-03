@@ -1129,6 +1129,17 @@ The same logic of trust as [section 17.5](#175-where-your-data-goes-providers-an
 
 > **Original PDFs in the cloud.** Storing the original PDF's *bytes* in the cloud (for "view original"/OCR on another device) is **optional** and asks for **explicit consent** on upload, because then whoever administers the database becomes able to open the **whole PDF**, not just the text you coded. Unchecked, only the text and the coding go up. For sensitive data, keep the PDF in **file mode**.
 
+### Project mirrors (restore point)
+A **mirror** is the whole project at one instant (documents, attributes, codes, codings, memos, AI conversations and memories), kept next to the project to **restore** later. It lives in **project pill → Project mirrors**.
+
+- **Mirror now** (with an optional label) creates a manual mirror; manual ones stay until you delete them.
+- **Automatic**: before clearing the content, deleting a document, code or attribute, merging or splitting a code (in the Schema or through the AI), editing a document's text and before restoring, QualiLab mirrors on its own, at most once every 10 minutes. The 5 most recent automatic mirrors are kept.
+- **The automatic mirror has a switch** in the same card, on by default: each mirror is a copy of the text and the analysis (without the PDFs) and, with the 5 automatic ones, the project can take about 1.5× the size; in file mode it is the `.qualilab` itself that grows. Turning it off is a project decision (administrator) and goes to the history; manual mirrors remain available.
+- **Restore** swaps the whole project for the snapshot. The current state is mirrored first (you can undo the restoration itself), and the [project history](#111-project-history-the-audit-trail) records the restoration: **it is never restored**, it is the record that the restoration happened. Restoring is an administrator's act.
+- **What a mirror does not keep**: the original PDFs (the PDF of a deleted document does not come back; the text and the analysis do) and the history. The AI use declaration, the team and the document distribution do not change on restore.
+- **Where it lives**: in the draft, in the browser's storage (outside the `localStorage` limit); in file mode, **inside the `.qualilab` itself**, so the file grows with each mirror; in the cloud, in a table and a bucket of their own, and only administrators create, restore and delete.
+- **Not an external backup**: lose the project's place and you lose both. For a copy outside, keep exporting the `.qualilab` (below).
+
 ### Automatic folder backup (draft mode, Chrome/Edge)
 Keeps a `backup-automatico.qualilab` always up to date in a folder of yours, as a mirror of the `localStorage`. Enable it under **project pill → Automatic folder backup → Choose folder…** ("Backup automático em pasta → Escolher pasta…").
 

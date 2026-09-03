@@ -913,7 +913,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.51';
+const QUALILAB_VERSION = '1.4.52';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -3194,12 +3194,19 @@ const MSG_PT = {
   'act.flag.restrictOn': 'distribuição restrita ligada',
   'act.flag.restrictOff': 'distribuição restrita desligada',
   'act.flag.ai': 'recursos de IA {v}',
+  'act.flag.autoSnapOn': 'espelho automático ligado',
+  'act.flag.autoSnapOff': 'espelho automático desligado',
   'act.op.project_renamed': 'Projeto renomeado para {to}{from}.',
   'act.op.member_joined': '{who} entrou no projeto como {role}.',
   'act.op.member_left': '{who} saiu do projeto.',
   'act.op.member_removed': '{who} foi removido do projeto.',
   'act.op.role_changed': 'Papel de {who} alterado para {to}{from}.',
   'act.op.export': 'Exportou {format}.',
+  'act.op.snapshot_created': 'Espelhou o projeto{label}: {list}.',
+  'act.op.snapshot_auto': 'Espelho automático antes de {before}: {list}.',
+  'act.op.snapshot_restored': 'Restaurou o espelho de {date}{label}. O estado anterior foi espelhado antes.',
+  'act.lbl.snapshot_created': 'espelho criado',
+  'act.lbl.snapshot_restored': 'espelho restaurado',
   'act.lbl.trail_started': 'início do histórico',
   'act.lbl.import': 'importação',
   'act.lbl.merge_file': 'mesclagem de arquivo',
@@ -3231,11 +3238,36 @@ const MSG_PT = {
   'act.stmt.reconcile': '{n} consolidação(ões) na camada final',
   'act.stmt.settings': '{n} mudança(s) de tipo ou configuração do projeto',
   'act.stmt.exports': '{n} exportação(ões)',
+  'act.stmt.restores': '{n} restauração(ões) de espelho',
   'act.stmt.cap': 'O histórico registra operações feitas pelo QualiLab (importações, mesclagens, exclusões, aplicações em lote, consolidações, exportações), não a leitura nem a navegação, e não guarda o conteúdo do que foi apagado.',
   'rep.trailBox': '**Incluir o histórico do processo**: acrescenta ao artefato um resumo do que o histórico do projeto registra (quantas importações, mesclagens, exclusões, aplicações em lote, consolidações e exportações, e desde quando).',
   'rep.trail': 'Histórico do processo.',
   'ati.trail': 'Histórico do processo',
   'q.activity': 'registro no histórico',
+  'snap.title': 'Espelhos do projeto',
+  'snap.hint': 'Um espelho guarda o projeto inteiro num instante (documentos, categorias, códigos, codificações, memos, conversas e memórias de IA) para restaurar depois. Antes de limpar, excluir, mesclar, dividir, editar texto ou restaurar, o QualiLab espelha sozinho, no máximo um a cada {gap} minutos; ficam os {keep} automáticos mais recentes, e os manuais até você excluir.',
+  'snap.notKept': 'O espelho não guarda os PDFs originais nem o histórico: restaurar devolve o texto e a análise (o PDF de um documento excluído não volta), e o histórico registra a restauração em vez de voltar atrás.',
+  'snap.auto.toggle': 'Espelhar automaticamente antes de limpar, excluir, mesclar, dividir, editar texto e restaurar',
+  'snap.auto.cost': 'Ligado por padrão. Cada espelho é uma cópia do texto e da análise (sem os PDFs); com os {keep} automáticos, o projeto pode ocupar cerca de 1,5× o tamanho, e no modo arquivo é o próprio .qualilab que cresce. Desligue se o espaço pesar mais que a segurança; os manuais continuam disponíveis.',
+  'snap.now': 'Espelhar agora',
+  'snap.label.ph': 'rótulo (opcional)',
+  'snap.none': 'Nenhum espelho ainda.',
+  'snap.manual': 'manual',
+  'snap.auto': 'automático, antes de: {op}',
+  'snap.counts': '{d} documento(s) · {c} código(s) · {k} codificação(ões) · {m} memo(s)',
+  'snap.restore': 'Restaurar',
+  'snap.delete': 'Excluir',
+  'snap.confirm.restore': 'Restaurar o espelho de {date}? O projeto inteiro volta ao estado daquele instante. O estado atual é espelhado antes, e a restauração fica registrada no histórico.',
+  'snap.confirm.delete': 'Excluir este espelho? Não há como recuperá-lo.',
+  'snap.adminOnly': 'Só administradores espelham e restauram.',
+  'snap.busy.creating': 'Espelhando o projeto...',
+  'snap.busy.restoring': 'Restaurando o espelho...',
+  'snap.done.created': 'Espelho criado.',
+  'snap.done.restored': 'Espelho de {date} restaurado. O estado anterior foi espelhado antes.',
+  'snap.err.create': 'Não foi possível espelhar: {e}',
+  'snap.err.restore': 'Não foi possível restaurar: {e}',
+  'snap.err.list': 'Não foi possível carregar os espelhos: {e}',
+  'snap.warn.autoFailed': 'A operação seguiu, mas o espelho automático falhou: {e}',
   'qdpx.loss.trail': 'O histórico do projeto ({n} evento(s)) fica de fora: o REFI-QDA não tem onde guardá-lo. Ele viaja só no .qualilab.',
   'imp.activity': ' Histórico: {n} evento(s) novo(s){rep}.',
   'imp.activity.rep': ', {n} já registrado(s)',
@@ -5373,12 +5405,19 @@ const MSG_EN = {
   'act.flag.restrictOn': 'restricted assignment turned on',
   'act.flag.restrictOff': 'restricted assignment turned off',
   'act.flag.ai': 'AI features {v}',
+  'act.flag.autoSnapOn': 'automatic mirror on',
+  'act.flag.autoSnapOff': 'automatic mirror off',
   'act.op.project_renamed': 'Project renamed to {to}{from}.',
   'act.op.member_joined': '{who} joined the project as {role}.',
   'act.op.member_left': '{who} left the project.',
   'act.op.member_removed': '{who} was removed from the project.',
   'act.op.role_changed': 'Role of {who} changed to {to}{from}.',
   'act.op.export': 'Exported {format}.',
+  'act.op.snapshot_created': 'Mirrored the project{label}: {list}.',
+  'act.op.snapshot_auto': 'Automatic mirror before {before}: {list}.',
+  'act.op.snapshot_restored': 'Restored the mirror of {date}{label}. The previous state was mirrored first.',
+  'act.lbl.snapshot_created': 'mirror created',
+  'act.lbl.snapshot_restored': 'mirror restored',
   'act.lbl.trail_started': 'history start',
   'act.lbl.import': 'import',
   'act.lbl.merge_file': 'file merge',
@@ -5410,11 +5449,36 @@ const MSG_EN = {
   'act.stmt.reconcile': '{n} consolidation(s) into the reference layer',
   'act.stmt.settings': '{n} change(s) to the project type or settings',
   'act.stmt.exports': '{n} export(s)',
+  'act.stmt.restores': '{n} mirror restoration(s)',
   'act.stmt.cap': 'The history records operations performed through QualiLab (imports, merges, deletions, bulk applications, consolidations, exports), not reading or navigation, and it does not keep the content of what was deleted.',
   'rep.trailBox': '**Include the process history**: adds to the artefact a summary of what the project history records (how many imports, merges, deletions, bulk applications, consolidations and exports, and since when).',
   'rep.trail': 'Process history.',
   'ati.trail': 'Process history',
   'q.activity': 'history record',
+  'snap.title': 'Project mirrors',
+  'snap.hint': 'A mirror keeps the whole project at one instant (documents, attributes, codes, codings, memos, AI conversations and memories) to restore later. Before clearing, deleting, merging, splitting, editing text or restoring, QualiLab mirrors on its own, at most once every {gap} minutes; the {keep} most recent automatic mirrors are kept, and manual ones until you delete them.',
+  'snap.notKept': 'A mirror keeps neither the original PDFs nor the history: restoring brings back the text and the analysis (the PDF of a deleted document does not come back), and the history records the restoration instead of going back.',
+  'snap.auto.toggle': 'Mirror automatically before clearing, deleting, merging, splitting, editing text and restoring',
+  'snap.auto.cost': 'On by default. Each mirror is a copy of the text and the analysis (without the PDFs); with the {keep} automatic ones, the project can take about 1.5× the size, and in file mode it is the .qualilab itself that grows. Turn it off if space weighs more than safety; manual mirrors remain available.',
+  'snap.now': 'Mirror now',
+  'snap.label.ph': 'label (optional)',
+  'snap.none': 'No mirrors yet.',
+  'snap.manual': 'manual',
+  'snap.auto': 'automatic, before: {op}',
+  'snap.counts': '{d} document(s) · {c} code(s) · {k} coding(s) · {m} memo(s)',
+  'snap.restore': 'Restore',
+  'snap.delete': 'Delete',
+  'snap.confirm.restore': 'Restore the mirror of {date}? The whole project goes back to the state of that instant. The current state is mirrored first, and the restoration is recorded in the history.',
+  'snap.confirm.delete': 'Delete this mirror? It cannot be recovered.',
+  'snap.adminOnly': 'Only administrators mirror and restore.',
+  'snap.busy.creating': 'Mirroring the project...',
+  'snap.busy.restoring': 'Restoring the mirror...',
+  'snap.done.created': 'Mirror created.',
+  'snap.done.restored': 'Mirror of {date} restored. The previous state was mirrored first.',
+  'snap.err.create': 'Could not mirror: {e}',
+  'snap.err.restore': 'Could not restore: {e}',
+  'snap.err.list': 'Could not load the mirrors: {e}',
+  'snap.warn.autoFailed': 'The operation went ahead, but the automatic mirror failed: {e}',
   'qdpx.loss.trail': 'The project history ({n} event(s)) stays behind: REFI-QDA has nowhere to keep it. It travels only in the .qualilab.',
   'imp.activity': ' History: {n} new event(s){rep}.',
   'imp.activity.rep': ', {n} already recorded',
@@ -9135,7 +9199,9 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
      Depois do endBatch, de proposito: em rascunho/arquivo o evento so pode ser gravado quando o
      lote ja assentou. Falha aqui nunca aborta um merge que ja deu certo. */
   try{
-    if(store.logActivity) await store.logActivity(projectId, { op:'merge_file', target_kind:'project', target_id:projectId,
+    // ESPELHAR BASE: restaurar um espelho passa por aqui (repor = mesclar num projeto vazio) e NAO e
+    // "mesclou o arquivo": quem registra e a App, com `snapshot_restored`.
+    if(store.logActivity && !(origin && origin.via==='restore')) await store.logActivity(projectId, { op:'merge_file', target_kind:'project', target_id:projectId,
       detail:{ file:(origin && origin.file) || null, via:(origin && origin.via) || 'import',
                documents:(db.documents||[]).length, categories:(db.categories||[]).length, codes:(db.codes||[]).length,
                codings:(db.codings||[]).length, memos:(db.memos||[]).length, conversations:conversas, memories:memorias,
@@ -11018,7 +11084,7 @@ const IDB = {
   async open(){
     if(this._db) return this._db;
     return new Promise((res,rej)=>{
-      const r = indexedDB.open('qualilab_meta',5);   // v2: + pdf_blobs (PDF-BLOCK); v3: + pdf_index (§4); v4: + sem_index (SEM-BLOCK); v5: + wqueue (fila de escrita da nuvem)
+      const r = indexedDB.open('qualilab_meta',6);   // v2: + pdf_blobs (PDF-BLOCK); v3: + pdf_index (§4); v4: + sem_index (SEM-BLOCK); v5: + wqueue (fila de escrita da nuvem); v6: + snapshots (espelhar base)
       r.onupgradeneeded = e=>{
         const d=e.target.result;
         if(!d.objectStoreNames.contains('file_handles')) d.createObjectStore('file_handles',{keyPath:'key'});
@@ -11029,6 +11095,9 @@ const IDB = {
            como saber com que keyPath aquele foi criado em cada instalacao antiga, e um put() com
            chave fora de linha estoura DataError onde ele tem keyPath. Store novo custa nada. */
         if(!d.objectStoreNames.contains('wqueue')) d.createObjectStore('wqueue');         // fila de escrita da nuvem (chave out-of-line)
+        /* ESPELHAR BASE: um registro {meta, json} por espelho do RASCUNHO, chave = id do espelho. No IDB, e
+           NUNCA no localStorage: cada retrato e o projeto inteiro, e a cota de 5 MB morderia no primeiro. */
+        if(!d.objectStoreNames.contains('snapshots')) d.createObjectStore('snapshots');   // espelhos do rascunho (chave out-of-line)
       };
       r.onsuccess = e=>{ this._db=e.target.result; res(this._db); };
       r.onerror = ()=>rej(r.error);
@@ -11059,6 +11128,12 @@ const IDB = {
      Falha de IDB nao propaga: a fila continua valendo em memoria, so nao sobrevive ao F5. */
   async putQ(list){ try{ return await this.tx('wqueue','readwrite',s=>s.put(list,'pending')); }catch(e){ return null; } },
   async getQ(){ try{ return (await this.tx('wqueue','readonly',s=>s.get('pending'))) || []; }catch(e){ return []; } },
+  /* ESPELHAR BASE (rascunho): {meta, json} por id. `allSnaps` devolve os registros inteiros — o
+     chamador filtra por project_id e descarta o json ao listar; ler o retrato de volta e `getSnap`. */
+  async putSnap(id, rec){ return this.tx('snapshots','readwrite',s=>s.put(rec,id)); },
+  async getSnap(id){ try{ return await this.tx('snapshots','readonly',s=>s.get(id)); }catch(e){ return null; } },
+  async delSnap(id){ try{ return await this.tx('snapshots','readwrite',s=>s.delete(id)); }catch(e){ return null; } },
+  async allSnaps(){ try{ return (await this.tx('snapshots','readonly',s=>s.getAll())) || []; }catch(e){ return []; } },
 };
 
 /* ============ FILA-BLOCK (fila de escrita da nuvem) — peças puras ============
@@ -11158,6 +11233,7 @@ const ACTIVITY_OPS = [
   'mode_changed', 'flags_changed', 'project_renamed',   // gestao do projeto — na nuvem, gravados pelo RPC
   'member_joined', 'member_removed', 'role_changed',    // equipe — so nuvem, gravados pelo RPC
   'export',                                          // dado SAIU do projeto (decisao ⚑1 da spec: entra, filtravel)
+  'snapshot_created', 'snapshot_restored',           // ESPELHAR BASE: retrato criado (manual ou automatico, `before` diz antes de que) / restaurado
 ];
 const ACTIVITY_KINDS = ['document', 'code', 'category', 'project', 'member'];
 /* Chaves que NUNCA entram no detail: sao conteudo de corpus ou de nota. Removidas em qualquer
@@ -11220,6 +11296,20 @@ function activityScreenLabel(s){
 }
 function activityModeLabel(m){ return m === 'collective' ? t('proj.collective') : m === 'individual' ? t('proj.individual') : String(m || ''); }
 function activityAiLabel(v){ return v === 'all' ? t('act.ai.all') : v === 'members' ? t('act.ai.members') : v === 'none' ? t('act.ai.none') : String(v || ''); }
+/* o rotulo curto de uma operacao (o mesmo do filtro do painel). Chave LITERAL por token, para o
+   check_i18n enxergar cada uma; token desconhecido volta cru. */
+function activityOpLabel(op){
+  const map = {
+    trail_started:t('act.lbl.trail_started'), import:t('act.lbl.import'), merge_file:t('act.lbl.merge_file'),
+    codes_merged:t('act.lbl.codes_merged'), code_split:t('act.lbl.code_split'), code_deleted:t('act.lbl.code_deleted'),
+    document_deleted:t('act.lbl.document_deleted'), category_deleted:t('act.lbl.category_deleted'), project_cleared:t('act.lbl.project_cleared'),
+    text_edited:t('act.lbl.text_edited'), bulk_coding:t('act.lbl.bulk_coding'), reconcile:t('act.lbl.reconcile'),
+    mode_changed:t('act.lbl.mode_changed'), flags_changed:t('act.lbl.flags_changed'), project_renamed:t('act.lbl.project_renamed'),
+    member_joined:t('act.lbl.member_joined'), member_removed:t('act.lbl.member_removed'), role_changed:t('act.lbl.role_changed'),
+    export:t('act.lbl.export'), snapshot_created:t('act.lbl.snapshot_created'), snapshot_restored:t('act.lbl.snapshot_restored'),
+  };
+  return map[op] || String(op || '');
+}
 function activityRoleLabel(r){ return r === 'admin' ? t('act.role.admin') : r === 'viewer' ? t('act.role.viewer') : r === 'member' ? t('act.role.member') : String(r || ''); }
 
 /* As contagens de um detail, na ordem em que fazem sentido ler, so as que existem e sao > 0.
@@ -11282,6 +11372,7 @@ function activityText(e){
       if(d.blind)         p.push(d.blind.to ? t('act.flag.blindOn') : t('act.flag.blindOff'));
       if(d.restrict_docs) p.push(d.restrict_docs.to ? t('act.flag.restrictOn') : t('act.flag.restrictOff'));
       if(d.restrict_ai)   p.push(t('act.flag.ai', { v: activityAiLabel(d.restrict_ai.to) }));
+      if(d.snapshots_auto) p.push(d.snapshots_auto.to ? t('act.flag.autoSnapOn') : t('act.flag.autoSnapOff'));
       return t('act.op.flags_changed', { list: p.join(', ') || t('act.nothing') });
     }
     case 'project_renamed':  return t('act.op.project_renamed', { to: d.to || name, from: d.from ? ' ' + t('act.before', { v: d.from }) : '' });
@@ -11289,6 +11380,16 @@ function activityText(e){
     case 'member_removed':   return d.self ? t('act.op.member_left', { who: d.who || name }) : t('act.op.member_removed', { who: d.who || name });
     case 'role_changed':     return t('act.op.role_changed', { who: d.who || name, to: activityRoleLabel(d.to), from: d.from ? ' ' + t('act.before', { v: activityRoleLabel(d.from) }) : '' });
     case 'export':           return t('act.op.export', { format: activityFormatLabel(d.format) });
+    case 'snapshot_created': {
+      const label = d.label ? ' "' + d.label + '"' : '';
+      const list = activityCounts(d) || t('act.nothing');
+      return d.reason === 'auto' ? t('act.op.snapshot_auto', { before: activityOpLabel(d.before), list }) : t('act.op.snapshot_created', { label, list });
+    }
+    case 'snapshot_restored': {
+      let date = String(d.snapshot_at || '');
+      try{ if(d.snapshot_at) date = new Date(d.snapshot_at).toLocaleString(QL_LOCALE()); }catch(_){}
+      return t('act.op.snapshot_restored', { date: date || '?', label: d.label ? ' "' + d.label + '"' : '' });
+    }
     default:                 return String(e.op);
   }
 }
@@ -11355,12 +11456,97 @@ function activityStatement(list){
   const recon = has(['reconcile']);                   if(recon) p.push(t('act.stmt.reconcile', { n: recon }));
   const settings = has(['mode_changed', 'flags_changed']); if(settings) p.push(t('act.stmt.settings', { n: settings }));
   const exports = has(['export']);                    if(exports) p.push(t('act.stmt.exports', { n: exports }));
+  const restores = has(['snapshot_restored']);        if(restores) p.push(t('act.stmt.restores', { n: restores }));
   const ops = evs.filter(e=>e.op !== 'trail_started').length;
   let date = '';
   try{ date = since ? new Date(since).toLocaleDateString(QL_LOCALE()) : ''; }catch(_){ date = String(since || ''); }
   return t('act.stmt.head', { n: ops, date: date || '?' })
     + (p.length ? ' ' + t('act.stmt.list', { list: p.join(', ') }) : '')
     + ' ' + t('act.stmt.cap');
+}
+/* ============ ESPELHAR BASE (ponto de restauracao, set/2026) — as pecas puras ============
+   Um ESPELHO e o projeto inteiro num instante, guardado ao lado do projeto, que se pode RESTAURAR.
+   Spec: to-do/spec-espelhar-base.md. Precedentes (S9): o MAXQDA faz backup do projeto inteiro
+   antes de cada operacao irreversivel E do atual antes de restaurar; o QualCoder faz ao abrir.
+   Aqui e a peca barata da reversibilidade porque o retrato ja existe: buildQualilabDb().
+
+   TRES NEGACOES, parte do desenho: (1) NAO E UNDO DE SESSAO — restaurar troca o projeto INTEIRO
+   pelo retrato, o Ctrl+Z continua sendo o gesto da ultima codificacao; (2) NAO E HISTORICO — a
+   trilha (S4) diz O QUE aconteceu, o espelho diz COMO ESTAVA, e a trilha NUNCA e restaurada (ela
+   e o registro de que a restauracao aconteceu); (3) NAO E BACKUP EXTERNO — mora no mesmo lugar do
+   projeto (IDB, arquivo, bucket); perdido o lugar, perdem-se os dois.
+
+   O RETRATO e o buildQualilabDb() MENOS `activity` (negacao 2), MENOS `snapshots` (espelho de
+   espelho nao existe) e SEM bytes de PDF nem indices: eles nao mudam nas operacoes que o espelho
+   protege, e onde mudam (excluir documento, limpar) o restaurado volta SEM o original — dito na
+   tela. Guardar PDF multiplicaria o custo pelo tamanho do corpus sem proteger nada novo.
+
+   `reason` e `before` sao tokens de nivel 1 (ingles); a frase e montada na leitura, como na trilha. */
+// automaticos que ficam (os mais recentes); manuais ficam ate alguem excluir. (Comentario ACIMA, e nao
+// depois do `;`: o extractDef dos testes puros le um `const` ate a linha que TERMINA em `;`, e um
+// comentario depois dele engoliria a linha seguinte — a constante de baixo entrava duas vezes.)
+const SNAPSHOT_AUTO_KEEP = 5;
+// coalescencia: um automatico por 10 min — apagar 20 documentos em serie nao gera 20 retratos
+const SNAPSHOT_AUTO_MIN_GAP_MS = 10 * 60 * 1000;
+const SNAPSHOT_REASONS = ['manual', 'auto'];
+const SNAPSHOT_LABEL_MAX = 120;
+
+/* o que vai para o retrato: tudo do db MENOS a trilha e os proprios espelhos. Nao ha bytes de PDF
+   no db (o buildQualilabDb nunca os poe; eles viajam por gatherPdfs), entao nada a tirar ali. */
+function snapshotPayload(db){
+  const src = db || {};
+  const out = {};
+  for(const k of Object.keys(src)){ if(k === 'activity' || k === 'snapshots') continue; out[k] = src[k]; }
+  if(!out._meta) out._meta = {};
+  return out;
+}
+function snapshotCounts(db){
+  const d = db || {}, n = (k)=> Array.isArray(d[k]) ? d[k].length : 0;
+  return { documents:n('documents'), categories:n('categories'), codes:n('codes'), codings:n('codings'), memos:n('memos') };
+}
+/* o metadado de um espelho. `json` e o retrato JA serializado (e ele que se guarda); `size` e o
+   comprimento dele em chars — e o que o pesquisador ve, e o que decide se vale manter. */
+function snapshotMeta(o){
+  const x = o || {};
+  const reason = SNAPSHOT_REASONS.includes(x.reason) ? x.reason : 'manual';
+  const label = (x.label != null && String(x.label).trim()) ? String(x.label).trim().slice(0, SNAPSHOT_LABEL_MAX) : null;
+  return {
+    id: (typeof x.id === 'string' && x.id) ? x.id : uid(),
+    project_id: x.project_id != null ? String(x.project_id) : null,
+    at: (typeof x.at === 'string' && x.at) ? x.at : new Date().toISOString(),
+    reason,
+    before: reason === 'auto' && x.before ? String(x.before) : null,
+    label,
+    size: typeof x.json === 'string' ? x.json.length : (Number(x.size) || 0),
+    counts: x.db ? snapshotCounts(x.db) : (x.counts || snapshotCounts(null)),
+    actor_name: String(x.actor_name || AUTHOR_ANON),
+  };
+}
+/* mais recente primeiro; desempate pela posicao (estavel) */
+function snapshotsSorted(list){
+  return (list || []).map((s, i)=>({ s, i })).sort((a, b)=> String(b.s.at || '').localeCompare(String(a.s.at || '')) || a.i - b.i).map(x=>x.s);
+}
+/* ids dos AUTOMATICOS alem do teto (os mais antigos). Manuais nunca entram: sao decisao da pessoa. */
+function snapshotsToPrune(list, keep){
+  const k = keep == null ? SNAPSHOT_AUTO_KEEP : Math.max(0, keep | 0);
+  return snapshotsSorted(list).filter(s=>s.reason === 'auto').slice(k).map(s=>s.id);
+}
+/* um automatico esta "devido"? So se o automatico mais recente for mais velho que o intervalo. Os
+   manuais nao contam: espelhar a mao nao dispensa o retrato de antes de uma exclusao. */
+function snapshotAutoDue(list, now, gapMs){
+  const gap = gapMs == null ? SNAPSHOT_AUTO_MIN_GAP_MS : gapMs;
+  const t0 = now == null ? Date.now() : (now instanceof Date ? now.getTime() : Number(now));
+  const last = snapshotsSorted(list).find(s=>s.reason === 'auto');
+  if(!last) return true;
+  const ts = new Date(last.at).getTime();
+  if(!isFinite(ts)) return true;
+  return t0 - ts >= gap;
+}
+function snapshotSizeText(n){
+  const b = Number(n) || 0;
+  if(b >= 1e6) return (b / 1e6).toFixed(1) + ' MB';
+  if(b >= 1e3) return Math.round(b / 1e3) + ' KB';
+  return b + ' B';
 }
 /* ============ STORE LOCAL (navegador) ============ */
 // quota tipica do localStorage em CARACTERES UTF-16 (~5M chars ≈ 5-10MB conforme o navegador).
@@ -11505,6 +11691,14 @@ function LocalStore(){
       for(const it of (items||[])){ try{ db.activity.push({ project_id:pid, created_at:now, ...activityEntry({ ...it, actor:null }, ctx) }); ok++; }catch(e){ failed++; } }
       save(); return { ok, failed };
     },
+    /* ESPELHAR BASE — ver dados/espelho.js. No rascunho os retratos vivem no IDB (store 'snapshots'),
+       NUNCA no localStorage: cada um e o projeto inteiro e a cota de 5 MB morderia no primeiro. A
+       lista sai dos registros inteiros e descarta o json (o IDB nao indexa por project_id; o rascunho
+       e um so por origem, entao o filtro e barato). O clearProject nao os alcanca: nao moram no db. */
+    async listSnapshots(pid){ const all = await IDB.allSnaps(); return all.filter(r=>r && r.meta && r.meta.project_id===String(pid)).map(r=>r.meta); },
+    async createSnapshot(pid, meta, json){ const m = { ...meta, project_id:String(pid) }; await IDB.putSnap(m.id, { meta:m, json }); return m; },
+    async getSnapshot(pid, id){ const r = await IDB.getSnap(id); if(!r || !r.meta || r.meta.project_id!==String(pid)) return null; return JSON.parse(r.json); },
+    async deleteSnapshot(pid, id){ const r = await IDB.getSnap(id); if(r && r.meta && r.meta.project_id===String(pid)) await IDB.delSnap(id); },
     async changePassword(){ throw new Error('Sem conta no modo local'); },
     async resetPassword(){ throw new Error('Sem conta no modo local'); },
     async changeDisplayName(newName){ name = newName || name; try{ localStorage.setItem('qualilab:name', name); }catch(e){} },
@@ -11552,7 +11746,7 @@ function LocalStore(){
        continuassem devolvendo null, a resposta do t0 ficaria gravada e nunca aplicada — a
        pergunta viraria teatro e o arquivo sairia declarando o que o app nao honrou.
        `ai_ever_enabled` e trava de uma via aqui tambem: so vai de false pra true. */
-    async setProjectFlags(pid, { restrictAi }={}){
+    async setProjectFlags(pid, { restrictAi, snapshotsAuto }={}){
       if(restrictAi==='none'||restrictAi==='members'||restrictAi==='all'){
         const from = db.restrict_ai||'none';
         db.restrict_ai = restrictAi;
@@ -11560,14 +11754,20 @@ function LocalStore(){
         save();
         if(restrictAi!==from) await this.logActivity(pid, { op:'flags_changed', target_kind:'project', target_id:pid, detail:{ restrict_ai:{ from, to:restrictAi } } });
       }
-      return P({ blind:false, restrict_docs:false, restrict_ai:db.restrict_ai||'none', ai_ever_enabled:!!db.ai_ever_enabled });
+      // ESPELHAR BASE: o interruptor do automatico e decisao do PROJETO (viaja no db, como restrict_ai)
+      if(snapshotsAuto!==undefined){
+        const from = db.snapshots_auto!==false, to = !!snapshotsAuto;
+        db.snapshots_auto = to; save();
+        if(to!==from) await this.logActivity(pid, { op:'flags_changed', target_kind:'project', target_id:pid, detail:{ snapshots_auto:{ from, to } } });
+      }
+      return P({ blind:false, restrict_docs:false, restrict_ai:db.restrict_ai||'none', ai_ever_enabled:!!db.ai_ever_enabled, snapshots_auto:db.snapshots_auto!==false });
     },
     /* AUSENCIA E PRESERVADA AQUI, e coalescida por quem consome (`restrict_ai || 'none'` no
        useProjFlags). Nao e capricho: `null` e a UNICA forma de distinguir "nunca respondeu" de
        "respondeu 'none'", e e disso que o enterLocalOffline precisa para nao refazer a pergunta
        do t0 a cada reentrada no rascunho. Na nuvem a coluna e not null, entao null aqui nunca
        colide com um valor legitimo de la. */
-    async getProjectFlags(){ return P({ blind:false, restrict_docs:false, restrict_ai:db.restrict_ai ?? null, ai_ever_enabled:!!db.ai_ever_enabled }); },
+    async getProjectFlags(){ return P({ blind:false, restrict_docs:false, restrict_ai:db.restrict_ai ?? null, ai_ever_enabled:!!db.ai_ever_enabled, snapshots_auto:db.snapshots_auto!==false }); },
     listDocuments(){ return P(db.documents.slice()); },
     addDocument(pid,{id,name:dn,content}){ const d={id:id||uid(),name:dn,content,created_at:new Date().toISOString()}; db.documents.push(d); save(); return P(d); },
     renameDocument(id,dn){ const d=db.documents.find(x=>x.id===id); if(d) d.name=dn; save(); return P(); },
@@ -11588,7 +11788,7 @@ function LocalStore(){
     // o db e RECONSTRUIDO por lista branca aqui, entao campo de CONFIGURACAO tem de ser repetido
     // explicitamente ou some no "Limpar conteudo" — restrict_ai/ai_ever_enabled sao decisao do
     // ESTUDO (como os memos de projeto e a config de IA), e sobrevivem a troca de corpus.
-    clearProject(){ const ids=db.documents.map(d=>d.id); const keepMemos=(db.memos||[]).filter(m=>!MEMO_MATERIAL_SCOPES.includes(m.scope)); db={ documents:[], categories:[], doc_values:[], codes:[], codings:[], memos:keepMemos, ia_results:db.ia_results||[], ia_memory:db.ia_memory||[], restrict_ai:db.restrict_ai||'none', ai_ever_enabled:!!db.ai_ever_enabled, activity:db.activity||[] }; ids.forEach(id=>IDB.delBlob(id)); save(); return P(); },
+    clearProject(){ const ids=db.documents.map(d=>d.id); const keepMemos=(db.memos||[]).filter(m=>!MEMO_MATERIAL_SCOPES.includes(m.scope)); db={ documents:[], categories:[], doc_values:[], codes:[], codings:[], memos:keepMemos, ia_results:db.ia_results||[], ia_memory:db.ia_memory||[], restrict_ai:db.restrict_ai||'none', ai_ever_enabled:!!db.ai_ever_enabled, snapshots_auto:db.snapshots_auto!==false, activity:db.activity||[] }; ids.forEach(id=>IDB.delBlob(id)); save(); return P(); },
     listCategories(){ return P(db.categories.slice().sort((a,b)=>a.position-b.position)); },
     addCategory(pid,cat){ const c={id:uid(),position:db.categories.length,...cat}; db.categories.push(c); save(); return P(c); },
     updateCategory(id,patch){ db.categories=db.categories.map(c=>c.id===id?{...c,...patch}:c); save(); return P(); },
@@ -11729,7 +11929,7 @@ async function createFileStore(fileHandle, isNew){
     /* S7 — ver a nota longa no LocalStore: `restrict_ai` NAO e stub inerte (excecao anotada a
        regra de ouro #5). Aqui e o caso que a spec chama de rota de fuga: um projeto declarado,
        salvo como .qualilab e reaberto neste store, voltava com os paineis abertos. */
-    async setProjectFlags(pid, { restrictAi }={}){
+    async setProjectFlags(pid, { restrictAi, snapshotsAuto }={}){
       if(restrictAi==='none'||restrictAi==='members'||restrictAi==='all'){
         const from = (db._meta&&db._meta.restrict_ai)||'none';
         db._meta = {...db._meta, restrict_ai:restrictAi,
@@ -11737,12 +11937,17 @@ async function createFileStore(fileHandle, isNew){
         await save();
         if(restrictAi!==from) await this.logActivity(pid, { op:'flags_changed', target_kind:'project', target_id:pid, detail:{ restrict_ai:{ from, to:restrictAi } } });
       }
+      if(snapshotsAuto!==undefined){   // ESPELHAR BASE: no _meta, como restrict_ai — viaja com o arquivo
+        const from = !(db._meta&&db._meta.snapshots_auto===false), to = !!snapshotsAuto;
+        db._meta = {...db._meta, snapshots_auto:to}; await save();
+        if(to!==from) await this.logActivity(pid, { op:'flags_changed', target_kind:'project', target_id:pid, detail:{ snapshots_auto:{ from, to } } });
+      }
       return { blind:false, restrict_docs:false, restrict_ai:(db._meta&&db._meta.restrict_ai)||'none',
-               ai_ever_enabled:!!(db._meta&&db._meta.ai_ever_enabled) };
+               ai_ever_enabled:!!(db._meta&&db._meta.ai_ever_enabled), snapshots_auto:!(db._meta&&db._meta.snapshots_auto===false) };
     },
     async getProjectFlags(){ return { blind:false, restrict_docs:false,
       restrict_ai:(db._meta&&db._meta.restrict_ai)||'none',
-      ai_ever_enabled:!!(db._meta&&db._meta.ai_ever_enabled) }; },
+      ai_ever_enabled:!!(db._meta&&db._meta.ai_ever_enabled), snapshots_auto:!(db._meta&&db._meta.snapshots_auto===false) }; },
     realtime(){ return ()=>{}; },
     listDocuments(){ return P(db.documents.slice()); },
     async addDocument(pid,{id,name:dn,content}){ const d={id:id||uid(),name:dn,content,created_at:new Date().toISOString()}; db.documents.push(d); await save(); return d; },
@@ -11820,6 +12025,17 @@ async function createFileStore(fileHandle, isNew){
       for(const it of (items||[])){ try{ db.activity.push({ project_id:pid, created_at:now, ...activityEntry({ ...it, actor:null }, ctx) }); ok++; }catch(e){ failed++; } }
       await save(); return { ok, failed };
     },
+    /* ESPELHAR BASE — os retratos vivem DENTRO do proprio .qualilab (db.snapshots), e nao num
+       "arquivo irmao" (decisao ⚑2 da spec): irmao exigiria showDirectoryPicker, gesto + permissao que
+       volta a `prompt` a cada sessao (gotcha #7), e o automatico antes de uma exclusao falharia
+       justamente quando ninguem deu o gesto. Dentro do arquivo viaja com o projeto e nao depende de
+       nada; o preco e o tamanho (5 automaticos + manuais), aceito pelo autor em 02/set. O
+       buildQualilabDb (exportacao) NAO leva `snapshots`; o mergeQualilabDb os ignora; o clearProject
+       deste store zera campo a campo e nao os toca. */
+    async listSnapshots(){ return (db.snapshots||[]).map(r=>r.meta); },
+    async createSnapshot(pid, meta, json){ if(!db.snapshots) db.snapshots=[]; const m = { ...meta, project_id:String(pid) }; db.snapshots.push({ meta:m, json }); await save(); return m; },
+    async getSnapshot(pid, id){ const r = (db.snapshots||[]).find(x=>x && x.meta && x.meta.id===id); return r ? JSON.parse(r.json) : null; },
+    async deleteSnapshot(pid, id){ db.snapshots = (db.snapshots||[]).filter(x=>!(x && x.meta && x.meta.id===id)); await save(); },
   };
 }
 /* verifica suporte e reabre último arquivo */
@@ -12109,27 +12325,32 @@ function SupabaseStore(sb){
     async listInvites(pid){ try{ return must(await sb.rpc('list_invites',{ p_project:pid })); }catch(e){ return []; } },
     async revokeInvite(id){ must(await sb.rpc('revoke_invite',{ p_invite:id })); },
     async renameProject(pid, pn){ must(await sb.rpc('rename_project',{ p_project:pid, p_name:pn })); },
-    async deleteProject(pid){ must(await sb.rpc('delete_project',{ p_project:pid })); },
+    async deleteProject(pid){
+      // ESPELHAR BASE: as linhas de `snapshots` cascateiam pelo FK; os OBJETOS do bucket nao — best-effort
+      try{ const l = await sb.storage.from('snapshots').list(pid); const names = (l.data||[]).map(o=>`${pid}/${o.name}`); if(names.length) await sb.storage.from('snapshots').remove(names); }catch(e){}
+      must(await sb.rpc('delete_project',{ p_project:pid }));
+    },
     async setProjectMode(pid, pmode, authorName){ must(await sb.rpc('set_project_mode',{ p_project:pid, p_mode:pmode, p_author:authorName||'pesquisador' })); },
     /* DISTRIBUICAO (assignments) + os dois interruptores do projeto. As duas dimensoes sao
        ORTOGONAIS: restrict_docs decide QUAIS DOCUMENTOS o membro enxerga; blind decide se ele
        enxerga a codificacao DOS OUTROS. O servidor e a autoridade (helpers can_see_doc/
        can_see_authored no schema.sql) — esconder o botao aqui nao protegeria nada. */
-    async setProjectFlags(pid, { blind, restrict, restrictAi }={}){
+    async setProjectFlags(pid, { blind, restrict, restrictAi, snapshotsAuto }={}){
       const d = must(await sb.rpc('set_project_flags',{ p_project:pid,
         p_blind:    blind===undefined    ? null : !!blind,
         p_restrict: restrict===undefined ? null : !!restrict,
-        p_restrict_ai: restrictAi===undefined ? null : String(restrictAi) }));
+        p_restrict_ai: restrictAi===undefined ? null : String(restrictAi),
+        p_snapshots_auto: snapshotsAuto===undefined ? null : !!snapshotsAuto }));
       return d ? { blind:!!d.blind, restrict_docs:!!d.restrict_docs,
-                   restrict_ai:d.restrict_ai||'none', ai_ever_enabled:!!d.ai_ever_enabled } : null;
+                   restrict_ai:d.restrict_ai||'none', ai_ever_enabled:!!d.ai_ever_enabled, snapshots_auto:d.snapshots_auto!==false } : null;
     },
     // as flags PRECISAM vir do servidor: o objeto `project` do cliente pode ter vindo do cache
     // local de "Meus projetos", que guarda so id/name/code. `ai_ever_enabled` e a trava de uma
     // via: o cliente LE, nunca escreve (quem a forca e o trigger projects_ai_guard).
     async getProjectFlags(pid){
-      try{ const r = await sb.from('projects').select('blind,restrict_docs,restrict_ai,ai_ever_enabled').eq('id',pid).maybeSingle();
+      try{ const r = await sb.from('projects').select('blind,restrict_docs,restrict_ai,ai_ever_enabled,snapshots_auto').eq('id',pid).maybeSingle();
            return r.data ? { blind:!!r.data.blind, restrict_docs:!!r.data.restrict_docs,
-                             restrict_ai:r.data.restrict_ai||'none', ai_ever_enabled:!!r.data.ai_ever_enabled } : null; }catch(e){ return null; }
+                             restrict_ai:r.data.restrict_ai||'none', ai_ever_enabled:!!r.data.ai_ever_enabled, snapshots_auto:r.data.snapshots_auto!==false } : null; }catch(e){ return null; }
     },
     // o MEMBRO recebe so a propria distribuicao (policy assignments_select); o admin, o plano inteiro
     async listAssignments(pid){ try{ return must(await sb.from('assignments').select('document_id,user_id').eq('project_id',pid)); }catch(e){ return []; } },
@@ -12553,6 +12774,25 @@ function SupabaseStore(sb){
       try{ const r = await sb.from('activity').select('id').eq('project_id',pid).limit(1); if(!r.error && !(r.data||[]).length) rows.unshift(activityCloudRow(pid, activityEntry({ op:'trail_started' }, ctx))); }catch(e){}
       return bulkWrite('activity', rows, { chunk:200 });
     },
+    /* ESPELHAR BASE — metadado na tabela `snapshots` (listar sem baixar o bucket), retrato no bucket
+       `snapshots` (objeto `<project_id>/<id>.json`; as policies casam por split_part(name,'/',1)).
+       Bucket PROPRIO porque as do `pdfs` casam por documents.id. NAO passa pela fila: e gesto
+       explicito (ou o automatico antes de uma exclusao) e pesado — falha volta ao chamador como
+       erro, que decide (o automatico vira aviso e a operacao segue; o manual vira banner). O objeto
+       sobe ANTES da linha, e uma linha recusada apaga o objeto: linha sem retrato seria um espelho
+       que nao restaura, e retrato sem linha e sobra que ninguem lista. */
+    async listSnapshots(pid){ return must(await sb.from('snapshots').select('*').eq('project_id',pid).order('at',{ ascending:false })); },
+    async createSnapshot(pid, meta, json){
+      const path = `${pid}/${meta.id}.json`;
+      const up = await sb.storage.from('snapshots').upload(path, new Blob([json],{ type:'application/json' }), { upsert:true, contentType:'application/json' });
+      if(up.error) throw up.error;
+      const row = { id:meta.id, project_id:pid, at:meta.at, reason:meta.reason, before:meta.before||null, label:meta.label||null, size:meta.size||0, counts:meta.counts||{}, created_by:user?.id||null, actor_name:meta.actor_name||name };
+      try{ must(await sb.from('snapshots').insert(row)); }
+      catch(e){ try{ await sb.storage.from('snapshots').remove([path]); }catch(_){} throw e; }
+      return row;
+    },
+    async getSnapshot(pid, id){ const r = await sb.storage.from('snapshots').download(`${pid}/${id}.json`); if(r.error || !r.data) throw (r.error || new Error('espelho ausente')); return JSON.parse(await r.data.text()); },
+    async deleteSnapshot(pid, id){ must(await sb.from('snapshots').delete().eq('id',id).eq('project_id',pid)); try{ await sb.storage.from('snapshots').remove([`${pid}/${id}.json`]); }catch(e){} },
     // sincronizacao ao vivo: dispara onChange a cada alteracao em codings/doc_values do projeto
     realtime(projectId, onChange){
       const ch = sb.channel('qualilab:'+projectId)
@@ -12883,7 +13123,7 @@ function useStoreStatus(store){
    cosmético: membro em projeto cego não pode ficar na Reconciliação nem com "Ver: todos", e o
    servidor já nem manda o dado. O efeito gêmeo do `focusMode` fica na App() de propósito — aquele
    é preferência de UI do admin, não recorte imposto pelo servidor. */
-const FLAGS_INICIAIS = { blind:false, restrict_docs:false, restrict_ai:'none', ai_ever_enabled:false };
+const FLAGS_INICIAIS = { blind:false, restrict_docs:false, restrict_ai:'none', ai_ever_enabled:false, snapshots_auto:true };
 function useProjFlags({ store, project, phase, isAdmin, setViewCoder, setMainView, onError, reloadProject }){
   const [projFlags, setProjFlags] = useState(FLAGS_INICIAIS);
   const [assignments, setAssignments] = useState([]);  // membro recebe só a própria linha (RLS); admin, o plano inteiro
@@ -12914,6 +13154,8 @@ function useProjFlags({ store, project, phase, isAdmin, setViewCoder, setMainVie
      defeito da frase datada, que pressupunha uso anterior. */
   const restrictAi = projFlags.restrict_ai || 'none';
   const aiEverEnabled = !!projFlags.ai_ever_enabled;
+  // ESPELHAR BASE: o automatico antes das irreversiveis, ligado por padrao (ausencia = ligado)
+  const snapshotsAuto = projFlags.snapshots_auto !== false;
   const aiLock = restrictAi === 'all' || (restrictAi === 'members' && !isAdmin);
   // sair da tela de IA em que a pessoa estava — o mesmo desvio do cego, e pelo mesmo motivo:
   // não é cosmético, a tela deixou de existir para ela.
@@ -12942,7 +13184,7 @@ function useProjFlags({ store, project, phase, isAdmin, setViewCoder, setMainVie
   }
 
   return { assignments, assignOpen, setAssignOpen, projBlind, projRestrict, blindLock,
-           restrictAi, aiLock, aiEverEnabled,
+           restrictAi, aiLock, aiEverEnabled, snapshotsAuto,
            changeProjectFlags, toggleAssignment, replaceAssignments };
 }
 
@@ -13633,7 +13875,7 @@ function App(){
      antes daria TDZ. `reloadProject` é arrow de propósito: o `loadProject` só é declarado mais
      abaixo, e lê-lo aqui daria TDZ; dentro da arrow ele só é avaliado quando ela é chamada. */
   const { assignments, assignOpen, setAssignOpen, projBlind, projRestrict, blindLock,
-          restrictAi, aiLock, aiEverEnabled,
+          restrictAi, aiLock, aiEverEnabled, snapshotsAuto,
           changeProjectFlags, toggleAssignment, replaceAssignments } =
     useProjFlags({ store, project, phase, isAdmin, setViewCoder, setMainView,
                    onError: setErr, reloadProject: ()=>loadProject(store, project.id) });
@@ -14271,6 +14513,7 @@ function App(){
     const d = docs.find(x=>x.id===id);
     const n = id===activeId ? codings.length : null; // codings do doc ativo estão no estado; de outro doc, não conta
     if(!confirm(n!=null ? t('confirm.doc.removeN',{name:d?.name||'',n}) : t('confirm.doc.remove',{name:d?.name||''}))) return;
+    await snapshotBefore('document_deleted');   // ESPELHAR BASE: o retrato de antes
     try{
       let nCod = n; if(nCod==null){ try{ nCod = ((await store.listCodings(project.id, id))||[]).length; }catch(e){ nCod = undefined; } }   // TRILHA: o que cai junto
       await store.deleteDocument(id);
@@ -14303,6 +14546,7 @@ function App(){
   async function delCategory(id){
     const cat = cats.find(c=>c.id===id);
     if(!confirm(t('confirm.cat.delete',{name:cat?.name||''}))) return;
+    await snapshotBefore('category_deleted');   // ESPELHAR BASE
     try{
       let nVal; try{ const per = await mapPool(docs, 8, async (d)=> ((await store.getDocValues(d.id))||[]).filter(v=>v.category_id===id).length); nVal = per.reduce((a,x)=>a+(x||0),0); }catch(e){}   // TRILHA
       await store.deleteCategory(id); setCats(x=>x.filter(c=>c.id!==id)); setValues(v=>v.filter(x=>x.category_id!==id));
@@ -14387,6 +14631,7 @@ function App(){
   async function delCode(id){
     // TRILHA: conta o que cai em cascata ANTES de apagar (subarvore + codificacoes de cada no), lendo do
     // store porque a Codificacao nao carrega allCodings; contagem que falhar nao impede o gesto.
+    await snapshotBefore('code_deleted');   // ESPELHAR BASE
     const sub = new Set([id]); let grew = true;
     while(grew){ grew=false; codes.forEach(c=>{ if(c.parent_id && sub.has(c.parent_id) && !sub.has(c.id)){ sub.add(c.id); grew=true; } }); }
     let nCod; try{ const per = await mapPool([...sub], 8, async (cid)=> ((await store.listCodingsByCode(project.id, cid))||[]).length); nCod = per.reduce((a,x)=>a+(x||0),0); }catch(e){}
@@ -14424,6 +14669,7 @@ function App(){
   // vez de fingir classificação. No fim o pai tem filhos e nenhum trecho: virou família.
   async function doConvertToFamily({ parent, childName, keepName, forChild, sel, proprios }){
     let geralName = null;   // TRILHA: o nome do "(geral)", quando ele nasce
+    await snapshotBefore('code_split');   // ESPELHAR BASE
     if(store.beginBatch) store.beginBatch();
     try{
       const filho = await addCode(parent, childName);
@@ -14524,6 +14770,7 @@ function App(){
       const r = remapSpans(oldC, newC, docCodings); updates=r.updates; affected=r.affected;
       if(affected>0 && !window.confirm(t('confirm.edit.affects',{n:affected}))) return;
     }
+    if(contentChanged) await snapshotBefore('text_edited');   // ESPELHAR BASE: so quando o texto muda (renomear nao reancora nada)
     try{
       if(titleChanged) await renameDoc(activeDoc.id, newTitle);
       if(contentChanged){
@@ -14767,6 +15014,60 @@ function App(){
     const withPdf = docs.filter(d=>d.has_pdf);
     await mapPool(withPdf, 8, async (d)=>{ const p = await store.getPdfIndex(d.id); if(p) m[d.id]=packPdfIndex(p); }, onProgress);
     return m;
+  }
+  /* ESPELHAR BASE (ponto de restauracao) — ver dados/espelho.js e to-do/spec-espelhar-base.md.
+     O retrato e o MESMO buildQualilabDb da exportacao, menos a trilha (ela nunca e restaurada: e o
+     registro de que a restauracao aconteceu). Sem PDF nem indice: onde eles mudam (excluir
+     documento, limpar) o restaurado volta sem o original, e a tela diz isso. Poda so os AUTOMATICOS
+     alem do teto; manuais ficam ate alguem excluir. */
+  async function snapshotNow({ reason='manual', before=null, label=null }={}){
+    if(!store?.createSnapshot || !project) return null;
+    const payload = snapshotPayload(await buildQualilabDb());
+    const json = JSON.stringify(payload);
+    const meta = snapshotMeta({ project_id:project.id, reason, before, label, json, db:payload, actor_name:user?.name });
+    const saved = await store.createSnapshot(project.id, meta, json);
+    try{ const list = await store.listSnapshots(project.id); for(const id of snapshotsToPrune(list)) await store.deleteSnapshot(project.id, id); }catch(e){}
+    logAct({ op:'snapshot_created', target_kind:'project', target_id:project.id, detail:{ reason, before, label, size:meta.size, ...meta.counts } });
+    if(reason==='manual') setImportMsg(t('snap.done.created'));
+    return saved || meta;
+  }
+  /* o automatico ANTES de uma operacao irreversivel (MAXQDA): NUNCA lanca e NUNCA aborta a operacao —
+     a pessoa clicou em excluir, nao em espelhar. Falha vira aviso (nao silencio). Coalescido: um por
+     SNAPSHOT_AUTO_MIN_GAP_MS, senao apagar vinte documentos em serie gera vinte retratos, e na nuvem
+     cada um custa duas requisicoes por documento. */
+  async function snapshotBefore(op){
+    if(!store?.createSnapshot || !project || !snapshotsAuto) return null;   // interruptor do projeto (ligado por padrao)
+    try{
+      const list = await store.listSnapshots(project.id);
+      if(!snapshotAutoDue(list)) return null;
+      return await snapshotNow({ reason:'auto', before:op });
+    }catch(e){ setImportMsg(t('snap.warn.autoFailed',{ e:e?.message||e })); return null; }
+  }
+  /* restaurar = REPOR, nao mesclar: espelha o atual antes (o 'backup do atual' do MAXQDA), limpa o
+     material E o que o clearProject preserva de proposito (memos de projeto/config, conversas e
+     memorias de IA), e mescla o retrato num projeto vazio. Os ids nascem novos, como em qualquer
+     merge; a trilha aponta pelo target_name e continua legivel. A declaracao de IA (restrict_ai)
+     nao e tocada: e decisao do projeto, nao do conteudo — o merge ja nao a altera. */
+  async function restoreSnapshot(meta){
+    if(!store?.getSnapshot || !project || !meta) return;
+    setBusy(t('snap.busy.restoring'));
+    try{
+      const db = await store.getSnapshot(project.id, meta.id);
+      if(!db || !Array.isArray(db.documents)) throw new Error('espelho ilegivel');
+      await snapshotNow({ reason:'auto', before:'snapshot_restored' });
+      await store.clearProject(project.id);
+      try{ for(const m of ((await store.listMemos?.(project.id))||[])) await store.deleteMemo(m.id); }catch(e){}
+      try{ for(const r of ((await store.listIaResults?.(project.id))||[])) await store.deleteIaResult(r.id); }catch(e){}
+      try{ for(const r of ((await store.listMemory?.(project.id))||[])) await store.deleteMemory(r.id); }catch(e){}
+      setProgress({ done:0, total:0 });
+      await mergeQualilabDb(snapshotPayload(db), store, project.id, projectMode, (done,total)=>setProgress({ done, total }), undefined, undefined, { via:'restore' });
+      setProgress(null);
+      setActiveId(null); setSel(null); setSelCode(null);
+      await loadProject(store, project.id); await loadMemos(); await loadAll();
+      let date = meta.at; try{ date = new Date(meta.at).toLocaleString(QL_LOCALE()); }catch(e){}
+      logAct({ op:'snapshot_restored', target_kind:'project', target_id:project.id, detail:{ snapshot_at:meta.at, label:meta.label||null, reason:meta.reason, before:meta.before||null } });
+      setBusy(null); setImportMsg(t('snap.done.restored',{ date }));
+    }catch(e){ setProgress(null); setBusy(null); setErr(t('snap.err.restore',{ e:e?.message||e })); }
   }
   // salva o projeto inteiro como um arquivo .qualilab (mesmo formato do FileStore),
   // que pode ser reaberto depois via "abrir .qualilab". Funciona em qualquer modo
@@ -15194,6 +15495,8 @@ function App(){
 
   async function doClearProject(){
     if(!confirm(t('confirm.project.clear'))) return;
+    setBusy(t('snap.busy.creating'));
+    await snapshotBefore('project_cleared');   // ESPELHAR BASE
     setBusy(t('busy.clearing'));
     try{
       const nDocs = docs.length, nCats = cats.length, nCodes = codes.length;   // TRILHA: o que sai, contado antes
@@ -15987,7 +16290,7 @@ function App(){
       ${esquemaTab==='codigos' && html`<${SchemaCodesView} codes=${codes} codeById=${codeById} codePath=${codePath} count=${schemaCodingCount}
              isAdmin=${isAdmin} store=${store} project=${project} reload=${reloadWrite} loadAll=${loadAll}
              allCodings=${allCodings} selCode=${selCode} setSelCode=${setSelCode} onUpd=${updCode} onSetColor=${setCodeColor} onSetSat=${setCodeSat} onSetRedaction=${setCodeRedaction}
-             onAdd=${addCode} onDel=${delCode} onLog=${logAct} />`}
+             onAdd=${addCode} onDel=${delCode} onLog=${logAct} onSnapshot=${snapshotBefore} />`}
       ${esquemaTab==='categorias' && html`<section class="pane left" style="flex:1 1 100%;border-right:none;max-width:none">
         <div class="pane-body scroll">
           <div style="max-width:760px;margin:0 auto" class="section">
@@ -16021,7 +16324,7 @@ function App(){
     : mainView==='ia_codificar' && !aiLock && !readOnly ? html`<div class="split">
       <!-- CODIFICAR AUTOMATICAMENTE: tela inteira (config | resultado). 3 abas de IA (operações
            inline no turno da IA) + a aba "Repetir Codificação", que é mecânica e roda sem IA -->
-      <${IACodificarPanel} project=${project} docs=${docs} codes=${codes} codeById=${codeById} codePath=${codePath} onLog=${logAct}
+      <${IACodificarPanel} project=${project} docs=${docs} codes=${codes} codeById=${codeById} codePath=${codePath} onLog=${logAct} onSnapshot=${snapshotBefore}
         store=${store} allCodings=${allCodings} count=${schemaCodingCount} isAdmin=${isAdmin}
         cats=${cats} allValues=${allValues} projectMode=${projectMode} user=${user}
         reload=${reloadWrite} loadAll=${loadAll} onAdd=${addCode} memos=${memos} onSetMemo=${saveMemo}
@@ -16304,6 +16607,8 @@ function App(){
     onClose=${()=>setProjEdit(false)} onSetMode=${changeProjectMode}
     onSetRole=${changeMemberRole} onRemoveMember=${removeMember}
     onRename=${renameProject} onClear=${()=>{ setProjEdit(false); doClearProject(); }} onDelete=${deleteProject}
+    onSnapshot=${(label)=>snapshotNow({ reason:'manual', label })} onRestoreSnapshot=${(m)=>{ setProjEdit(false); restoreSnapshot(m); }}
+    snapshotsAuto=${snapshotsAuto} onSetSnapshotsAuto=${(v)=>changeProjectFlags({ snapshotsAuto:v })}
     onSaveCloud=${connectCustomCloud}
     onClearCloud=${()=>{ /* desconectar = modo local de verdade (FORCE_LOCAL); mantem url/key salvas pra reconectar facil */ try{localStorage.setItem('qualilab:forcelocal','1');localStorage.removeItem('qualilab:project');}catch(e){} location.reload(); }}
     onResetCloud=${()=>{ /* volta ao servidor padrao: descarta as credenciais pessoais */ try{localStorage.removeItem('qualilab:url');localStorage.removeItem('qualilab:key');localStorage.removeItem('qualilab:project');localStorage.removeItem('qualilab:forcelocal');}catch(e){} location.reload(); }}
@@ -17157,11 +17462,59 @@ function InvitesCard({ store, project, isAdmin }){
   </div>`;
 }
 
+/* ESPELHAR BASE — o cartao dos espelhos (lista + espelhar agora + restaurar/excluir). Autocontido como o
+   InvitesCard: le a lista do store ao montar e depois de cada gesto proprio, zero useState na App().
+   Quem CRIA e RESTAURA e a App (buildQualilabDb e o merge moram la); aqui so o gesto e a lista.
+   Sem botao destrutivo para quem nao e admin (ve a lista, e so). Linhas de texto: data, motivo
+   (manual com rotulo, ou automatico e antes de que), contagens e tamanho. */
+function SnapshotsCard({ store, project, isAdmin, onSnapshot, onRestore, autoOn, onSetAuto }){
+  const [list,setList]=useState(null);
+  const [err,setErr]=useState(null);
+  const [label,setLabel]=useState('');
+  const [busy,setBusy]=useState(false);
+  const load = async ()=>{ try{ setList(snapshotsSorted((await store.listSnapshots(project.id))||[])); setErr(null); }catch(e){ setList([]); setErr(String(e?.message||e)); } };
+  useEffect(()=>{ load(); }, [store, project?.id]);
+  const fmt = (iso)=>{ try{ return new Date(iso).toLocaleString(QL_LOCALE()); }catch(e){ return String(iso||''); } };
+  const create = async ()=>{ setBusy(true); try{ await onSnapshot?.(label.trim()||null); setLabel(''); await load(); }catch(e){ setErr(t('snap.err.create',{e:e?.message||e})); } finally{ setBusy(false); } };
+  const del = async (m)=>{ if(!confirm(t('snap.confirm.delete'))) return; setBusy(true); try{ await store.deleteSnapshot(project.id, m.id); await load(); }catch(e){ setErr(String(e?.message||e)); } finally{ setBusy(false); } };
+  const restore = (m)=>{ if(!confirm(t('snap.confirm.restore',{ date:fmt(m.at) }))) return; onRestore?.(m); };
+  return html`<div class="card" style="margin-bottom:12px" data-snapshots>
+    <div class="field-label">${t('snap.title')}</div>
+    <p class="hint" style="margin:0 0 6px">${t('snap.hint',{ gap:Math.round(SNAPSHOT_AUTO_MIN_GAP_MS/60000), keep:SNAPSHOT_AUTO_KEEP })}</p>
+    <p class="meta" style="margin:0 0 8px">${t('snap.notKept')}</p>
+    ${/* O INTERRUPTOR DO AUTOMATICO (pedido do autor, 03/set): ligado por padrao, e o custo em tamanho
+        dito ao lado — quem desliga sabe o que perde. E flag do PROJETO (set_project_flags), nao do
+        navegador: no modo arquivo e o proprio .qualilab que cresce, e a decisao viaja com ele. */''}
+    <label class="row" style="gap:8px;align-items:flex-start;margin:0 0 10px;cursor:pointer" data-snapshots-auto>
+      <input type="checkbox" checked=${autoOn} disabled=${!isAdmin} onChange=${e=>onSetAuto?.(e.target.checked)} style="margin-top:3px" />
+      <span><b>${t('snap.auto.toggle')}</b><br/><span class="meta">${t('snap.auto.cost',{ keep:SNAPSHOT_AUTO_KEEP })}</span></span>
+    </label>
+    ${isAdmin ? html`<div class="row" style="gap:6px;margin-bottom:10px;flex-wrap:wrap">
+      <input class="txtin" style="flex:1 1 160px" value=${label} maxlength=${SNAPSHOT_LABEL_MAX} placeholder=${t('snap.label.ph')} onInput=${e=>setLabel(e.target.value)} />
+      <button class="btn sm primary" disabled=${busy} onClick=${create}>${t('snap.now')}</button>
+    </div>` : html`<p class="meta" style="margin:0 0 8px">${t('snap.adminOnly')}</p>`}
+    ${err && html`<div class="banner err" style="margin:0 0 8px">${t('snap.err.list',{e:err})}</div>`}
+    ${list && !list.length && html`<p class="meta" style="margin:0">${t('snap.none')}</p>`}
+    ${list && list.length>0 && html`<ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px">
+      ${list.map(m=>html`<li key=${m.id} class="row" style="gap:8px;align-items:flex-start;flex-wrap:wrap" data-snapshot=${m.id}>
+        <div style="flex:1 1 220px;min-width:0">
+          <div><b>${fmt(m.at)}</b> · ${m.reason==='auto' ? t('snap.auto',{ op:activityOpLabel(m.before) }) : (m.label ? m.label : t('snap.manual'))}</div>
+          <div class="meta">${t('snap.counts',{ d:(m.counts||{}).documents||0, c:(m.counts||{}).codes||0, k:(m.counts||{}).codings||0, m:(m.counts||{}).memos||0 })} · ${snapshotSizeText(m.size)} · ${m.actor_name||''}</div>
+        </div>
+        ${isAdmin && html`<div class="row" style="gap:6px">
+          <button class="btn sm" disabled=${busy} onClick=${()=>restore(m)}>${t('snap.restore')}</button>
+          <button class="btn sm ghost" style="color:var(--danger)" disabled=${busy} onClick=${()=>del(m)}>${t('snap.delete')}</button>
+        </div>`}
+      </li>`)}
+    </ul>`}
+  </div>`;
+}
 function ProjectModal({ store, mode, user, project, projectMode, isAdmin, members, hasDocs,
                         canAssign, onOpenAssign, blind, restrict, nAssignments, restrictAi, onSetAi,
                         onClose, onSetMode, onSetRole, onRemoveMember, onRename, onClear, onDelete,
                         onSaveCloud, onClearCloud, onResetCloud, onReconnectCloud, canFolderBackup, backupStatus, onEnableFolderBackup, onDisableFolderBackup,
-                        canSaveAsFile, onSaveAsFile, canLeaveFile, onLeaveFile, canSendToCloud, onOpenSendToCloud, storeMode }){
+                        canSaveAsFile, onSaveAsFile, canLeaveFile, onLeaveFile, canSendToCloud, onOpenSendToCloud, storeMode,
+                        onSnapshot, onRestoreSnapshot, snapshotsAuto, onSetSnapshotsAuto }){
   const [sel,setSel]=useState(projectMode);
   const [pname,setPname]=useState(project?.name||'');
   const [copied,setCopied]=useState(false);
@@ -17300,6 +17653,9 @@ function ProjectModal({ store, mode, user, project, projectMode, isAdmin, member
         ${!restrict && !blind && html`<span class="meta">${nAssignments>0?t('proj.plan',{n:nAssignments}):t('proj.noRestrict')}</span>`}
       </div>
     </div>`}
+
+    <!-- ESPELHOS DO PROJETO (ponto de restauracao) — antes da zona de perigo, porque e a resposta a ela -->
+    ${store?.listSnapshots && html`<${SnapshotsCard} store=${store} project=${project} isAdmin=${isAdmin} onSnapshot=${onSnapshot} onRestore=${onRestoreSnapshot} autoOn=${snapshotsAuto!==false} onSetAuto=${onSetSnapshotsAuto} />`}
 
     <!-- NOME + ZONA DE PERIGO (admin) -->
     ${isAdmin && html`<div class="card" style="margin-bottom:12px">
@@ -19840,7 +20196,7 @@ function OcrReviewModal({ text, img, onApply, onCancel }){
    Reaproveita RenameCode (definido mais abaixo, perto de TreeNode) mas NAO toca em
    CodesPanel/TreeNode — o painel da tela de Codificacao continua intocado de proposito. */
 function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, project, reload, loadAll,
-                            allCodings, selCode, setSelCode, onUpd, onSetColor, onSetSat, onSetRedaction, onAdd, onDel, onLog }){
+                            allCodings, selCode, setSelCode, onUpd, onSetColor, onSetSat, onSetRedaction, onAdd, onDel, onLog, onSnapshot }){
   const [query, setQuery] = useState('');
   const [splitCode, setSplitCode] = useState(null);   // id do código aberto na tela de divisão
   const [groupConfirm, setGroupConfirm] = useState(null); // agrupar num alvo que tem trechos próprios
@@ -20024,6 +20380,7 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
       const survivor = codeById[survivorId];
       if(store.beginBatch) store.beginBatch();
       try{
+        await onSnapshot?.('codes_merged');   // ESPELHAR BASE: o retrato de antes (dentro do try: falha nao lanca, o helper avisa)
         // 1) reatribui as codificacoes dos mesclados pro sobrevivente. moveCodings preserva o id
         // de cada linha — e com ele a nota de trecho —, entao a migracao manual de memos que
         // existia aqui saiu junto com o addCoding+deleteCoding. Ver a nota na propria funcao.
@@ -20104,7 +20461,7 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
   // a divisão é drill-in: ocupa a área inteira e volta, em vez de virar mais uma coluna espremida
   if(splitCode && codeById[splitCode]) return html`<${SplitCodeView}
     code=${codeById[splitCode]} codings=${allCodings.filter(c=>c.code_id===splitCode)}
-    store=${store} project=${project} onAdd=${onAdd} isAdmin=${isAdmin} onLog=${onLog}
+    store=${store} project=${project} onAdd=${onAdd} isAdmin=${isAdmin} onLog=${onLog} onSnapshot=${onSnapshot}
     onCancel=${()=>setSplitCode(null)}
     onDone=${async()=>{ setSplitCode(null); clearSelection(); await reload(); await loadAll(); }} />`;
 
@@ -20562,7 +20919,7 @@ function reconcileGroups(indiv){
    O que NAO copiamos: "manter codificado com o codigo original". Aqui o codigo que ganha filhos
    vira familia e nao recebe trechos — deixar a opcao seria oferecer o no misto de volta. O lugar
    do que nao se quis classificar e o "(geral)", que REGISTRA a pendencia. */
-function SplitCodeView({ code, codings, store, project, onAdd, isAdmin, onCancel, onDone, onLog }){
+function SplitCodeView({ code, codings, store, project, onAdd, isAdmin, onCancel, onDone, onLog, onSnapshot }){
   const [names,setNames] = useState(['','']);
   const [grid,setGrid] = useState({});           // codingId -> Set de indices de coluna
   const [exclusive,setExclusive] = useState(false);
@@ -20584,7 +20941,8 @@ function SplitCodeView({ code, codings, store, project, onAdd, isAdmin, onCancel
   async function apply(){
     setErr(''); setBusy(true);
     try{
-      if(store.beginBatch) store.beginBatch();
+      await onSnapshot?.('code_split');   // ESPELHAR BASE
+    if(store.beginBatch) store.beginBatch();
       try{
         const criados = [];
         for(const {s} of validCols) criados.push({ col:null, code: await onAdd(code, s) });
@@ -21334,7 +21692,7 @@ function ActivityPanel({ activity, error, onReload }){
     project_cleared:t('act.lbl.project_cleared'), text_edited:t('act.lbl.text_edited'), bulk_coding:t('act.lbl.bulk_coding'),
     reconcile:t('act.lbl.reconcile'), mode_changed:t('act.lbl.mode_changed'), flags_changed:t('act.lbl.flags_changed'),
     project_renamed:t('act.lbl.project_renamed'), member_joined:t('act.lbl.member_joined'),
-    member_removed:t('act.lbl.member_removed'), role_changed:t('act.lbl.role_changed'), export:t('act.lbl.export'),
+    member_removed:t('act.lbl.member_removed'), role_changed:t('act.lbl.role_changed'), export:t('act.lbl.export'), snapshot_created:t('act.lbl.snapshot_created'), snapshot_restored:t('act.lbl.snapshot_restored'),
   };
   // so as operacoes que EXISTEM na trilha entram no seletor, na ordem do catalogo
   const opsPresentes = ACTIVITY_OPS.filter(o=> all.some(e=>e.op===o));
@@ -24708,7 +25066,7 @@ function useOcrToggle(store, docs, docIds){
   return { includeOcr, info, maskByDoc, note, card, provLine };
 }
 
-function IAOrganizarPanel({ onLog, project, docs, codes, codeById, codePath, store, allCodings, count, isAdmin, reload, loadAll, onAdd, memos, onSetMemo, memory, onAddMemory, onToggleMemory, onDeleteMemory, tab, setTab, TABS }){
+function IAOrganizarPanel({ onLog, onSnapshot, project, docs, codes, codeById, codePath, store, allCodings, count, isAdmin, reload, loadAll, onAdd, memos, onSetMemo, memory, onAddMemory, onToggleMemory, onDeleteMemory, tab, setTab, TABS }){
   // history: a conversa inteira. Cada turno de IA carrega seus PROPRIOS dados estruturados
   // (operacoes ja traduzidas+validadas, resumo, memorias propostas, flags) — assim as operacoes
   // aparecem INLINE no balao da IA. So o ultimo turno de IA fica acionavel; os anteriores/aplicados
@@ -24968,6 +25326,7 @@ function IAOrganizarPanel({ onLog, project, docs, codes, codeById, codePath, sto
   // ---- APLICAR operacoes aprovadas (reusa a logica de SchemaCodesView, sobre um modelo de
   // trabalho local pra nao depender de re-render entre operacoes; reload/loadAll no fim) ----
   async function applyApproved(turnIdx){
+    await onSnapshot?.('bulk_coding');   // ESPELHAR BASE: o lote mescla/reparenta/exclui codigos — retrato de antes
     if(!isAdmin){ setErr('Apenas administradores podem alterar o esquema de códigos.'); return; }
     const turn = history[turnIdx]; if(!turn) return;
     const ops = turn.ops || [];
