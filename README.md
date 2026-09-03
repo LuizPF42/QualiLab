@@ -118,9 +118,10 @@ Uma linha por recurso: aqui é o inventário. O **passo a passo** de cada um est
 | Recurso | O que é |
 |---|---|
 | **Camadas** | cada pesquisador codifica na sua (`individual`); a equipe consolida um gabarito (`final`) na Reconciliação. Vale também para as respostas de categoria |
-| **Papéis** | admin e membro, **impostos pelo servidor** (RLS), não escondidos na interface: excluir documento ou código, editar texto compartilhado, mesclar códigos e importar exigem admin |
+| **Papéis** | admin, membro e somente-leitura, **impostos pelo servidor** (RLS), não escondidos na interface: excluir documento ou código, editar texto compartilhado, mesclar códigos e importar exigem admin. Quem é somente-leitura ainda **comenta**: escreve memo, que é o gesto de quem revisa |
 | **Distribuição de documentos** | matriz documentos × pesquisadores, com rodízio: cada um só **enxerga** o que lhe foi atribuído |
 | **Codificação cega** | cada um só enxerga o **próprio** trabalho (o gabarito também some). Com o mesmo documento para duas pessoas, o estudo fica duplo-cego |
+| **Verbete travado** | só a administração edita a definição dos códigos, para o instrumento não mudar no meio de uma rodada de calibração. Ler continua livre |
 | **Tipos de projeto** | individual (tudo vai direto ao gabarito) ou coletivo |
 | **Tempo real** | codificações e respostas de categoria sincronizam ao vivo; esquema de códigos e categorias exigem recarregar |
 | **Onde os dados ficam** | arquivo no disco, rascunho no navegador ou nuvem — trocar entre eles é um clique no hub do projeto, sem exportar e importar à mão |

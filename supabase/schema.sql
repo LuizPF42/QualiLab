@@ -42,6 +42,19 @@ alter table public.projects add column if not exists restrict_ai text not null d
 -- padrao (pedido do autor, 03/set/2026): quem desliga sabe o que perde, e a tela diz o custo em
 -- tamanho. Decisao do PROJETO, como restrict_ai — muda pelo set_project_flags (admin) e fica na trilha.
 alter table public.projects add column if not exists snapshots_auto boolean not null default true;
+-- TRAVAR O VERBETE DOS CODIGOS (set/2026). O memo de escopo 'code' e a DEFINICAO do codigo — a
+-- rubrica que o codificador segue e que o prompt da IA recebe. Num estudo de validacao ele e o
+-- INSTRUMENTO: reescrito no meio da rodada, as codificacoes de antes e de depois deixam de ser
+-- comparaveis e NADA na tela denuncia (as duas metades continuam parecendo a mesma tarefa; o
+-- trigger memos_provenance so guarda QUEM editou por ULTIMO, ou seja serve para descobrir
+-- depois, nunca para impedir).
+-- POR QUE UMA FLAG, e nao tirar 'code' do memo_is_note: aquela funcao existe para o VIEWER
+-- COMENTAR, e memo de codigo e comentario legitimo na maioria dos projetos — fechar para todo
+-- mundo cobraria de todos por um risco que so existe enquanto uma rodada esta em campo. Ligada,
+-- a escrita vai para ADMIN (nao para can_edit): a trava serve justamente contra o membro que
+-- codifica, que e quem tem o instrumento aberto na tela.
+-- Default FALSE: projeto que ja existia nao muda de comportamento.
+alter table public.projects add column if not exists restrict_code_memos boolean not null default false;
 alter table public.projects drop constraint if exists projects_restrict_ai_check;
 alter table public.projects add constraint projects_restrict_ai_check check (restrict_ai in ('none','members','all'));
 -- TRAVA DE UMA VIA. Existe porque o interruptor e REVERSIVEL, e a reversibilidade abre exatamente
@@ -224,6 +237,12 @@ $$;
 create or replace function public.memo_is_note(p_scope text)
 returns boolean language sql immutable set search_path = public as $$
   select p_scope in ('project','document','code','coding');
+$$;
+
+-- a trava do verbete esta ligada neste projeto? (ver o comentario da coluna restrict_code_memos)
+create or replace function public.code_memos_locked(p_project uuid)
+returns boolean language sql security definer stable set search_path = public as $$
+  select coalesce((select pr.restrict_code_memos from public.projects pr where pr.id = p_project), false);
 $$;
 
 -- ---------- RPCs ----------
@@ -689,7 +708,10 @@ drop function if exists public.set_project_flags(uuid,boolean,boolean);
 -- ASSINATURA MUDOU DE NOVO (espelhar base, set/2026): + p_snapshots_auto. Cliente velho chama com os
 -- quatro nomes e o quinto cai no default (null = nao mexe), entao nada quebra em cache.
 drop function if exists public.set_project_flags(uuid,boolean,boolean,text);
-create or replace function public.set_project_flags(p_project uuid, p_blind boolean default null, p_restrict boolean default null, p_restrict_ai text default null, p_snapshots_auto boolean default null)
+-- ASSINATURA MUDOU DE NOVO (trava do verbete, set/2026): + p_restrict_code_memos. Cliente velho
+-- chama com os cinco nomes e o sexto cai no default (null = nao mexe).
+drop function if exists public.set_project_flags(uuid,boolean,boolean,text,boolean);
+create or replace function public.set_project_flags(p_project uuid, p_blind boolean default null, p_restrict boolean default null, p_restrict_ai text default null, p_snapshots_auto boolean default null, p_restrict_code_memos boolean default null)
 returns public.projects language plpgsql security definer set search_path = public as $$
 declare v_proj public.projects; v_old public.projects; v_detail jsonb := '{}'::jsonb;
 begin
@@ -704,7 +726,8 @@ begin
          -- chamada parcial de blind/restrict nao pode falhar por causa de um terceiro campo)
          restrict_ai   = case when p_restrict_ai in ('none','members','all') then p_restrict_ai
                               else restrict_ai end,
-         snapshots_auto = coalesce(p_snapshots_auto, snapshots_auto)
+         snapshots_auto = coalesce(p_snapshots_auto, snapshots_auto),
+         restrict_code_memos = coalesce(p_restrict_code_memos, restrict_code_memos)
    where id = p_project
    returning * into v_proj;
   -- TRILHA (S4): so as chaves que MUDARAM, cada uma com de/para (aviso que nao corresponde a
@@ -721,6 +744,9 @@ begin
   if v_proj.snapshots_auto is distinct from v_old.snapshots_auto then
     v_detail := v_detail || jsonb_build_object('snapshots_auto', jsonb_build_object('from', v_old.snapshots_auto, 'to', v_proj.snapshots_auto));
   end if;
+  if v_proj.restrict_code_memos is distinct from v_old.restrict_code_memos then
+    v_detail := v_detail || jsonb_build_object('restrict_code_memos', jsonb_build_object('from', v_old.restrict_code_memos, 'to', v_proj.restrict_code_memos));
+  end if;
   if v_detail <> '{}'::jsonb then
     perform public.log_activity(p_project, 'flags_changed', 'project', p_project, null, null, v_detail);
   end if;
@@ -736,7 +762,7 @@ grant execute on function public.remove_member(uuid,uuid)         to anon, authe
 grant execute on function public.rename_project(uuid,text)        to anon, authenticated;
 grant execute on function public.delete_project(uuid)             to anon, authenticated;
 grant execute on function public.set_project_mode(uuid,text,text) to anon, authenticated;
-grant execute on function public.set_project_flags(uuid,boolean,boolean,text,boolean) to anon, authenticated;
+grant execute on function public.set_project_flags(uuid,boolean,boolean,text,boolean,boolean) to anon, authenticated;
 grant execute on function public.create_invite(uuid,text,text,int,int) to anon, authenticated;
 grant execute on function public.list_invites(uuid)                   to anon, authenticated;
 grant execute on function public.revoke_invite(uuid)                  to anon, authenticated;
@@ -984,11 +1010,18 @@ drop policy if exists memos_select on public.memos;
 drop policy if exists memos_write on public.memos;
 create policy memos_select on public.memos for select
   using (public.is_member(project_id) and public.memo_visible(project_id, scope, target_id));
+-- A TRAVA DO VERBETE entra como um CASE, e nao como mais um OR: com a flag ligada o escopo
+-- 'code' sai do ramo do viewer E do ramo do membro de uma vez (admin, e so). Nao encosta no
+-- SELECT — quem le e a memos_select, ao lado, e policies permissivas se somam em OR.
 create policy memos_write on public.memos for all
   using (public.is_member(project_id) and public.memo_visible(project_id, scope, target_id)
-         and (public.can_edit(project_id) or public.memo_is_note(scope)))
+         and (case when scope = 'code' and public.code_memos_locked(project_id)
+                   then public.is_admin(project_id)
+                   else public.can_edit(project_id) or public.memo_is_note(scope) end))
   with check (public.is_member(project_id) and public.memo_visible(project_id, scope, target_id)
-         and (public.can_edit(project_id) or public.memo_is_note(scope)));
+         and (case when scope = 'code' and public.code_memos_locked(project_id)
+                   then public.is_admin(project_id)
+                   else public.can_edit(project_id) or public.memo_is_note(scope) end));
 alter table public.memos add column if not exists updated_by uuid;
 create or replace function public.memos_provenance()
 returns trigger language plpgsql security definer set search_path = public as $$

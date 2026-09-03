@@ -913,7 +913,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.52';
+const QUALILAB_VERSION = '1.4.53';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -2316,6 +2316,7 @@ const MSG_PT = {
   'docs.sort.count': 'nº de trechos',
   'docs.group': 'agrupar',
   'docs.group.none': '(nenhum)',
+  'docs.group.loading': 'carregando as categorias…',
   'docs.empty': 'Nenhum documento no projeto.',
   'docs.noMatch': 'Nenhum documento com esse nome.',
   'docs.total': '{n} documento(s)',
@@ -2450,6 +2451,7 @@ const MSG_PT = {
   'cat.expand': 'Expandir esta categoria',
   'cat.noAnswer': 'sem resposta',
   'cat.reference': 'Gabarito',
+  'cat.inherited.tip': '{value} — valor do gabarito. Você ainda não respondeu esta categoria.',
   'cat.manage': 'Gerenciar esquema de categorias',
   'cat.unsaved': 'alterações não salvas',
   'cat.add': '＋ Nova categoria',
@@ -2480,6 +2482,8 @@ const MSG_PT = {
   'codes.aria': 'Códigos hierárquicos',
   'codes.empty': 'Nenhum código ainda. Comece por uma família.',
   'codes.keys': 'Botão direito num código: editar ou criar subcódigo, inclusive com um trecho selecionado. Pelo teclado: ↑↓ percorre, ←→ fecha/abre, Enter seleciona ou aplica.',
+  'codes.memo': 'Verbete do código',
+  'codes.memo.edit': 'Em leitura. Para editar, abra a aba ▤ Memos deste painel.',
   'fam.title': '"{name}" vai virar família',
   'fam.hint': 'Uma família agrupa subcódigos e **não recebe trechos**. Este código tem **{n} trecho(s)** próprios: diga para onde eles vão.',
   'fam.childName': 'Nome do subcódigo que você está criando',
@@ -2513,6 +2517,7 @@ const MSG_PT = {
   'memo.ph': 'Escreva aqui suas anotações analíticas, definições, decisões metodológicas…',
   'memo.saving': 'salvando…',
   'memo.autosaved': 'salvo automaticamente',
+  'memo.locked': 'Travado: neste projeto só a administração edita o verbete dos códigos.',
   'memo.delPrompt': '🗑 Excluir prompt',
   'memo.delPrompt.ask': 'Excluir este prompt salvo?',
   'minimap.tip': 'Mapa do documento: grifos e ocorrências da busca. Clique para ir.',
@@ -2523,6 +2528,8 @@ const MSG_PT = {
   'assign.restrict.sub': 'Documento sem ninguém atribuído fica só com os administradores. Desligado, todos veem o corpus inteiro.',
   'assign.blind': '**Codificação cega (true blind)**: cada pesquisador só enxerga as **próprias** codificações e respostas.',
   'assign.blind.sub': 'Para confiabilidade entre codificadores, atribua o MESMO documento a duas pessoas. Enquanto estiver ligado, o gabarito também fica oculto para os membros (revelá-lo no meio do estudo contamina). Desligue para reconciliar em conjunto. Administradores continuam vendo tudo.',
+  'assign.codeMemos': '**Travar o verbete dos códigos**: só a administração edita a definição de cada código.',
+  'assign.codeMemos.sub': 'O verbete é o instrumento do estudo. Reescrito no meio de uma rodada, as codificações de antes e as de depois deixam de ser comparáveis — e nada na tela denuncia. Ler continua livre para todo mundo.',
   'assign.server': 'O servidor é quem aplica as duas regras, não a tela: um membro não alcança o que está oculto nem pela API. Quem já estiver com o projeto aberto vê a mudança ao recarregar.',
   'assign.oneMember': 'Só há um membro neste projeto. Convide colaboradores (código de acesso no hub do projeto) para distribuir documentos.',
   'assign.counts': '{docs} documento(s) · {people} pesquisador(es) · ',
@@ -2624,6 +2631,8 @@ const MSG_PT = {
   'proj.restrictPill': 'distribuição restritiva',
   'proj.restrictPill.tip': 'Cada pesquisador só enxerga os documentos atribuídos a ele',
   'proj.blindPill': 'cega',
+  'proj.codeMemosPill': 'verbete travado',
+  'proj.codeMemosPill.tip': 'Só a administração edita a definição dos códigos neste projeto.',
   'proj.blindPill.tip': 'Cada pesquisador só enxerga as próprias codificações',
   'proj.plan': '{n} atribuição(ões), como plano de trabalho',
   'proj.noRestrict': 'sem restrição: todos veem tudo',
@@ -3195,6 +3204,8 @@ const MSG_PT = {
   'act.flag.restrictOff': 'distribuição restrita desligada',
   'act.flag.ai': 'recursos de IA {v}',
   'act.flag.autoSnapOn': 'espelho automático ligado',
+  'act.flag.codeMemosOn': 'verbete dos códigos travado',
+  'act.flag.codeMemosOff': 'verbete dos códigos liberado',
   'act.flag.autoSnapOff': 'espelho automático desligado',
   'act.op.project_renamed': 'Projeto renomeado para {to}{from}.',
   'act.op.member_joined': '{who} entrou no projeto como {role}.',
@@ -4527,6 +4538,7 @@ const MSG_EN = {
   'docs.sort.count': 'no. of passages',
   'docs.group': 'group',
   'docs.group.none': '(none)',
+  'docs.group.loading': 'loading attributes…',
   'docs.empty': 'No documents in this project.',
   'docs.noMatch': 'No document with that name.',
   'docs.total': '{n} document(s)',
@@ -4661,6 +4673,7 @@ const MSG_EN = {
   'cat.expand': 'Expand this attribute',
   'cat.noAnswer': 'no answer',
   'cat.reference': 'Reference',
+  'cat.inherited.tip': '{value} — value from the reference layer. You have not answered this attribute yet.',
   'cat.manage': 'Manage the attribute scheme',
   'cat.unsaved': 'unsaved changes',
   'cat.add': '＋ New attribute',
@@ -4691,6 +4704,8 @@ const MSG_EN = {
   'codes.aria': 'Hierarchical codes',
   'codes.empty': 'No codes yet. Start with a family.',
   'codes.keys': 'Right-click a code: edit it or create a subcode, including with a passage selected. From the keyboard: ↑↓ moves, ←→ closes/opens, Enter selects or applies.',
+  'codes.memo': 'Code definition',
+  'codes.memo.edit': 'Read-only here. To edit it, open the ▤ Memos tab of this panel.',
   'fam.title': '“{name}” is about to become a family',
   'fam.hint': 'A family groups subcodes and **takes no passages**. This code has **{n} passage(s)** of its own: say where they go.',
   'fam.childName': 'Name of the subcode you are creating',
@@ -4724,6 +4739,7 @@ const MSG_EN = {
   'memo.ph': 'Write your analytic notes, definitions and methodological decisions here…',
   'memo.saving': 'saving…',
   'memo.autosaved': 'saved automatically',
+  'memo.locked': 'Locked: in this project only admins edit code definitions.',
   'memo.delPrompt': '🗑 Delete prompt',
   'memo.delPrompt.ask': 'Delete this saved prompt?',
   'minimap.tip': 'Map of the document: highlights and search matches. Click to jump.',
@@ -4734,6 +4750,8 @@ const MSG_EN = {
   'assign.restrict.sub': 'A document with nobody assigned is left to the admins only. Turned off, everyone sees the whole corpus.',
   'assign.blind': '**Blind coding (true blind)**: each researcher only sees their **own** codings and answers.',
   'assign.blind.sub': 'For inter-coder reliability, assign the SAME document to two people. While it is on, the reference layer is hidden from members too (revealing it mid-study contaminates). Turn it off to reconcile together. Admins keep seeing everything.',
+  'assign.codeMemos': '**Lock code definitions**: only admins edit what each code means.',
+  'assign.codeMemos.sub': 'The definition is the instrument of the study. Rewritten mid-round, the codings made before and after stop being comparable — and nothing on screen says so. Reading stays open to everyone.',
   'assign.server': 'It is the server that enforces both rules, not the screen: a member cannot reach what is hidden, not even through the API. Anyone with the project already open sees the change on reload.',
   'assign.oneMember': 'There is only one member in this project. Invite collaborators (the access code is in the project hub) in order to assign documents.',
   'assign.counts': '{docs} document(s) · {people} researcher(s) · ',
@@ -4835,6 +4853,8 @@ const MSG_EN = {
   'proj.restrictPill': 'restrictive assignment',
   'proj.restrictPill.tip': 'Each researcher only sees the documents assigned to them',
   'proj.blindPill': 'blind',
+  'proj.codeMemosPill': 'definitions locked',
+  'proj.codeMemosPill.tip': 'Only admins edit code definitions in this project.',
   'proj.blindPill.tip': 'Each researcher only sees their own codings',
   'proj.plan': '{n} assignment(s), as a work plan',
   'proj.noRestrict': 'no restriction: everyone sees everything',
@@ -5406,6 +5426,8 @@ const MSG_EN = {
   'act.flag.restrictOff': 'restricted assignment turned off',
   'act.flag.ai': 'AI features {v}',
   'act.flag.autoSnapOn': 'automatic mirror on',
+  'act.flag.codeMemosOn': 'code definitions locked',
+  'act.flag.codeMemosOff': 'code definitions unlocked',
   'act.flag.autoSnapOff': 'automatic mirror off',
   'act.op.project_renamed': 'Project renamed to {to}{from}.',
   'act.op.member_joined': '{who} joined the project as {role}.',
@@ -11373,6 +11395,7 @@ function activityText(e){
       if(d.restrict_docs) p.push(d.restrict_docs.to ? t('act.flag.restrictOn') : t('act.flag.restrictOff'));
       if(d.restrict_ai)   p.push(t('act.flag.ai', { v: activityAiLabel(d.restrict_ai.to) }));
       if(d.snapshots_auto) p.push(d.snapshots_auto.to ? t('act.flag.autoSnapOn') : t('act.flag.autoSnapOff'));
+      if(d.restrict_code_memos) p.push(d.restrict_code_memos.to ? t('act.flag.codeMemosOn') : t('act.flag.codeMemosOff'));
       return t('act.op.flags_changed', { list: p.join(', ') || t('act.nothing') });
     }
     case 'project_renamed':  return t('act.op.project_renamed', { to: d.to || name, from: d.from ? ' ' + t('act.before', { v: d.from }) : '' });
@@ -11760,14 +11783,18 @@ function LocalStore(){
         db.snapshots_auto = to; save();
         if(to!==from) await this.logActivity(pid, { op:'flags_changed', target_kind:'project', target_id:pid, detail:{ snapshots_auto:{ from, to } } });
       }
-      return P({ blind:false, restrict_docs:false, restrict_ai:db.restrict_ai||'none', ai_ever_enabled:!!db.ai_ever_enabled, snapshots_auto:db.snapshots_auto!==false });
+      return P({ blind:false, restrict_docs:false, restrict_ai:db.restrict_ai||'none', ai_ever_enabled:!!db.ai_ever_enabled, snapshots_auto:db.snapshots_auto!==false, restrict_code_memos:false });
     },
     /* AUSENCIA E PRESERVADA AQUI, e coalescida por quem consome (`restrict_ai || 'none'` no
        useProjFlags). Nao e capricho: `null` e a UNICA forma de distinguir "nunca respondeu" de
        "respondeu 'none'", e e disso que o enterLocalOffline precisa para nao refazer a pergunta
        do t0 a cada reentrada no rascunho. Na nuvem a coluna e not null, entao null aqui nunca
        colide com um valor legitimo de la. */
-    async getProjectFlags(){ return P({ blind:false, restrict_docs:false, restrict_ai:db.restrict_ai ?? null, ai_ever_enabled:!!db.ai_ever_enabled, snapshots_auto:db.snapshots_auto!==false }); },
+    // restrict_code_memos NAO existe aqui, e nao e esquecimento: ela governa a EQUIPE (quem
+    // escreve o verbete), e rascunho nao tem equipe — o myRole devolve 'admin'. E a mesma razao
+    // de blind/restrict_docs serem false fixos, e o oposto do restrict_ai, que governa o CORPUS
+    // e por isso viaja (excecao anotada a regra de ouro #5).
+    async getProjectFlags(){ return P({ blind:false, restrict_docs:false, restrict_ai:db.restrict_ai ?? null, ai_ever_enabled:!!db.ai_ever_enabled, snapshots_auto:db.snapshots_auto!==false, restrict_code_memos:false }); },
     listDocuments(){ return P(db.documents.slice()); },
     addDocument(pid,{id,name:dn,content}){ const d={id:id||uid(),name:dn,content,created_at:new Date().toISOString()}; db.documents.push(d); save(); return P(d); },
     renameDocument(id,dn){ const d=db.documents.find(x=>x.id===id); if(d) d.name=dn; save(); return P(); },
@@ -11943,11 +11970,11 @@ async function createFileStore(fileHandle, isNew){
         if(to!==from) await this.logActivity(pid, { op:'flags_changed', target_kind:'project', target_id:pid, detail:{ snapshots_auto:{ from, to } } });
       }
       return { blind:false, restrict_docs:false, restrict_ai:(db._meta&&db._meta.restrict_ai)||'none',
-               ai_ever_enabled:!!(db._meta&&db._meta.ai_ever_enabled), snapshots_auto:!(db._meta&&db._meta.snapshots_auto===false) };
+               ai_ever_enabled:!!(db._meta&&db._meta.ai_ever_enabled), snapshots_auto:!(db._meta&&db._meta.snapshots_auto===false), restrict_code_memos:false };
     },
     async getProjectFlags(){ return { blind:false, restrict_docs:false,
       restrict_ai:(db._meta&&db._meta.restrict_ai)||'none',
-      ai_ever_enabled:!!(db._meta&&db._meta.ai_ever_enabled), snapshots_auto:!(db._meta&&db._meta.snapshots_auto===false) }; },
+      ai_ever_enabled:!!(db._meta&&db._meta.ai_ever_enabled), snapshots_auto:!(db._meta&&db._meta.snapshots_auto===false), restrict_code_memos:false }; },
     realtime(){ return ()=>{}; },
     listDocuments(){ return P(db.documents.slice()); },
     async addDocument(pid,{id,name:dn,content}){ const d={id:id||uid(),name:dn,content,created_at:new Date().toISOString()}; db.documents.push(d); await save(); return d; },
@@ -12335,22 +12362,25 @@ function SupabaseStore(sb){
        ORTOGONAIS: restrict_docs decide QUAIS DOCUMENTOS o membro enxerga; blind decide se ele
        enxerga a codificacao DOS OUTROS. O servidor e a autoridade (helpers can_see_doc/
        can_see_authored no schema.sql) — esconder o botao aqui nao protegeria nada. */
-    async setProjectFlags(pid, { blind, restrict, restrictAi, snapshotsAuto }={}){
+    async setProjectFlags(pid, { blind, restrict, restrictAi, snapshotsAuto, restrictCodeMemos }={}){
       const d = must(await sb.rpc('set_project_flags',{ p_project:pid,
         p_blind:    blind===undefined    ? null : !!blind,
         p_restrict: restrict===undefined ? null : !!restrict,
         p_restrict_ai: restrictAi===undefined ? null : String(restrictAi),
-        p_snapshots_auto: snapshotsAuto===undefined ? null : !!snapshotsAuto }));
+        p_snapshots_auto: snapshotsAuto===undefined ? null : !!snapshotsAuto,
+        p_restrict_code_memos: restrictCodeMemos===undefined ? null : !!restrictCodeMemos }));
       return d ? { blind:!!d.blind, restrict_docs:!!d.restrict_docs,
-                   restrict_ai:d.restrict_ai||'none', ai_ever_enabled:!!d.ai_ever_enabled, snapshots_auto:d.snapshots_auto!==false } : null;
+                   restrict_ai:d.restrict_ai||'none', ai_ever_enabled:!!d.ai_ever_enabled, snapshots_auto:d.snapshots_auto!==false,
+                   restrict_code_memos:!!d.restrict_code_memos } : null;
     },
     // as flags PRECISAM vir do servidor: o objeto `project` do cliente pode ter vindo do cache
     // local de "Meus projetos", que guarda so id/name/code. `ai_ever_enabled` e a trava de uma
     // via: o cliente LE, nunca escreve (quem a forca e o trigger projects_ai_guard).
     async getProjectFlags(pid){
-      try{ const r = await sb.from('projects').select('blind,restrict_docs,restrict_ai,ai_ever_enabled,snapshots_auto').eq('id',pid).maybeSingle();
+      try{ const r = await sb.from('projects').select('blind,restrict_docs,restrict_ai,ai_ever_enabled,snapshots_auto,restrict_code_memos').eq('id',pid).maybeSingle();
            return r.data ? { blind:!!r.data.blind, restrict_docs:!!r.data.restrict_docs,
-                             restrict_ai:r.data.restrict_ai||'none', ai_ever_enabled:!!r.data.ai_ever_enabled, snapshots_auto:r.data.snapshots_auto!==false } : null; }catch(e){ return null; }
+                             restrict_ai:r.data.restrict_ai||'none', ai_ever_enabled:!!r.data.ai_ever_enabled, snapshots_auto:r.data.snapshots_auto!==false,
+                             restrict_code_memos:!!r.data.restrict_code_memos } : null; }catch(e){ return null; }
     },
     // o MEMBRO recebe so a propria distribuicao (policy assignments_select); o admin, o plano inteiro
     async listAssignments(pid){ try{ return must(await sb.from('assignments').select('document_id,user_id').eq('project_id',pid)); }catch(e){ return []; } },
@@ -13123,7 +13153,7 @@ function useStoreStatus(store){
    cosmético: membro em projeto cego não pode ficar na Reconciliação nem com "Ver: todos", e o
    servidor já nem manda o dado. O efeito gêmeo do `focusMode` fica na App() de propósito — aquele
    é preferência de UI do admin, não recorte imposto pelo servidor. */
-const FLAGS_INICIAIS = { blind:false, restrict_docs:false, restrict_ai:'none', ai_ever_enabled:false, snapshots_auto:true };
+const FLAGS_INICIAIS = { blind:false, restrict_docs:false, restrict_ai:'none', ai_ever_enabled:false, snapshots_auto:true, restrict_code_memos:false };
 function useProjFlags({ store, project, phase, isAdmin, setViewCoder, setMainView, onError, reloadProject }){
   const [projFlags, setProjFlags] = useState(FLAGS_INICIAIS);
   const [assignments, setAssignments] = useState([]);  // membro recebe só a própria linha (RLS); admin, o plano inteiro
@@ -13156,6 +13186,12 @@ function useProjFlags({ store, project, phase, isAdmin, setViewCoder, setMainVie
   const aiEverEnabled = !!projFlags.ai_ever_enabled;
   // ESPELHAR BASE: o automatico antes das irreversiveis, ligado por padrao (ausencia = ligado)
   const snapshotsAuto = projFlags.snapshots_auto !== false;
+  /* TRAVA DO VERBETE: o memo de escopo 'code' e a DEFINICAO do codigo, e num estudo de validacao
+     ela e o instrumento — reescrita no meio da rodada, as codificacoes de antes e de depois
+     deixam de ser comparaveis sem que nada denuncie. `codeMemoLock` e "esta fechado PARA MIM",
+     no molde do aiLock e do blindLock: quem recusa e a RLS (memos_write), e aqui so evitamos a
+     digitacao que terminaria em banner vermelho. */
+  const codeMemoLock = !!projFlags.restrict_code_memos && !isAdmin;
   const aiLock = restrictAi === 'all' || (restrictAi === 'members' && !isAdmin);
   // sair da tela de IA em que a pessoa estava — o mesmo desvio do cego, e pelo mesmo motivo:
   // não é cosmético, a tela deixou de existir para ela.
@@ -13185,6 +13221,7 @@ function useProjFlags({ store, project, phase, isAdmin, setViewCoder, setMainVie
 
   return { assignments, assignOpen, setAssignOpen, projBlind, projRestrict, blindLock,
            restrictAi, aiLock, aiEverEnabled, snapshotsAuto,
+           restrictCodeMemos: !!projFlags.restrict_code_memos, codeMemoLock,
            changeProjectFlags, toggleAssignment, replaceAssignments };
 }
 
@@ -13875,7 +13912,7 @@ function App(){
      antes daria TDZ. `reloadProject` é arrow de propósito: o `loadProject` só é declarado mais
      abaixo, e lê-lo aqui daria TDZ; dentro da arrow ele só é avaliado quando ela é chamada. */
   const { assignments, assignOpen, setAssignOpen, projBlind, projRestrict, blindLock,
-          restrictAi, aiLock, aiEverEnabled, snapshotsAuto,
+          restrictAi, aiLock, aiEverEnabled, snapshotsAuto, restrictCodeMemos, codeMemoLock,
           changeProjectFlags, toggleAssignment, replaceAssignments } =
     useProjFlags({ store, project, phase, isAdmin, setViewCoder, setMainView,
                    onError: setErr, reloadProject: ()=>loadProject(store, project.id) });
@@ -14282,6 +14319,31 @@ function App(){
     setAllCodings(x=> sameJson(x,C) ? x : C);
     } finally { if(tok === reqSeqRef.current.all) mudaUi({aggBusy:false}); }
   }, [store, project, docs]);
+  /* AGRUPAR POR CATEGORIA NA CODIFICACAO — os VALORES sob demanda, e SO eles (set/2026).
+     O DocsNav so oferece agrupar pelas categorias que TEM valor no que o chamador passou, e na
+     Codificacao `allValues` e [] porque a tela nao esta em AGG_VIEWS — entao a opcao nunca
+     aparecia ali. Ligar AGG_VIEWS seria o conserto errado: o loadAll busca valores E codings de
+     todo documento (dois requests por documento, 220 num corpus de 110) a cada entrada na tela
+     em que se passa o dia. Aqui e METADE disso, uma vez, e so quando alguem ABRE o seletor de
+     documento — quem nunca agrupa nao paga nada.
+     FALHA PARCIAL DERRUBA A CARGA INTEIRA, de proposito: o mapPool devolve null por item, e
+     agrupar com alguns documentos faltando os jogaria em "(sem valor)" como se a categoria deles
+     estivesse vazia. Sem valores, a opcao simplesmente nao aparece, que e o comportamento de
+     antes — degradar e melhor que agrupar errado. Nao vira banner: e navegacao, nao leitura de
+     dado (mesma regra da recarga de fundo). */
+  const [navVals, setNavVals] = useState({ pid:null, loading:false, rows:null });
+  const loadNavValues = useCallback(async ()=>{
+    if(!store || !project || !docs.length) return;
+    if(navVals.pid===project.id && (navVals.loading || navVals.rows)) return;
+    setNavVals({ pid:project.id, loading:true, rows:null });
+    try{
+      const per = await mapPool(docs, 8, async d=>({ d, v: await store.getDocValues(d.id) }));
+      if(per.some(x=>!x)){ setNavVals({ pid:project.id, loading:false, rows:[] }); return; }
+      const V=[];
+      for(const { d, v } of per) v.forEach(x=>V.push({ document_id:d.id, category_id:x.category_id, value:x.value, set_by:x.set_by??null, author_name:x.author_name, layer:x.layer||'individual' }));
+      setNavVals({ pid:project.id, loading:false, rows:V });
+    }catch(e){ setNavVals({ pid:project.id, loading:false, rows:[] }); }
+  }, [store, project, docs, navVals]);
   // "codings" saiu das deps DE PROPÓSITO: cada tick do poll de 20s trocava a referência de
   // codings e disparava um loadAll completo (2 requests POR DOCUMENTO a cada 20s nas telas
   // agregadas, sem nada ter mudado). A atualização ao vivo dessas telas é responsabilidade
@@ -14532,6 +14594,7 @@ function App(){
       if(projectMode==='individual') await store.setFinalValue(project.id, activeId, catId, value);
       else await store.setDocValue(project.id, activeId, catId, value);
       loadDoc();
+      setNavVals(s=> s.rows ? { pid:null, loading:false, rows:null } : s);   // a lista do seletor de documento agrupa por categoria; recarrega na proxima abertura
     }catch(e){ setErr(t('err.value.save',{e:String(e.message||e)})); }
   }
   async function setFinalValue(catId, value){ if(!store.setFinalValue) return; await store.setFinalValue(project.id, activeId, catId, value); loadDoc(); }
@@ -15982,7 +16045,7 @@ function App(){
             <button class="btn sm ghost" disabled=${edicao.ativa||docs.length===0}
               style="width:100%;max-width:520px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block"
               title=${docs.length===0?t('doc.noneInProject'):t('doc.pick.tip')}
-              onClick=${()=>alternaMenu('docs')}>
+              onClick=${()=>{ if(menu!=='docs') loadNavValues(); alternaMenu('docs'); }}>
               ${docs.length===0 ? t('doc.none')
                 : (activeHealth && !activeHealth.ok ? '⚠︎ ' : '▤ ')+(activeDoc?.name||t('doc.pick'))+' ▾'}
             </button>
@@ -15992,7 +16055,8 @@ function App(){
                     o right:0 padrao do .exmenu faria o popover crescer pra fora da tela) */''}
               <div class="exmenu" style="left:0;right:auto;width:430px;max-width:calc(100vw - 24px);max-height:min(70vh,560px);display:flex;flex-direction:column">
                 <${DocsNav} docs=${docs} activeId=${activeId} health=${docHealth}
-                  cats=${cats} allValues=${allValues} prefs=${docsNavPrefs} onPrefs=${setDocsNavPrefs}
+                  cats=${cats} allValues=${navVals.rows || allValues} valuesLoading=${navVals.loading}
+                  prefs=${docsNavPrefs} onPrefs=${setDocsNavPrefs}
                   autoFocus=${true} onClose=${()=>setMenu(null)}
                   onPick=${id=>{ setActiveId(id); setMenu(null); }} />
               </div>
@@ -16150,12 +16214,12 @@ function App(){
                  dragCatId=${dragCatId} setDragCatId=${setDragCatId} onReorder=${reorderCategories} />`}
           ${rtab==='codigos' && html`<${CodesPanel} codes=${codes} codeById=${codeById} count=${codingCount} sel=${sel}
                  selCode=${selCode} setSelCode=${setSelCode} codePath=${codePath}
-                 checklist=${{ docs:docs.length>0, codes:codes.length>0, coded:codings.length>0 }}
+                 checklist=${{ docs:docs.length>0, codes:codes.length>0, coded:codings.length>0 }} memos=${memos}
                  recentCodes=${recentCodesRef.current.map(id=>codeById[id]).filter(Boolean)}
                  onAdd=${addCodeUI} onDel=${delCode} onApply=${applyCode} onUpd=${updCode} onSetColor=${setCodeColor} onSetSat=${setCodeSat} onSetRedaction=${setCodeRedaction} isAdmin=${adminUI && !readOnly} readOnly=${readOnly}
                  onCodeContext=${(code,x,y)=>setCodeCtx({code,x,y})}
                  store=${store} project=${project} reload=${reloadWrite} />`}
-          ${rtab==='memos' && html`<${CodingMemosPanel} project=${project} activeDoc=${activeDoc} focusedCoding=${focusedCoding} selCode=${selCode}
+          ${rtab==='memos' && html`<${CodingMemosPanel} project=${project} activeDoc=${activeDoc} focusedCoding=${focusedCoding} selCode=${selCode} codeMemoLock=${codeMemoLock}
                  codings=${codings} codeById=${codeById} codePath=${codePath} docs=${docs} memos=${memos} onSave=${saveMemo} />`}
         </div>
       </aside>
@@ -16274,8 +16338,14 @@ function App(){
             ? html`<${MemoryPanel} memory=${aiMemory} onToggle=${toggleMemoryActive} onDelete=${deleteMemory} onAdd=${addMemory} />`
             : memoSel?.scope==='ia_results'
             ? html`<${IAResultView} result=${(iaResults||[]).find(r=>r.id===memoSel.targetId)} onDelete=${deleteIaResult} />`
+            // NAO passe o readOnly de PAPEL no MemoEditor: o viewer escreve memo por desenho (e a
+            // excecao que o memo_is_note existe para abrir). O unico motivo de travar este campo
+            // e a trava do VERBETE. (E o comentario fica AQUI, em JS: <!-- --> dentro da lista de
+            // atributos de uma tag nao e comentario nenhum, e derruba o render inteiro com um
+            // "insertBefore: parameter 1 is not of type 'Node'" que nao menciona comentario.)
             : html`<${MemoEditor} sel=${memoSel} project=${project} codeById=${codeById} codePath=${codePath}
-                codings=${allCodings} docs=${docs} memos=${memos} onSave=${saveMemo} onDelete=${removeMemo} onRenameDoc=${renameDoc} />`}
+                codings=${allCodings} docs=${docs} memos=${memos} onSave=${saveMemo} onDelete=${removeMemo} onRenameDoc=${renameDoc}
+                readOnly=${memoSel?.scope==='code' && codeMemoLock} />`}
         </div>
       </section>
     </div>`
@@ -16595,12 +16665,12 @@ function App(){
     onLogout=${mode==='cloud' ? (async()=>{ setAccount(false); try{localStorage.removeItem('qualilab:project');}catch(e){} try{ await store.signOut(); }catch(e){} setProject(null); setUser(null); setDocs([]); setActiveId(null); setPhase('welcome'); }) : undefined} />`}
 
   ${assignOpen && html`<${AssignModal} docs=${docs} members=${members} assignments=${assignments} allCodings=${allCodings}
-    blind=${projBlind} restrict=${projRestrict} onToggle=${toggleAssignment} onReplace=${replaceAssignments}
+    blind=${projBlind} restrict=${projRestrict} codeMemos=${restrictCodeMemos} onToggle=${toggleAssignment} onReplace=${replaceAssignments}
     onSetFlags=${changeProjectFlags} onClose=${()=>setAssignOpen(false)} />`}
 
   ${projEdit && html`<${ProjectModal} store=${store} mode=${mode} storeMode=${store?.mode} user=${user} project=${project} projectMode=${projectMode}
     isAdmin=${isAdmin} members=${members} hasDocs=${docs.length>0}
-    canAssign=${mode==='cloud' && projectMode==='collective' && isAdmin}
+    canAssign=${mode==='cloud' && projectMode==='collective' && isAdmin} restrictCodeMemos=${restrictCodeMemos}
     blind=${projBlind} restrict=${projRestrict} nAssignments=${assignments.length}
     restrictAi=${restrictAi} onSetAi=${(v)=>changeProjectFlags({ restrictAi:v })}
     onOpenAssign=${()=>{ setProjEdit(false); loadAll(); setAssignOpen(true); }}
@@ -17232,7 +17302,7 @@ function SendToCloudModal({ defaultName, onBuildDb, onGatherPdfs, onGatherPdfInd
    A grade é uma <table> de propósito: a coluna do documento fica position:sticky e o resto
    rola na horizontal — é o que aguenta os ~10 pesquisadores do caso real.
    Só admin, só projeto coletivo na nuvem (exige contas de vários pesquisadores). */
-function AssignModal({ docs, members, assignments, allCodings, blind, restrict, onToggle, onReplace, onSetFlags, onClose }){
+function AssignModal({ docs, members, assignments, allCodings, blind, restrict, codeMemos, onToggle, onReplace, onSetFlags, onClose }){
   const [perDoc, setPerDoc] = useState(1);
   const [busy, setBusy] = useState(false);
   const key = (d,u)=> d+'|'+u;
@@ -17292,7 +17362,16 @@ function AssignModal({ docs, members, assignments, allCodings, blind, restrict, 
           <span><span dangerouslySetInnerHTML=${{__html: mdLite(t('assign.blind'))}}></span>
             <span class="meta" style="display:block;margin-top:2px">${t('assign.blind.sub')}</span></span>
         </label>
-        ${(restrict||blind) && html`<p class="hint" style="margin:4px 0 0">${t('assign.server')}</p>`}
+        ${/* A TRAVA DO VERBETE mora nesta mesma caixa porque a pergunta e a mesma — o que um
+              membro alcanca —, so que do lado da ESCRITA. O verbete e o instrumento do estudo:
+              reescrito no meio da rodada, as codificacoes de antes e de depois deixam de ser
+              comparaveis e nada na tela denuncia. */''}
+        <label style="display:flex;gap:9px;align-items:flex-start;margin:10px 0;cursor:pointer">
+          <input type="checkbox" checked=${codeMemos} onChange=${e=>onSetFlags({ restrictCodeMemos:e.target.checked })} style="margin-top:3px;flex:none" />
+          <span><span dangerouslySetInnerHTML=${{__html: mdLite(t('assign.codeMemos'))}}></span>
+            <span class="meta" style="display:block;margin-top:2px">${t('assign.codeMemos.sub')}</span></span>
+        </label>
+        ${(restrict||blind||codeMemos) && html`<p class="hint" style="margin:4px 0 0">${t('assign.server')}</p>`}
       </div>
 
       ${members.length<2 && html`<div class="banner warn" style="margin-bottom:12px">${t('assign.oneMember')}</div>`}
@@ -17510,7 +17589,7 @@ function SnapshotsCard({ store, project, isAdmin, onSnapshot, onRestore, autoOn,
   </div>`;
 }
 function ProjectModal({ store, mode, user, project, projectMode, isAdmin, members, hasDocs,
-                        canAssign, onOpenAssign, blind, restrict, nAssignments, restrictAi, onSetAi,
+                        canAssign, onOpenAssign, blind, restrict, restrictCodeMemos, nAssignments, restrictAi, onSetAi,
                         onClose, onSetMode, onSetRole, onRemoveMember, onRename, onClear, onDelete,
                         onSaveCloud, onClearCloud, onResetCloud, onReconnectCloud, canFolderBackup, backupStatus, onEnableFolderBackup, onDisableFolderBackup,
                         canSaveAsFile, onSaveAsFile, canLeaveFile, onLeaveFile, canSendToCloud, onOpenSendToCloud, storeMode,
@@ -17650,7 +17729,8 @@ function ProjectModal({ store, mode, user, project, projectMode, isAdmin, member
         <button class="btn sm" onClick=${onOpenAssign}>${t('proj.assign.btn')}</button>
         ${restrict && html`<span class="pill" style="background:var(--violet-soft);border-color:var(--violet);color:var(--violet)" title=${t('proj.restrictPill.tip')}>${t('proj.restrictPill')}</span>`}
         ${blind && html`<span class="pill" style="background:var(--amber-soft);border-color:var(--amber);color:var(--amber)" title=${t('proj.blindPill.tip')}>${t('proj.blindPill')}</span>`}
-        ${!restrict && !blind && html`<span class="meta">${nAssignments>0?t('proj.plan',{n:nAssignments}):t('proj.noRestrict')}</span>`}
+        ${restrictCodeMemos && html`<span class="pill" style="background:var(--teal-soft);border-color:var(--teal);color:var(--teal-deep)" title=${t('proj.codeMemosPill.tip')}>${t('proj.codeMemosPill')}</span>`}
+        ${!restrict && !blind && !restrictCodeMemos && html`<span class="meta">${nAssignments>0?t('proj.plan',{n:nAssignments}):t('proj.noRestrict')}</span>`}
       </div>
     </div>`}
 
@@ -18441,7 +18521,16 @@ function ReaderRuns({ readerRuns, readerPrefs, darkMode, codeById, codePath, sea
    sairia noutra ordem a cada carregamento.
    Sem nada a mostrar devolve null em vez de "ninguem respondeu ainda" — este painel e o de
    TRABALHO, e num projeto onde so ha uma resposta a linha vazia seria ruido em toda categoria. */
-function CatOtherAnswers({ cat, values, userId }){
+/* AS RESPOSTAS QUE NAO SAO A DE QUEM EDITA, em leitura, logo abaixo do campo.
+   `soGabarito` existe para o recorte "Ver: minhas": ali as respostas dos COLEGAS nao entram
+   (o filtro promete so as minhas), mas o GABARITO nao e resposta de colega — e a referencia
+   consolidada da equipe, e escondê-la fazia a tela dizer "(sem valor)" sobre uma categoria
+   cujo valor ela sabia. Um componente so para as duas situacoes, e nao uma segunda copia da
+   regra de exibicao: e a mesma licao do humanValueOf/docValueOf.
+   NAO HA RISCO DE VAZAMENTO SOB CEGO por construcao — o que se mostra aqui sai de `values`,
+   e sob cego o servidor nao manda a linha do gabarito (doc_values_select -> can_see_authored,
+   com set_by nulo). O que nao chega nao aparece. */
+function CatOtherAnswers({ cat, values, userId, soGabarito }){
   const rows = (values||[]).filter(v=>v.category_id===cat.id);
   const fin = rows.find(v=>(v.layer||'individual')==='final');
   // set_by!==userId, e nao o author_name: resposta IMPORTADA chega com set_by nulo e nome de
@@ -18449,14 +18538,15 @@ function CatOtherAnswers({ cat, values, userId }){
   // ao meu — a minha e a que esta amarrada a ESTA sessao, que e a que o campo acima edita.
   const outras = rows.filter(v=>(v.layer||'individual')!=='final' && v.set_by!==userId)
     .slice().sort((a,b)=> String(a.author_name||'').localeCompare(String(b.author_name||''),'pt',{numeric:true,sensitivity:'base'}));
-  if(!outras.length && !fin) return null;
+  const listadas = soGabarito ? [] : outras;
+  if(!listadas.length && !fin) return null;
   const linha = (chave, rotulo, valor, forte)=> html`<div class="row" key=${chave} style="gap:8px;padding:1px 0">
     <span style="flex:1;font-size:12.5px;color:var(--ink-soft)">
       ${valor || html`<span class="meta" style="font-style:italic">${t('cat.noAnswer')}</span>`}</span>
     <span class="meta" style=${forte?'font-weight:600;color:var(--teal-deep)':''}>${rotulo}</span>
   </div>`;
   return html`<div style="margin-top:5px;padding-top:5px;margin-bottom:10px;border-top:1px solid var(--line-soft)">
-    ${outras.map(v=> linha(v.id||v.author_name, authorLabel(v.author_name), v.value, false))}
+    ${listadas.map(v=> linha(v.id||v.author_name, authorLabel(v.author_name), v.value, false))}
     ${fin && linha('__final__', t('cat.reference'), fin.value, true)}
   </div>`;
 }
@@ -18506,6 +18596,17 @@ function CategoriesPanel({ cats, values, activeDoc, canEditSchema, readOnly, use
   };
   // sem ramo para 'all': ele e editavel desde ago/2026 e nunca chega aqui (o banner so aparece
   // com !isOwnView). Um ramo inalcancavel aqui mentiria sobre o que a tela faz.
+  /* O VALOR HERDADO (set/2026). `valOf` devolve a resposta de QUEM EDITA — e certo, porque e ela
+     que o campo grava (setDocValue sempre escreve sob o uid da sessao). Mas quando ela nao existe
+     e HA gabarito, a tela dizia "(sem valor)" no seletor e "—" na linha colapsada sobre uma
+     categoria cujo valor ela conhece e ja exibia logo abaixo — visto num projeto em que as
+     categorias sao fato canonico do desenho (so no gabarito) e os trechos so na camada
+     individual. O conserto e de EXIBICAO, de proposito: alimentar o campo com o gabarito o
+     deixaria com cara de respondido e a primeira tecla criaria, calada, uma resposta individual
+     divergente. Aqui o campo continua vazio (ele e meu, e eu nao respondi) e o que a tela deixa
+     de fazer e AFIRMAR ausencia. */
+  const herdadoDe = (catId)=> (projectMode==='individual' || viewCoder==='final') ? null
+    : (values.find(v=>v.category_id===catId && (v.layer||'individual')==='final') || null);
   const viewLbl = viewCoder==='final' ? t('cat.view.final') : viewCoder.startsWith('__nm__') ? viewCoder.slice(6) : t('cat.view.other');
   return html`<div class="section">
     <p class="h">${t('cat.panel.title')}</p>
@@ -18524,11 +18625,14 @@ function CategoriesPanel({ cats, values, activeDoc, canEditSchema, readOnly, use
           ${v && html`<span class="author">${v.author_name}</span>`}
           <!-- fechada, a linha ainda RESPONDE a pergunta: mostra o valor atual (ou um traco quando
                vazio), truncado, senao colapsar esconderia justamente o que se quer conferir. -->
-          ${!aberta && html`<span class="meta" style="margin-left:auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:400" title=${(v&&v.value)||''}>${(v&&v.value) || '—'}</span>`}
+          ${!aberta && (()=>{ const her = (v&&v.value) ? null : herdadoDe(cat.id);
+            const txt = (v&&v.value) || (her&&her.value) || '';
+            return html`<span class="meta" style=${'margin-left:auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:400'+(her?';font-style:italic':'')}
+              title=${txt ? (her ? t('cat.inherited.tip',{value:txt}) : txt) : ''}>${txt || '—'}</span>`; })()}
         </div>
         ${aberta && cat.description && html`<p class="hint" style="margin:-2px 0 7px;white-space:pre-wrap">${cat.description}</p>`}
         ${aberta && html`<${CategoryValue} cat=${cat} v=${v} onSet=${val=>onSet(cat.id,val)} readOnly=${!isOwnView} />`}
-        ${aberta && viewCoder==='all' && projectMode!=='individual' && html`<${CatOtherAnswers} cat=${cat} values=${values} userId=${userId} />`}
+        ${aberta && isOwnView && projectMode!=='individual' && html`<${CatOtherAnswers} cat=${cat} values=${values} userId=${userId} soGabarito=${viewCoder!=='all'} />`}
       </div>`;
     })}
     ${canEditSchema && html`<details style="margin-top:10px">
@@ -18791,11 +18895,24 @@ function ConvertToFamilyModal({ parent, childName, codings, onCancel, onConfirm 
   </div></div>`;
 }
 
-function CodesPanel({ codes, codeById, count, sel, selCode, setSelCode, codePath, onAdd, onDel, onApply, onUpd, onSetColor, onSetSat, onSetRedaction, isAdmin, readOnly, store, project, reload, onCodeContext, checklist, recentCodes }){
+function CodesPanel({ codes, codeById, count, sel, selCode, setSelCode, codePath, onAdd, onDel, onApply, onUpd, onSetColor, onSetSat, onSetRedaction, isAdmin, readOnly, store, project, reload, onCodeContext, checklist, memos, recentCodes }){
   const treeKeys = useTreeKeys();
   const tops = codes.filter(c=>!c.parent_id);
   const childrenOf = (id)=>codes.filter(c=>c.parent_id===id);
   const selected = selCode ? codeById[selCode] : null;
+  /* O VERBETE DO CODIGO NA TELA DE CODIFICAR, EM LEITURA (set/2026). O memo de escopo 'code' e a
+     definicao do codigo — o que conta, o que nao conta, a fronteira —, o analogo do
+     `categories.description` que o painel de categorias ja exibe ao lado do campo. Ele ja existia
+     na aba "Memos" deste mesmo painel (CodingMemosPanel), e mesmo assim faltava: la ele nasce
+     recolhido E abrir a aba tira a ARVORE DE CODIGOS da vista, que e exatamente o gesto de quem
+     esta codificando — ler a delimitacao e clicar no codigo. Por isso ele aparece AQUI, junto da
+     arvore, e so em LEITURA: editar continua sendo na aba Memos, que e onde a co-edicao e o
+     autosave moram. Duas casas para MOSTRAR, uma so para ESCREVER.
+     LIMITE CONHECIDO, e ele e do TreeNode, nao daqui: com um trecho JA SELECIONADO no texto,
+     clicar num codigo-folha APLICA em vez de selecionar, entao o verbete se consulta antes de
+     selecionar o trecho (ou pelo codigo que ja estiver selecionado). */
+  const verbete = selected ? (memos||[]).find(m=>m.scope==='code' && m.target_id===selected.id) : null;
+  const verbeteTxt = (verbete && verbete.content && verbete.content.trim()) ? verbete.content : '';
   return html`<div class="section">
     ${checklist && html`<${StarterChecklist} steps=${checklist} />`}
     <p class="h">${t('codes.title')}</p>
@@ -18833,6 +18950,11 @@ ${!readOnly && html`<div class="row" style="gap:6px;margin-bottom:10px;flex-wrap
 
     ${selected && html`<div class="card" style="margin-top:12px">
       <div class="crumb">${codePath(selected.id).join(' ▸ ')}</div>
+      ${verbeteTxt && html`<details class="collap" open>
+        <summary class="field-label" style="display:flex;align-items:center;gap:6px;padding:2px 0 4px">${t('codes.memo')}</summary>
+        <div class="anncard">${verbeteTxt}</div>
+        <p class="hint" style="margin:6px 0 2px">${t('codes.memo.edit')}</p>
+      </details>`}
       <${RenameCode} code=${selected} onUpd=${onUpd} onSetColor=${onSetColor} onSetSat=${onSetSat} onSetRedaction=${onSetRedaction} isAdmin=${isAdmin} />
     </div>`}
   </div>`;
@@ -19452,7 +19574,7 @@ function docsNavGroups(docs, opts, ctx){
    A preferência (ordenar/agrupar) mora no localStorage, como readerPrefs: é navegação do
    usuário, não decisão metodológica do estudo — não vai pro projeto. */
 function DocsNav({ docs, activeId, onPick, health, counts, pageCount, cats, allValues,
-                   prefs, onPrefs, autoFocus, onClose }){
+                   prefs, onPrefs, autoFocus, onClose, valuesLoading }){
   const [q, setQ] = useState('');
   const [hi, setHi] = useState(0);              // índice destacado (setas ↑↓ + Enter)
   const [closed, setClosed] = useState(()=>new Set());
@@ -19524,6 +19646,12 @@ function DocsNav({ docs, activeId, onPick, health, counts, pageCount, cats, allV
           ${counts && html`<option value="trechos">${t('docs.sort.count')}</option>`}
         </select>
       </div>
+      ${/* Sem categoria com valor NAO ha o que agrupar, e ate set/2026 a Codificacao caia sempre
+            nesse caso (allValues=[] fora de AGG_VIEWS). Hoje o chamador de la busca os valores SOB
+            DEMANDA ao abrir o popover — so os valores, sem as codificacoes, que e o que dobrava o
+            custo —, entao o silencio de antes virou espera com aviso: sem a linha, a opcao
+            aparecia do nada alguns segundos depois de abrir. */''}
+      ${groupCats.length===0 && valuesLoading && html`<span class="meta">${t('docs.group.loading')}</span>`}
       ${groupCats.length>0 && html`<div class="row" style="gap:6px">
         <span class="meta" style="flex:none">${t('docs.group')}</span>
         <select class="opt" style="flex:1;min-width:0;font-size:12px" value=${groupOk}
@@ -21563,12 +21691,12 @@ function MemoCodeNode({ code, childrenOf, sel, onSel, hasMemo, depthPad }){
    Reusa MemoEditor(compact) por escopo (que já mostra o quote do trecho e o caminho do código).
    "Nota analítica" e "Memo do código" seguem o CODING EM FOCO (clique num grifo no leitor); sem foco,
    mostram dica. Ordem e estados default (nota analítica expandida) = pedido do autor no to-do. */
-function CodingMemosPanel({ project, activeDoc, focusedCoding, selCode, codings, codeById, codePath, docs, memos, onSave }){
+function CodingMemosPanel({ project, activeDoc, focusedCoding, selCode, codings, codeById, codePath, docs, memos, onSave, codeMemoLock }){
   const coding = focusedCoding ? (codings||[]).find(c=>c.id===focusedCoding) : null;
   const codeId = coding ? coding.code_id : (selCode || null);
   const has = (scope, target)=> !!target && memos.some(m=>m.scope===scope && m.target_id===target && m.content && m.content.trim());
   const dot = (on)=> on ? html`<span style="color:var(--sky);margin-left:auto;flex:none" title=${t('memo.hasNote')}>●</span>` : '';
-  const ed = (sel)=> html`<${MemoEditor} sel=${sel} compact=${true} project=${project} codeById=${codeById} codePath=${codePath} codings=${codings} docs=${docs} memos=${memos} onSave=${onSave} />`;
+  const ed = (sel, readOnly)=> html`<${MemoEditor} sel=${sel} compact=${true} project=${project} codeById=${codeById} codePath=${codePath} codings=${codings} docs=${docs} memos=${memos} onSave=${onSave} readOnly=${readOnly} />`;
   const hint = (txt)=> html`<div class="hint" style="padding:8px 4px 12px">${txt}</div>`;
   const sumStyle = 'display:flex;align-items:center;gap:6px;padding:9px 4px;font-weight:600';
   return html`<div style="padding:0 2px 24px">
@@ -21587,13 +21715,13 @@ function CodingMemosPanel({ project, activeDoc, focusedCoding, selCode, codings,
     </details>
     <details class="collap">
       <summary class="field-label" style=${sumStyle}>${t('memo.code')}${dot(has('code', codeId))}</summary>
-      ${codeId ? ed({ scope:'code', targetId:codeId })
+      ${codeId ? ed({ scope:'code', targetId:codeId }, codeMemoLock)
         : hint(t('memo.code.hint'))}
     </details>
   </div>`;
 }
 
-function MemoEditor({ sel, project, codeById, codePath, codings, docs, memos, onSave, onDelete, onRenameDoc, compact }){
+function MemoEditor({ sel, project, codeById, codePath, codings, docs, memos, onSave, onDelete, onRenameDoc, compact, readOnly }){
   const targetId = sel.scope==='project' ? project?.id : sel.targetId;
   // memo de projeto: tolera target_id null gravado por versões antigas do import (a convenção
   // atual é target_id = project.id) — sem isso o memo importado ficava invisível e editar criava
@@ -21607,7 +21735,27 @@ function MemoEditor({ sel, project, codeById, codePath, codings, docs, memos, on
   const cancelEditNameRef = useRef(false); // #24: Escape cancela sem persistir (o blur pós-remoção do input usa closure velha)
   const debRef = useRef(null), labelDebRef = useRef(null);
 
-  useEffect(()=>{ setText(current?.content||''); setLabelVal(current?.label||''); setEditingName(false); }, [sel.scope, targetId]); // eslint-disable-line
+  // `sujoRef` = ha edicao local ainda nao gravada. Existe so para o efeito de baixo: sem ele,
+  // ressincronizar seria o erro SIMETRICO do bug que ele conserta (escrever por cima de quem
+  // esta digitando, no meio dos 700ms do debounce).
+  const sujoRef = useRef(false);
+  useEffect(()=>{ setText(current?.content||''); setLabelVal(current?.label||''); setEditingName(false); sujoRef.current=false; }, [sel.scope, targetId]); // eslint-disable-line
+  /* O MEMO PODE CHEGAR DEPOIS DA MONTAGEM, e ate ago/2026 o campo ficava VAZIO quando isso
+     acontecia: `text` nasce de `current?.content`, e `loadMemos` roda num efeito assincrono
+     (app.js), entao no primeiro render de um projeto recem-carregado `current` e undefined.
+     O efeito acima nao alcanca o caso — nem o escopo nem o alvo mudaram, so a LISTA chegou —,
+     e o sintoma engana: o cabecalho ja mostra "ultima edicao: fulano" (logo a linha foi
+     encontrada) com o textarea no placeholder. Pegava o memo do PROJETO na primeira abertura,
+     que e onde costuma morar o protocolo do estudo.
+     DUAS GUARDAS, e nenhuma e redundante: `sujoRef` protege quem esta digitando, e `text`
+     vazio limita o efeito ao caso que ele existe para consertar — campo que ja tem texto na
+     tela nunca e sobrescrito por chegada de dado, inclusive quando o conteudo do servidor
+     mudou (co-edicao ao vivo continua sendo pelo F5, como antes). */
+  useEffect(()=>{
+    if(sujoRef.current) return;
+    if(!text && current?.content) setText(current.content);
+    if(!labelVal && current?.label) setLabelVal(current.label);
+  }, [current?.content, current?.label]); // eslint-disable-line
 
   if(!targetId) return html`<div class="empty">
     <div class="t">${t('memo.pickTarget')}</div>
@@ -21626,15 +21774,15 @@ function MemoEditor({ sel, project, codeById, codePath, codings, docs, memos, on
     : sel.scope==='coding' && coding ? codePath(coding.code_id).join(' ▸ ') : null;
 
   const change = (val)=>{
-    setText(val);
+    setText(val); sujoRef.current = true;
     clearTimeout(debRef.current);
-    debRef.current = setTimeout(async ()=>{ setSaving(true); await onSave(sel.scope, targetId, val, labelVal); setSaving(false); }, 700);
+    debRef.current = setTimeout(async ()=>{ setSaving(true); await onSave(sel.scope, targetId, val, labelVal); setSaving(false); sujoRef.current = false; }, 700);
   };
   // renomear um prompt salvo (preserva o conteúdo). Só usado em ai_prompt.
   const changeLabel = (val)=>{
-    setLabelVal(val);
+    setLabelVal(val); sujoRef.current = true;
     clearTimeout(labelDebRef.current);
-    labelDebRef.current = setTimeout(async ()=>{ setSaving(true); await onSave(sel.scope, targetId, text, val); setSaving(false); }, 700);
+    labelDebRef.current = setTimeout(async ()=>{ setSaving(true); await onSave(sel.scope, targetId, text, val); setSaving(false); sujoRef.current = false; }, 700);
   };
 
   return html`<div class="section" style=${compact?'max-width:none;padding:2px 0':'max-width:760px;margin:0 auto'}>
@@ -21660,9 +21808,9 @@ function MemoEditor({ sel, project, codeById, codePath, codings, docs, memos, on
       ${current && html`${t('memo.lastEdit')}<b>${authorLabel(current.author_name)}</b>${current.updated_at?t('memo.lastEditAt',{when:new Date(current.updated_at).toLocaleString(QL_LOCALE())}):''}.`}
     </p>` : (current && current.author_name ? html`<p class="meta" style="margin:0 0 4px">${t('memo.lastEditShort',{who:authorLabel(current.author_name)})}</p>` : '')}
     <textarea class="txtin" rows=${compact?7:18} style=${`font-family:var(--serif);font-size:${compact?15:16}px;line-height:1.7;resize:vertical`}
-      placeholder=${t('memo.ph')}
+      placeholder=${readOnly?'':t('memo.ph')} disabled=${!!readOnly}
       value=${text} onInput=${e=>change(e.target.value)}></textarea>
-    <div class="row" style="margin-top:6px;gap:10px"><span class="meta">${saving?t('memo.saving'):t('memo.autosaved')}</span>
+    <div class="row" style="margin-top:6px;gap:10px"><span class="meta">${readOnly?t('memo.locked'):(saving?t('memo.saving'):t('memo.autosaved'))}</span>
       ${sel.scope==='ai_prompt' && onDelete && current && html`<button class="btn sm" style="margin-left:auto;color:var(--danger)" onClick=${()=>{ if(confirm(t('memo.delPrompt.ask'))) onDelete(current.id); }}>${t('memo.delPrompt')}</button>`}
     </div>
   </div>`;

@@ -14,6 +14,61 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.53 (03/09/2026)
+
+### O verbete do código aparece na Codificação, ao lado da árvore
+
+A definição de um código — o que conta, o que não conta, onde fica a fronteira — é escrita no
+memo dele, e já podia ser lida na aba **▤ Memos** do painel direito. Só que ali ela nasce
+recolhida, e abrir aquela aba tira a **árvore de códigos** da vista, que é exatamente o gesto de
+quem está codificando: ler a delimitação e clicar no código.
+
+Agora, ao selecionar um código na aba **✎ Codificar**, o verbete aparece logo abaixo dele, em
+leitura, com as quebras de linha preservadas. Para **escrever**, a aba Memos continua sendo o
+lugar — uma casa para editar, duas para consultar.
+
+Com um trecho já selecionado no texto, clicar num código o **aplica** (é o que sempre fez), então
+o verbete se consulta antes de selecionar o trecho.
+
+### Categoria respondida só no gabarito não aparece mais como "sem valor"
+
+Num projeto coletivo, o campo de cada categoria é sempre **a sua** resposta — e continua sendo.
+Mas quando você ainda não respondeu e existe um valor no **gabarito**, a tela dizia "(sem valor)"
+no seletor e "—" na linha recolhida, sobre uma categoria cujo valor ela conhecia e exibia logo
+abaixo. Acontece em estudos cujas categorias são fato do desenho (a fonte do material, o perfil,
+o tema sorteado) e vivem só no gabarito.
+
+Agora a linha recolhida mostra esse valor em itálico, dizendo de onde ele veio; e o valor do
+gabarito passou a aparecer também em **Ver: Minhas**, não só em "Individuais (todos)". O campo
+continua vazio de propósito: preenchê-lo o deixaria com cara de respondido, e a primeira tecla
+criaria em silêncio uma resposta sua diferente do gabarito.
+
+### Agrupar documentos por categoria na tela de Codificação
+
+O seletor de documento da Codificação oferecia ordenar, mas não **agrupar por categoria** — a
+opção existia só nas telas que já carregam o projeto inteiro. Agora ela existe aqui também: ao
+abrir o seletor, o QualiLab busca os valores das categorias (só eles) e monta as seções. Quem
+nunca agrupa não paga nada por isso, porque a busca só acontece quando o seletor é aberto.
+
+### Travar o verbete dos códigos (projetos coletivos na nuvem)
+
+Nova opção em **Distribuir documentos ▸ Como este projeto controla o acesso**: enquanto ligada,
+só a administração edita a definição dos códigos. **Ler continua livre para todo mundo.**
+
+Ela existe para estudos de calibração e validação, em que o verbete é o instrumento: reescrito no
+meio de uma rodada, as codificações feitas antes e as feitas depois deixam de ser comparáveis — e
+nada na tela denuncia, porque as duas metades continuam parecendo a mesma tarefa. Quem aplica a
+regra é o servidor, não a interface. Ligar e desligar fica registrado no histórico do projeto.
+Quem hospeda o próprio Supabase precisa aplicar o `supabase/schema.sql` atualizado.
+
+### Correções
+
+- **O campo de memo abria vazio** quando o memo já existia e a lista chegava do servidor logo
+  depois de a tela montar. O cabeçalho já mostrava "última edição: fulano" — sinal de que o texto
+  tinha sido encontrado — e o campo ficava no espaço reservado. Pegava principalmente o **memo do
+  projeto** na primeira abertura, que costuma ser onde mora o protocolo do estudo. Quem está
+  digitando não é interrompido: o texto que chega nunca escreve por cima do que está sendo escrito.
+
 ## 1.4.52 (03/09/2026)
 
 ### Espelhos do projeto: um ponto de restauração antes do irreversível
