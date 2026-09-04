@@ -55,6 +55,23 @@ alter table public.projects add column if not exists snapshots_auto boolean not 
 -- codifica, que e quem tem o instrumento aberto na tela.
 -- Default FALSE: projeto que ja existia nao muda de comportamento.
 alter table public.projects add column if not exists restrict_code_memos boolean not null default false;
+-- GABARITO DE CATEGORIA SOB CEGO (set/2026). `layer='final'` significa DUAS coisas nas duas tabelas:
+-- em codings e o gabarito da CODIFICACAO, consolidado na Reconciliacao — e o que se esta medindo,
+-- e sob cego fica oculto SEMPRE (nao e configuravel); em doc_values pode ser um veredito por
+-- documento OU metadado do DESENHO (plataforma, perfil sorteado, tema), e ai esconde-lo deixa o
+-- codificador cego sem saber de que material se trata. A regra tratava as duas como a mesma coisa;
+-- esta flag desfaz so essa conflacao. O NOME e sobre a PROPRIEDADE que o projeto declara ("as
+-- categorias aqui sao configuracao do estudo, nao juizo de ninguem"), e a visibilidade e a
+-- consequencia — um nome mecanico convidaria a reusa-la em codings, que e exatamente o que nao
+-- pode acontecer. Le-a SO o can_see_value, consumido SO pela doc_values_select.
+-- Default FALSE: projeto que ja existia nao muda de comportamento. Nao viaja no .qualilab (governa
+-- a EQUIPE, como blind/restrict_docs).
+alter table public.projects add column if not exists cats_are_metadata boolean not null default false;
+-- REGRAS DE ACESSO POR PAPEL (set/2026): overrides por papel do que o LEITOR e o MEMBRO podem fazer
+-- ({member:{code:false}, viewer:{comment:false}}); vazio = o comportamento de antes. Lido pelo
+-- role_can (abaixo, ao lado do can_edit); escrito so pelo set_role_caps (admin), que valida e leva
+-- a trilha. Decidido na CRIACAO do projeto coletivo (a matriz do Gate) e editavel no hub.
+alter table public.projects add column if not exists role_caps jsonb not null default '{}'::jsonb;
 alter table public.projects drop constraint if exists projects_restrict_ai_check;
 alter table public.projects add constraint projects_restrict_ai_check check (restrict_ai in ('none','members','all'));
 -- TRAVA DE UMA VIA. Existe porque o interruptor e REVERSIVEL, e a reversibilidade abre exatamente
@@ -228,6 +245,27 @@ returns boolean language sql security definer stable set search_path = public as
                  where project_id = p and user_id = auth.uid() and role <> 'viewer');
 $$;
 
+-- REGRAS DE ACESSO POR PAPEL E POR ITEM (set/2026). Substitui o can_edit tudo-ou-nada nas policies
+-- de escrita do MATERIAL: documentos (add_docs), codigos (edit_codes), codificacoes e valores de
+-- categoria (code), verbete (edit_code_memos), notas (comment), IA (use_ai) e o bucket pdfs. O que
+-- sobra ao can_edit sao os memos de CONFIGURACAO (escopos ai_*, cloud_stopwords). Admin: tudo, fixo.
+-- Override em projects.role_caps ({member:{cap:bool}, viewer:{cap:bool}}); sem override, os
+-- defaults abaixo sao EXATAMENTE o comportamento anterior (membro faz tudo, leitor le e comenta).
+-- A tabela de defaults TEM de casar com CAP_DEFAULTS em src/dados/regras-de-acesso.js.
+-- Sem linha em members -> sem linha no select -> NULL -> a policy trata como falso.
+create or replace function public.role_can(p_project uuid, p_cap text)
+returns boolean language sql security definer stable set search_path = public as $$
+  select case m.role
+    when 'admin'  then true
+    when 'member' then coalesce((pr.role_caps->'member'->>p_cap)::boolean,
+                                p_cap in ('comment','code','add_docs','edit_codes','edit_code_memos','use_ai'))
+    when 'viewer' then coalesce((pr.role_caps->'viewer'->>p_cap)::boolean,
+                                p_cap in ('comment','edit_code_memos'))
+    else false end
+  from public.members m join public.projects pr on pr.id = m.project_id
+  where m.project_id = p_project and m.user_id = auth.uid();
+$$;
+
 -- A EXCECAO DO VIEWER E O MEMO — ele COMENTA —, mas a tabela `memos` guarda DUAS coisas
 -- diferentes: nota E configuracao do estudo (os seis ai_*, o ai_prompt e o cloud_stopwords).
 -- Configuracao nao e comentario: mexer nela muda o que a IA recebe e o que a nuvem de palavras
@@ -273,6 +311,17 @@ returns boolean language sql security definer stable set search_path = public as
   select not coalesce((select pr.blind from public.projects pr where pr.id = p_project), false)
       or public.is_admin(p_project)
       or p_owner = auth.uid();
+$$;
+
+-- valor de CATEGORIA visivel? E o can_see_authored MAIS a excecao que o projeto declara com
+-- cats_are_metadata (ver o comentario da coluna). PREDICADO PROPRIO, consumido SO pela policy
+-- doc_values_select, de proposito: o can_see_authored tem quatro consumidores (codings_select,
+-- memo_visible no escopo 'coding', activity_select e esta policy), e mexer NELE liberaria ao membro
+-- cego o gabarito da CODIFICACAO e a nota analitica alheia — o estudo cego acabaria, calado.
+create or replace function public.can_see_value(p_project uuid, p_owner uuid)
+returns boolean language sql security definer stable set search_path = public as $$
+  select public.can_see_authored(p_project, p_owner)
+      or coalesce((select pr.cats_are_metadata from public.projects pr where pr.id = p_project), false);
 $$;
 
 -- memo visivel? os escopos que apontam para um documento ('document') ou para um trecho
@@ -711,7 +760,10 @@ drop function if exists public.set_project_flags(uuid,boolean,boolean,text);
 -- ASSINATURA MUDOU DE NOVO (trava do verbete, set/2026): + p_restrict_code_memos. Cliente velho
 -- chama com os cinco nomes e o sexto cai no default (null = nao mexe).
 drop function if exists public.set_project_flags(uuid,boolean,boolean,text,boolean);
-create or replace function public.set_project_flags(p_project uuid, p_blind boolean default null, p_restrict boolean default null, p_restrict_ai text default null, p_snapshots_auto boolean default null, p_restrict_code_memos boolean default null)
+-- ASSINATURA MUDOU DE NOVO (gabarito de categoria sob cego, set/2026): + p_cats_are_metadata. Cliente
+-- velho chama com os seis nomes e o setimo cai no default (null = nao mexe).
+drop function if exists public.set_project_flags(uuid,boolean,boolean,text,boolean,boolean);
+create or replace function public.set_project_flags(p_project uuid, p_blind boolean default null, p_restrict boolean default null, p_restrict_ai text default null, p_snapshots_auto boolean default null, p_restrict_code_memos boolean default null, p_cats_are_metadata boolean default null)
 returns public.projects language plpgsql security definer set search_path = public as $$
 declare v_proj public.projects; v_old public.projects; v_detail jsonb := '{}'::jsonb;
 begin
@@ -727,7 +779,8 @@ begin
          restrict_ai   = case when p_restrict_ai in ('none','members','all') then p_restrict_ai
                               else restrict_ai end,
          snapshots_auto = coalesce(p_snapshots_auto, snapshots_auto),
-         restrict_code_memos = coalesce(p_restrict_code_memos, restrict_code_memos)
+         restrict_code_memos = coalesce(p_restrict_code_memos, restrict_code_memos),
+         cats_are_metadata = coalesce(p_cats_are_metadata, cats_are_metadata)
    where id = p_project
    returning * into v_proj;
   -- TRILHA (S4): so as chaves que MUDARAM, cada uma com de/para (aviso que nao corresponde a
@@ -747,6 +800,9 @@ begin
   if v_proj.restrict_code_memos is distinct from v_old.restrict_code_memos then
     v_detail := v_detail || jsonb_build_object('restrict_code_memos', jsonb_build_object('from', v_old.restrict_code_memos, 'to', v_proj.restrict_code_memos));
   end if;
+  if v_proj.cats_are_metadata is distinct from v_old.cats_are_metadata then
+    v_detail := v_detail || jsonb_build_object('cats_are_metadata', jsonb_build_object('from', v_old.cats_are_metadata, 'to', v_proj.cats_are_metadata));
+  end if;
   if v_detail <> '{}'::jsonb then
     perform public.log_activity(p_project, 'flags_changed', 'project', p_project, null, null, v_detail);
   end if;
@@ -762,7 +818,35 @@ grant execute on function public.remove_member(uuid,uuid)         to anon, authe
 grant execute on function public.rename_project(uuid,text)        to anon, authenticated;
 grant execute on function public.delete_project(uuid)             to anon, authenticated;
 grant execute on function public.set_project_mode(uuid,text,text) to anon, authenticated;
-grant execute on function public.set_project_flags(uuid,boolean,boolean,text,boolean,boolean) to anon, authenticated;
+grant execute on function public.set_project_flags(uuid,boolean,boolean,text,boolean,boolean,boolean) to anon, authenticated;
+
+-- REGRAS DE ACESSO POR PAPEL: valida (so member/viewer, so as seis capacidades, so booleanos),
+-- grava o jsonb inteiro (substitui, nao mescla — o cliente manda a matriz completa) e leva a
+-- trilha como flags_changed com role_caps {from,to}. E RPC porque projects nao tem policy de UPDATE.
+create or replace function public.set_role_caps(p_project uuid, p_caps jsonb)
+returns public.projects language plpgsql security definer set search_path = public as $$
+declare v_old jsonb; v_proj public.projects; v_role text; v_cap text; v_val jsonb; v_roleobj jsonb; v_clean jsonb := '{}'::jsonb;
+begin
+  if not public.is_admin(p_project) then raise exception 'Apenas administradores alteram as regras de acesso'; end if;
+  if p_caps is null or jsonb_typeof(p_caps) <> 'object' then raise exception 'regras de acesso invalidas'; end if;
+  for v_role, v_roleobj in select * from jsonb_each(p_caps) loop
+    if v_role not in ('member','viewer') then raise exception 'papel desconhecido nas regras de acesso: %', v_role; end if;
+    if jsonb_typeof(v_roleobj) <> 'object' then raise exception 'regras de acesso invalidas para %', v_role; end if;
+    for v_cap, v_val in select * from jsonb_each(v_roleobj) loop
+      if v_cap not in ('comment','code','add_docs','edit_codes','edit_code_memos','use_ai') then raise exception 'capacidade desconhecida: %', v_cap; end if;
+      if jsonb_typeof(v_val) <> 'boolean' then raise exception 'valor invalido para %', v_cap; end if;
+    end loop;
+    v_clean := v_clean || jsonb_build_object(v_role, v_roleobj);
+  end loop;
+  select role_caps into v_old from public.projects where id = p_project;
+  update public.projects set role_caps = v_clean where id = p_project returning * into v_proj;
+  if v_proj.role_caps is distinct from v_old then
+    perform public.log_activity(p_project, 'flags_changed', 'project', p_project, null, null,
+      jsonb_build_object('role_caps', jsonb_build_object('from', v_old, 'to', v_proj.role_caps)));
+  end if;
+  return v_proj;
+end; $$;
+grant execute on function public.set_role_caps(uuid, jsonb) to anon, authenticated;
 grant execute on function public.create_invite(uuid,text,text,int,int) to anon, authenticated;
 grant execute on function public.list_invites(uuid)                   to anon, authenticated;
 grant execute on function public.revoke_invite(uuid)                  to anon, authenticated;
@@ -805,13 +889,13 @@ create policy documents_select on public.documents for select
 -- Sob distribuicao restritiva o corpus e do admin -- que e o fluxo que a restricao sustenta.
 -- Projeto SEM restricao segue igual: qualquer membro adiciona documento.
 create policy documents_insert on public.documents for insert with check (
-  public.can_edit(project_id)
+  public.role_can(project_id, 'add_docs')
   and (public.is_admin(project_id)
        or not coalesce((select pr.restrict_docs from public.projects pr where pr.id = project_id), false))
 );
 create policy documents_update on public.documents for update
-  using (public.can_edit(project_id) and public.can_see_doc(project_id, id))
-  with check (public.can_edit(project_id) and public.can_see_doc(project_id, id));
+  using (public.role_can(project_id, 'add_docs') and public.can_see_doc(project_id, id))
+  with check (public.role_can(project_id, 'add_docs') and public.can_see_doc(project_id, id));
 create policy documents_delete on public.documents for delete using (public.is_admin(project_id));
 
 create or replace function public.documents_guard()
@@ -836,9 +920,9 @@ drop policy if exists codes_insert on public.codes;
 drop policy if exists codes_update on public.codes;
 drop policy if exists codes_delete on public.codes;
 create policy codes_select on public.codes for select using (public.is_member(project_id));
-create policy codes_insert on public.codes for insert with check (public.can_edit(project_id));
+create policy codes_insert on public.codes for insert with check (public.role_can(project_id, 'edit_codes'));
 create policy codes_update on public.codes for update
-  using (public.can_edit(project_id)) with check (public.can_edit(project_id));
+  using (public.role_can(project_id, 'edit_codes')) with check (public.role_can(project_id, 'edit_codes'));
 create policy codes_delete on public.codes for delete using (public.is_admin(project_id));
 
 -- codings: o servidor passa a ser a autoridade (antes uma unica policy for all deixava
@@ -864,18 +948,18 @@ create policy codings_select on public.codings for select using (
   and public.can_see_authored(project_id, created_by)
 );
 create policy codings_insert on public.codings for insert with check (
-  public.can_edit(project_id)
+  public.role_can(project_id, 'code')
   and public.can_see_doc(project_id, document_id)
   and (created_by = auth.uid() or public.is_admin(project_id))
   and (layer <> 'final' or public.is_admin(project_id))
 );
 create policy codings_update on public.codings for update
-  using (public.can_edit(project_id) and public.can_see_doc(project_id, document_id)
+  using (public.role_can(project_id, 'code') and public.can_see_doc(project_id, document_id)
          and (created_by = auth.uid() or public.is_admin(project_id)))
-  with check (public.can_edit(project_id) and public.can_see_doc(project_id, document_id)
+  with check (public.role_can(project_id, 'code') and public.can_see_doc(project_id, document_id)
          and (created_by = auth.uid() or public.is_admin(project_id)));
 create policy codings_delete on public.codings for delete
-  using (public.can_edit(project_id) and public.can_see_doc(project_id, document_id)
+  using (public.role_can(project_id, 'code') and public.can_see_doc(project_id, document_id)
          and (created_by = auth.uid() or public.is_admin(project_id)));
 
 -- categorias: membros leem; apenas admins escrevem
@@ -894,15 +978,17 @@ drop policy if exists doc_values_select   on public.doc_values;
 drop policy if exists doc_values_own      on public.doc_values;
 drop policy if exists doc_values_final    on public.doc_values;
 drop policy if exists doc_values_imported on public.doc_values;
+-- can_see_value, e nao can_see_authored: e a UNICA policy em que o gabarito pode ficar visivel sob
+-- cego, por declaracao do projeto (cats_are_metadata). Ver o comentario da coluna.
 create policy doc_values_select on public.doc_values for select using (
   public.is_member(project_id)
   and public.can_see_doc(project_id, document_id)
-  and public.can_see_authored(project_id, set_by)
+  and public.can_see_value(project_id, set_by)
 );
 create policy doc_values_own on public.doc_values for all
-  using (public.can_edit(project_id) and public.can_see_doc(project_id, document_id)
+  using (public.role_can(project_id, 'code') and public.can_see_doc(project_id, document_id)
          and set_by = auth.uid() and layer = 'individual')
-  with check (public.can_edit(project_id) and public.can_see_doc(project_id, document_id)
+  with check (public.role_can(project_id, 'code') and public.can_see_doc(project_id, document_id)
          and set_by = auth.uid() and layer = 'individual');
 create policy doc_values_final on public.doc_values for all
   using (public.is_admin(project_id) and layer = 'final')
@@ -942,17 +1028,17 @@ do $$ begin
   create policy "pdfs_insert" on storage.objects for insert to authenticated
     with check ( bucket_id='pdfs' and exists (select 1 from public.documents d
       where d.id::text = split_part(storage.objects.name,'.',1)
-        and public.can_edit(d.project_id) and public.can_see_doc(d.project_id, d.id)) );
+        and public.role_can(d.project_id, 'add_docs') and public.can_see_doc(d.project_id, d.id)) );
   drop policy if exists "pdfs_update" on storage.objects;
   create policy "pdfs_update" on storage.objects for update to authenticated
     using ( bucket_id='pdfs' and exists (select 1 from public.documents d
       where d.id::text = split_part(storage.objects.name,'.',1)
-        and public.can_edit(d.project_id) and public.can_see_doc(d.project_id, d.id)) );
+        and public.role_can(d.project_id, 'add_docs') and public.can_see_doc(d.project_id, d.id)) );
   drop policy if exists "pdfs_delete" on storage.objects;
   create policy "pdfs_delete" on storage.objects for delete to authenticated
     using ( bucket_id='pdfs' and exists (select 1 from public.documents d
       where d.id::text = split_part(storage.objects.name,'.',1)
-        and public.can_edit(d.project_id) and public.can_see_doc(d.project_id, d.id)) );
+        and public.role_can(d.project_id, 'add_docs') and public.can_see_doc(d.project_id, d.id)) );
 end $$;
 
 -- ---------- realtime ----------
@@ -1017,11 +1103,15 @@ create policy memos_write on public.memos for all
   using (public.is_member(project_id) and public.memo_visible(project_id, scope, target_id)
          and (case when scope = 'code' and public.code_memos_locked(project_id)
                    then public.is_admin(project_id)
-                   else public.can_edit(project_id) or public.memo_is_note(scope) end))
+                   when scope = 'code' then public.role_can(project_id, 'edit_code_memos')
+                   when public.memo_is_note(scope) then public.role_can(project_id, 'comment')
+                   else public.can_edit(project_id) end))
   with check (public.is_member(project_id) and public.memo_visible(project_id, scope, target_id)
          and (case when scope = 'code' and public.code_memos_locked(project_id)
                    then public.is_admin(project_id)
-                   else public.can_edit(project_id) or public.memo_is_note(scope) end));
+                   when scope = 'code' then public.role_can(project_id, 'edit_code_memos')
+                   when public.memo_is_note(scope) then public.role_can(project_id, 'comment')
+                   else public.can_edit(project_id) end));
 alter table public.memos add column if not exists updated_by uuid;
 create or replace function public.memos_provenance()
 returns trigger language plpgsql security definer set search_path = public as $$
@@ -1163,13 +1253,13 @@ create policy ia_results_select on public.ia_results for select using (public.is
 -- grava por addIaResultsBulk, entao um .qualilab com historico entrando num projeto 'all' vira
 -- linha recusada — numero sem motivo passa por bug.
 create policy ia_results_insert on public.ia_results for insert
-  with check (public.can_edit(project_id) and (created_by = auth.uid() or created_by is null)
+  with check (public.role_can(project_id, 'use_ai') and (created_by = auth.uid() or created_by is null)
               and public.can_use_ai(project_id));
 create policy ia_results_update on public.ia_results for update
-  using (public.can_edit(project_id) and (created_by = auth.uid() or public.is_admin(project_id)))
-  with check (public.can_edit(project_id) and (created_by = auth.uid() or public.is_admin(project_id)));
+  using (public.role_can(project_id, 'use_ai') and (created_by = auth.uid() or public.is_admin(project_id)))
+  with check (public.role_can(project_id, 'use_ai') and (created_by = auth.uid() or public.is_admin(project_id)));
 create policy ia_results_delete on public.ia_results for delete
-  using (public.can_edit(project_id) and (created_by = auth.uid() or public.is_admin(project_id)));
+  using (public.role_can(project_id, 'use_ai') and (created_by = auth.uid() or public.is_admin(project_id)));
 
 -- ---------- diario de insights da IA: memoria persistente e curada do projeto ----------
 -- Lista de memorias curtas (fatos/decisoes/insights) que a IA propoe e o pesquisador
@@ -1202,13 +1292,13 @@ drop policy if exists ia_memory_update on public.ia_memory;
 drop policy if exists ia_memory_delete on public.ia_memory;
 create policy ia_memory_select on public.ia_memory for select using (public.is_member(project_id));
 create policy ia_memory_insert on public.ia_memory for insert
-  with check (public.can_edit(project_id) and (created_by = auth.uid() or created_by is null)
+  with check (public.role_can(project_id, 'use_ai') and (created_by = auth.uid() or created_by is null)
               and public.can_use_ai(project_id));
 create policy ia_memory_update on public.ia_memory for update
-  using (public.can_edit(project_id) and (created_by = auth.uid() or public.is_admin(project_id)))
-  with check (public.can_edit(project_id) and (created_by = auth.uid() or public.is_admin(project_id)));
+  using (public.role_can(project_id, 'use_ai') and (created_by = auth.uid() or public.is_admin(project_id)))
+  with check (public.role_can(project_id, 'use_ai') and (created_by = auth.uid() or public.is_admin(project_id)));
 create policy ia_memory_delete on public.ia_memory for delete
-  using (public.can_edit(project_id));
+  using (public.role_can(project_id, 'use_ai'));
 
 -- toggle de active aberto a qualquer membro (a policy de update acima nao cobre
 -- memoria alheia de proposito); o SupabaseStore.setMemoryActive chama esta RPC.
@@ -1220,7 +1310,7 @@ begin
   if v_pid is null then raise exception 'Memória não encontrada'; end if;
   -- o gate vai AQUI e nao so na policy: a RPC e security definer, entao sem ele ela seria a
   -- porta de fuga do viewer para o toggle de "usar na análise".
-  if not public.can_edit(v_pid) then raise exception 'Somente leitura: este papel não altera a memória do projeto'; end if;
+  if not public.role_can(v_pid, 'use_ai') then raise exception 'Este papel não altera a memória do projeto'; end if;
   update public.ia_memory set active = p_active where id = p_id;
 end; $$;
 grant execute on function public.set_memory_active(uuid, boolean) to anon, authenticated;

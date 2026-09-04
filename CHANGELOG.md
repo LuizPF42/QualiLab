@@ -14,6 +14,68 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.55 (03/09/2026)
+
+### O que cada papel pode fazer, decidido item a item na criação do projeto
+
+Até aqui o QualiLab só distinguia **somente leitura** de **membro** por uma regra tudo-ou-nada, e o
+resto do controle eram interruptores do projeto inteiro. E o projeto coletivo nascia **aberto**: as
+decisões de acesso ficavam num card do hub que a coordenação abria depois, quando quem entrou pelo
+convite já tinha visto o trabalho dos outros. O que alguém já viu não se desvê.
+
+Agora, ao criar um projeto coletivo (e ao "Enviar para a nuvem"), o formulário pergunta o **tipo de
+estudo** (equipe aberta, confiabilidade entre codificadores, dividir o corpus, painel de juízes) e
+mostra uma **matriz** em duas partes. **Papéis**: para somente leitura e para membro, caixas de
+marcar para comentar, codificar e responder categorias, adicionar documentos, criar e editar
+códigos, editar o verbete dos códigos e usar os painéis de IA. **Desenho do estudo**: codificação
+cega, distribuição restritiva e categorias como metadado do desenho, com o nome que têm na
+literatura. O tipo de estudo só preenche a matriz; ela continua editável. O que é da administração
+por construção fica recolhido embaixo. É o **servidor** que
+aplica cada linha, não a tela. A mesma matriz fica no hub (**Distribuir documentos → O que cada papel
+pode fazer**), e cada mudança entra no histórico do projeto. Sem mexer em nada, tudo continua como
+antes: membro faz tudo, somente leitura lê e comenta.
+
+**Os convites já vão com isso**: o e-mail do convite lista o que o papel convidado vai poder fazer
+neste projeto, gerado da matriz; e, logo depois de criar um projeto coletivo, o hub abre com os
+convites, para a pessoa não precisar procurar.
+
+Exige a migração de banco desta versão, já aplicada no projeto público em 03/09/2026 (o bloco está no `supabase/schema.sql`).
+
+## 1.4.54 (03/09/2026)
+
+### Importar um `.qualilab` de equipe num projeto individual preservava só um codificador por trecho
+
+Ao importar num rascunho ou projeto individual um arquivo exportado de projeto coletivo, o
+QualiLab fundia numa linha só as codificações de **pessoas diferentes** no **mesmo trecho** com o
+**mesmo código**, e juntava as notas analíticas delas num memo só, separadas por `---`, sem dizer
+de quem era cada frase. O resumo ainda anunciava o número de codificações do arquivo, não o
+gravado. Medido num projeto real de validação com três avaliadores: o arquivo trazia 3.211
+codificações, o banner dizia 3.211 e o projeto ficava com 2.116. Nenhum erro, nenhum aviso.
+
+Era justamente a observação de consenso ("os três marcaram o mesmo trecho") sendo apagada. Agora,
+em projeto individual, **cada codificador da camada individual continua sendo uma codificação
+própria**, com a sua nota; o gabarito só entra nos trechos que não têm codificação individual
+(era o que a regra antiga existia para garantir, e continua garantido). O resumo passou a contar
+o que **foi gravado** e a dizer quantas codificações do arquivo se fundiram, e por quê.
+
+Projeto coletivo na nuvem não era afetado: lá cada codificação já entrava inteira.
+
+### O gabarito das categorias sob codificação cega, por escolha do projeto
+
+Sob codificação cega, o membro não via **nenhuma** categoria respondida no gabarito, porque a
+regra que esconde o gabarito das codificações escondia também o das categorias. Está certo quando
+a categoria é um veredito; está errado quando ela é fato do desenho do estudo (plataforma, perfil
+sorteado, tema), e aí o codificador cego abria o documento sem saber de que material se tratava.
+
+Nova opção em **Distribuir documentos → Como este projeto controla o acesso**, logo abaixo do
+cego: **As categorias são metadado do desenho**. Ligada, o gabarito das categorias fica visível
+aos membros mesmo sob cego. **Só as categorias**: o gabarito das codificações de trecho e a nota
+de quem codificou continuam ocultos, sempre, e isso não é configurável. É o servidor que aplica.
+A mudança entra no histórico do projeto, e o Relatório ganha um bloco **"Desenho do estudo"**
+declarando a escolha nas três saídas, sem caixa para desligar.
+
+Exige a migração de banco desta versão, já aplicada no projeto público em 03/09/2026 (o bloco está no `supabase/schema.sql`).
+
 ## 1.4.53 (03/09/2026)
 
 ### O verbete do código aparece na Codificação, ao lado da árvore

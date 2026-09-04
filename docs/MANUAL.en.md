@@ -792,6 +792,10 @@ Next to the AI checkbox there is **"Include the process history"**, also **on by
 
 Like the AI block, it **reports and carries its own limit**: it says that it records operations done through QualiLab, not reading or navigation, and that it does not keep the content of what was deleted. Unchecking the box, the block does not go out.
 
+### 12.7. Study design
+
+When the project declares that **attributes are study-design metadata** (see [blind coding](#13-collaboration)), the three outputs gain a **"Study design"** block saying so: that the attributes' reference values stayed visible to members even under blind coding, that the codings' reference layer stayed hidden, and whether blind coding is on or off at the moment of the report. This block **has no box to turn it off**, on purpose: a study that ran blind with the attributes' reference values in view has to say so, otherwise the methods section claims a cleaner design than the one executed. With the switch off, the block simply does not exist.
+
 ---
 
 ## 13. Collaboration
@@ -812,11 +816,17 @@ Open the **project pill** (header) → there is the **access code**. Share it; w
 ### Managing members and the project
 Still in the project pill, the admin can: see the **member list** and change roles (**admin/member**), **rename**, **clear content**, **delete** the project, change its **type** and adjust the **connection** (Supabase credentials).
 
+### What each role can do (decided at creation)
+*(Collective project in the cloud.)* When creating a collective project, the form asks for the **study type** and shows a two-part **matrix**. **Roles**: what someone joining as **read-only** and as **member** can do (comment, code and answer attributes, add documents, create and edit codes, edit definitions, use the AI panels), ticked = can; admins do everything. **Study design**: the decisions with a name of their own, blind coding, restrictive assignment and attributes as study-design metadata, ticked = on. The four study types (**open team**, **inter-coder reliability**, **split the corpus**, **panel of judges**) only fill the matrix in one go; it stays editable and shows what the type did. What belongs to admins by construction (scheme, reference layer, deletions, imports, team, mirrors) is folded below, so you can see what is **not** at stake.
+
+Why at creation: what someone has already seen cannot be unseen. A project born open that only later turns blind coding on has already contaminated whoever joined before. With the matrix decided up front, the **invite** already carries the rules in force, and the invite e-mail lists what that role will be able to do, generated from the matrix itself. The **server** enforces every line (not the screen): a member without "code" gets a refusal from the database, not just a hidden button. It can be changed later, in the project hub (**Assign documents → What each role can do**); the change enters the project history. Left untouched, behaviour is as always: members do everything, read-only participants read and comment.
+
 ### Assigning documents and blind coding
 *(Admin only, collective cloud project.)* In the project hub, the **Assignment and confidentiality → Assign documents…** card ("Distribuição e sigilo → Distribuir documentos…") opens a **documents × researchers matrix**, where you mark who codes what. A **C** badge shows who has **already coded** each document; the **automatic rotation** button assigns everything at once (1 or more people per document). On its own, the matrix is just a **work plan**: it becomes a rule when you flip one of the two switches (**independent** of each other):
 
 - **Restrictive assignment** ("Distribuição restritiva"): each researcher only **sees** the documents assigned to them. It serves to **divide the corpus** (each person minds their share, nobody codes in duplicate). A document assigned to no one stays with the administrators only; switched off, everyone sees the whole corpus.
 - **Blind coding (*true blind*)** ("Codificação cega"): each researcher only **sees their own** codings and answers. For **inter-coder reliability**, assign the **same** document to two people (it becomes double-blind). While it is on, the reference layer is also hidden from members (revealing it midway contaminates); turn it off to reconcile together. Administrators keep seeing everything.
+  - **Attributes as study-design metadata** (switch right below blind coding): turn it on when the attributes of your study describe the material (platform, sampled profile, topic, service line) and are not a coder's answer. With it on, the **attributes' reference values** stay visible to members even under blind coding; without it, a blind coder opens the document with every attribute blank and no way of knowing what material it is. **Only attributes change**: the reference layer of passage codings, and the analytical note of whoever coded, stay hidden under blind coding, always. Think before turning it on (knowing which platform a passage came from can bias the reading) and know that the [Report](#127-study-design) will declare this choice.
 
 > Both rules are enforced by the **server**, not merely hidden on screen: the member cannot reach through the API what is hidden (not the passage's text, not the PDF, not the **analytic note** written on a passage they cannot see). For a member in a blind project, the **"Ver:"** filter and the **Reconciliation** tab disappear. Assignment changes show up on **reload** (not in real time). It is a **collective-cloud-only** feature (it depends on multiple researcher accounts) and does **not** travel in the `.qualilab`.
 
@@ -903,6 +913,8 @@ The **export ▾** ("exportar ▾") and **import ▾** ("importar ▾") menus si
 | **Zotero folder (Zotero RDF)** | **Each reference with a PDF becomes a document**; the metadata become attributes and the reference becomes a memo, see below |
 
 > In a **collective cloud** project, **importing is an administrator action** (an import creates shared data and can write the reference layer). In a draft, a file or an individual project, any user imports.
+
+> When importing a `.qualilab` from a **collective** project into a **draft** or an **individual** project, the two layers merge into one, and the rule is per passage: **each coder of the individual layer remains a coding of their own** (three people marking the same passage are still three, each with their own note), and the reference layer only enters passages that have no individual coding at all. The import summary counts what **was saved** and says how many codings from the file merged under that rule.
 
 #### Importing a Zotero collection (step by step)
 1. **In Zotero**: right-click the collection → **Export collection…** → format **Zotero RDF**, with **Export files** checked. It creates a **folder** (an `.rdf` plus a `files/` subfolder).

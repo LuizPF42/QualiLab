@@ -790,6 +790,10 @@ Ao lado da caixa de IA há **"Incluir o histórico do processo"**, também **lig
 
 Como o bloco de IA, ele **relata e leva o próprio limite junto**: diz que registra operações feitas pelo QualiLab, não a leitura nem a navegação, e que não guarda o conteúdo do que foi apagado. Desmarcando a caixa, o bloco não sai.
 
+### 12.7. Desenho do estudo
+
+Quando o projeto declara que **as categorias são metadado do desenho** (ver [codificação cega](#13-colaboração)), as três saídas ganham um bloco **"Desenho do estudo"** dizendo isso: que o gabarito das categorias ficou visível aos membros mesmo sob cego, que o gabarito das codificações de trecho continuou oculto, e se a codificação cega está ligada ou desligada no momento do relatório. Esse bloco **não tem caixa para desligar**, de propósito: um estudo que rodou cego com o gabarito de categoria à vista precisa dizê-lo, senão a seção de métodos afirma um desenho mais limpo do que o executado. Com o interruptor desligado, o bloco simplesmente não existe.
+
 ---
 
 ## 13. Colaboração
@@ -810,11 +814,17 @@ Abra a **pílula do projeto** (cabeçalho) → ali está o **código de acesso**
 ### Gerenciar membros e o projeto
 Ainda na pílula do projeto, o admin pode: ver a **lista de membros** e mudar papéis (**admin/membro**), **renomear**, **limpar conteúdo**, **excluir** o projeto, mudar o **tipo** e ajustar a **conexão** (credenciais Supabase).
 
+### O que cada papel pode fazer (decidido na criação)
+*(Projeto coletivo na nuvem.)* Ao criar um projeto coletivo, o formulário pergunta o **tipo de estudo** e mostra uma **matriz** em duas partes. **Papéis**: o que quem entra como **somente leitura** e como **membro** pode fazer (comentar, codificar e responder categorias, adicionar documentos, criar e editar códigos, editar o verbete, usar os painéis de IA), marcado = pode; administradores fazem tudo. **Desenho do estudo**: as decisões com nome próprio, codificação cega, distribuição restritiva e categorias como metadado do desenho, marcado = ligado. Os quatro tipos de estudo (**equipe aberta**, **confiabilidade entre codificadores**, **dividir o corpus**, **painel de juízes**) só preenchem a matriz de uma vez; ela continua editável e mostra o que o tipo fez. O que é da administração por construção (esquema, gabarito, exclusões, importação, equipe, espelhos) fica recolhido embaixo, para você ver o que **não** está em jogo.
+
+Por que na criação: o que alguém já viu não se desvê. Um projeto que nasce aberto e só depois liga a codificação cega já contaminou quem entrou antes. Com a matriz decidida no início, o **convite** já vai com as regras em vigor — e o e-mail do convite lista o que aquele papel vai poder fazer, gerado da própria matriz. É o **servidor** que aplica cada linha (não a tela): um membro sem "codificar" recebe recusa do banco, não só um botão escondido. Dá para mudar depois, no hub do projeto (**Distribuir documentos → O que cada papel pode fazer**); a mudança entra no histórico do projeto. Sem mexer em nada, o comportamento é o de sempre: membro faz tudo, somente leitura lê e comenta.
+
 ### Distribuir documentos e codificação cega
 *(Só admin, projeto coletivo na nuvem.)* No hub do projeto, o card **Distribuição e sigilo → Distribuir documentos…** abre uma **matriz de documentos × pesquisadores**, onde você marca quem codifica o quê. Um selo **C** mostra quem **já codificou** cada documento; o botão de **rodízio automático** distribui tudo de uma vez (1 ou mais pessoas por documento). Sozinha, a matriz é só um **plano de trabalho**: ela vira regra quando você liga um dos dois interruptores (**independentes**):
 
 - **Distribuição restritiva**: cada pesquisador só **enxerga** os documentos atribuídos a ele. Serve para **dividir o corpus** (cada um cuida da sua parte, ninguém codifica em duplicidade). Documento sem ninguém atribuído fica só com os administradores; desligada, todos veem o corpus inteiro.
 - **Codificação cega (*true blind*)**: cada pesquisador só **enxerga as próprias** codificações e respostas. Para **confiabilidade entre codificadores**, atribua o **mesmo** documento a duas pessoas (fica duplo-cego). Enquanto está ligada, o gabarito também fica oculto para os membros (revelá-lo no meio contamina); desligue para reconciliar em conjunto. Administradores continuam vendo tudo.
+  - **As categorias são metadado do desenho** (interruptor logo abaixo do cego): ligue quando as categorias do seu estudo descrevem o material (plataforma, perfil sorteado, tema, linha de atendimento) e não são resposta de codificador. Com ele ligado, o **gabarito das categorias** fica visível aos membros mesmo sob cego; sem ele, um codificador cego abre o documento com todas as categorias em branco e sem saber de que material se trata. **Só as categorias mudam**: o gabarito das codificações de trecho, e a nota analítica de quem codificou, continuam ocultos sob cego, sempre. Pense antes de ligar (saber de que plataforma veio um trecho pode enviesar a leitura) e saiba que o [Relatório](#127-desenho-do-estudo) passa a declarar essa escolha.
 
 > As duas regras são impostas pelo **servidor**, não só escondidas na tela: o membro não alcança pela API o que está oculto (nem o texto do trecho, nem o PDF, nem a **nota analítica** escrita sobre um trecho que ele não pode ver). Para o membro em projeto cego somem o filtro **"Ver:"** e a aba **Reconciliação**. Mudanças na distribuição aparecem ao **recarregar** (não em tempo real). É recurso **só da nuvem coletiva** (depende de contas de vários pesquisadores) e **não** viaja no `.qualilab`.
 
@@ -902,6 +912,8 @@ Os menus **exportar ▾** e **importar ▾** ficam no cabeçalho (aparecem quand
 | **pasta do Zotero (Zotero RDF)** | **Cada referência com PDF vira um documento**; os metadados viram categorias e a referência vira memo, veja abaixo |
 
 > Em projeto **coletivo na nuvem**, **importar é uma ação de administrador** (o import cria dados compartilhados e pode escrever o gabarito). Em rascunho, arquivo ou projeto individual, qualquer usuário importa.
+
+> Ao importar um `.qualilab` de projeto **coletivo** num **rascunho** ou projeto **individual**, as duas camadas se fundem numa só, e a regra é por trecho: **cada codificador da camada individual continua sendo uma codificação própria** (três pessoas marcando o mesmo trecho seguem sendo três, cada uma com a sua nota), e o gabarito só entra nos trechos que não têm nenhuma codificação individual. O resumo da importação conta o que **foi gravado** e diz quantas codificações do arquivo se fundiram por essa regra.
 
 #### Importar uma coleção do Zotero (passo a passo)
 1. **No Zotero**: botão direito na coleção → **Exportar coleção…** → formato **Zotero RDF**, com **Exportar arquivos** marcado. Ele cria uma **pasta** (um `.rdf` mais uma subpasta `files/`).

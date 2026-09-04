@@ -913,7 +913,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.53';
+const QUALILAB_VERSION = '1.4.55';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -2524,11 +2524,68 @@ const MSG_PT = {
   'assign.title': 'Distribuir documentos',
   'assign.hint': 'Quem codifica o quê. Sozinha, a grade é só um **plano de trabalho**: ela vira restrição de verdade quando você liga a distribuição restritiva abaixo.',
   'assign.access': 'Como este projeto controla o acesso',
-  'assign.restrict': '**Distribuição restritiva**: cada pesquisador só **enxerga** os documentos atribuídos a ele.',
+  'rules.title': 'O que cada papel pode fazer',
+  'rules.hint': 'Escolha um **tipo de estudo** ou marque item a item. **Papéis**: o que somente leitura e membro fazem (marcado = pode; administradores fazem tudo). **Desenho do estudo**: as decisões com nome próprio (codificação cega, distribuição, categorias como metadado; marcado = ligado). É o **servidor** que aplica cada linha. Dá para mudar depois, no hub do projeto, mas o que alguém já viu não se desvê: decida **antes** de convidar.',
+  'rules.preset': 'Tipo de estudo:',
+  'rules.preset.open': 'Equipe aberta',
+  'rules.preset.open.tip': 'Todos veem tudo; membros codificam, criam códigos e comentam. É o padrão.',
+  'rules.preset.reliability': 'Confiabilidade entre codificadores',
+  'rules.preset.reliability.tip': 'Codificação cega: cada pessoa vê só o próprio trabalho até a Reconciliação. Atribua o mesmo documento a duas ou mais pessoas.',
+  'rules.preset.split': 'Dividir o corpus',
+  'rules.preset.split.tip': 'Distribuição restritiva: cada pessoa vê só os documentos atribuídos a ela, sem cego.',
+  'rules.preset.judges': 'Painel de juízes',
+  'rules.preset.judges.tip': 'Cego, com as categorias visíveis como metadado do desenho e o instrumento congelado: membros não criam códigos, não editam verbetes nem adicionam documentos.',
+  'rules.col.viewer': 'Somente leitura',
+  'rules.col.member': 'Membro',
+  'rules.col.admin': 'Admin',
+  'rules.sec.roles': 'Papéis',
+  'rules.sec.design': 'Desenho do estudo',
+  'rules.cap.read': 'Lê o corpus, as codificações e os memos que o servidor libera',
+  'rules.cap.comment': 'Comenta: escreve memos e notas de trecho',
+  'rules.cap.code': 'Codifica trechos e responde categorias (na própria camada)',
+  'rules.cap.add_docs': 'Adiciona e renomeia documentos (e envia PDFs)',
+  'rules.cap.edit_codes': 'Cria e edita códigos (não exclui)',
+  'rules.cap.edit_code_memos': 'Edita o verbete dos códigos',
+  'rules.cap.use_ai': 'Usa os painéis de IA',
+  'rules.cap.use_ai.off': 'A IA está desativada neste projeto (selo de IA no cabeçalho).',
+  'rules.cap.use_ai.members': 'A IA está restrita à administração (selo de IA no cabeçalho).',
+  'rules.design.blind': 'Codificação cega',
+  'rules.design.blind.sub': 'Cada pessoa vê só o próprio trabalho até a Reconciliação.',
+  'rules.design.restrict': 'Distribuição restritiva',
+  'rules.design.restrict.sub': 'Cada pessoa vê só os documentos atribuídos a ela.',
+  'rules.design.cats_meta': 'Categorias como metadado do desenho',
+  'rules.design.cats_meta.sub': 'O gabarito das categorias fica visível mesmo sob cego.',
+  'rules.design.cats_meta.needsBlind': 'Só tem efeito com a codificação cega ligada.',
+  'rules.fixed': 'O que a administração faz, sempre (não se configura)',
+  'rules.fixed.schema': 'Esquema de categorias, gabarito e Reconciliação',
+  'rules.fixed.destroy': 'Exclui documentos e códigos; edita o texto dos documentos',
+  'rules.fixed.import': 'Importa, mescla e limpa o projeto',
+  'rules.fixed.team': 'Convites, papéis, distribuição e estas regras',
+  'rules.fixed.snapshots': 'Espelha e restaura o projeto',
+  'err.noCap.code': 'Neste projeto, o seu papel não codifica nem responde categorias. Quem coordena define isso em "O que cada papel pode fazer".',
+  'act.flag.caps': 'regras de acesso por papel alteradas',
+  'invite.rightsHead': 'Quem entrar como {role} vai poder:',
+  'rights.admin': 'administra tudo: esquema, gabarito, importação, membros e regras',
+  'rights.read': 'lê o corpus, as codificações e os memos que o servidor libera',
+  'rights.comment.yes': 'comenta (memos e notas de trecho)',
+  'rights.comment.no': 'não escreve memos',
+  'rights.code.yes': 'codifica trechos e responde categorias',
+  'rights.code.no': 'não codifica nem responde categorias',
+  'rights.docs.yes': 'adiciona documentos',
+  'rights.docs.no': 'não adiciona documentos',
+  'rights.codes.yes': 'cria e edita códigos',
+  'rights.codes.no': 'não cria nem edita códigos',
+  'rights.verbete.yes': 'edita o verbete dos códigos',
+  'rights.verbete.no': 'não edita o verbete dos códigos',
+  'rights.blind.on': 'vê só o próprio trabalho (codificação cega)',
+  'rights.blind.off': 'vê o trabalho dos outros',
+  'rights.restrict.on': 'vê só os documentos que lhe forem atribuídos',
+  'rights.catsMeta': 'vê o gabarito das categorias mesmo sob cego',
+  'rights.ai.yes': 'usa os painéis de IA',
+  'rights.ai.no': 'não usa os painéis de IA',
   'assign.restrict.sub': 'Documento sem ninguém atribuído fica só com os administradores. Desligado, todos veem o corpus inteiro.',
-  'assign.blind': '**Codificação cega (true blind)**: cada pesquisador só enxerga as **próprias** codificações e respostas.',
   'assign.blind.sub': 'Para confiabilidade entre codificadores, atribua o MESMO documento a duas pessoas. Enquanto estiver ligado, o gabarito também fica oculto para os membros (revelá-lo no meio do estudo contamina). Desligue para reconciliar em conjunto. Administradores continuam vendo tudo.',
-  'assign.codeMemos': '**Travar o verbete dos códigos**: só a administração edita a definição de cada código.',
+  'assign.catsMeta.sub': 'Ligue quando as categorias descrevem o material (plataforma, perfil sorteado, tema) e não são resposta de codificador. Só muda o que o membro vê de CATEGORIA: o gabarito das codificações de trecho continua oculto sob cego, sempre. Pense antes: saber de que material se trata pode enviesar a leitura, e o Relatório passa a declarar esta escolha.',
   'assign.codeMemos.sub': 'O verbete é o instrumento do estudo. Reescrito no meio de uma rodada, as codificações de antes e as de depois deixam de ser comparáveis — e nada na tela denuncia. Ler continua livre para todo mundo.',
   'assign.server': 'O servidor é quem aplica as duas regras, não a tela: um membro não alcança o que está oculto nem pela API. Quem já estiver com o projeto aberto vê a mudança ao recarregar.',
   'assign.oneMember': 'Só há um membro neste projeto. Convide colaboradores (código de acesso no hub do projeto) para distribuir documentos.',
@@ -2589,7 +2646,7 @@ const MSG_PT = {
   'invite.status.expired': 'expirado',
   'invite.status.used': 'esgotado',
   'invite.mail.subject': 'Convite para o projeto "{project}" no QualiLab',
-  'invite.mail.body': 'Olá! Você foi convidado(a) para o projeto "{project}" no QualiLab, com o papel de {role}.\n\nPara entrar: abra o QualiLab → Meus projetos → Entrar com código, e use:\n\n{code}',
+  'invite.mail.body': 'Olá! Você foi convidado(a) para o projeto "{project}" no QualiLab, com o papel de {role}.\n\nNeste projeto, quem entra como {role}:\n{rights}\n\nPara entrar: abra o QualiLab → Meus projetos → Entrar com código, e use:\n\n{code}',
   'proj.type': 'Tipo do projeto',
   'proj.type.ind': 'Individual',
   'proj.type.col': 'Coletivo',
@@ -2631,6 +2688,8 @@ const MSG_PT = {
   'proj.restrictPill': 'distribuição restritiva',
   'proj.restrictPill.tip': 'Cada pesquisador só enxerga os documentos atribuídos a ele',
   'proj.blindPill': 'cega',
+  'proj.catsMetaPill': 'categorias visíveis sob cego',
+  'proj.catsMetaPill.tip': 'As categorias deste projeto estão declaradas como metadado do desenho: o gabarito delas fica visível aos membros mesmo com a codificação cega ligada.',
   'proj.codeMemosPill': 'verbete travado',
   'proj.codeMemosPill.tip': 'Só a administração edita a definição dos códigos neste projeto.',
   'proj.blindPill.tip': 'Cada pesquisador só enxerga as próprias codificações',
@@ -3207,6 +3266,8 @@ const MSG_PT = {
   'act.flag.codeMemosOn': 'verbete dos códigos travado',
   'act.flag.codeMemosOff': 'verbete dos códigos liberado',
   'act.flag.autoSnapOff': 'espelho automático desligado',
+  'act.flag.catsMetaOn': 'categorias declaradas metadado do desenho (gabarito visível sob cego)',
+  'act.flag.catsMetaOff': 'categorias voltam a ser resposta de codificador (gabarito oculto sob cego)',
   'act.op.project_renamed': 'Projeto renomeado para {to}{from}.',
   'act.op.member_joined': '{who} entrou no projeto como {role}.',
   'act.op.member_left': '{who} saiu do projeto.',
@@ -3254,6 +3315,11 @@ const MSG_PT = {
   'rep.trailBox': '**Incluir o histórico do processo**: acrescenta ao artefato um resumo do que o histórico do projeto registra (quantas importações, mesclagens, exclusões, aplicações em lote, consolidações e exportações, e desde quando).',
   'rep.trail': 'Histórico do processo.',
   'ati.trail': 'Histórico do processo',
+  'ati.design': 'Desenho do estudo',
+  'rep.design': 'Desenho do estudo.',
+  'design.decl.catsMeta': 'As categorias deste projeto estão declaradas como metadado do desenho do estudo, e não como resposta de codificador: o valor delas no gabarito fica visível a todos os membros mesmo sob codificação cega. O gabarito das codificações de trecho continua oculto sob cego.',
+  'design.decl.blindOn': ' A codificação cega está ligada neste momento.',
+  'design.decl.blindOff': ' A codificação cega está desligada neste momento.',
   'q.activity': 'registro no histórico',
   'snap.title': 'Espelhos do projeto',
   'snap.hint': 'Um espelho guarda o projeto inteiro num instante (documentos, categorias, códigos, codificações, memos, conversas e memórias de IA) para restaurar depois. Antes de limpar, excluir, mesclar, dividir, editar texto ou restaurar, o QualiLab espelha sozinho, no máximo um a cada {gap} minutos; ficam os {keep} automáticos mais recentes, e os manuais até você excluir.',
@@ -3281,6 +3347,7 @@ const MSG_PT = {
   'snap.warn.autoFailed': 'A operação seguiu, mas o espelho automático falhou: {e}',
   'qdpx.loss.trail': 'O histórico do projeto ({n} evento(s)) fica de fora: o REFI-QDA não tem onde guardá-lo. Ele viaja só no .qualilab.',
   'imp.activity': ' Histórico: {n} evento(s) novo(s){rep}.',
+  'imp.qualilab.collapsed': ' {n} codificação(ões) do arquivo não foram gravadas em separado: eram o gabarito de trechos que já tinham codificação individual (em projeto individual as duas camadas se fundem).',
   'imp.activity.rep': ', {n} já registrado(s)',
 };
 /* ============ CATALOGO EN ============
@@ -4746,11 +4813,68 @@ const MSG_EN = {
   'assign.title': 'Assign documents',
   'assign.hint': 'Who codes what. On its own the grid is just a **work plan**: it only becomes a real restriction once you turn on restrictive assignment below.',
   'assign.access': 'How this project controls access',
-  'assign.restrict': '**Restrictive assignment**: each researcher only **sees** the documents assigned to them.',
+  'rules.title': 'What each role can do',
+  'rules.hint': 'Pick a **study type** or tick item by item. **Roles**: what read-only and member can do (ticked = can; admins do everything). **Study design**: the decisions with a name of their own (blind coding, assignment, attributes as metadata; ticked = on). The **server** enforces every line. It can be changed later, in the project hub, but what someone has already seen cannot be unseen: decide **before** inviting.',
+  'rules.preset': 'Study type:',
+  'rules.preset.open': 'Open team',
+  'rules.preset.open.tip': 'Everyone sees everything; members code, create codes and comment. The default.',
+  'rules.preset.reliability': 'Inter-coder reliability',
+  'rules.preset.reliability.tip': 'Blind coding: each person sees only their own work until Reconciliation. Assign the same document to two or more people.',
+  'rules.preset.split': 'Split the corpus',
+  'rules.preset.split.tip': 'Restrictive assignment: each person sees only the documents assigned to them, no blind coding.',
+  'rules.preset.judges': 'Panel of judges',
+  'rules.preset.judges.tip': 'Blind, with attributes visible as study-design metadata and the instrument frozen: members do not create codes, edit definitions or add documents.',
+  'rules.col.viewer': 'Read-only',
+  'rules.col.member': 'Member',
+  'rules.col.admin': 'Admin',
+  'rules.sec.roles': 'Roles',
+  'rules.sec.design': 'Study design',
+  'rules.cap.read': 'Reads the corpus, the codings and the memos the server serves',
+  'rules.cap.comment': 'Comments: writes memos and passage notes',
+  'rules.cap.code': 'Codes passages and answers attributes (in their own layer)',
+  'rules.cap.add_docs': 'Adds and renames documents (and uploads PDFs)',
+  'rules.cap.edit_codes': 'Creates and edits codes (does not delete)',
+  'rules.cap.edit_code_memos': 'Edits code definitions',
+  'rules.cap.use_ai': 'Uses the AI panels',
+  'rules.cap.use_ai.off': 'AI is turned off in this project (AI badge in the header).',
+  'rules.cap.use_ai.members': 'AI is restricted to admins (AI badge in the header).',
+  'rules.design.blind': 'Blind coding',
+  'rules.design.blind.sub': 'Each person sees only their own work until Reconciliation.',
+  'rules.design.restrict': 'Restrictive assignment',
+  'rules.design.restrict.sub': 'Each person sees only the documents assigned to them.',
+  'rules.design.cats_meta': 'Attributes as study-design metadata',
+  'rules.design.cats_meta.sub': 'Reference values of the attributes stay visible even under blind coding.',
+  'rules.design.cats_meta.needsBlind': 'Only takes effect with blind coding on.',
+  'rules.fixed': 'What admins do, always (not configurable)',
+  'rules.fixed.schema': 'Attribute scheme, reference layer and Reconciliation',
+  'rules.fixed.destroy': 'Deletes documents and codes; edits document text',
+  'rules.fixed.import': 'Imports, merges and clears the project',
+  'rules.fixed.team': 'Invites, roles, assignment and these rules',
+  'rules.fixed.snapshots': 'Mirrors and restores the project',
+  'err.noCap.code': 'In this project your role does not code or answer attributes. The coordinator sets this in "What each role can do".',
+  'act.flag.caps': 'per-role access rules changed',
+  'invite.rightsHead': 'Whoever joins as {role} will be able to:',
+  'rights.admin': 'administers everything: scheme, reference layer, imports, members and rules',
+  'rights.read': 'read the corpus, the codings and the memos the server serves',
+  'rights.comment.yes': 'comment (memos and passage notes)',
+  'rights.comment.no': 'not write memos',
+  'rights.code.yes': 'code passages and answer attributes',
+  'rights.code.no': 'not code or answer attributes',
+  'rights.docs.yes': 'add documents',
+  'rights.docs.no': 'not add documents',
+  'rights.codes.yes': 'create and edit codes',
+  'rights.codes.no': 'not create or edit codes',
+  'rights.verbete.yes': 'edit code definitions',
+  'rights.verbete.no': 'not edit code definitions',
+  'rights.blind.on': 'see only their own work (blind coding)',
+  'rights.blind.off': 'see other people\'s work',
+  'rights.restrict.on': 'see only the documents assigned to them',
+  'rights.catsMeta': 'see the attributes\' reference values even under blind coding',
+  'rights.ai.yes': 'use the AI panels',
+  'rights.ai.no': 'not use the AI panels',
   'assign.restrict.sub': 'A document with nobody assigned is left to the admins only. Turned off, everyone sees the whole corpus.',
-  'assign.blind': '**Blind coding (true blind)**: each researcher only sees their **own** codings and answers.',
   'assign.blind.sub': 'For inter-coder reliability, assign the SAME document to two people. While it is on, the reference layer is hidden from members too (revealing it mid-study contaminates). Turn it off to reconcile together. Admins keep seeing everything.',
-  'assign.codeMemos': '**Lock code definitions**: only admins edit what each code means.',
+  'assign.catsMeta.sub': 'Turn on when attributes describe the material (platform, sampled profile, topic) rather than record a coder\'s judgment. It only changes what members see of ATTRIBUTES: the reference layer of passage codings stays hidden under blind coding, always. Think first: knowing what the material is can bias the reading, and the Report will declare this choice.',
   'assign.codeMemos.sub': 'The definition is the instrument of the study. Rewritten mid-round, the codings made before and after stop being comparable — and nothing on screen says so. Reading stays open to everyone.',
   'assign.server': 'It is the server that enforces both rules, not the screen: a member cannot reach what is hidden, not even through the API. Anyone with the project already open sees the change on reload.',
   'assign.oneMember': 'There is only one member in this project. Invite collaborators (the access code is in the project hub) in order to assign documents.',
@@ -4811,7 +4935,7 @@ const MSG_EN = {
   'invite.status.expired': 'expired',
   'invite.status.used': 'used up',
   'invite.mail.subject': 'Invitation to the "{project}" project on QualiLab',
-  'invite.mail.body': 'Hi! You have been invited to the "{project}" project on QualiLab, with the role of {role}.\n\nTo join: open QualiLab → My projects → Join with a code, and use:\n\n{code}',
+  'invite.mail.body': 'Hi! You have been invited to the "{project}" project on QualiLab, with the role of {role}.\n\nIn this project, whoever joins as {role} will:\n{rights}\n\nTo join: open QualiLab → My projects → Join with a code, and use:\n\n{code}',
   'proj.type': 'Project type',
   'proj.type.ind': 'Individual',
   'proj.type.col': 'Collective',
@@ -4853,6 +4977,8 @@ const MSG_EN = {
   'proj.restrictPill': 'restrictive assignment',
   'proj.restrictPill.tip': 'Each researcher only sees the documents assigned to them',
   'proj.blindPill': 'blind',
+  'proj.catsMetaPill': 'attributes visible under blind',
+  'proj.catsMetaPill.tip': 'This project declares its attributes as study-design metadata: their reference values stay visible to members even with blind coding on.',
   'proj.codeMemosPill': 'definitions locked',
   'proj.codeMemosPill.tip': 'Only admins edit code definitions in this project.',
   'proj.blindPill.tip': 'Each researcher only sees their own codings',
@@ -5429,6 +5555,8 @@ const MSG_EN = {
   'act.flag.codeMemosOn': 'code definitions locked',
   'act.flag.codeMemosOff': 'code definitions unlocked',
   'act.flag.autoSnapOff': 'automatic mirror off',
+  'act.flag.catsMetaOn': 'attributes declared study-design metadata (reference visible under blind)',
+  'act.flag.catsMetaOff': 'attributes back to coder answers (reference hidden under blind)',
   'act.op.project_renamed': 'Project renamed to {to}{from}.',
   'act.op.member_joined': '{who} joined the project as {role}.',
   'act.op.member_left': '{who} left the project.',
@@ -5476,6 +5604,11 @@ const MSG_EN = {
   'rep.trailBox': '**Include the process history**: adds to the artefact a summary of what the project history records (how many imports, merges, deletions, bulk applications, consolidations and exports, and since when).',
   'rep.trail': 'Process history.',
   'ati.trail': 'Process history',
+  'ati.design': 'Study design',
+  'rep.design': 'Study design.',
+  'design.decl.catsMeta': 'The attributes of this project are declared study-design metadata, not coder answers: their reference values are visible to every member even under blind coding. The reference layer of passage codings stays hidden under blind coding.',
+  'design.decl.blindOn': ' Blind coding is currently on.',
+  'design.decl.blindOff': ' Blind coding is currently off.',
   'q.activity': 'history record',
   'snap.title': 'Project mirrors',
   'snap.hint': 'A mirror keeps the whole project at one instant (documents, attributes, codes, codings, memos, AI conversations and memories) to restore later. Before clearing, deleting, merging, splitting, editing text or restoring, QualiLab mirrors on its own, at most once every {gap} minutes; the {keep} most recent automatic mirrors are kept, and manual ones until you delete them.',
@@ -5503,6 +5636,7 @@ const MSG_EN = {
   'snap.warn.autoFailed': 'The operation went ahead, but the automatic mirror failed: {e}',
   'qdpx.loss.trail': 'The project history ({n} event(s)) stays behind: REFI-QDA has nowhere to keep it. It travels only in the .qualilab.',
   'imp.activity': ' History: {n} new event(s){rep}.',
+  'imp.qualilab.collapsed': ' {n} coding(s) from the file were not saved separately: they were the reference layer of passages that already had an individual coding (individual projects merge the two layers).',
   'imp.activity.rep': ', {n} already recorded',
 };
 const HUES = [210, 28, 150, 350, 268, 184, 322, 70, 48, 96, 122, 238, 295, 8];
@@ -8878,6 +9012,50 @@ function iaOrigemNotice(r){
   return p.join('');
 }
 
+/* DESTINO INDIVIDUAL: quais codificacoes do arquivo SOBREVIVEM em cada pedaco de texto.
+   Projeto individual nao tem Reconciliacao, entao tudo entra numa camada so ('final'). Um .qualilab
+   COLETIVO traz, para o MESMO (documento, codigo, span), a codificacao individual E o gabarito —
+   sem dedup os dois viram 'final' e o gabarito duplica (caso A, o bug #19 original).
+   O QUE A CHAVE ANTIGA NAO DISTINGUIA, e custou 1.095 de 3.211 codificacoes num projeto real de
+   validacao (03/set/2026): codificadores DIFERENTES na mesma camada, no mesmo trecho (caso B).
+   "Tres avaliadores marcaram o mesmo trecho com o mesmo codigo" e a observacao de CONSENSO num
+   estudo de concordancia — a chave (doc, codigo, span) apagava a medida exatamente onde ela e
+   positiva, e fundia as tres notas analiticas num memo so, sem dizer de quem era cada frase.
+   E a mesma licao do export QDPX, na direcao da ENTRADA: o AUTOR entra na chave.
+   A REGRA, e o discriminante e a CAMADA, nao o autor: dentro de cada (doc, codigo, span) TODA linha
+   da camada individual sobrevive; o gabarito so entra se nao houver NENHUMA individual naquele grupo.
+   Havendo o trabalho, a consolidacao dele e redundante; nao havendo, ela e a unica evidencia que resta.
+   O MESMO codificador duas vezes no mesmo trecho NAO colapsa, e isso foi medido antes de decidir: o
+   arquivo real tinha 132 pares assim (um juiz-modelo respondendo duas vezes), zero camada final, e
+   uma primeira versao desta regra os fundia por coderKey — o resumo entao dizia "eram o gabarito",
+   que era falso, e duas notas do mesmo autor saiam coladas. O ramo COLETIVO grava as duas; este
+   ramo funde CAMADAS, nao repeticoes, e decidir por um juiz o que ele respondeu nao e do importador.
+   `valid` filtra o que o merge consegue remapear (documento e codigo conhecidos). Devolve os grupos
+   com TODOS os ids de origem (para o codingMap reancorar o memo de trecho da linha descartada no
+   sobrevivente do mesmo grupo) e quantas linhas foram colapsadas — e o resumo da tela conta isso,
+   porque numero que nao corresponde ao projeto passa por sucesso do mesmo jeito que a perda. */
+function collapseCodingsForIndividual(codings, valid){
+  const byKey = {}, groups = [];
+  let n = 0;
+  for(const c of (codings||[])){
+    if(!c || (valid && !valid(c))) continue;
+    n++;
+    const k = c.document_id+':'+c.code_id+':'+c.span_start+':'+c.span_end;
+    let g = byKey[k];
+    if(!g){ g = byKey[k] = { key:k, ids:[], ind:[], fin:null }; groups.push(g); }
+    if(c.id) g.ids.push(c.id);
+    if(c.layer==='final'){ if(!g.fin) g.fin = c; }
+    else g.ind.push(c);
+  }
+  let kept = 0;
+  const out = groups.map(g=>{
+    const survivors = g.ind.length ? g.ind : (g.fin ? [g.fin] : []);
+    kept += survivors.length;
+    return { key:g.key, ids:g.ids, survivors };
+  });
+  return { groups: out, collapsed: n - kept };
+}
+
 async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pdfs, pdfIdx, origin){
   const codLayer = projectMode==='individual' ? 'final' : 'individual';
   if(!db || !Array.isArray(db.documents)) throw new Error('Arquivo .qualilab sem o formato esperado');
@@ -8891,6 +9069,7 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
     + (db.doc_values||[]).length + (db.codings||[]).length + (db.memos||[]).length;
   const tick = makeProgressTicker(onProgress, total);
   let linhasRecusadas = 0;   // linhas recusadas pelo servidor num lote (ver bulkFails)
+  let trechosGravados = 0, trechosColapsados = 0;   // o resumo conta o que ENTROU, nao o que o arquivo tinha (declarado AQUI: o return fica fora do try)
   let conversas = 0, memorias = 0, conversasRepetidas = 0, memoriasRepetidas = 0;
   let activityEntries = 0, activityRepeated = 0;   // TRILHA (S4): eventos que entraram / ja registrados (dedup por id)
   /* S7 — a chave do DESTINO, lida UMA vez e ANTES das escritas. Ela decide duas coisas: se as
@@ -9009,39 +9188,35 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
     // projeto coletivo com codificações ainda 'individual'.
     const codingMap = {}; // id antigo -> id novo (p/ remapear memos de trecho)
     if(projectMode==='individual'){
-      // #19: destino individual nao tem reconciliacao — UMA coding por (doc,code,span). Um .qualilab
-      // COLETIVO traz a coding individual E o gabarito (mesmo span) do MESMO trecho; sem dedup, os dois
-      // virariam 'final' e DUPLICARIAM o gabarito. Colapsa preferindo 'final' (mesma chave/semantica do
-      // RPC set_project_mode e do pickVal de doc_values acima). O codingMap mapeia TODO id colapsado
-      // para o id do sobrevivente, pra os memos de trecho reancorarem (nao orfanarem).
-      const keep = {}, groups = {};
-      for(const c of (db.codings||[])){
-        if(!(docMap[c.document_id] && codeMap[c.code_id])) continue;
-        const k = c.document_id+':'+c.code_id+':'+c.span_start+':'+c.span_end;
-        (groups[k] = groups[k] || []).push(c.id);
-        const cur = keep[k];
-        if(!cur || (c.layer==='final' && cur.layer!=='final')) keep[k]=c;
-      }
-      const keys = Object.keys(keep);
+      // #19 + multi-coder (03/set/2026): a regra de quem sobrevive e pura, em collapseCodingsForIndividual
+      // (acima) — toda linha da camada individual fica; o gabarito so entra em grupo sem individual. O codingMap mapeia cada sobrevivente ao proprio id novo e cada id DESCARTADO ao
+      // primeiro sobrevivente do MESMO grupo, pra o memo de trecho reancorar (nao orfanar).
+      const { groups, collapsed } = collapseCodingsForIndividual(db.codings, c=>docMap[c.document_id] && codeMap[c.code_id]);
+      trechosColapsados = collapsed;
+      const montar = (c, withId)=>{
+        const co = { created_by:null, layer:codLayer, document_id:docMap[c.document_id], code_id:codeMap[c.code_id], span_start:c.span_start, span_end:c.span_end, quote:c.quote, author_name:c.author_name||'importado' };
+        if(withId) co.id = uid();   // id PRE-GERADO pra montar o codingMap sem depender do retorno do insert em lote
+        if(c.pdf_region) co.pdf_region = c.pdf_region;   // PDF-BLOCK: preserva a geometria do retângulo no round-trip
+        if(c.source) co.source = c.source;   // S8: proveniencia do arquivo de origem; ausente = 'manual' pelo default
+        return co;
+      };
       if(store.addCodingsBulk){
-        // id PRE-GERADO (uid()) pra montar o codingMap sem depender do retorno do insert em lote
-        const built = keys.map(k=>{
-          const c = keep[k];
-          const co = { id:uid(), created_by:null, layer:codLayer, document_id:docMap[c.document_id], code_id:codeMap[c.code_id], span_start:c.span_start, span_end:c.span_end, quote:c.quote, author_name:c.author_name||'importado' };
-          if(c.pdf_region) co.pdf_region = c.pdf_region;
-          if(c.source) co.source = c.source;   // S8: proveniencia do arquivo de origem; ausente = 'manual' pelo default
-          return { key:k, co };
-        });
-        linhasRecusadas += bulkFails(await store.addCodingsBulk(projectId, built.map(x=>x.co)));
-        for(const { key, co } of built) for(const oldId of groups[key]) if(oldId) codingMap[oldId] = co.id;
+        const built = [];
+        for(const g of groups){
+          const novos = g.survivors.map(c=>{ const co = montar(c, true); built.push(co); return { oldId:c.id, id:co.id }; });
+          for(const { oldId, id } of novos) if(oldId) codingMap[oldId] = id;
+          if(novos.length) for(const oldId of g.ids) if(oldId && !codingMap[oldId]) codingMap[oldId] = novos[0].id;
+        }
+        trechosGravados = built.length;
+        linhasRecusadas += bulkFails(await store.addCodingsBulk(projectId, built));
       } else {
-        for(const k of keys){
-          const c = keep[k];
-          const co = { created_by:null, layer:codLayer, document_id:docMap[c.document_id], code_id:codeMap[c.code_id], span_start:c.span_start, span_end:c.span_end, quote:c.quote, author_name:c.author_name||'importado' };
-          if(c.pdf_region) co.pdf_region = c.pdf_region;   // PDF-BLOCK: preserva a geometria do retângulo no round-trip
-          if(c.source) co.source = c.source;   // S8: proveniencia do arquivo de origem; ausente = 'manual' pelo default
-          const nc = await store.addCoding(projectId, co);
-          if(nc?.id) for(const oldId of groups[k]) if(oldId) codingMap[oldId] = nc.id;
+        for(const g of groups){
+          const novos = [];
+          for(const c of g.survivors){
+            const nc = await store.addCoding(projectId, montar(c, false));
+            if(nc?.id){ trechosGravados++; novos.push(nc.id); if(c.id) codingMap[c.id] = nc.id; }
+          }
+          if(novos.length) for(const oldId of g.ids) if(oldId && !codingMap[oldId]) codingMap[oldId] = novos[0];
         }
       }
       for(let i=0;i<(db.codings||[]).length;i++) await tick(); // progresso: 1 por coding de origem
@@ -9055,6 +9230,7 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
           built.push({ oldId:c.id, co });
         }
       }
+      trechosGravados = built.length;
       linhasRecusadas += bulkFails(await store.addCodingsBulk(projectId, built.map(x=>x.co)));
       for(const { oldId, co } of built) if(oldId) codingMap[oldId] = co.id;
       for(let i=0;i<(db.codings||[]).length;i++) await tick();
@@ -9065,7 +9241,7 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
           if(c.pdf_region) co.pdf_region = c.pdf_region;   // PDF-BLOCK: preserva a geometria do retângulo no round-trip
           if(c.source) co.source = c.source;   // S8: proveniencia do arquivo de origem; ausente = 'manual' pelo default
           const nc = await store.addCoding(projectId, co);
-          if(c.id && nc?.id) codingMap[c.id] = nc.id;
+          if(nc?.id){ trechosGravados++; if(c.id) codingMap[c.id] = nc.id; }
         }
         await tick();
       }
@@ -9226,14 +9402,16 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
     if(store.logActivity && !(origin && origin.via==='restore')) await store.logActivity(projectId, { op:'merge_file', target_kind:'project', target_id:projectId,
       detail:{ file:(origin && origin.file) || null, via:(origin && origin.via) || 'import',
                documents:(db.documents||[]).length, categories:(db.categories||[]).length, codes:(db.codes||[]).length,
-               codings:(db.codings||[]).length, memos:(db.memos||[]).length, conversations:conversas, memories:memorias,
+               codings:trechosGravados, codings_collapsed:trechosColapsados||undefined, memos:(db.memos||[]).length, conversations:conversas, memories:memorias,
                activity:activityEntries, rejected:linhasRecusadas, ai_origin_off:iaOrigemSemIa } });
   }catch(e){}
 
   return {
     iaOrigemSemIa, iaRecusadas,
     documentos:(db.documents||[]).length, categorias:(db.categories||[]).length, codigos:(db.codes||[]).length,
-    trechos:(db.codings||[]).length, memos:(db.memos||[]).length,
+    // trechos: o que FOI GRAVADO (um resumo anunciava 3.211 e o projeto ficava com 2.116 — ver
+    // collapseCodingsForIndividual); trechosColapsados diz quantas do arquivo se fundiram, e por que.
+    trechos:trechosGravados, trechosColapsados, memos:(db.memos||[]).length,
     // conversas/memorias contam o que FOI GRAVADO, nao o que veio no arquivo: sao as duas unicas
     // colecoes que o "Limpar conteudo" preserva de proposito, entao numero do arquivo e numero do
     // projeto sao coisas diferentes aqui — e e justamente o caso em que a diferenca importa.
@@ -10602,10 +10780,21 @@ function aiUsageStatement({ restrictAi, aiEverEnabled, conversas, memorias, codi
   return frase + ' ' + AI_DECL_TETO;
 }
 
+/* GABARITO DE CATEGORIA SOB CEGO — a declaracao do DESENHO no Relatorio. Existe porque um estudo que
+   rodou cego COM o gabarito de categoria a vista precisa dizer isso, senao a secao de metodos afirma um
+   desenho mais limpo que o executado. Mesmo molde do aiUsageStatement: RELATA o estado (a flag e o
+   cego como estao AGORA), nunca promete; e NAO e opcional — sai sempre que a flag esta ligada, nas
+   tres saidas, porque o oposto da declaracao aqui e a omissao. Null quando a flag esta desligada:
+   sem ela o cego se comporta como o manual descreve, e nao ha o que declarar. */
+function blindMetadataStatement({ blind, catsAreMetadata } = {}){
+  if(!catsAreMetadata) return null;
+  return t('design.decl.catsMeta') + (blind ? t('design.decl.blindOn') : t('design.decl.blindOff'));
+}
+
 // `aiDecl` (S7) e a frase pronta do aiUsageStatement, ou null quando o pesquisador desmarcou a
 // caixa no Relatorio. Ela entra como extensao `qualilab:` porque nao ha campo normativo no W3C
 // para isto — mesmo lugar onde o memo de projeto ja mora.
-function buildWebAnnotations(docs, codes, allC, memos, project, anonymize, pageOf, aiDecl, trailDecl){
+function buildWebAnnotations(docs, codes, allC, memos, project, anonymize, pageOf, aiDecl, trailDecl, designDecl){
   const docById={}; docs.forEach(d=>docById[d.id]=d);
   const { codeMemo, docMemo, codingMemo, projectMemo } = indexMemos(memos);
   const redactionCodeIds = new Set(codes.filter(c=>c.is_redaction).map(c=>c.id));
@@ -10664,14 +10853,15 @@ function buildWebAnnotations(docs, codes, allC, memos, project, anonymize, pageO
     'qualilab:overview': projectMemo || undefined,
     'qualilab:aiUsage': aiDecl || undefined,
     'qualilab:processTrail': trailDecl || undefined,   // TRILHA (S4): a frase do activityStatement, mesma casa da declaracao de IA
+    'qualilab:studyDesign': designDecl || undefined,   // gabarito de categoria sob cego (blindMetadataStatement), mesma casa
     'qualilab:sources': docs.map(d=>({ id:'urn:qualilab:document:'+d.id, name:d.name, note: docMemo[d.id]||undefined })),
     first:{ id: pageId, type:'AnnotationPage', partOf: collId, startIndex: 0, items }
   };
   return collection;
 }
-function exportWebAnnotations(docs, codes, allC, memos, project, anonymize, pageOf, aiDecl, trailDecl){
+function exportWebAnnotations(docs, codes, allC, memos, project, anonymize, pageOf, aiDecl, trailDecl, designDecl){
   download((project?.name||'projeto').replace(/[^\w\-]+/g,'_')+(anonymize?'_anon':'')+'_anotacoes.json',
-    JSON.stringify(buildWebAnnotations(docs, codes, allC, memos, project, anonymize, pageOf, aiDecl, trailDecl),null,2), 'application/ld+json');
+    JSON.stringify(buildWebAnnotations(docs, codes, allC, memos, project, anonymize, pageOf, aiDecl, trailDecl, designDecl),null,2), 'application/ld+json');
 }
 
 /* Leitor de Transparência: página HTML auto-contida (sem rede, sem build) que mostra
@@ -10679,7 +10869,7 @@ function exportWebAnnotations(docs, codes, allC, memos, project, anonymize, page
    o excerto e a autoria — o equivalente ao overlay do ATI, mas hospedável por você (ex.:
    uma subpasta do GitHub Pages). Reaproveita buildRuns/codeColor; pré-renderiza os runs
    pra não precisar embarcar lógica do app. */
-function buildTransparencyReaderHTML(docs, codes, allC, memos, project, anonymize, pageOf, aiDecl, trailDecl){
+function buildTransparencyReaderHTML(docs, codes, allC, memos, project, anonymize, pageOf, aiDecl, trailDecl, designDecl){
   const codeById={}; codes.forEach(c=>codeById[c.id]=c);
   const colorOf = (id)=>{ const c=codeById[id]; return c ? codeColor(c.hue, c.depth, c.hue_deg, false, c.sat) : {tint:'#eee',solid:'#888'}; };
   const { codeMemo, docMemo, codingMemo, projectMemo } = indexMemos(memos);
@@ -10746,6 +10936,7 @@ function buildTransparencyReaderHTML(docs, codes, allC, memos, project, anonymiz
      inventar estilo novo dentro da pagina gerada. */
   const aiBlock = aiDecl ? `<div class="overview"><h3>${t('ati.aiUse')}</h3><div>${xmlEsc(aiDecl)}</div></div>` : '';
   const trailBlock = trailDecl ? `<div class="overview"><h3>${t('ati.trail')}</h3><div>${xmlEsc(trailDecl)}</div></div>` : '';   // TRILHA (S4)
+  const designBlock = designDecl ? `<div class="overview"><h3>${t('ati.design')}</h3><div>${xmlEsc(designDecl)}</div></div>` : '';   // gabarito de categoria sob cego
   const docsCtrl = docs.length>1 ? `<div class="docctrl"><span>${t('ati.nDocs',{n:docs.length})}</span><button onclick="allDocs(true)">${t('ati.expandAll')}</button><button onclick="allDocs(false)">${t('ati.collapseAll')}</button></div>` : '';
   const dataJson = JSON.stringify(anns).replace(/</g,'\\u003c');
   const title = xmlEsc(project?.name || 'Projeto QualiLab');
@@ -10802,7 +10993,7 @@ footer a{color:var(--teal)}
 </style></head><body>
 <header><h1>${title}</h1><div class="sub">${t('ati.subtitle')}</div></header>
 <div class="wrap">
-  <div class="main">${overview}${aiBlock}${trailBlock}${legend}${docsCtrl}${docsHtml}</div>
+  <div class="main">${overview}${aiBlock}${trailBlock}${designBlock}${legend}${docsCtrl}${docsHtml}</div>
   <div class="aside"><div id="panel"><h3>${t('ati.note')}</h3><p class="muted">${t('ati.panelHint')}</p></div></div>
 </div>
 <footer>${t('ati.madeWith')} <a href="https://luizpf42.github.io/QualiLab/">QualiLab</a> ${t('ati.standard')}</footer>
@@ -10839,8 +11030,8 @@ document.addEventListener('click',function(e){
 });
 <\/script></body></html>`;
 }
-function exportTransparencyReader(docs, codes, allC, memos, project, anonymize, pageOf, aiDecl, trailDecl){
-  const htmlStr = buildTransparencyReaderHTML(docs, codes, allC, memos, project, anonymize, pageOf, aiDecl, trailDecl);
+function exportTransparencyReader(docs, codes, allC, memos, project, anonymize, pageOf, aiDecl, trailDecl, designDecl){
+  const htmlStr = buildTransparencyReaderHTML(docs, codes, allC, memos, project, anonymize, pageOf, aiDecl, trailDecl, designDecl);
   download((project?.name||'projeto').replace(/[^\w\-]+/g,'_')+(anonymize?'_anon':'')+'_transparencia.html', htmlStr, 'text/html;charset=utf-8');
 }
 
@@ -11212,6 +11403,130 @@ function applyQueue(rows, effs, keep){
   return out;
 }
 
+/* ============ REGRAS DE ACESSO POR PAPEL (set/2026) — a parte PURA ============
+   O QUE ISTO RESOLVE: ate aqui o servidor distinguia leitor e membro por UMA funcao, can_edit
+   (role <> 'viewer'), tudo ou nada — e o resto do controle eram flags de PROJETO (cego,
+   distribuicao, verbete, categorias como metadado, IA), que valem para leitor e membro juntos.
+   Nao havia como dizer "membro codifica mas nao cria codigos" nem "leitor le e nao comenta". E o
+   projeto nascia ABERTO, com essas decisoes num card do hub que o admin abria depois — quem entrou
+   pelo convite antes ja tinha visto o trabalho dos outros, e ligar o cego nao desve o que se viu.
+   A resposta (pedido do autor, 03/set/2026): uma MATRIZ item x papel, decidida na CRIACAO do
+   projeto coletivo e editavel no hub, com caixa em cada cruzamento que o SERVIDOR consegue honrar
+   e ✓/– fixo onde nao consegue — o app para de adivinhar e deixa para quem coordena.
+
+   DUAS FONTES, UMA MATRIZ. As CAPACIDADES por papel (esta lista) vivem em `projects.role_caps`
+   (jsonb de overrides: { member:{cap:bool}, viewer:{cap:bool} }) e sao lidas pelas policies via
+   role_can(projeto, cap). As FLAGS de visibilidade (blind, restrict_docs, cats_are_metadata) e a
+   trava do verbete continuam onde estavam — sao por projeto porque o servidor nao tem como mostrar
+   a coding alheia ao leitor e esconde-la do membro. A matriz da UI mostra as duas familias como
+   linhas da mesma tabela; quem grava sabe qual e qual (accessToPatch).
+
+   ADMIN TEM TUDO, FIXO: e o papel que configura a matriz, e um admin que se trancasse fora nao
+   teria como voltar. O que e admin-only por construcao (esquema, gabarito, excluir, importar,
+   equipe, espelhos) aparece na matriz como fixo, para a pessoa ver o que NAO esta em jogo.
+
+   OS DEFAULTS SAO O COMPORTAMENTO DE ANTES, e isso e o que faz a migracao ser inofensiva: projeto
+   sem override nenhum se comporta exatamente como na v1.4.54 — membro faz tudo o que fazia,
+   leitor le e comenta. A tabela abaixo TEM de casar com a do role_can no schema.sql (duas copias
+   da mesma tabela: a do cliente so gateia botao, a do servidor e a autoridade). */
+const ACCESS_CAPS = ['comment','code','add_docs','edit_codes','edit_code_memos','use_ai'];
+// os escopos de memo que sao NOTA (a mesma lista do memo_is_note do servidor); os demais sao configuracao
+const MEMO_NOTE_SCOPES = ['project','document','code','coding'];
+function memoIsNoteScope(scope){ return MEMO_NOTE_SCOPES.includes(scope); }
+// os papeis configuraveis (admin: tudo, fixo). Comentario ACIMA da linha de proposito: o extractDef dos
+// testes puros le um const ate a linha que termina em `;`, e comentario depois dele engole a linha seguinte.
+const ACCESS_ROLES = ['viewer','member'];
+const CAP_DEFAULTS = {
+  member: { comment:true,  code:true,  add_docs:true,  edit_codes:true,  edit_code_memos:true, use_ai:true },
+  viewer: { comment:true,  code:false, add_docs:false, edit_codes:false, edit_code_memos:true, use_ai:false },
+};
+
+// o papel `role` pode `cap` neste projeto? (mesma pergunta do role_can do servidor)
+function roleCan(role, caps, cap){
+  if(role === 'admin') return true;
+  const d = CAP_DEFAULTS[role];
+  if(!d || !ACCESS_CAPS.includes(cap)) return false;
+  const o = caps && caps[role] ? caps[role][cap] : undefined;
+  return typeof o === 'boolean' ? o : !!d[cap];
+}
+
+// so papeis e capacidades conhecidos, so booleanos; override IGUAL ao default e descartado, para o
+// jsonb gravado dizer apenas o que difere do comportamento padrao (e `{}` significar "como antes")
+function normalizeRoleCaps(caps){
+  const out = {};
+  for(const role of ACCESS_ROLES){
+    const src = caps && caps[role];
+    if(!src || typeof src !== 'object') continue;
+    const o = {};
+    for(const cap of ACCESS_CAPS){
+      if(typeof src[cap] === 'boolean' && src[cap] !== CAP_DEFAULTS[role][cap]) o[cap] = src[cap];
+    }
+    if(Object.keys(o).length) out[role] = o;
+  }
+  return out;
+}
+
+/* PRESETS POR TIPO DE ESTUDO: e assim que o pesquisador pensa antes de pensar em caixas. Um preset e
+   so um VALOR de (flags, caps); a matriz continua editavel e mostra o que ele fez. `accessPresetOf`
+   responde qual preset o estado atual E (exatamente), para o botao acender — nenhum = personalizado. */
+const ACCESS_PRESETS = {
+  open:        { flags:{ blind:false, restrict_docs:false, restrict_code_memos:false, cats_are_metadata:false }, caps:{} },
+  reliability: { flags:{ blind:true,  restrict_docs:false, restrict_code_memos:false, cats_are_metadata:false }, caps:{} },
+  split:       { flags:{ blind:false, restrict_docs:true,  restrict_code_memos:false, cats_are_metadata:false }, caps:{} },
+  judges:      { flags:{ blind:true,  restrict_docs:false, restrict_code_memos:true,  cats_are_metadata:true  },
+                 caps:{ member:{ add_docs:false, edit_codes:false, edit_code_memos:false }, viewer:{ edit_code_memos:false } } },
+};
+function accessPresetOf(flags, caps){
+  const f = flags || {}; const n = JSON.stringify(normalizeRoleCaps(caps));
+  for(const k of Object.keys(ACCESS_PRESETS)){
+    const p = ACCESS_PRESETS[k];
+    if(!!f.blind === p.flags.blind && !!f.restrict_docs === p.flags.restrict_docs && !!f.restrict_code_memos === p.flags.restrict_code_memos
+       && !!f.cats_are_metadata === p.flags.cats_are_metadata && JSON.stringify(normalizeRoleCaps(p.caps)) === n) return k;
+  }
+  return null;
+}
+
+/* As flags de visibilidade viajam com os NOMES do setProjectFlags ({blind, restrict,
+   restrictCodeMemos, catsAreMetadata}) e moram no estado com os nomes das COLUNAS — esta e a
+   ponte, usada pelos dois formularios de criacao (que acumulam antes de existir projeto). */
+function applyFlagPatch(flags, patch){
+  const f = { ...(flags||{}) };
+  if(patch.blind !== undefined) f.blind = !!patch.blind;
+  if(patch.restrict !== undefined) f.restrict_docs = !!patch.restrict;
+  if(patch.restrictCodeMemos !== undefined) f.restrict_code_memos = !!patch.restrictCodeMemos;
+  if(patch.catsAreMetadata !== undefined) f.cats_are_metadata = !!patch.catsAreMetadata;
+  return f;
+}
+// o que a criacao manda ao setProjectFlags logo depois do createProject
+function accessToPatch(access){
+  const f = (access && access.flags) || {};
+  return { blind:!!f.blind, restrict:!!f.restrict_docs, restrictCodeMemos:!!f.restrict_code_memos,
+           catsAreMetadata:!!f.cats_are_metadata, roleCaps: normalizeRoleCaps(access && access.caps) };
+}
+
+/* O RESUMO DO PAPEL, para o convite e para a tela: o que quem entra com este papel vai poder fazer
+   NESTE projeto, uma linha por item, derivado da matriz — nunca escrito a mao, para o convite nao
+   prometer o que a regra nao da. */
+function roleRightsText(role, flags, caps){
+  if(role === 'admin') return '- ' + t('rights.admin');
+  const f = flags || {};
+  const can = cap => roleCan(role, caps, cap);
+  const verbete = can('edit_code_memos') && !f.restrict_code_memos;
+  const ai = (f.restrict_ai || 'none') === 'none' && can('use_ai');
+  const lines = [
+    t('rights.read'),
+    can('comment') ? t('rights.comment.yes') : t('rights.comment.no'),
+    can('code') ? t('rights.code.yes') : t('rights.code.no'),
+    can('add_docs') ? t('rights.docs.yes') : t('rights.docs.no'),
+    can('edit_codes') ? t('rights.codes.yes') : t('rights.codes.no'),
+    verbete ? t('rights.verbete.yes') : t('rights.verbete.no'),
+    f.blind ? t('rights.blind.on') : t('rights.blind.off'),
+  ];
+  if(f.restrict_docs) lines.push(t('rights.restrict.on'));
+  if(f.blind && f.cats_are_metadata) lines.push(t('rights.catsMeta'));
+  lines.push(ai ? t('rights.ai.yes') : t('rights.ai.no'));
+  return lines.map(l => '- ' + l).join('\n');
+}
 /* ============ TRILHA DE AUDITORIA (S4, set/2026) — as pecas puras ============
    Registra OPERACOES que alteram o projeto, nunca linhas, nunca leitura, nunca navegacao. Spec
    fechada em to-do/spec-trilha-auditoria.md; o levantamento do campo esta no S9 do to-do.
@@ -11396,6 +11711,8 @@ function activityText(e){
       if(d.restrict_ai)   p.push(t('act.flag.ai', { v: activityAiLabel(d.restrict_ai.to) }));
       if(d.snapshots_auto) p.push(d.snapshots_auto.to ? t('act.flag.autoSnapOn') : t('act.flag.autoSnapOff'));
       if(d.restrict_code_memos) p.push(d.restrict_code_memos.to ? t('act.flag.codeMemosOn') : t('act.flag.codeMemosOff'));
+      if(d.cats_are_metadata) p.push(d.cats_are_metadata.to ? t('act.flag.catsMetaOn') : t('act.flag.catsMetaOff'));
+      if(d.role_caps)         p.push(t('act.flag.caps'));
       return t('act.op.flags_changed', { list: p.join(', ') || t('act.nothing') });
     }
     case 'project_renamed':  return t('act.op.project_renamed', { to: d.to || name, from: d.from ? ' ' + t('act.before', { v: d.from }) : '' });
@@ -11783,7 +12100,7 @@ function LocalStore(){
         db.snapshots_auto = to; save();
         if(to!==from) await this.logActivity(pid, { op:'flags_changed', target_kind:'project', target_id:pid, detail:{ snapshots_auto:{ from, to } } });
       }
-      return P({ blind:false, restrict_docs:false, restrict_ai:db.restrict_ai||'none', ai_ever_enabled:!!db.ai_ever_enabled, snapshots_auto:db.snapshots_auto!==false, restrict_code_memos:false });
+      return P({ blind:false, restrict_docs:false, restrict_ai:db.restrict_ai||'none', ai_ever_enabled:!!db.ai_ever_enabled, snapshots_auto:db.snapshots_auto!==false, restrict_code_memos:false, cats_are_metadata:false, role_caps:{} });
     },
     /* AUSENCIA E PRESERVADA AQUI, e coalescida por quem consome (`restrict_ai || 'none'` no
        useProjFlags). Nao e capricho: `null` e a UNICA forma de distinguir "nunca respondeu" de
@@ -11794,7 +12111,7 @@ function LocalStore(){
     // escreve o verbete), e rascunho nao tem equipe — o myRole devolve 'admin'. E a mesma razao
     // de blind/restrict_docs serem false fixos, e o oposto do restrict_ai, que governa o CORPUS
     // e por isso viaja (excecao anotada a regra de ouro #5).
-    async getProjectFlags(){ return P({ blind:false, restrict_docs:false, restrict_ai:db.restrict_ai ?? null, ai_ever_enabled:!!db.ai_ever_enabled, snapshots_auto:db.snapshots_auto!==false, restrict_code_memos:false }); },
+    async getProjectFlags(){ return P({ blind:false, restrict_docs:false, restrict_ai:db.restrict_ai ?? null, ai_ever_enabled:!!db.ai_ever_enabled, snapshots_auto:db.snapshots_auto!==false, restrict_code_memos:false, cats_are_metadata:false, role_caps:{} }); },
     listDocuments(){ return P(db.documents.slice()); },
     addDocument(pid,{id,name:dn,content}){ const d={id:id||uid(),name:dn,content,created_at:new Date().toISOString()}; db.documents.push(d); save(); return P(d); },
     renameDocument(id,dn){ const d=db.documents.find(x=>x.id===id); if(d) d.name=dn; save(); return P(); },
@@ -11970,11 +12287,11 @@ async function createFileStore(fileHandle, isNew){
         if(to!==from) await this.logActivity(pid, { op:'flags_changed', target_kind:'project', target_id:pid, detail:{ snapshots_auto:{ from, to } } });
       }
       return { blind:false, restrict_docs:false, restrict_ai:(db._meta&&db._meta.restrict_ai)||'none',
-               ai_ever_enabled:!!(db._meta&&db._meta.ai_ever_enabled), snapshots_auto:!(db._meta&&db._meta.snapshots_auto===false), restrict_code_memos:false };
+               ai_ever_enabled:!!(db._meta&&db._meta.ai_ever_enabled), snapshots_auto:!(db._meta&&db._meta.snapshots_auto===false), restrict_code_memos:false, cats_are_metadata:false, role_caps:{} };
     },
     async getProjectFlags(){ return { blind:false, restrict_docs:false,
       restrict_ai:(db._meta&&db._meta.restrict_ai)||'none',
-      ai_ever_enabled:!!(db._meta&&db._meta.ai_ever_enabled), snapshots_auto:!(db._meta&&db._meta.snapshots_auto===false), restrict_code_memos:false }; },
+      ai_ever_enabled:!!(db._meta&&db._meta.ai_ever_enabled), snapshots_auto:!(db._meta&&db._meta.snapshots_auto===false), restrict_code_memos:false, cats_are_metadata:false, role_caps:{} }; },
     realtime(){ return ()=>{}; },
     listDocuments(){ return P(db.documents.slice()); },
     async addDocument(pid,{id,name:dn,content}){ const d={id:id||uid(),name:dn,content,created_at:new Date().toISOString()}; db.documents.push(d); await save(); return d; },
@@ -12362,25 +12679,28 @@ function SupabaseStore(sb){
        ORTOGONAIS: restrict_docs decide QUAIS DOCUMENTOS o membro enxerga; blind decide se ele
        enxerga a codificacao DOS OUTROS. O servidor e a autoridade (helpers can_see_doc/
        can_see_authored no schema.sql) — esconder o botao aqui nao protegeria nada. */
-    async setProjectFlags(pid, { blind, restrict, restrictAi, snapshotsAuto, restrictCodeMemos }={}){
+    async setProjectFlags(pid, { blind, restrict, restrictAi, snapshotsAuto, restrictCodeMemos, catsAreMetadata, roleCaps }={}){
+      // REGRAS POR PAPEL: RPC propria (valida e leva a trilha); a matriz vai INTEIRA, nao um patch
+      if(roleCaps!==undefined) must(await sb.rpc('set_role_caps',{ p_project:pid, p_caps: roleCaps||{} }));
       const d = must(await sb.rpc('set_project_flags',{ p_project:pid,
         p_blind:    blind===undefined    ? null : !!blind,
         p_restrict: restrict===undefined ? null : !!restrict,
         p_restrict_ai: restrictAi===undefined ? null : String(restrictAi),
         p_snapshots_auto: snapshotsAuto===undefined ? null : !!snapshotsAuto,
-        p_restrict_code_memos: restrictCodeMemos===undefined ? null : !!restrictCodeMemos }));
+        p_restrict_code_memos: restrictCodeMemos===undefined ? null : !!restrictCodeMemos,
+        p_cats_are_metadata: catsAreMetadata===undefined ? null : !!catsAreMetadata }));
       return d ? { blind:!!d.blind, restrict_docs:!!d.restrict_docs,
                    restrict_ai:d.restrict_ai||'none', ai_ever_enabled:!!d.ai_ever_enabled, snapshots_auto:d.snapshots_auto!==false,
-                   restrict_code_memos:!!d.restrict_code_memos } : null;
+                   restrict_code_memos:!!d.restrict_code_memos, cats_are_metadata:!!d.cats_are_metadata, role_caps:d.role_caps||{} } : null;
     },
     // as flags PRECISAM vir do servidor: o objeto `project` do cliente pode ter vindo do cache
     // local de "Meus projetos", que guarda so id/name/code. `ai_ever_enabled` e a trava de uma
     // via: o cliente LE, nunca escreve (quem a forca e o trigger projects_ai_guard).
     async getProjectFlags(pid){
-      try{ const r = await sb.from('projects').select('blind,restrict_docs,restrict_ai,ai_ever_enabled,snapshots_auto,restrict_code_memos').eq('id',pid).maybeSingle();
+      try{ const r = await sb.from('projects').select('blind,restrict_docs,restrict_ai,ai_ever_enabled,snapshots_auto,restrict_code_memos,cats_are_metadata,role_caps').eq('id',pid).maybeSingle();
            return r.data ? { blind:!!r.data.blind, restrict_docs:!!r.data.restrict_docs,
                              restrict_ai:r.data.restrict_ai||'none', ai_ever_enabled:!!r.data.ai_ever_enabled, snapshots_auto:r.data.snapshots_auto!==false,
-                             restrict_code_memos:!!r.data.restrict_code_memos } : null; }catch(e){ return null; }
+                             restrict_code_memos:!!r.data.restrict_code_memos, cats_are_metadata:!!r.data.cats_are_metadata, role_caps:r.data.role_caps||{} } : null; }catch(e){ return null; }
     },
     // o MEMBRO recebe so a propria distribuicao (policy assignments_select); o admin, o plano inteiro
     async listAssignments(pid){ try{ return must(await sb.from('assignments').select('document_id,user_id').eq('project_id',pid)); }catch(e){ return []; } },
@@ -13153,7 +13473,7 @@ function useStoreStatus(store){
    cosmético: membro em projeto cego não pode ficar na Reconciliação nem com "Ver: todos", e o
    servidor já nem manda o dado. O efeito gêmeo do `focusMode` fica na App() de propósito — aquele
    é preferência de UI do admin, não recorte imposto pelo servidor. */
-const FLAGS_INICIAIS = { blind:false, restrict_docs:false, restrict_ai:'none', ai_ever_enabled:false, snapshots_auto:true, restrict_code_memos:false };
+const FLAGS_INICIAIS = { blind:false, restrict_docs:false, restrict_ai:'none', ai_ever_enabled:false, snapshots_auto:true, restrict_code_memos:false, cats_are_metadata:false, role_caps:{} };
 function useProjFlags({ store, project, phase, isAdmin, setViewCoder, setMainView, onError, reloadProject }){
   const [projFlags, setProjFlags] = useState(FLAGS_INICIAIS);
   const [assignments, setAssignments] = useState([]);  // membro recebe só a própria linha (RLS); admin, o plano inteiro
@@ -13192,6 +13512,12 @@ function useProjFlags({ store, project, phase, isAdmin, setViewCoder, setMainVie
      no molde do aiLock e do blindLock: quem recusa e a RLS (memos_write), e aqui so evitamos a
      digitacao que terminaria em banner vermelho. */
   const codeMemoLock = !!projFlags.restrict_code_memos && !isAdmin;
+  /* GABARITO DE CATEGORIA SOB CEGO (set/2026): `cats_are_metadata` declara que as categorias deste
+     projeto sao configuracao do DESENHO (plataforma, perfil sorteado, tema), nao juizo de codificador —
+     e a consequencia e o servidor servir a camada final de doc_values ao membro mesmo sob `blind`
+     (can_see_value, so na policy de doc_values). Aqui ela e so lida: quem a impoe e a RLS, e o que a
+     tela faz com ela e o interruptor do AssignModal, a pilula do hub e a declaracao do Relatorio. */
+  const catsAreMetadata = !!projFlags.cats_are_metadata;
   const aiLock = restrictAi === 'all' || (restrictAi === 'members' && !isAdmin);
   // sair da tela de IA em que a pessoa estava — o mesmo desvio do cego, e pelo mesmo motivo:
   // não é cosmético, a tela deixou de existir para ela.
@@ -13221,7 +13547,8 @@ function useProjFlags({ store, project, phase, isAdmin, setViewCoder, setMainVie
 
   return { assignments, assignOpen, setAssignOpen, projBlind, projRestrict, blindLock,
            restrictAi, aiLock, aiEverEnabled, snapshotsAuto,
-           restrictCodeMemos: !!projFlags.restrict_code_memos, codeMemoLock,
+           restrictCodeMemos: !!projFlags.restrict_code_memos, codeMemoLock, catsAreMetadata,
+           roleCaps: projFlags.role_caps || {},   // REGRAS POR PAPEL: overrides do servidor; a App resolve com roleCan
            changeProjectFlags, toggleAssignment, replaceAssignments };
 }
 
@@ -13912,10 +14239,16 @@ function App(){
      antes daria TDZ. `reloadProject` é arrow de propósito: o `loadProject` só é declarado mais
      abaixo, e lê-lo aqui daria TDZ; dentro da arrow ele só é avaliado quando ela é chamada. */
   const { assignments, assignOpen, setAssignOpen, projBlind, projRestrict, blindLock,
-          restrictAi, aiLock, aiEverEnabled, snapshotsAuto, restrictCodeMemos, codeMemoLock,
+          restrictAi, aiLock, aiEverEnabled, snapshotsAuto, restrictCodeMemos, codeMemoLock, catsAreMetadata, roleCaps,
           changeProjectFlags, toggleAssignment, replaceAssignments } =
     useProjFlags({ store, project, phase, isAdmin, setViewCoder, setMainView,
                    onError: setErr, reloadProject: ()=>loadProject(store, project.id) });
+  /* REGRAS DE ACESSO POR PAPEL: `can(cap)` e a MESMA pergunta que o role_can do servidor responde
+     (roleCan, em dados/regras-de-acesso.js). Aqui so gateia botao — a autoridade e a RLS. Em
+     rascunho/arquivo/individual o papel e 'admin' e tudo passa. `aiHidden` soma a capacidade
+     use_ai ao aiLock do projeto: as telas de IA somem para quem a matriz nao autoriza. */
+  const can = (cap)=> roleCan(role, roleCaps, cap);
+  const aiHidden = aiLock || !can('use_ai');
   /* TRILHA DE AUDITORIA (S4): a lista da aba Memos/Relatorio e o `logAct` que os sitios de escrita
      chamam (imports, exclusoes, remap, limpeza, export, reconciliacao; o Esquema e as telas de IA o
      recebem como prop `onLog`). Hook, e nao useState, para a catraca nao se mexer; nunca lanca. */
@@ -14589,7 +14922,7 @@ function App(){
   async function renameDoc(id, name){ const nm=(name||'').trim(); if(!nm) return; await store.renameDocument(id, nm); setDocs(d=>d.map(x=>x.id===id?{...x,name:nm}:x)); }
 
   async function setValue(catId, value){
-    if(readOnly) return setErr(t('err.readOnly'));
+    if(!can('code')) return setErr(readOnly ? t('err.readOnly') : t('err.noCap.code'));
     try{
       if(projectMode==='individual') await store.setFinalValue(project.id, activeId, catId, value);
       else await store.setDocValue(project.id, activeId, catId, value);
@@ -14778,7 +15111,7 @@ function App(){
     catch(e){ setErr(t('err.code.create',{e:e.message||e})); return null; }
   };
   async function applyCode(codeId, selection){
-    if(readOnly) return setErr(t('err.readOnly'));
+    if(!can('code')) return setErr(readOnly ? t('err.readOnly') : t('err.noCap.code'));
     const s = selection || sel;
     if(!s) return;
     // PDF-BLOCK: se esta codificação veio do OCR de área (região pendente amarrada a ESTA seleção),
@@ -15307,7 +15640,7 @@ function App(){
       setImportMsg(t('imp.done.qualilab',{docs:r.documentos, cats:r.categorias, codes:r.codigos, spans:r.trechos, memos:r.memos})
         + (r.conversas ? t('imp.ai.chats',{n:r.conversas}) : '')
         + (r.memorias ? t('imp.ai.memories',{n:r.memorias}) : '')
-        + '.' + iaDupNotice(r) + iaOrigemNotice(r)
+        + '.' + (r.trechosColapsados ? t('imp.qualilab.collapsed',{n:r.trechosColapsados}) : '') + iaDupNotice(r) + iaOrigemNotice(r)
         + ((r.activity || r.activityRepeated) ? t('imp.activity',{n:r.activity||0, rep:r.activityRepeated ? t('imp.activity.rep',{n:r.activityRepeated}) : ''}) : '')
         + (r.linhasRecusadas ? t('imp.rejected',{n:r.linhasRecusadas}) : ''));
     }catch(e){ setBusy(null); setProgress(null); setErr(t('err.import.qualilab',{e:e.message||e})); }
@@ -15875,7 +16208,14 @@ function App(){
       onOpenFile=${()=>openFileProject(false)} onNewFile=${()=>openFileProject(true)}
       onLogin=${async()=>{ try{ await store.signOut(); }catch(e){} setUser(null); setPhase('auth'); }}
       onOpen=${async (proj)=>{ try{ const p=await store.joinProject(proj.code, user?.name||''); try{localStorage.setItem('qualilab:project',JSON.stringify(p));}catch(e){} pushRecent(p); openProject(p); setPhase('work'); }catch(e){ setErr(String(e.message||e)); } }}
-      onCreate=${async (n,disp,pmode,prai)=>{ try{ try{localStorage.setItem('qualilab:name',disp);}catch(e){} const p=await store.createProject(n,disp,pmode,prai); try{localStorage.setItem('qualilab:project',JSON.stringify(p));}catch(e){} pushRecent(p); setUser(store.currentUser()); openProject(p); setPhase('work'); }catch(e){ setErr(String(e.message||e)); } }}
+      onCreate=${async (n,disp,pmode,prai,access)=>{ try{ try{localStorage.setItem('qualilab:name',disp);}catch(e){} const p=await store.createProject(n,disp,pmode,prai);
+        /* REGRAS DE ACESSO NO t0: gravadas logo depois do createProject, ANTES de alguem entrar (o codigo
+           ainda nao circulou) — e por isso o convite ja vai com elas em vigor. Falha aqui NAO desfaz a
+           criacao: o projeto existe, e o hub (aberto em seguida) mostra a matriz para corrigir. */
+        if(access && store.setProjectFlags){ try{ await store.setProjectFlags(p.id, accessToPatch(access)); }catch(e){ setErr(String(e.message||e)); } }
+        try{localStorage.setItem('qualilab:project',JSON.stringify(p));}catch(e){} pushRecent(p); setUser(store.currentUser()); openProject(p); setPhase('work');
+        if(access) setProjEdit(true);   // o hub abre com os convites: papel + regras, sem passar por outra tela
+      }catch(e){ setErr(String(e.message||e)); } }}
       onJoin=${async (code,disp)=>{ try{ try{localStorage.setItem('qualilab:name',disp);}catch(e){} const p=await store.joinProject(code,disp); try{localStorage.setItem('qualilab:project',JSON.stringify(p));}catch(e){} pushRecent(p); setUser(store.currentUser()); openProject(p); setPhase('work'); }catch(e){ setErr(String(e.message||e)); } }}
     />
     ${account && html`<${AccountModal} user=${user} projects=${myProjects}
@@ -15888,7 +16228,7 @@ function App(){
   <div class="app">
     <header class="top">
       <${TopNav} project=${project} mainView=${mainView} projectMode=${projectMode}
-        focusMode=${focusMode} blindLock=${blindLock} aiLock=${aiLock} readOnly=${readOnly} theme=${theme}
+        focusMode=${focusMode} blindLock=${blindLock} aiLock=${aiHidden} readOnly=${readOnly} theme=${theme}
         onView=${setMainView} onCycleTheme=${cycleTheme} />
       <div class="top-row">
         ${project && (()=>{ /* pilula do projeto: cor + rotulo + tooltip por estado de conexao */
@@ -16065,7 +16405,7 @@ function App(){
           <div style="position:relative">
             ${(projRestrict && !isAdmin)
               ? html`<span class="meta" title=${t('doc.restricted.tip')}>${t('doc.restricted')}</span>`
-              : !readOnly && html`<button class="btn sm" title=${t('doc.add.tip')} onClick=${()=>alternaMenu('enviar')}>${t('doc.add')}</button>`}
+              : can('add_docs') && html`<button class="btn sm" title=${t('doc.add.tip')} onClick=${()=>alternaMenu('enviar')}>${t('doc.add')}</button>`}
             ${(menu==='enviar') && html`<div>
               <div onClick=${()=>setMenu(null)} style="position:fixed;inset:0;z-index:40"></div>
               <div class="exmenu" style="left:0;right:auto;min-width:248px">
@@ -16190,7 +16530,7 @@ function App(){
           codings=${visibleCodings.filter(c=>c.document_id===activeId && !c.pdf_region)} codeById=${codeById}
           matches=${searchMatches} containerRef=${readerRef} darkMode=${darkMode} />`}
         </div>
-        ${sel && !edicao.ativa && !pdf.mostrando && !ctxMenu && !readOnly && html`<${SelectionToolbar} sel=${sel}
+        ${sel && !edicao.ativa && !pdf.mostrando && !ctxMenu && can('code') && html`<${SelectionToolbar} sel=${sel}
           recent=${recentCodesRef.current.map(id=>codeById[id]).filter(Boolean)}
           onApply=${(id)=>applyCode(id)} onCancel=${()=>{ setSel(null); window.getSelection()?.removeAllRanges(); }}
           onMenu=${(x,y)=>setCtxMenu({ x, y, sel, quote:sel.quote, boundRight: readerRef.current?.getBoundingClientRect?.().right || window.innerWidth })} />`}
@@ -16209,17 +16549,17 @@ function App(){
         </div>
         <div class="pane-body scroll">
           ${rtab==='categorias' && html`<${CategoriesPanel} cats=${cats} values=${values} activeDoc=${activeDoc}
-                 canEditSchema=${adminUI && !readOnly} readOnly=${readOnly} userId=${user?.id} projectMode=${projectMode} viewCoder=${viewCoder}
+                 canEditSchema=${adminUI && !readOnly} readOnly=${!can('code')} userId=${user?.id} projectMode=${projectMode} viewCoder=${viewCoder}
                  onSet=${setValue} onAdd=${addCategory} onUpd=${updCategory} onDel=${delCategory}
                  dragCatId=${dragCatId} setDragCatId=${setDragCatId} onReorder=${reorderCategories} />`}
           ${rtab==='codigos' && html`<${CodesPanel} codes=${codes} codeById=${codeById} count=${codingCount} sel=${sel}
                  selCode=${selCode} setSelCode=${setSelCode} codePath=${codePath}
                  checklist=${{ docs:docs.length>0, codes:codes.length>0, coded:codings.length>0 }} memos=${memos}
                  recentCodes=${recentCodesRef.current.map(id=>codeById[id]).filter(Boolean)}
-                 onAdd=${addCodeUI} onDel=${delCode} onApply=${applyCode} onUpd=${updCode} onSetColor=${setCodeColor} onSetSat=${setCodeSat} onSetRedaction=${setCodeRedaction} isAdmin=${adminUI && !readOnly} readOnly=${readOnly}
+                 onAdd=${addCodeUI} onDel=${delCode} onApply=${applyCode} onUpd=${updCode} onSetColor=${setCodeColor} onSetSat=${setCodeSat} onSetRedaction=${setCodeRedaction} isAdmin=${adminUI && !readOnly} readOnly=${!can('code')} canEditCodes=${can('edit_codes')}
                  onCodeContext=${(code,x,y)=>setCodeCtx({code,x,y})}
                  store=${store} project=${project} reload=${reloadWrite} />`}
-          ${rtab==='memos' && html`<${CodingMemosPanel} project=${project} activeDoc=${activeDoc} focusedCoding=${focusedCoding} selCode=${selCode} codeMemoLock=${codeMemoLock}
+          ${rtab==='memos' && html`<${CodingMemosPanel} project=${project} activeDoc=${activeDoc} focusedCoding=${focusedCoding} selCode=${selCode} codeMemoLock=${codeMemoLock || !can('edit_code_memos')}
                  codings=${codings} codeById=${codeById} codePath=${codePath} docs=${docs} memos=${memos} onSave=${saveMemo} />`}
         </div>
       </aside>
@@ -16325,7 +16665,7 @@ function App(){
         <div class="pane-body scroll" style="padding:0">
           <${MemoNav} project=${project} docs=${docs} codes=${codes} codings=${allCodings} memos=${memos}
             sel=${memoSel} onSel=${setMemoSel} onRenameDoc=${renameDoc}
-            aiMemory=${aiMemory} iaResults=${iaResults} aiLock=${aiLock} activityCount=${(activity||[]).length} />
+            aiMemory=${aiMemory} iaResults=${iaResults} aiLock=${aiHidden} activityCount=${(activity||[]).length} />
         </div>
       </section>
       <${PaneResizer} which="side" />
@@ -16345,7 +16685,7 @@ function App(){
             // "insertBefore: parameter 1 is not of type 'Node'" que nao menciona comentario.)
             : html`<${MemoEditor} sel=${memoSel} project=${project} codeById=${codeById} codePath=${codePath}
                 codings=${allCodings} docs=${docs} memos=${memos} onSave=${saveMemo} onDelete=${removeMemo} onRenameDoc=${renameDoc}
-                readOnly=${memoSel?.scope==='code' && codeMemoLock} />`}
+                readOnly=${memoSel?.scope==='code' ? (codeMemoLock || !can('edit_code_memos')) : memoIsNoteScope(memoSel?.scope) ? !can('comment') : readOnly} />`}
         </div>
       </section>
     </div>`
@@ -16385,13 +16725,14 @@ function App(){
         docs=${docs} cats=${cats} codes=${codes} codeById=${codeById} codePath=${codePath}
         view=${viewCoder} onView=${setViewCoder} coders=${coders} userId=${user?.id} mode=${mode}
         allCodings=${allCodings} allValues=${allValues} store=${store} memos=${memos} pdfIdx=${docPdfIdx}
-        restrictAi=${restrictAi} aiEverEnabled=${aiEverEnabled} nConversasIa=${(iaResults||[]).length} nMemoriasIa=${(aiMemory||[]).length} />`
+        restrictAi=${restrictAi} aiEverEnabled=${aiEverEnabled} nConversasIa=${(iaResults||[]).length} nMemoriasIa=${(aiMemory||[]).length}
+        blind=${projBlind} catsAreMetadata=${catsAreMetadata} />`
     /* S7: os tres bracos de IA levam `&& !aiLock`. O efeito do hook ja tira a pessoa da tela, mas
        ele roda DEPOIS do render — sem o gate aqui, um `#/ia_analisar` colado renderiza o painel
        por um quadro antes de sair, e um quadro basta para ele montar e disparar o que dispara ao
        montar. Cair no ULTIMO braco do ternario e o desvio SILENCIOSO que a spec pede (mesmo
        precedente do 'mcp' no app publico). */
-    : mainView==='ia_codificar' && !aiLock && !readOnly ? html`<div class="split">
+    : mainView==='ia_codificar' && !aiHidden && !readOnly ? html`<div class="split">
       <!-- CODIFICAR AUTOMATICAMENTE: tela inteira (config | resultado). 3 abas de IA (operações
            inline no turno da IA) + a aba "Repetir Codificação", que é mecânica e roda sem IA -->
       <${IACodificarPanel} project=${project} docs=${docs} codes=${codes} codeById=${codeById} codePath=${codePath} onLog=${logAct} onSnapshot=${snapshotBefore}
@@ -16400,13 +16741,13 @@ function App(){
         reload=${reloadWrite} loadAll=${loadAll} onAdd=${addCode} memos=${memos} onSetMemo=${saveMemo}
         memory=${aiMemory} onAddMemory=${addMemory} onToggleMemory=${toggleMemoryActive} onDeleteMemory=${deleteMemory} />
     </div>`
-    : mainView==='mcp' && !aiLock && !readOnly ? html`<div class="split">
+    : mainView==='mcp' && !aiHidden && !readOnly ? html`<div class="split">
       <!-- MCP/RAG: chat sobre o laco agentico. Sem painel de configuracao de proposito — o
            material nao e escolhido antes da pergunta; o modelo pede o que precisa pelos tools -->
       <${AgentPanel} project=${project} projectMode=${projectMode} docs=${docs} codes=${codes} cats=${cats}
         allCodings=${allCodings} allValues=${allValues} memos=${memos} coders=${coders} pdfIdx=${docPdfIdx} />
     </div>`
-    : mainView==='ia_analisar' && !aiLock ? html`<div class="split">
+    : mainView==='ia_analisar' && !aiHidden ? html`<div class="split">
       <!-- ANALISAR COM IA: barra de Material no topo + duas telas (config | chat) -->
       <${IAAnalisarPanel} project=${project} docs=${docs} codes=${codes} codeById=${codeById} codePath=${codePath}
         activeDoc=${activeDoc} sel=${sel} store=${store} allCodings=${allCodings} memos=${memos} cats=${cats} allValues=${allValues}
@@ -16665,12 +17006,12 @@ function App(){
     onLogout=${mode==='cloud' ? (async()=>{ setAccount(false); try{localStorage.removeItem('qualilab:project');}catch(e){} try{ await store.signOut(); }catch(e){} setProject(null); setUser(null); setDocs([]); setActiveId(null); setPhase('welcome'); }) : undefined} />`}
 
   ${assignOpen && html`<${AssignModal} docs=${docs} members=${members} assignments=${assignments} allCodings=${allCodings}
-    blind=${projBlind} restrict=${projRestrict} codeMemos=${restrictCodeMemos} onToggle=${toggleAssignment} onReplace=${replaceAssignments}
+    blind=${projBlind} restrict=${projRestrict} codeMemos=${restrictCodeMemos} catsMeta=${catsAreMetadata} roleCaps=${roleCaps} restrictAi=${restrictAi} onToggle=${toggleAssignment} onReplace=${replaceAssignments}
     onSetFlags=${changeProjectFlags} onClose=${()=>setAssignOpen(false)} />`}
 
   ${projEdit && html`<${ProjectModal} store=${store} mode=${mode} storeMode=${store?.mode} user=${user} project=${project} projectMode=${projectMode}
     isAdmin=${isAdmin} members=${members} hasDocs=${docs.length>0}
-    canAssign=${mode==='cloud' && projectMode==='collective' && isAdmin} restrictCodeMemos=${restrictCodeMemos}
+    canAssign=${mode==='cloud' && projectMode==='collective' && isAdmin} restrictCodeMemos=${restrictCodeMemos} catsAreMetadata=${catsAreMetadata} roleCaps=${roleCaps}
     blind=${projBlind} restrict=${projRestrict} nAssignments=${assignments.length}
     restrictAi=${restrictAi} onSetAi=${(v)=>changeProjectFlags({ restrictAi:v })}
     onOpenAssign=${()=>{ setProjEdit(false); loadAll(); setAssignOpen(true); }}
@@ -16706,7 +17047,7 @@ function App(){
     onCancel=${()=>setPendImport(null)} onConfirm=${doImportQuote} />`}
 
   ${ui.paleta && html`<${CommandPalette} docs=${docs} activeId=${activeId}
-    gates=${{ projectMode, focusMode, blindLock, aiLock, readOnly }}
+    gates=${{ projectMode, focusMode, blindLock, aiLock: aiHidden, readOnly }}
     onView=${setMainView}
     onPickDoc=${(id)=>{ if(mainView==='visualizar') setVizSelDoc(id); else { setActiveId(id); if(mainView!=='codificar') setMainView('codificar'); } }}
     actions=${[
@@ -17001,12 +17342,110 @@ function NewPassword({ onSave, onCancel, expired, email }){
   </div></div>`;
 }
 
+/* ============ REGRAS DE ACESSO POR PAPEL — a MATRIZ (t0 e hub) ============
+   Duas secoes, no VOCABULARIO DO CAMPO e nao no de painel de permissao. Um CAQDAS existe para
+   sustentar uma analise com rigor, e em equipe isso e exprimir o DESENHO DO ESTUDO: quem produz
+   julgamento (codifica), quem revisa (le e comenta), se os codificadores sao independentes entre
+   si (cego), se o corpus e dividido, se o instrumento fica congelado na rodada. Entao:
+     1. PAPEIS — o que somente-leitura e membro fazem, caixa em cada cruzamento que o servidor
+        honra (role_caps), MARCADO = PODE; admin ✓ fixo.
+     2. DESENHO DO ESTUDO — as decisoes com nome proprio na literatura (codificacao cega,
+        distribuicao restritiva, categorias como metadado), MARCADO = A DECISAO ESTA LIGADA. Sao
+        flags de projeto porque o servidor nao distingue leitor de membro na visibilidade.
+   Misturar as duas semanticas numa tabela so ("desmarcado = cego") foi a primeira versao, e e
+   armadilha: a mesma coluna de caixas significando "pode" numa linha e "restringe" na outra.
+   PRESETS por tipo de estudo vem ANTES da tabela: e assim que o pesquisador pensa (confiabilidade
+   entre codificadores, dividir o corpus, painel de juizes) antes de pensar em caixas. Um preset so
+   escreve valores; a tabela continua editavel e mostra o que ele fez. O que e fixo pelo papel fica
+   recolhido: informa sem ocupar a tela de quem esta criando o projeto.
+   O componente NAO tem estado: quem chama guarda flags e caps (Gate, Enviar para a nuvem, hub).
+   O VERBETE fala com duas fontes (caps + a trava restrict_code_memos), consistentes por construcao:
+   os dois papeis desmarcados == trava ligada, e a linha escreve as duas. */
+function AccessMatrix({ flags, caps, restrictAi, onFlags, onCaps, hint }){
+  const f = flags || {}; const c = caps || {};
+  const ai = restrictAi || 'none';
+  const th = 'padding:5px 6px;font-size:11px;text-align:center;border-bottom:1px solid var(--line);white-space:nowrap;color:var(--ink-soft)';
+  const td = 'padding:6px 6px;font-size:12px;border-bottom:1px solid var(--line);line-height:1.35';
+  const sec = td+';font-weight:600;font-size:11px;letter-spacing:.02em;text-transform:uppercase;color:var(--ink-soft);padding-top:10px;border-bottom:none';
+  const fix = (v)=> html`<td style="text-align:center;font-size:13px;color:${v?'var(--teal)':'var(--ink-soft)'}">${v ? '✓' : '–'}</td>`;
+  const box = (on, disabled, onChange, tip)=> html`<td style="text-align:center">
+    <input type="checkbox" checked=${!!on} disabled=${!!disabled} title=${tip||''} onChange=${e=>onChange && onChange(e.target.checked)} /></td>`;
+  const setCap = (role, cap, v)=>{
+    const next = normalizeRoleCaps({ ...c, [role]: { ...(c[role]||{}), [cap]: v } });
+    onCaps && onCaps(next);
+    if(cap === 'edit_code_memos' && onFlags){
+      const lock = !(roleCan('viewer', next, cap) || roleCan('member', next, cap));
+      if(lock !== !!f.restrict_code_memos) onFlags({ restrictCodeMemos: lock });
+    }
+  };
+  const capRow = (cap, label, o={})=> html`<tr key=${cap}>
+    <td style=${td} title=${o.tip||''}>${label}${o.note ? html`<span class="meta" style="display:block">${o.note}</span>` : ''}</td>
+    ${box(roleCan('viewer', c, cap) && !o.off, o.off, v=>setCap('viewer', cap, v))}
+    ${box(roleCan('member', c, cap) && !o.off, o.off, v=>setCap('member', cap, v))}
+    ${fix(true)}
+  </tr>`;
+  // desenho do estudo: UMA caixa, MARCADO = a decisao esta ligada (vale para leitura e membro)
+  // sub curta na linha; a explicacao inteira vai no title (o formulario de criacao e estreito)
+  const designRow = (key, label, sub, tip, on, disabled, onChange)=> html`<tr key=${key}>
+    <td style=${td} title=${tip||''}>${label}<span class="meta" style="display:block">${sub}</span></td>
+    <td colspan="3" style="text-align:left;padding-left:12px"><input type="checkbox" checked=${!!on} disabled=${!!disabled} onChange=${e=>onChange(e.target.checked)} /></td>
+  </tr>`;
+  const fixRow = (key, label)=> html`<tr key=${key}><td style=${td}>${label}</td>${fix(false)}${fix(false)}${fix(true)}</tr>`;
+  const aiNote = ai==='all' ? t('rules.cap.use_ai.off') : ai==='members' ? t('rules.cap.use_ai.members') : '';
+  const preset = (key)=>{
+    const p = ACCESS_PRESETS[key]; if(!p) return;
+    onCaps && onCaps(normalizeRoleCaps(p.caps));
+    onFlags && onFlags({ blind:!!p.flags.blind, restrict:!!p.flags.restrict_docs, restrictCodeMemos:!!p.flags.restrict_code_memos, catsAreMetadata:!!p.flags.cats_are_metadata });
+  };
+  const atual = accessPresetOf(f, c);
+  // chave LITERAL no t(), senao o check_i18n a le como morta/indefinida (armadilha (a) da migracao EN)
+  const PRESET_LABEL = { open:[t('rules.preset.open'), t('rules.preset.open.tip')], reliability:[t('rules.preset.reliability'), t('rules.preset.reliability.tip')],
+                         split:[t('rules.preset.split'), t('rules.preset.split.tip')], judges:[t('rules.preset.judges'), t('rules.preset.judges.tip')] };
+  return html`<div class="accmatrix">
+    ${hint !== false && html`<p class="hint" style="margin:0 0 8px" dangerouslySetInnerHTML=${{__html: mdLite(t('rules.hint'))}}></p>`}
+    <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center;margin:0 0 8px">
+      <span class="meta" style="flex:none">${t('rules.preset')}</span>
+      ${Object.keys(ACCESS_PRESETS).map(k=>html`<button key=${k} class="opt ${atual===k?'on':''}" title=${PRESET_LABEL[k][1]} onClick=${()=>preset(k)}>${PRESET_LABEL[k][0]}</button>`)}
+    </div>
+    <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
+      <thead><tr>
+        <th style=${th+';text-align:left'}></th>
+        <th style=${th}>${t('rules.col.viewer')}</th><th style=${th}>${t('rules.col.member')}</th><th style=${th}>${t('rules.col.admin')}</th>
+      </tr></thead>
+      <tbody>
+        <tr><td colspan="4" style=${sec}>${t('rules.sec.roles')}</td></tr>
+        <tr><td style=${td}>${t('rules.cap.read')}</td>${fix(true)}${fix(true)}${fix(true)}</tr>
+        ${capRow('comment', t('rules.cap.comment'))}
+        ${capRow('code', t('rules.cap.code'))}
+        ${capRow('add_docs', t('rules.cap.add_docs'))}
+        ${capRow('edit_codes', t('rules.cap.edit_codes'))}
+        ${capRow('edit_code_memos', t('rules.cap.edit_code_memos'), { tip:t('assign.codeMemos.sub') })}
+        ${capRow('use_ai', t('rules.cap.use_ai'), { off: ai!=='none', note: aiNote })}
+        <tr><td colspan="4" style=${sec}>${t('rules.sec.design')}</td></tr>
+        ${designRow('blind', t('rules.design.blind'), t('rules.design.blind.sub'), t('assign.blind.sub'), !!f.blind, false, v=>onFlags && onFlags({ blind:v }))}
+        ${designRow('restrict', t('rules.design.restrict'), t('rules.design.restrict.sub'), t('assign.restrict.sub'), !!f.restrict_docs, false, v=>onFlags && onFlags({ restrict:v }))}
+        ${designRow('cats_meta', t('rules.design.cats_meta'), f.blind ? t('rules.design.cats_meta.sub') : t('rules.design.cats_meta.needsBlind'), t('assign.catsMeta.sub'), !!f.cats_are_metadata, !f.blind, v=>onFlags && onFlags({ catsAreMetadata:v }))}
+      </tbody></table></div>
+    <details style="margin-top:8px"><summary class="meta" style="cursor:pointer">${t('rules.fixed')}</summary>
+      <table style="width:100%;border-collapse:collapse;margin-top:4px"><tbody>
+        ${fixRow('schema', t('rules.fixed.schema'))}
+        ${fixRow('destroy', t('rules.fixed.destroy'))}
+        ${fixRow('import', t('rules.fixed.import'))}
+        ${fixRow('team', t('rules.fixed.team'))}
+        ${fixRow('snapshots', t('rules.fixed.snapshots'))}
+      </tbody></table>
+    </details>
+  </div>`;
+}
 /* ============ GATE (Meus Projetos + criar / entrar em projeto) ============ */
 function Gate({ onCreate, onJoin, onOpen, onOpenFile, onNewFile, err, user, projects, mode, onAccount, onLogin }){
   const [name,setName]=useState(user?.name||'');
   const [pname,setPname]=useState('');
   const [pmode,setPmode]=useState('individual'); // individual | collective
   const [prai,setPrai]=useState('all');          // S7: nasce DESATIVADO — ativar e um ato
+  // REGRAS DE ACESSO NO t0 (so coletivo): a matriz por papel, acumulada aqui e gravada logo depois do
+  // createProject. Nasce como o comportamento de antes (aberto): a pergunta e feita, a resposta e de quem cria.
+  const [access,setAccess]=useState({ flags:{ blind:false, restrict_docs:false, restrict_code_memos:false, cats_are_metadata:false }, caps:{} });
   const [code,setCode]=useState('');
   const list = projects||[];
   const num = (p)=>{ const bits=[];
@@ -17055,7 +17494,13 @@ function Gate({ onCreate, onJoin, onOpen, onOpenFile, onNewFile, err, user, proj
             outros dois caminhos de criacao ela vem no AiOptInModal. A redacao e a mesma nos
             tres: mora no AiOptIn, nao aqui. */''}
       <div style="margin:0 0 10px"><${AiOptIn} value=${prai} onChoose=${setPrai} /></div>
-      <button class="btn primary" style="width:100%" onClick=${()=>onCreate(pname,name,pmode,prai)}>${t('gate.createBtn')}</button>
+      ${pmode==='collective' && html`<div class="card" style="margin:0 0 10px;padding:10px">
+        <div class="field-label">${t('rules.title')}</div>
+        <${AccessMatrix} flags=${access.flags} caps=${access.caps} restrictAi=${prai}
+          onFlags=${p=>setAccess(a=>({ ...a, flags: applyFlagPatch(a.flags, p) }))}
+          onCaps=${c=>setAccess(a=>({ ...a, caps: c }))} />
+      </div>`}
+      <button class="btn primary" style="width:100%" onClick=${()=>onCreate(pname,name,pmode,prai, pmode==='collective' ? access : null)}>${t('gate.createBtn')}</button>
     </div>
     <div class="card">
       <div class="field-label">${t('gate.join')}</div>
@@ -17154,6 +17599,8 @@ function SendToCloudModal({ defaultName, onBuildDb, onGatherPdfs, onGatherPdfInd
   const [otpCode, setOtpCode] = useState(''); // codigo de confirmacao do cadastro (v1.4.19)
   const [pname, setPname] = useState(defaultName || 'Projeto');
   const [pmode, setPmode] = useState('collective');
+  // REGRAS DE ACESSO NO t0 (so coletivo) — a mesma matriz do Gate, gravada logo depois do createProject
+  const [access, setAccess] = useState({ flags:{ blind:false, restrict_docs:false, restrict_code_memos:false, cats_are_metadata:false }, caps:{} });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
   const [progress, setProgress] = useState(null); // {done,total}
@@ -17206,6 +17653,7 @@ function SendToCloudModal({ defaultName, onBuildDb, onGatherPdfs, onGatherPdfInd
       // existe por isto. Mesmo cuidado do p_mode, que quando faltava fazia projeto individual
       // nascer coletivo, calado.
       const proj = await st.createProject(pname.trim()||'Projeto', st.currentUser()?.name||'pesquisador', pmode, restrictAi);
+      if(pmode==='collective' && st.setProjectFlags) await st.setProjectFlags(proj.id, accessToPatch(access));   // regras por papel, antes de qualquer convite
       const db = await onBuildDb();
       const pdfs = (includePdfs && onGatherPdfs) ? await onGatherPdfs() : null;   // PDFs só com opt-in
       const pdfIdx = (pdfs && onGatherPdfIndexes) ? await onGatherPdfIndexes() : null;   // §4: índice acompanha o PDF (mesmo opt-in)
@@ -17267,6 +17715,12 @@ function SendToCloudModal({ defaultName, onBuildDb, onGatherPdfs, onGatherPdfInd
           <button class="opt ${pmode==='individual'?'on':''}" style="flex:1;justify-content:center" onClick=${()=>setPmode('individual')}>${t('proj.type.ind')}</button>
         </div>
       </div>
+      ${pmode==='collective' && html`<div class="card" style="margin:0 0 10px;padding:10px">
+        <div class="field-label">${t('rules.title')}</div>
+        <${AccessMatrix} flags=${access.flags} caps=${access.caps} restrictAi=${restrictAi}
+          onFlags=${p=>setAccess(a=>({ ...a, flags: applyFlagPatch(a.flags, p) }))}
+          onCaps=${c=>setAccess(a=>({ ...a, caps: c }))} />
+      </div>`}
       ${hasPdfs && html`<label class="field" style="margin-bottom:8px;display:flex;gap:8px;align-items:flex-start;cursor:pointer">
         <input type="checkbox" checked=${includePdfs} onChange=${e=>setIncludePdfs(e.target.checked)} style="margin-top:3px" />
         <span><span class="field-label" style="margin:0">${t('snd.pdfs')}</span>
@@ -17302,7 +17756,7 @@ function SendToCloudModal({ defaultName, onBuildDb, onGatherPdfs, onGatherPdfInd
    A grade é uma <table> de propósito: a coluna do documento fica position:sticky e o resto
    rola na horizontal — é o que aguenta os ~10 pesquisadores do caso real.
    Só admin, só projeto coletivo na nuvem (exige contas de vários pesquisadores). */
-function AssignModal({ docs, members, assignments, allCodings, blind, restrict, codeMemos, onToggle, onReplace, onSetFlags, onClose }){
+function AssignModal({ docs, members, assignments, allCodings, blind, restrict, codeMemos, catsMeta, roleCaps, restrictAi, onToggle, onReplace, onSetFlags, onClose }){
   const [perDoc, setPerDoc] = useState(1);
   const [busy, setBusy] = useState(false);
   const key = (d,u)=> d+'|'+u;
@@ -17352,26 +17806,12 @@ function AssignModal({ docs, members, assignments, allCodings, blind, restrict, 
 
       <div class="card" style="margin-bottom:12px">
         <div class="field-label">${t('assign.access')}</div>
-        <label style="display:flex;gap:9px;align-items:flex-start;margin:10px 0;cursor:pointer">
-          <input type="checkbox" checked=${restrict} onChange=${e=>onSetFlags({ restrict:e.target.checked })} style="margin-top:3px;flex:none" />
-          <span><span dangerouslySetInnerHTML=${{__html: mdLite(t('assign.restrict'))}}></span>
-            <span class="meta" style="display:block;margin-top:2px">${t('assign.restrict.sub')}</span></span>
-        </label>
-        <label style="display:flex;gap:9px;align-items:flex-start;margin:10px 0;cursor:pointer">
-          <input type="checkbox" checked=${blind} onChange=${e=>onSetFlags({ blind:e.target.checked })} style="margin-top:3px;flex:none" />
-          <span><span dangerouslySetInnerHTML=${{__html: mdLite(t('assign.blind'))}}></span>
-            <span class="meta" style="display:block;margin-top:2px">${t('assign.blind.sub')}</span></span>
-        </label>
-        ${/* A TRAVA DO VERBETE mora nesta mesma caixa porque a pergunta e a mesma — o que um
-              membro alcanca —, so que do lado da ESCRITA. O verbete e o instrumento do estudo:
-              reescrito no meio da rodada, as codificacoes de antes e de depois deixam de ser
-              comparaveis e nada na tela denuncia. */''}
-        <label style="display:flex;gap:9px;align-items:flex-start;margin:10px 0;cursor:pointer">
-          <input type="checkbox" checked=${codeMemos} onChange=${e=>onSetFlags({ restrictCodeMemos:e.target.checked })} style="margin-top:3px;flex:none" />
-          <span><span dangerouslySetInnerHTML=${{__html: mdLite(t('assign.codeMemos'))}}></span>
-            <span class="meta" style="display:block;margin-top:2px">${t('assign.codeMemos.sub')}</span></span>
-        </label>
-        ${(restrict||blind||codeMemos) && html`<p class="hint" style="margin:4px 0 0">${t('assign.server')}</p>`}
+        ${/* REGRAS DE ACESSO POR PAPEL: a MESMA matriz do formulario de criacao, aqui ao vivo — cada
+              caixa grava no servidor na hora (onSetFlags), e o que muda e o que o servidor passa a
+              recusar, nao so o que a tela mostra. */''}
+        <${AccessMatrix} flags=${{ blind, restrict_docs:restrict, restrict_code_memos:codeMemos, cats_are_metadata:catsMeta }} caps=${roleCaps} restrictAi=${restrictAi}
+          onFlags=${onSetFlags} onCaps=${c=>onSetFlags({ roleCaps:c })} />
+        <p class="hint" style="margin:8px 0 0">${t('assign.server')}</p>
       </div>
 
       ${members.length<2 && html`<div class="banner warn" style="margin-bottom:12px">${t('assign.oneMember')}</div>`}
@@ -17442,7 +17882,7 @@ function AssignModal({ docs, members, assignments, allCodings, blind, restrict, 
    do ADMIN — "abrir e-mail" só monta um mailto: (abre a caixa DELE), nunca dispara nada daqui.
    Componente autocontido (estado próprio, sem tocar App()) — mesmo padrão dos outros modais
    deste arquivo; carrega a lista sozinho porque só existe consumidor aqui. */
-function InvitesCard({ store, project, isAdmin }){
+function InvitesCard({ store, project, isAdmin, flags, caps }){
   const pid = project?.id;
   const [invites, setInvites] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -17481,7 +17921,8 @@ function InvitesCard({ store, project, isAdmin }){
   function mailtoFor(inv){
     const roleLabel = inv.role==='admin'?t('proj.role.admin'):inv.role==='viewer'?t('proj.role.viewer'):t('proj.role.member');
     const subject = t('invite.mail.subject',{project:project?.name||''});
-    const body = t('invite.mail.body',{project:project?.name||'', role:roleLabel, code:inv.code});
+    // o convite JA VAI COM AS REGRAS: o resumo do papel sai da matriz (roleRightsText), nunca escrito a mao
+    const body = t('invite.mail.body',{project:project?.name||'', role:roleLabel, code:inv.code, rights:roleRightsText(inv.role, flags, caps)});
     const to = inv.email||'';
     return 'mailto:'+encodeURIComponent(to)+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
   }
@@ -17513,6 +17954,8 @@ function InvitesCard({ store, project, isAdmin }){
       </div>
       <button class="btn sm primary" disabled=${busy} onClick=${create}>${t('invite.create')}</button>
     </div>
+    ${/* a quebra vai como STRING ('\n'): quebra de linha solta entre duas expressoes do template o htm colapsa */''}
+    <div class="meta" style="margin:0 0 8px;white-space:pre-line">${t('invite.rightsHead',{role: role==='admin'?t('proj.role.admin'):role==='viewer'?t('proj.role.viewer'):t('proj.role.member')}) + '\n' + roleRightsText(role, flags, caps)}</div>
     <label style="display:flex;gap:7px;align-items:center;margin:0 0 10px;cursor:pointer">
       <input type="checkbox" checked=${multi} onChange=${e=>setMulti(e.target.checked)} />
       <span class="meta">${t('invite.multi')}</span>
@@ -17589,7 +18032,7 @@ function SnapshotsCard({ store, project, isAdmin, onSnapshot, onRestore, autoOn,
   </div>`;
 }
 function ProjectModal({ store, mode, user, project, projectMode, isAdmin, members, hasDocs,
-                        canAssign, onOpenAssign, blind, restrict, restrictCodeMemos, nAssignments, restrictAi, onSetAi,
+                        canAssign, onOpenAssign, blind, restrict, restrictCodeMemos, catsAreMetadata, roleCaps, nAssignments, restrictAi, onSetAi,
                         onClose, onSetMode, onSetRole, onRemoveMember, onRename, onClear, onDelete,
                         onSaveCloud, onClearCloud, onResetCloud, onReconnectCloud, canFolderBackup, backupStatus, onEnableFolderBackup, onDisableFolderBackup,
                         canSaveAsFile, onSaveAsFile, canLeaveFile, onLeaveFile, canSendToCloud, onOpenSendToCloud, storeMode,
@@ -17643,7 +18086,8 @@ function ProjectModal({ store, mode, user, project, projectMode, isAdmin, member
     </div>`}
 
     <!-- CONVITE COM PAPEL FIXO (admin) -->
-    ${cloud && html`<${InvitesCard} store=${store} project=${project} isAdmin=${isAdmin} />`}
+    ${cloud && html`<${InvitesCard} store=${store} project=${project} isAdmin=${isAdmin}
+      flags=${{ blind, restrict_docs:restrict, restrict_code_memos:restrictCodeMemos, cats_are_metadata:catsAreMetadata, restrict_ai:restrictAi }} caps=${roleCaps} />`}
 
     <!-- TIPO DO PROJETO -->
     <div class="card" style="margin-bottom:12px">
@@ -17730,7 +18174,8 @@ function ProjectModal({ store, mode, user, project, projectMode, isAdmin, member
         ${restrict && html`<span class="pill" style="background:var(--violet-soft);border-color:var(--violet);color:var(--violet)" title=${t('proj.restrictPill.tip')}>${t('proj.restrictPill')}</span>`}
         ${blind && html`<span class="pill" style="background:var(--amber-soft);border-color:var(--amber);color:var(--amber)" title=${t('proj.blindPill.tip')}>${t('proj.blindPill')}</span>`}
         ${restrictCodeMemos && html`<span class="pill" style="background:var(--teal-soft);border-color:var(--teal);color:var(--teal-deep)" title=${t('proj.codeMemosPill.tip')}>${t('proj.codeMemosPill')}</span>`}
-        ${!restrict && !blind && !restrictCodeMemos && html`<span class="meta">${nAssignments>0?t('proj.plan',{n:nAssignments}):t('proj.noRestrict')}</span>`}
+        ${catsAreMetadata && html`<span class="pill" style="background:var(--amber-soft);border-color:var(--amber);color:var(--amber)" title=${t('proj.catsMetaPill.tip')}>${t('proj.catsMetaPill')}</span>`}
+        ${!restrict && !blind && !restrictCodeMemos && !catsAreMetadata && html`<span class="meta">${nAssignments>0?t('proj.plan',{n:nAssignments}):t('proj.noRestrict')}</span>`}
       </div>
     </div>`}
 
@@ -18895,7 +19340,9 @@ function ConvertToFamilyModal({ parent, childName, codings, onCancel, onConfirm 
   </div></div>`;
 }
 
-function CodesPanel({ codes, codeById, count, sel, selCode, setSelCode, codePath, onAdd, onDel, onApply, onUpd, onSetColor, onSetSat, onSetRedaction, isAdmin, readOnly, store, project, reload, onCodeContext, checklist, memos, recentCodes }){
+function CodesPanel({ codes, codeById, count, sel, selCode, setSelCode, codePath, onAdd, onDel, onApply, onUpd, onSetColor, onSetSat, onSetRedaction, isAdmin, readOnly, canEditCodes, store, project, reload, onCodeContext, checklist, memos, recentCodes }){
+  // REGRAS POR PAPEL: criar codigo e uma capacidade propria (edit_codes); sem a prop, cai no readOnly de antes
+  const podeCriar = canEditCodes===undefined ? !readOnly : !!canEditCodes;
   const treeKeys = useTreeKeys();
   const tops = codes.filter(c=>!c.parent_id);
   const childrenOf = (id)=>codes.filter(c=>c.parent_id===id);
@@ -18918,7 +19365,7 @@ function CodesPanel({ codes, codeById, count, sel, selCode, setSelCode, codePath
     <p class="h">${t('codes.title')}</p>
     <p class="hint" dangerouslySetInnerHTML=${{__html: mdLite(t('codes.hint'))}}></p>
 
-${!readOnly && html`<div class="row" style="gap:6px;margin-bottom:10px;flex-wrap:wrap">
+${podeCriar && html`<div class="row" style="gap:6px;margin-bottom:10px;flex-wrap:wrap">
       <button class="btn sm" onClick=${()=>onAdd(selected)} disabled=${!selected} title=${selected?t('codes.childOf',{name:selected.name}):t('codes.pickOne')}>${t('codes.sub')}${selected?t('codes.sub.of',{name:selected.name}):''}</button>
       <button class="btn sm ghost" onClick=${()=>onAdd(null)} title=${t('codes.top.tip')}>${t('codes.top')}</button>
     </div>`}
@@ -22558,7 +23005,7 @@ const REPORT_GROUPS = [
 ];
 
 function ReportView({ project, projectMode, docs, cats, codes, codeById, codePath, allCodings, allValues, store, view, onView, coders:projCoders, userId, mode, memos, pdfIdx,
-                      restrictAi, aiEverEnabled, nConversasIa, nMemoriasIa, activity, onLog }){
+                      restrictAi, aiEverEnabled, nConversasIa, nMemoriasIa, activity, onLog, blind, catsAreMetadata }){
   // §4: offset -> página no PDF original (mapa docPdfIdx carregado pelo App; null = sem índice)
   const pageOfR = (docId, off)=>{ const e=(pdfIdx||{})[docId]; return (e && e.index) ? pageOfOffset(e.index, off) : null; };
   const [enabled, setEnabled] = useState(()=>new Set(['credito','resumo','freq']));
@@ -22580,6 +23027,10 @@ function ReportView({ project, projectMode, docs, cats, codes, codeById, codePat
      Relatorio, nao a equipe. */
   const [incluirHist, setIncluirHist] = useState(true);
   const histDecl = useMemo(()=> incluirHist ? activityStatement(activity||[]) : null, [incluirHist, activity]);
+  /* GABARITO DE CATEGORIA SOB CEGO: a declaracao do desenho NAO tem caixa — sai sempre que a flag esta
+     ligada (null quando nao esta). Um estudo que rodou cego com o gabarito de categoria a vista tem de
+     dizer isso; a omissao aqui seria a secao de metodos afirmando um desenho mais limpo que o executado. */
+  const designDecl = useMemo(()=> blindMetadataStatement({ blind, catsAreMetadata }), [blind, catsAreMetadata]);
   const toggle = (id)=> setEnabled(s=>{ const n=new Set(s); n.has(id)?n.delete(id):n.add(id); return n; });
   const on = (id)=> enabled.has(id);
 
@@ -22713,14 +23164,14 @@ function ReportView({ project, projectMode, docs, cats, codes, codeById, codePat
   }
 
   // --- modos de transparência: prévia ao vivo + exportação (só constrói no modo ativo) ---
-  const readerHTML = useMemo(()=> rmode==='ati' ? buildTransparencyReaderHTML(docs, codes, allCodings, memos||[], project, anonAuthors, pageOfR, aiDecl, histDecl) : ''
-  , [rmode, docs, codes, allCodings, memos, project, anonAuthors, pdfIdx, aiDecl, histDecl]);
+  const readerHTML = useMemo(()=> rmode==='ati' ? buildTransparencyReaderHTML(docs, codes, allCodings, memos||[], project, anonAuthors, pageOfR, aiDecl, histDecl, designDecl) : ''
+  , [rmode, docs, codes, allCodings, memos, project, anonAuthors, pdfIdx, aiDecl, histDecl, designDecl]);
   // um único build por render (texto + total saem da mesma coleção — antes construía 2×)
   const w3c = useMemo(()=>{
     if(rmode!=='w3c') return { text:'', total:0 };
-    const coll = buildWebAnnotations(docs, codes, allCodings, memos||[], project, anonAuthors, pageOfR, aiDecl, histDecl);
+    const coll = buildWebAnnotations(docs, codes, allCodings, memos||[], project, anonAuthors, pageOfR, aiDecl, histDecl, designDecl);
     return { text: JSON.stringify(coll, null, 2), total: coll.total||0 };
-  }, [rmode, docs, codes, allCodings, memos, project, anonAuthors, pdfIdx, aiDecl, histDecl]);
+  }, [rmode, docs, codes, allCodings, memos, project, anonAuthors, pdfIdx, aiDecl, histDecl, designDecl]);
   const w3cText = w3c.text, w3cTotal = w3c.total;
   const RMODES = [
     { id:'ati',    label:t('rep.m.ati'), desc:t('rep.m.ati.d') },
@@ -22734,8 +23185,8 @@ function ReportView({ project, projectMode, docs, cats, codes, codeById, codePat
       <div class="row" style="gap:8px;flex-wrap:wrap">
         ${rmode==='padrao' && html`<button class="btn sm" onClick=${async ()=>{ await copy(); onLog?.({ op:'export', target_kind:'project', target_id:project?.id, detail:{ format:'report', via:'copy' } }); }} disabled=${enabled.size===0}>${copied?t('rep.copied'):t('rep.copy')}</button>
           <button class="btn sm primary" onClick=${()=>{ window.print(); onLog?.({ op:'export', target_kind:'project', target_id:project?.id, detail:{ format:'report', via:'print' } }); }} disabled=${enabled.size===0}>${t('rep.print')}</button>`}
-        ${rmode==='ati' && html`<button class="btn sm primary" onClick=${()=>{ exportTransparencyReader(docs, codes, allCodings, memos||[], project, anonAuthors, pageOfR, aiDecl, histDecl); onLog?.({ op:'export', target_kind:'project', target_id:project?.id, detail:{ format:'ati' } }); }} disabled=${docs.length===0}>${t('rep.exportHtml')}</button>`}
-        ${rmode==='w3c' && html`<button class="btn sm primary" onClick=${()=>{ exportWebAnnotations(docs, codes, allCodings, memos||[], project, anonAuthors, pageOfR, aiDecl, histDecl); onLog?.({ op:'export', target_kind:'project', target_id:project?.id, detail:{ format:'w3c' } }); }} disabled=${docs.length===0}>${t('rep.exportJson')}</button>`}
+        ${rmode==='ati' && html`<button class="btn sm primary" onClick=${()=>{ exportTransparencyReader(docs, codes, allCodings, memos||[], project, anonAuthors, pageOfR, aiDecl, histDecl, designDecl); onLog?.({ op:'export', target_kind:'project', target_id:project?.id, detail:{ format:'ati' } }); }} disabled=${docs.length===0}>${t('rep.exportHtml')}</button>`}
+        ${rmode==='w3c' && html`<button class="btn sm primary" onClick=${()=>{ exportWebAnnotations(docs, codes, allCodings, memos||[], project, anonAuthors, pageOfR, aiDecl, histDecl, designDecl); onLog?.({ op:'export', target_kind:'project', target_id:project?.id, detail:{ format:'w3c' } }); }} disabled=${docs.length===0}>${t('rep.exportJson')}</button>`}
       </div>
     </div>
     <div class="pane-body scroll" style="display:flex;gap:0;align-items:flex-start">
@@ -22814,6 +23265,8 @@ function ReportView({ project, projectMode, docs, cats, codes, codeById, codePat
           <b style="color:var(--ink)">${t('rep.aiDecl')}</b> ${aiDecl}</p>`}
         ${histDecl && html`<p style="margin:0 0 20px;padding:10px 12px;border-left:3px solid var(--line);font-size:13px;line-height:1.6;color:var(--ink-soft)">
           <b style="color:var(--ink)">${t('rep.trail')}</b> ${histDecl}</p>`}
+        ${designDecl && html`<p style="margin:0 0 20px;padding:10px 12px;border-left:3px solid var(--line);font-size:13px;line-height:1.6;color:var(--ink-soft)">
+          <b style="color:var(--ink)">${t('rep.design')}</b> ${designDecl}</p>`}
 
         ${enabled.size===0 && html`<p class="hint no-print">${t('rep.pickSection')}</p>`}
 

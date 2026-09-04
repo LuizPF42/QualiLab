@@ -118,9 +118,9 @@ Uma linha por recurso: aqui é o inventário. O **passo a passo** de cada um est
 | Recurso | O que é |
 |---|---|
 | **Camadas** | cada pesquisador codifica na sua (`individual`); a equipe consolida um gabarito (`final`) na Reconciliação. Vale também para as respostas de categoria |
-| **Papéis** | admin, membro e somente-leitura, **impostos pelo servidor** (RLS), não escondidos na interface: excluir documento ou código, editar texto compartilhado, mesclar códigos e importar exigem admin. Quem é somente-leitura ainda **comenta**: escreve memo, que é o gesto de quem revisa |
+| **Papéis** | admin, membro e somente-leitura, **impostos pelo servidor** (RLS), não escondidos na interface: excluir documento ou código, editar texto compartilhado, mesclar códigos e importar exigem admin. O que membro e somente-leitura podem fazer (comentar, codificar, adicionar documentos, criar códigos, editar o verbete, usar IA) é decidido **item a item, na criação do projeto**, numa matriz que o servidor aplica; sem mexer, membro faz tudo e somente-leitura lê e **comenta** |
 | **Distribuição de documentos** | matriz documentos × pesquisadores, com rodízio: cada um só **enxerga** o que lhe foi atribuído |
-| **Codificação cega** | cada um só enxerga o **próprio** trabalho (o gabarito também some). Com o mesmo documento para duas pessoas, o estudo fica duplo-cego |
+| **Codificação cega** | cada um só enxerga o **próprio** trabalho (o gabarito também some). Com o mesmo documento para duas pessoas, o estudo fica duplo-cego. Se as categorias são metadado do desenho (plataforma, perfil sorteado), o projeto pode declará-lo e o gabarito **delas** fica visível; o das codificações, nunca |
 | **Verbete travado** | só a administração edita a definição dos códigos, para o instrumento não mudar no meio de uma rodada de calibração. Ler continua livre |
 | **Tipos de projeto** | individual (tudo vai direto ao gabarito) ou coletivo |
 | **Tempo real** | codificações e respostas de categoria sincronizam ao vivo; esquema de códigos e categorias exigem recarregar |

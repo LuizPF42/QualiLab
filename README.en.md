@@ -120,9 +120,9 @@ One line per feature: this is the inventory. The **step by step** for each one i
 | Feature | What it is |
 |---|---|
 | **Layers** | each researcher codes in their own (`individual`); the team consolidates a reference layer (`final`) in Reconciliation. Also applies to attribute answers |
-| **Roles** | admin, member and read-only, **enforced by the server** (RLS), not hidden in the interface: deleting a document or code, editing shared text, merging codes and importing require admin. A read-only member can still **comment**: they write memos, which is the reviewer's gesture |
+| **Roles** | admin, member and read-only, **enforced by the server** (RLS), not hidden in the interface: deleting a document or code, editing shared text, merging codes and importing require admin. What a member and a read-only participant may do (comment, code, add documents, create codes, edit definitions, use AI) is decided **item by item, when the project is created**, in a matrix the server enforces; left untouched, members do everything and read-only participants read and **comment** |
 | **Document assignment** | a documents × researchers matrix, with rotation: each person only **sees** what was assigned to them |
-| **Blind coding** | each person only sees their **own** work (the reference layer disappears too). With the same document given to two people, the study becomes double-blind |
+| **Blind coding** | each person only sees their **own** work (the reference layer disappears too). With the same document given to two people, the study becomes double-blind. When attributes are study-design metadata (platform, sampled profile), the project can declare it and **their** reference values stay visible; the codings' reference layer never does |
 | **Locked definitions** | only admins edit what each code means, so the instrument does not change mid-round in a calibration study. Reading stays open |
 | **Project types** | individual (everything goes straight to the reference layer) or collective |
 | **Real time** | codings and attribute answers sync live; the code scheme and attributes require a reload |
