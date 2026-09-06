@@ -55,7 +55,7 @@ ABRE_MODULO = '<script type="module">'
 
 # Hosts cujos modulos o app importa. Qualquer URL destes hosts no index.html tem de estar
 # pinada ou declarada abaixo — e assim que uma dependencia nova nao entra em silencio.
-HOSTS = ("cdn.jsdelivr.net", "esm.sh")
+HOSTS = ("cdn.jsdelivr.net", "esm.sh", "cdn.sheetjs.com")
 
 # URLs que o import map comprovadamente NAO alcanca, com o motivo. Estar aqui e uma decisao
 # consciente e auditavel, nao um esquecimento: o --check exige que toda URL esteja pinada OU

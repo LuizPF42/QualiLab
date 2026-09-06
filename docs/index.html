@@ -750,8 +750,7 @@
     "https://esm.sh/jszip@3.10.1": "sha384-5yu53KesTlgYyfWOxjtPG0ma7N94YLbqMrj+ly/X+29t3zR/VnsuroiXiNxwlXZL",
     "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.0/+esm": "sha384-l6/FGBuARD0OqT3JH6JpNvA2qIASNIOoGpxXVmQQFBKNXTfCFwDTbhkeuquQdy+h",
     "https://esm.sh/@supabase/supabase-js@2.110.0": "sha384-CIJGdmUEmPmdchPBXJDyiT0Z+w5vQYq8HZxXiDrzK2MNT/APH/1/+UTPTcQYqCHz",
-    "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm": "sha384-6cUiIXydT5DEJaqcKo50w84eWz2H+SRvz9unjAmjFtGqEkVwvHuXXThPmIv+dVx6",
-    "https://esm.sh/xlsx@0.18.5": "sha384-y6m6knehy4CayA4euDO+8AzUTEfLdNUnVhqF6MMBMbenofJujAmmcZ5qiZoYIEgV",
+    "https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs": "sha384-Z4EKe5a5DXkOl0inZS9gbLhWC3oWGsUGEe39GJ62+77NMKyfNjPWtP1Ilgb1Jzzy",
     "https://cdn.jsdelivr.net/npm/sql.js@1.14.0/+esm": "sha384-LwvJdd6XvHbNZllV208EqDaFr+CdzVL3SAFbhy8nKaLbkmEbupccI9AzAxxITy7d",
     "https://esm.sh/sql.js@1.14.0": "sha384-MsVBYDr2sZQk2VAx7xtjw0PiMbczjfd2DfWHwsgqemlI2TfEoI/m/hMhwOn1s6o7",
     "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.5/+esm": "sha384-7O81mkTCDHXl3TttHrXSM0/OgmpIxQWwps0gNibAb4BJIdUIK9n60JmqPnwd873U",
@@ -841,8 +840,27 @@ async function getCreateClient(){ if(!_createClient){
   if(typeof cc!=='function') throw new Error('supabase-js carregou sem createClient — o CDN serviu um bundle em formato inesperado');
   _createClient = cc;
 } return _createClient; }
-// SheetJS: le .xlsx/.xls no navegador (para o import de planilha Excel, mesmo fluxo do .csv)
-async function getXLSX(){ if(!_XLSX){ const m=await importRetry(['https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm','https://esm.sh/xlsx@0.18.5']); _XLSX=m.default||m; } return _XLSX; }
+/* SheetJS: le .xlsx/.xls no navegador (para o import de planilha Excel, mesmo fluxo do .csv).
+   VEM DO CDN DO FABRICANTE, e nao do npm, e isso e decisao com preco: o `xlsx` do npm parou na
+   0.18.5, que tem CVE-2023-30533 (prototype pollution) e CVE-2024-22363 (ReDoS) -- as duas no
+   caminho do `XLSX.read`, ou seja, exatamente sobre o arquivo que o pesquisador escolhe. A partir
+   dali o SheetJS so publica em `cdn.sheetjs.com`, entao ficar no npm era ficar na versao furada.
+   A alternativa (`@e965/xlsx`, republicacao de TERCEIRO no npm) seria pior: trocaria um CDN do
+   fabricante por um intermediario a mais na cadeia.
+   NAO HA RESERVA, e a ausencia e deliberada: a unica outra copia que existe e a 0.18.5, e cair
+   para ela em caso de falha do CDN seria cair de volta na versao vulneravel -- o fallback andaria
+   contra o motivo de ter trocado. Falha de rede aqui vira mensagem honesta ("nao foi possivel
+   carregar o leitor de planilha"), que e o contrato das dependencias sob demanda (o app nao cai;
+   ver o comentario do nucleo embutido). O `.csv` continua funcionando sem esta biblioteca.
+   DE QUEBRA, O SRI FICOU MAIS FORTE: este build nao importa NADA (zero `import` no arquivo),
+   entao o hash cobre a dependencia inteira num salto so -- ao contrario do shim do esm.sh, que
+   reexporta de um segundo salto que o import map nao alcanca.
+   A FORMA MUDOU, e o `m.default||m` continua certo por pouco: neste build o `export default`
+   lista read/utils/write e NAO inclui `version` (ela existe so como export NOMEADO), enquanto no
+   bundle do esm.sh o default era o namespace inteiro. O app usa `read` e `utils`, que estao nos
+   dois -- mas se algum dia algo aqui precisar de `version`, tem de ler de `m`, nao de `m.default`.
+   E a mesma familia do quirk do sql.js: a URL carrega e a FORMA e outra. */
+async function getXLSX(){ if(!_XLSX){ const m=await importRetry(['https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs']); _XLSX=m.default||m; } return _XLSX; }
 // sql.js: SQLite compilado para WASM, p/ ler o .sqlite3 nativo do Taguette no navegador
 async function getSqlJs(){
   if(!_SQL){ const m=await importRetry(['https://cdn.jsdelivr.net/npm/sql.js@1.14.0/+esm','https://esm.sh/sql.js@1.14.0']); const initSqlJs=m.default||m;
@@ -913,7 +931,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.56';
+const QUALILAB_VERSION = '1.4.57';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -7566,6 +7584,15 @@ function humanizeError(raw){
   // writeQ e vira fila, nunca banner. Sobram leitura, login e escrita ESTRUTURAL, pra quem a
   // frase continua exata.
   if(t.includes('failed to fetch') || t.includes('networkerror') || t.includes('load failed') || t.includes('fetch failed')) return 'Falha de conexão com o servidor. Verifique sua internet e tente de novo (a ação não foi concluída).';
+  /* TEMPO ESGOTADO NO SERVIDOR (SQLSTATE 57014). Apareceu no teste de carga com 13
+     codificadores: numa tela agregada de projeto grande, o Postgres cancelou a consulta e o
+     erro CRU chegava a tela -- "canceling statement due to statement timeout", que nao diz nem
+     o que houve nem o que fazer. Nao e falha de rede (a resposta CHEGOU, com 500), entao a regra
+     do 'failed to fetch' nao o alcanca. A frase precisa dizer as duas coisas que o pesquisador
+     pode fazer: tentar de novo (costuma ser transitorio) e, se for sempre, que o problema e o
+     TAMANHO do projeto para aquela tela -- e nao algo que ele fez errado. */
+  if(t.includes('statement timeout') || t.includes('57014') || t.includes('canceling statement'))
+    return 'O servidor demorou demais e cancelou a consulta. Tente de novo; se acontecer sempre nesta tela, o projeto pode estar grande demais para carregá-la de uma vez.';
   if(t.includes('row-level security')) return 'Sem permissão para esta operação neste projeto (regra de acesso do servidor).';
   if(t.includes('exceeded the quota') || t.includes('quotaexceeded')) return 'Espaço de armazenamento do navegador esgotado. Baixe um .qualilab do projeto antes de continuar.';
   if(t.includes('jwt expired') || t.includes('token is expired') || t.includes('invalid claim')) return 'Sessão expirada. Entre novamente.';
@@ -12486,6 +12513,14 @@ function SupabaseStore(sb){
      primeira, concluindo fim onde ha corte. Quem responde e o TOTAL do Content-Range
      (`count:'exact'`), que o PostgREST calcula na MESMA varredura (window function) -- ou seja,
      conjunto que cabe numa pagina continua custando UMA requisicao.
+     A CONTAGEM E SO DA PRIMEIRA PAGINA, e isto NAO e microotimizacao: o `count:'exact'` conta as
+     linhas QUE CASAM, e sob RLS isso significa avaliar a policy sobre o conjunto INTEIRO. Pedir
+     em toda pagina multiplica esse trabalho pelo numero de paginas -- num projeto de 15 mil
+     codificacoes com codificacao cega e distribuicao restritiva, as 15 paginas passaram do
+     `statement_timeout` do Supabase e a tela agregada morreu com 500 e
+     "canceling statement due to statement timeout". Foi o teste de carga com 13 codificadores
+     que pegou; nenhuma suite de navegador chega nessa escala. O total nao muda entre paginas
+     (e a mesma consulta), entao perguntar uma vez basta.
      ORDEM TOTAL E REQUISITO, nao capricho: sem desempate unico duas paginas podem repetir ou
      pular linha (e `created_at` empata em lote -- ver o comentario do listDocuments). Por isso
      toda consulta paginada daqui termina em `.order('id')`.
@@ -12493,18 +12528,49 @@ function SupabaseStore(sb){
      mesma instancia acumularia os `range`. */
   const PAGE_ROWS = 1000, PAGE_MAX = 500;
   async function pageAll(build, quem){
-    const pri = await build().range(0, PAGE_ROWS - 1);
+    const pri = await build(true).range(0, PAGE_ROWS - 1);
     if(pri.error) throw pri.error;
     const total = (typeof pri.count === 'number') ? pri.count : (pri.data||[]).length;
     const out = (pri.data||[]).slice();
     for(let p = 1; out.length < total; p++){
       if(p >= PAGE_MAX) throw new Error(`leitura de ${quem} passou de ${PAGE_MAX} páginas`);
-      const r = await build().range(out.length, out.length + PAGE_ROWS - 1);
+      const r = await build(false).range(out.length, out.length + PAGE_ROWS - 1);
       if(r.error) throw r.error;
       if(!(r.data||[]).length) break;   // mudou por baixo: para em vez de lacar
       out.push(...r.data);
     }
     return out;
+  }
+  // acucar para os chamadores: `conta(c)` vira as opcoes do select (contagem so na 1a pagina)
+  const conta = (c)=> c ? { count:'exact' } : undefined;
+
+  /* PAGINACAO POR CHAVE, para as leituras do PROJETO INTEIRO. `range()` vira OFFSET, e com OFFSET
+     a pagina k manda o Postgres varrer e DESCARTAR as k*1000 linhas anteriores -- cada uma
+     avaliando a policy de novo. O trabalho total cresce com o QUADRADO do numero de paginas:
+     medido num projeto de 15 mil codificacoes com cego e distribuicao restritiva, a tela agregada
+     levava 37 SEGUNDOS. Comecando cada pagina DEPOIS do ultimo id lido (`gt`), nao ha o que
+     descartar e o custo volta a ser linear.
+     SO AS DUAS LEITURAS GRANDES USAM ISTO, e a razao e a ORDEM: aqui ela e por `id`, que nao
+     significa nada para quem le -- e nao precisa significar, porque o chamador reagrupa por
+     documento e ordena com `sortCodingSpans`. As outras listas (documentos, codigos, categorias,
+     memos, trilha) mantem `range()` porque a ORDEM DELAS E USADA na tela e porque cabem numa
+     pagina: sem varias paginas, o OFFSET nao cobra nada.
+     O LACO PARA NA PAGINA VAZIA, e nao em "veio menos que o pedido": se o `max-rows` do servidor
+     for menor que a nossa pagina, toda pagina vem curta -- a mesma armadilha que o `count` resolve
+     do outro lado. Custa uma requisicao a mais no fim, e e o preco de nao depender do teto alheio. */
+  async function pageAllByKey(build, quem){
+    const out = []; let ultimo = null;
+    for(let p = 0; ; p++){
+      if(p >= PAGE_MAX) throw new Error(`leitura de ${quem} passou de ${PAGE_MAX} páginas`);
+      let q = build().order('id').limit(PAGE_ROWS);
+      if(ultimo) q = q.gt('id', ultimo);
+      const r = await q;
+      if(r.error) throw r.error;
+      const n = (r.data||[]).length;
+      if(!n) return out;
+      out.push(...r.data);
+      ultimo = r.data[n-1].id;
+    }
   }
   /* PERF: insercao em lote — usada pelo merge de .qualilab (importar arquivo / "enviar pra
      nuvem"), onde mergeQualilabDb fazia ATE ENTAO uma requisicao de rede por LINHA (documents/
@@ -12845,7 +12911,7 @@ function SupabaseStore(sb){
        precisa de ordem previsivel na tela ordena explicitamente (DocsNav e os dois modos
        "todos os documentos" da Reconciliacao ordenam por nome). */
     async listDocuments(pid){
-      return pageAll(()=> sb.from('documents').select('*',{count:'exact'}).eq('project_id',pid)
+      return pageAll(c=> sb.from('documents').select('*', conta(c)).eq('project_id',pid)
         .order('created_at').order('name').order('id'), 'documentos');
     },
     async addDocument(pid,{id,name:dn,content}){ const row={project_id:pid,name:dn,content,created_by:user.id}; if(id) row.id=id; return must(await sb.from('documents').insert(row).select().single()); },
@@ -12891,7 +12957,7 @@ function SupabaseStore(sb){
       await sb.from('memos').delete().eq('project_id',pid).in('scope',MEMO_MATERIAL_SCOPES);
     },
     async listCategories(pid){
-      return pageAll(()=> sb.from('categories').select('*',{count:'exact'}).eq('project_id',pid)
+      return pageAll(c=> sb.from('categories').select('*', conta(c)).eq('project_id',pid)
         .order('position').order('id'), 'categorias');
     },
     async addCategory(pid,cat){
@@ -12908,7 +12974,7 @@ function SupabaseStore(sb){
     },
     async deleteCategory(id){ must(await sb.from('categories').delete().eq('id',id)); },
     async getDocValues(docId){
-      const rows = await pageAll(()=> sb.from('doc_values').select('*',{count:'exact'}).eq('document_id',docId)
+      const rows = await pageAll(c=> sb.from('doc_values').select('*', conta(c)).eq('document_id',docId)
         .order('id'), 'valores do documento');
       return applyQueue(rows, qEffs('value'), r=> r.document_id===docId);
     },
@@ -12988,7 +13054,7 @@ function SupabaseStore(sb){
       return bulkWrite('doc_values', rows, { upsert:true, onConflict:'document_id,category_id,set_by,layer' });
     },
     async listCodes(pid){
-      return pageAll(()=> sb.from('codes').select('*',{count:'exact'}).eq('project_id',pid)
+      return pageAll(c=> sb.from('codes').select('*', conta(c)).eq('project_id',pid)
         .order('depth').order('position').order('id'), 'códigos');
     },
     async addCode(pid,code){ return must(await sb.from('codes').insert({project_id:pid,...code}).select().single()); },
@@ -13001,7 +13067,7 @@ function SupabaseStore(sb){
     // document_id antes do span. O document_id ordena por UUID: agrupa de forma ESTAVEL, nao
     // semantica (ordenar pelo NOME do documento e da tela, que e quem conhece os nomes).
     async listCodingsByCode(pid,codeId){
-      const rows = await pageAll(()=> sb.from('codings').select('*',{count:'exact'}).eq('project_id',pid).eq('code_id',codeId)
+      const rows = await pageAll(c=> sb.from('codings').select('*', conta(c)).eq('project_id',pid).eq('code_id',codeId)
         .order('document_id').order('span_start').order('span_end').order('id'), 'codificações do código');
       return applyQueue(rows, qEffs('coding',pid), r=> r.code_id===codeId);
     },
@@ -13032,7 +13098,7 @@ function SupabaseStore(sb){
        o applyQueue empilha o pendente no FIM, entao sem reordenar aqui uma codificacao na fila
        ficaria fora de lugar e ganharia a cor do run ate o flush. */
     async listCodings(pid,docId){
-      const rows = await pageAll(()=> sb.from('codings').select('*',{count:'exact'}).eq('project_id',pid).eq('document_id',docId)
+      const rows = await pageAll(c=> sb.from('codings').select('*', conta(c)).eq('project_id',pid).eq('document_id',docId)
         .order('span_start').order('span_end').order('id'), 'codificações do documento');
       return sortCodingSpans(applyQueue(rows, qEffs('coding',pid), r=> r.document_id===docId));
     },
@@ -13045,13 +13111,11 @@ function SupabaseStore(sb){
        O overlay da fila continua DENTRO da leitura (regra do FILA-BLOCK): as telas seguem sem
        saber que a fila existe. */
     async listAllCodings(pid){
-      const rows = await pageAll(()=> sb.from('codings').select('*',{count:'exact'}).eq('project_id',pid)
-        .order('document_id').order('span_start').order('span_end').order('id'), 'codificações do projeto');
+      const rows = await pageAllByKey(()=> sb.from('codings').select('*').eq('project_id',pid), 'codificações do projeto');
       return applyQueue(rows, qEffs('coding',pid), r=> r.project_id===pid);
     },
     async listAllDocValues(pid){
-      const rows = await pageAll(()=> sb.from('doc_values').select('*',{count:'exact'}).eq('project_id',pid)
-        .order('document_id').order('category_id').order('id'), 'valores de categoria do projeto');
+      const rows = await pageAllByKey(()=> sb.from('doc_values').select('*').eq('project_id',pid), 'valores de categoria do projeto');
       return applyQueue(rows, qEffs('value',pid), r=> r.project_id===pid);
     },
     async addCoding(pid,co){
@@ -13099,7 +13163,7 @@ function SupabaseStore(sb){
        telas ja tratam (loadMemos e companhia envolvem em try/catch e pintam vazio), e a
        exportacao/espelho PRECISA lancar em vez de gravar um arquivo que parece completo. */
     async listMemos(pid){
-      const rows = await pageAll(()=> sb.from('memos').select('*',{count:'exact'}).eq('project_id',pid)
+      const rows = await pageAll(c=> sb.from('memos').select('*', conta(c)).eq('project_id',pid)
         .order('id'), 'memos');
       return applyQueue(rows, qEffs('memo',pid), r=> r.project_id===pid);
     },
@@ -13138,7 +13202,7 @@ function SupabaseStore(sb){
     },
     // resultados salvos da aba "Analisar com IA"
     async listIaResults(pid){
-      const rows = await pageAll(()=> sb.from('ia_results').select('*',{count:'exact'}).eq('project_id',pid)
+      const rows = await pageAll(c=> sb.from('ia_results').select('*', conta(c)).eq('project_id',pid)
         .order('created_at',{ascending:false}).order('id'), 'conversas de IA');
       // reordena: o overlay empilha no FIM, e esta lista e ordenada por created_at desc
       return qSortDesc(applyQueue(rows, qEffs('ia_result',pid), r=> r.project_id===pid));
@@ -13176,7 +13240,7 @@ function SupabaseStore(sb){
         async ()=>{ must(await sb.from('ia_results').delete().eq('id',id)); });
     },
     async listMemory(pid){
-      const rows = await pageAll(()=> sb.from('ia_memory').select('*',{count:'exact'}).eq('project_id',pid)
+      const rows = await pageAll(c=> sb.from('ia_memory').select('*', conta(c)).eq('project_id',pid)
         .order('created_at',{ascending:false}).order('id'), 'memórias do projeto');
       return qSortDesc(applyQueue(rows, qEffs('ia_memory',pid), r=> r.project_id===pid));
     },
@@ -13239,7 +13303,7 @@ function SupabaseStore(sb){
        'local'/'file-project' de um rascunho, ou o fallback do uid() em navegador sem randomUUID)
        vira null em vez de derrubar o insert com 22P02. */
     async listActivity(pid){
-      const rows = await pageAll(()=> sb.from('activity').select('*',{count:'exact'}).eq('project_id',pid)
+      const rows = await pageAll(c=> sb.from('activity').select('*', conta(c)).eq('project_id',pid)
         .order('created_at').order('at').order('id'), 'histórico do projeto');
       return applyQueue(rows, qEffs('activity',pid), r=> r.project_id===pid);
     },
@@ -13277,7 +13341,7 @@ function SupabaseStore(sb){
        sobe ANTES da linha, e uma linha recusada apaga o objeto: linha sem retrato seria um espelho
        que nao restaura, e retrato sem linha e sobra que ninguem lista. */
     async listSnapshots(pid){
-      return pageAll(()=> sb.from('snapshots').select('*',{count:'exact'}).eq('project_id',pid)
+      return pageAll(c=> sb.from('snapshots').select('*', conta(c)).eq('project_id',pid)
         .order('at',{ ascending:false }).order('id'), 'espelhos');
     },
     async createSnapshot(pid, meta, json){
@@ -14878,7 +14942,21 @@ function App(){
   // codings e disparava um loadAll completo (2 requests POR DOCUMENTO a cada 20s nas telas
   // agregadas, sem nada ter mudado). A atualização ao vivo dessas telas é responsabilidade
   // do reloadRef (evento realtime → loadAll; poll de reserva agregado a cada 60s).
-  useEffect(()=>{ if(phase==='work' && AGG_VIEWS.includes(mainView)) loadAll(); }, [phase, mainView, loadAll]);
+  /* TROCAR ENTRE DUAS TELAS AGREGADAS NAO RELE O PROJETO. O efeito depende de `mainView`, entao
+     ir da Leitura para os Graficos disparava um `loadAll` inteiro com os MESMOS dados ja na
+     memoria: medido num projeto de 15 mil codificacoes, 11 segundos por troca, e o Relatorio
+     chegava a 23 porque somava duas leituras. Quem mantem essas telas atualizadas e o
+     `scheduleReload` (evento de realtime e poll de reserva) e as chamadas explicitas depois de
+     escrever -- este efeito so precisa garantir que HA dado ao entrar na primeira delas.
+     O REF GUARDA O PROJETO, e nao um booleano: trocar de projeto tem de recarregar, e comparar o
+     id e o que distingue "ja carreguei" de "ja carreguei OUTRA COISA". */
+  const aggCarregadoRef = useRef(null);
+  useEffect(()=>{
+    if(phase!=='work' || !AGG_VIEWS.includes(mainView)) return;
+    if(aggCarregadoRef.current === project?.id) return;
+    aggCarregadoRef.current = project?.id || null;
+    loadAll();
+  }, [phase, mainView, loadAll, project]);
   // categoria padrão no modo "(Todos os documentos)" da Reconciliação
   useEffect(()=>{ if(!cats.find(c=>c.id===recon.cat)) mudaRecon({cat:cats[0]?.id || ''}); }, [cats]); // eslint-disable-line
 

@@ -14,6 +14,51 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.57 (06/09/2026)
+
+### As telas de conjunto abrem muito mais rápido em projetos grandes
+
+Esta parte saiu de um **teste de carga com treze codificadores ao mesmo tempo**, num projeto com
+500 documentos e 15 mil codificações, com codificação cega e distribuição restritiva ligadas. Três
+problemas apareceram só nessa escala:
+
+- A leitura paginada pedia ao servidor a **contagem total em cada página**, e não só na primeira.
+  Num projeto grande isso passava do tempo máximo de consulta e a tela de conjunto **falhava**.
+- A paginação avançava por **deslocamento**, então cada página pedia ao banco que percorresse e
+  descartasse tudo o que veio antes. Agora cada página começa onde a anterior parou.
+- **Trocar entre duas telas de conjunto relia o projeto inteiro**, com os mesmos dados já
+  carregados na memória.
+
+**O efeito somado, medido:** abrir Leitura, Gráficos e Relatório em sequência levava cerca de **um
+minuto e meio** de espera; passou a levar **cerca de 16 segundos**, quase todos na primeira tela —
+depois dela, trocar de tela é imediato. E um erro de tempo esgotado no servidor, que antes chegava
+como uma mensagem técnica incompreensível, agora explica o que houve e o que fazer.
+
+No mesmo teste, o que **já estava bem** e continua: entrar no projeto leva menos de um segundo, e
+trocar de documento com treze pessoas codificando ao mesmo tempo leva em torno de **0,3 segundo** —
+a tela de codificar, onde se passa o dia, não sente a turma inteira.
+
+### A leitura de planilhas saiu de uma versão com falhas conhecidas
+
+O QualiLab lê `.xlsx` e `.xls` com a biblioteca SheetJS. A versão em uso era a **0.18.5**, que
+carrega duas falhas publicadas pelo próprio fabricante — uma de *prototype pollution*
+(CVE-2023-30533) e uma de expressão regular de custo explosivo (CVE-2024-22363), **as duas no
+caminho que lê o arquivo**, ou seja, sobre a planilha que você escolhe. Era o item que a auditoria
+da 1.4.56 apontou e que ficou de fora dela.
+
+O motivo de ter ficado: **a versão corrigida não existe no repositório de pacotes que o app usava**
+— o SheetJS parou de publicar lá depois da 0.18.5 e passou a distribuir só no próprio site. Ficar
+onde estava era ficar na versão furada; a outra alternativa (uma republicação feita por terceiros)
+acrescentaria mais um intermediário na cadeia, que é o oposto do que se quer. Agora a biblioteca vem
+da **0.20.3, do fabricante**.
+
+**Duas consequências que valem dizer.** A verificação de integridade ficou **mais forte**: esse
+arquivo não puxa nenhum outro, então a assinatura confere a biblioteca inteira, e não só a primeira
+camada como acontecia antes. E ele passou a ter **uma origem só**: a cópia de reserva foi retirada
+de propósito, porque a única outra que existe é a versão vulnerável — cair nela numa falha de rede
+desfaria a troca. Se o site do fabricante estiver fora do ar, a importação de planilha avisa que não
+conseguiu carregar; **o `.csv` continua funcionando**, porque não usa essa biblioteca.
+
 ## 1.4.56 (06/09/2026)
 
 Esta versão tem dois objetivos, e eles se encontram no mesmo lugar: **aguentar uma equipe grande
