@@ -220,6 +220,20 @@ create table if not exists public.assignments (
   assigned_by uuid,
   unique (document_id, user_id)
 );
+-- SEG-4 (integridade, o par da condicao em can_see_doc): sem a FK composta nada impede uma
+-- atribuicao cujo documento pertence a OUTRO projeto. A condicao na funcao ja fecha o ACESSO;
+-- esta aqui impede a linha inconsistente de existir. Exige a unique (id, project_id) em
+-- documents, redundante com a PK e util so como alvo da FK. Idempotentes. Aplicar num banco
+-- com linha violadora FALHA -- e isso e informacao, nao acidente.
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'documents_id_project_key') then
+    alter table public.documents add constraint documents_id_project_key unique (id, project_id);
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'assignments_doc_project_fkey') then
+    alter table public.assignments add constraint assignments_doc_project_fkey
+      foreign key (document_id, project_id) references public.documents (id, project_id) on delete cascade;
+  end if;
+end $$;
 create index if not exists assignments_doc_idx     on public.assignments (document_id, user_id);
 create index if not exists assignments_user_idx    on public.assignments (user_id);
 create index if not exists assignments_project_idx on public.assignments (project_id);
@@ -253,17 +267,26 @@ $$;
 -- defaults abaixo sao EXATAMENTE o comportamento anterior (membro faz tudo, leitor le e comenta).
 -- A tabela de defaults TEM de casar com CAP_DEFAULTS em src/dados/regras-de-acesso.js.
 -- Sem linha em members -> sem linha no select -> NULL -> a policy trata como falso.
+-- O `coalesce(..., false)` DE FORA E A CORRECAO DO S02, e ele nao e cosmetico: funcao SQL cujo
+-- corpo e um select SEM LINHA devolve NULL, nao false. Em POLICY isso era inofensivo (a RLS trata
+-- NULL como falso), mas em plpgsql `if not public.role_can(...) then raise` vira `if NULL`, que
+-- NAO entra no ramo de recusa -- e a RPC security definer seguia adiante. Medido: sem sessao e
+-- como nao-membro, o `set_memory_active` desligava a memoria. Uma funcao de autorizacao tem de
+-- ser TOTAL; deixar o cuidado para cada chamador significa acertar em todos, para sempre.
+-- (A outra da familia e a comparacao `p_user <> auth.uid()` do remove_member -- ver SEG-1.)
 create or replace function public.role_can(p_project uuid, p_cap text)
 returns boolean language sql security definer stable set search_path = public as $$
-  select case m.role
-    when 'admin'  then true
-    when 'member' then coalesce((pr.role_caps->'member'->>p_cap)::boolean,
-                                p_cap in ('comment','code','add_docs','edit_codes','edit_code_memos','use_ai'))
-    when 'viewer' then coalesce((pr.role_caps->'viewer'->>p_cap)::boolean,
-                                p_cap in ('comment','edit_code_memos'))
-    else false end
-  from public.members m join public.projects pr on pr.id = m.project_id
-  where m.project_id = p_project and m.user_id = auth.uid();
+  select coalesce((
+    select case m.role
+      when 'admin'  then true
+      when 'member' then coalesce((pr.role_caps->'member'->>p_cap)::boolean,
+                                  p_cap in ('comment','code','add_docs','edit_codes','edit_code_memos','use_ai'))
+      when 'viewer' then coalesce((pr.role_caps->'viewer'->>p_cap)::boolean,
+                                  p_cap in ('comment','edit_code_memos'))
+      else false end
+    from public.members m join public.projects pr on pr.id = m.project_id
+    where m.project_id = p_project and m.user_id = auth.uid()
+  ), false);
 $$;
 
 -- A EXCECAO DO VIEWER E O MEMO — ele COMENTA —, mas a tabela `memos` guarda DUAS coisas
@@ -298,8 +321,15 @@ create or replace function public.can_see_doc(p_project uuid, p_doc uuid)
 returns boolean language sql security definer stable set search_path = public as $$
   select not coalesce((select pr.restrict_docs from public.projects pr where pr.id = p_project), false)
       or public.is_admin(p_project)
+      -- SEG-4: `a.project_id = p_project` NAO e redundante. Sem ela, a condicao casa
+      -- QUALQUER atribuicao daquele documento para aquele usuario, e escrever atribuicao so
+      -- exige ser admin de ALGUM projeto (assignments_write olha o project_id da LINHA) --
+      -- entao um membro criava o projeto dele, se declarava admin la, gravava uma atribuicao
+      -- apontando o documento alheio, e o restrict_docs do projeto de origem caia. A FK
+      -- composta (document_id, project_id) fecha o mesmo buraco pelo lado do DADO.
       or exists (select 1 from public.assignments a
-                  where a.document_id = p_doc and a.user_id = auth.uid());
+                  where a.document_id = p_doc and a.user_id = auth.uid()
+                    and a.project_id = p_project);
 $$;
 
 -- linha autoral visivel? cego desligado, ou admin, ou a linha e minha.
@@ -467,9 +497,18 @@ create policy snapshots_delete on public.snapshots for delete using ( public.is_
 -- o bucket: privado; o primeiro segmento do nome e o project_id. Qualifique storage.objects.name
 -- (gotcha #8 — 'name' cru dentro de um subselect com outra tabela liga na coluna errada).
 insert into storage.buckets (id, name, public) values ('snapshots','snapshots',false) on conflict (id) do nothing;
+-- S01: BAIXAR o retrato e de ADMIN; LISTAR os metadados (a tabela `snapshots`, acima) segue de
+-- membro. O objeto e o projeto INTEIRO num JSON -- documentos, codificacoes de todo mundo, memos
+-- e gabarito -- e uma autorizacao de Storage NAO reaplica a RLS de cada registro serializado la
+-- dentro: num estudo com `blind` ou `restrict_docs` ligado o membro baixava exatamente o que as
+-- consultas recusam, inclusive o estado ANTERIOR a uma mudanca de distribuicao.
+-- POR QUE NAO FILTRAR O RETRATO POR LEITOR: espelho filtrado deixa de ser ponto de restauracao --
+-- restaurar a partir dele apagaria o que aquele leitor nao via. O retrato e integral por
+-- definicao, entao quem nao pode ver o todo nao pode baixa-lo. Nao ha perda de fluxo: o
+-- `restoreSnapshot` ja e admin e e o unico consumidor do getSnapshot.
 drop policy if exists "snapshots_select" on storage.objects;
 create policy "snapshots_select" on storage.objects for select to authenticated
-  using ( bucket_id='snapshots' and public.is_member(split_part(storage.objects.name,'/',1)::uuid) );
+  using ( bucket_id='snapshots' and public.is_admin(split_part(storage.objects.name,'/',1)::uuid) );
 drop policy if exists "snapshots_insert" on storage.objects;
 create policy "snapshots_insert" on storage.objects for insert to authenticated
   with check ( bucket_id='snapshots' and public.is_admin(split_part(storage.objects.name,'/',1)::uuid) );
@@ -550,7 +589,7 @@ revoke all on public.project_invites from anon, authenticated;
 -- inutilizando o throttle. O SupabaseStore.joinProject checa o null e monta a mensagem.
 create or replace function public.join_project(p_code text, p_display text)
 returns public.projects language plpgsql security definer set search_path = public as $$
-declare v_proj public.projects; v_recent int; v_inv public.project_invites; v_existed boolean; v_who text;
+declare v_proj public.projects; v_recent int; v_inv public.project_invites; v_existed boolean; v_who text; v_res uuid;
 begin
   v_who := coalesce(nullif(p_display,''),'anonimo');
   delete from public.join_attempts where attempted_at < now() - interval '1 day';
@@ -578,10 +617,31 @@ begin
     end if;
     select * into v_proj from public.projects where id = v_inv.project_id;
     v_existed := exists (select 1 from public.members where project_id = v_proj.id and user_id = auth.uid());
+    /* S10: A RESERVA VEM ANTES DA ADMISSAO. A ordem era selecionar o convite com
+       `use_count < max_uses`, INSERIR o membro e so entao incrementar: duas sessoes liam 0 ao
+       mesmo tempo, o incremento serializava depois, e as DUAS ja tinham entrado -- convite de uso
+       unico admitindo dois. O update condicional revalida revogacao, expiracao e quantidade na
+       MESMA instrucao: o Postgres trava a linha e a segunda sessao reavalia o predicado sobre o
+       valor ja incrementado. Sem linha reservada, o contrato e o de codigo invalido (NULL +
+       tentativa registrada) -- nunca "este convite acabou", que confirmaria a quem tentou que ele
+       existe.
+       SO RESERVA QUANDO A PESSOA AINDA NAO E MEMBRO: este RPC roda a cada abertura do projeto,
+       entao contar toda chamada queimaria o convite de quem apenas reabre o estudo. */
+    if not v_existed then
+      update public.project_invites set use_count = use_count + 1
+        where id = v_inv.id
+          and revoked_at is null
+          and (expires_at is null or expires_at > now())
+          and use_count < max_uses
+        returning id into v_res;
+      if v_res is null then
+        insert into public.join_attempts (user_id) values (auth.uid());
+        return null;
+      end if;
+    end if;
     insert into public.members (project_id, user_id, display_name, role)
       values (v_proj.id, auth.uid(), v_who, v_inv.role)
       on conflict (project_id, user_id) do update set display_name = excluded.display_name;
-    update public.project_invites set use_count = use_count + 1 where id = v_inv.id;
     -- TRILHA (S4): so quando a linha de members NASCE — este RPC roda a cada abertura do projeto
     if not v_existed then
       perform public.log_activity(v_proj.id, 'member_joined', 'member', auth.uid(), v_who, null, jsonb_build_object('who', v_who, 'role', v_inv.role));
@@ -681,7 +741,19 @@ create or replace function public.remove_member(p_project uuid, p_user uuid)
 returns void language plpgsql security definer set search_path = public as $$
 declare v_who text;
 begin
-  if p_user <> auth.uid() and not public.is_admin(p_project) then
+  -- SEG-1: sem sessao, auth.uid() e NULL, `p_user <> NULL` da UNKNOWN, o `if` nao dispara
+  -- e o delete definer-rights acontecia. Duas defesas: recusar a chamada sem sessao, e
+  -- `is distinct from`, que devolve booleano em vez de UNKNOWN. O grant a anon tambem foi
+  -- revogado (e `from public` junto -- ver a nota do revoke, abaixo).
+  -- ⚠️ NAO E A UNICA DA FAMILIA, ao contrario do que o item SEG-1 do to-do afirmava: a
+  -- auditoria de 06/set achou a SEGUNDA, o `set_memory_active`, onde o NULL vem do
+  -- `role_can` e nao de uma comparacao (S02, corrigido junto). As duas sao a mesma coisa --
+  -- logica de TRES VALORES dentro de uma guarda de autorizacao, num definer aberto a anon.
+  -- Ao escrever guarda nova: `if not <fn>` so e seguro se <fn> for TOTAL.
+  if auth.uid() is null then
+    raise exception 'E preciso estar autenticado para remover um membro';
+  end if;
+  if p_user is distinct from auth.uid() and not public.is_admin(p_project) then
     raise exception 'Apenas administradores podem remover outros membros';
   end if;
   if exists (select 1 from public.members where project_id = p_project and user_id = p_user and role = 'admin')
@@ -814,7 +886,14 @@ grant execute on function public.join_project(text, text)         to anon, authe
 grant execute on function public.my_projects()                    to anon, authenticated;
 grant execute on function public.is_admin(uuid)                   to anon, authenticated;
 grant execute on function public.set_member_role(uuid,uuid,text)  to anon, authenticated;
-grant execute on function public.remove_member(uuid,uuid)         to anon, authenticated;
+-- SEG-1: `revoke from anon` NAO BASTA, e a sonda pegou isto na propria correcao --
+-- CREATE FUNCTION concede EXECUTE a PUBLIC por padrao, e e de PUBLIC que o anon herda
+-- (medido: depois de revogar so de anon, has_function_privilege('anon', ...) continuava
+-- true). E o mesmo cuidado que as funcoes de trigger daqui ja tomam, com as tres
+-- palavras: `from public, anon, authenticated`. Vale para qualquer RPC que um dia
+-- precise sair do alcance de quem nao tem sessao.
+revoke execute on function public.remove_member(uuid,uuid) from public, anon;
+grant  execute on function public.remove_member(uuid,uuid) to authenticated;
 grant execute on function public.rename_project(uuid,text)        to anon, authenticated;
 grant execute on function public.delete_project(uuid)             to anon, authenticated;
 grant execute on function public.set_project_mode(uuid,text,text) to anon, authenticated;
@@ -942,10 +1021,59 @@ drop policy if exists codings_delete on public.codings;
 -- do trecho, entao sem can_see_doc aqui o membro puxaria os trechos de um documento que nao
 -- e dele direto pela API, sem nunca abrir o documento. A restricao vale tambem na ESCRITA
 -- (nao adianta impedir de ler e deixar codificar).
+/* P01 (2a metade) — O CUSTO DA RLS E CHAMADA DE FUNCAO, NAO ACESSO A DADO, e por isso a
+   leitura por projeto passa por UM helper em vez de tres.
+   MEDIDO no ai-lab, projeto real de 4.971 codificacoes, em transacao revertida: sem RLS 0,7 ms;
+   com RLS e sem flags 221 ms; so cego 830; so distribuicao 828; cego+distribuicao 1.390 -- e,
+   a linha que entrega o diagnostico, cego+distribuicao COMO ADMIN 1.394. Se o custo fosse a
+   consulta a `assignments`, o admin (que curto-circuita antes dela) sairia barato; ele nao sai.
+   O custo e a INVOCACAO por linha de funcao `security definer`, que o Postgres NAO INLINEIA --
+   a policy chamava tres, e duas delas chamam `is_admin` por dentro: ate cinco por linha.
+   Reduzindo a UMA: 1.423 -> 141 ms, 10x.
+   MEDIDO O QUE NAO ADIANTOU, para ninguem refazer: `(select auth.uid())` dentro dos helpers (o
+   truque de InitPlan da doc do Supabase) rendeu ~5%; indice composto (project_id, document_id)
+   nao mudou nada. O gargalo nao e onde parece.
+   EQUIVALENCIA PROVADA, nao argumentada: as duas formas rodaram lado a lado contando linhas --
+   `codings` em 12 combinacoes (4 pares de flags x admin/membro/nao-membro) e `doc_values` em 24
+   (mais o `cats_are_metadata` e o gabarito com `set_by` NULO), ZERO divergencia, com o recorte
+   mudando como deve. A algebra e a fatoracao do `admin` para fora da conjuncao:
+     is_member ∧ (¬restrict ∨ admin ∨ atribuido) ∧ (¬blind ∨ admin ∨ meu)
+     ≡ is_member ∧ ( admin ∨ ((¬restrict ∨ atribuido) ∧ (¬blind ∨ meu)) )
+   OS HELPERS ANTIGOS FICAM: `is_member`/`can_see_doc`/`can_see_authored`/`can_see_value` seguem
+   servindo `memo_visible`, `activity_select`, `documents_*` e o bucket `pdfs`. So estas DUAS
+   policies mudam -- as unicas em que a mesma expressao roda dezenas de milhares de vezes. */
+create or replace function public.can_read_coding(p_project uuid, p_doc uuid, p_owner uuid)
+returns boolean language sql security definer stable set search_path = public as $$
+  select exists (
+    select 1 from public.members m join public.projects pr on pr.id = m.project_id
+    where m.project_id = p_project and m.user_id = auth.uid()
+      and (m.role = 'admin'
+           or ((not coalesce(pr.restrict_docs,false)
+                or exists (select 1 from public.assignments a
+                            where a.project_id = p_project and a.document_id = p_doc
+                              and a.user_id = auth.uid()))
+               and (not coalesce(pr.blind,false) or p_owner = auth.uid())))
+  );
+$$;
+-- a diferenca para a de cima e o `cats_are_metadata`, a excecao declarada do projeto: o gabarito
+-- de CATEGORIA pode ficar visivel sob cego quando as categorias sao configuracao do estudo, e nao
+-- juizo de ninguem. Ela NAO existe do lado das codificacoes, de proposito.
+create or replace function public.can_read_doc_value(p_project uuid, p_doc uuid, p_set_by uuid)
+returns boolean language sql security definer stable set search_path = public as $$
+  select exists (
+    select 1 from public.members m join public.projects pr on pr.id = m.project_id
+    where m.project_id = p_project and m.user_id = auth.uid()
+      and (m.role = 'admin'
+           or ((not coalesce(pr.restrict_docs,false)
+                or exists (select 1 from public.assignments a
+                            where a.project_id = p_project and a.document_id = p_doc
+                              and a.user_id = auth.uid()))
+               and (not coalesce(pr.blind,false) or p_set_by = auth.uid()
+                    or coalesce(pr.cats_are_metadata,false))))
+  );
+$$;
 create policy codings_select on public.codings for select using (
-  public.is_member(project_id)
-  and public.can_see_doc(project_id, document_id)
-  and public.can_see_authored(project_id, created_by)
+  public.can_read_coding(project_id, document_id, created_by)
 );
 create policy codings_insert on public.codings for insert with check (
   public.role_can(project_id, 'code')
@@ -953,14 +1081,23 @@ create policy codings_insert on public.codings for insert with check (
   and (created_by = auth.uid() or public.is_admin(project_id))
   and (layer <> 'final' or public.is_admin(project_id))
 );
+-- SEG-3: o insert ja exigia admin para layer='final', o update NAO checava camada nenhuma --
+-- entao o membro escrevia no gabarito em dois passos (insert individual, update para final),
+-- que e exatamente o que a Reconciliacao existe para impedir. USING olha o OLD (mexer numa
+-- linha final que ja existe) e WITH CHECK olha o NEW (promover a propria); as duas pontas
+-- precisam da condicao. O delete leva a mesma: com created_by de membro numa linha 'final'
+-- (possivel via import feito por admin), ele apagaria o gabarito sem ser admin.
 create policy codings_update on public.codings for update
   using (public.role_can(project_id, 'code') and public.can_see_doc(project_id, document_id)
-         and (created_by = auth.uid() or public.is_admin(project_id)))
+         and (created_by = auth.uid() or public.is_admin(project_id))
+         and (layer <> 'final' or public.is_admin(project_id)))
   with check (public.role_can(project_id, 'code') and public.can_see_doc(project_id, document_id)
-         and (created_by = auth.uid() or public.is_admin(project_id)));
+         and (created_by = auth.uid() or public.is_admin(project_id))
+         and (layer <> 'final' or public.is_admin(project_id)));
 create policy codings_delete on public.codings for delete
   using (public.role_can(project_id, 'code') and public.can_see_doc(project_id, document_id)
-         and (created_by = auth.uid() or public.is_admin(project_id)));
+         and (created_by = auth.uid() or public.is_admin(project_id))
+         and (layer <> 'final' or public.is_admin(project_id)));
 
 -- categorias: membros leem; apenas admins escrevem
 drop policy if exists categories_all    on public.categories;
@@ -981,9 +1118,7 @@ drop policy if exists doc_values_imported on public.doc_values;
 -- can_see_value, e nao can_see_authored: e a UNICA policy em que o gabarito pode ficar visivel sob
 -- cego, por declaracao do projeto (cats_are_metadata). Ver o comentario da coluna.
 create policy doc_values_select on public.doc_values for select using (
-  public.is_member(project_id)
-  and public.can_see_doc(project_id, document_id)
-  and public.can_see_value(project_id, set_by)
+  public.can_read_doc_value(project_id, document_id, set_by)
 );
 create policy doc_values_own on public.doc_values for all
   using (public.role_can(project_id, 'code') and public.can_see_doc(project_id, document_id)
@@ -1018,27 +1153,64 @@ create policy assignments_write on public.assignments for all
 -- IMPORTANTE: qualifique storage.objects.name -- 'name' cru, dentro do subselect "from documents d",
 -- liga em documents.name (o TITULO do doc), nao no nome do objeto -> a checagem nunca casava e a
 -- RLS negava TODO upload/select do bucket (bug de shadowing, corrigido jul/2026; 0 objetos ate entao).
+-- SEG-5, duas correcoes independentes.
+-- (a) NOME EXATO. `split_part(name,'.',1)` confere so ate o primeiro ponto, entao
+--     `<uuid>.qualquercoisa` passava: qualquer objeto do bucket ficava legivel/gravavel desde
+--     que o prefixo casasse com um documento visivel. Sao DOIS nomes legitimos, e o segundo
+--     nao pode ser esquecido: `<id>.pdf` (o original) e `<id>.idx.json` (o indice reversivel,
+--     que mora no MESMO bucket de proposito -- ver PDF-BLOCK/§4). O join por split_part FICA,
+--     porque e ele que casa a linha; a condicao nova e o que torna o nome exato. Conferido
+--     antes de escrever: nos dois projetos vivos, 100% dos objetos ja seguem esses dois nomes.
+-- (b) SOBRESCREVER E APAGAR O ORIGINAL VIRAM ADMIN. O `.pdf` e a FONTE do texto: um membro
+--     que troca os bytes troca o que todo mundo esta codificando, sem passar pelo
+--     documents_guard (que so protege documents.content) e sem deixar rastro. Espelha o
+--     documents_delete, que ja e admin.
+--     O INSERT continua em `add_docs` DE PROPOSITO -- e o fluxo normal de um membro
+--     acrescentar documento com PDF, e ali o objeto ainda nao existe. E o `.idx.json` continua
+--     gravavel/apagavel por membro: e DERIVADO e reconstruivel a partir dos bytes, ao
+--     contrario do original. A prescricao original do SEG-5 ("escrita e exclusao de admin")
+--     teria quebrado esses dois fluxos -- ela foi escrita por inspecao, sem conferir quem
+--     chama setPdfBlob/setPdfIndex.
+-- A DUVIDA DO `upsert` ESTA RESPONDIDA (doc oficial de Storage Access Control, 06/set/2026):
+-- "the only RLS policy required for uploading objects is to grant the INSERT permission. To
+-- allow OVERWRITING files using the upsert functionality you will need to ADDITIONALLY grant
+-- SELECT and UPDATE permissions." Ou seja objeto NOVO passa so pelo INSERT -- que continua em
+-- `add_docs` -- e o UPDATE so entra quando ja existe objeto naquele nome, que e exatamente o
+-- caso que (b) quer travar. O fluxo do membro nao quebra:
+--   · `onUpload` e os importadores criam documento com id NOVO -> objeto novo -> INSERT;
+--   · `setPdfIndex` do OCR regrava o `.idx.json`, e o `.idx.json` continua em `add_docs`;
+--   · `deletePdfBlob` so e chamado pelo `doDeleteDocument`, que ja e admin.
+-- O `pdfs_select` PRECISA cobrir o objeto recem-criado: a Storage API faz `INSERT ... RETURNING *`
+-- e, sem SELECT, o upload volta 403 "new row violates row-level security policy" com a policy de
+-- INSERT correta (e a mesma armadilha do `documents_insert` sob restrict_docs, por outra porta).
+-- Aqui ele cobre, porque sob restrict_docs quem cria documento ja e admin.
 do $$ begin
   drop policy if exists "pdfs_select" on storage.objects;
   create policy "pdfs_select" on storage.objects for select to authenticated
     using ( bucket_id='pdfs' and exists (select 1 from public.documents d
       where d.id::text = split_part(storage.objects.name,'.',1)
+        and storage.objects.name in (d.id::text || '.pdf', d.id::text || '.idx.json')
         and public.is_member(d.project_id) and public.can_see_doc(d.project_id, d.id)) );
   drop policy if exists "pdfs_insert" on storage.objects;
   create policy "pdfs_insert" on storage.objects for insert to authenticated
     with check ( bucket_id='pdfs' and exists (select 1 from public.documents d
       where d.id::text = split_part(storage.objects.name,'.',1)
+        and storage.objects.name in (d.id::text || '.pdf', d.id::text || '.idx.json')
         and public.role_can(d.project_id, 'add_docs') and public.can_see_doc(d.project_id, d.id)) );
   drop policy if exists "pdfs_update" on storage.objects;
   create policy "pdfs_update" on storage.objects for update to authenticated
     using ( bucket_id='pdfs' and exists (select 1 from public.documents d
       where d.id::text = split_part(storage.objects.name,'.',1)
-        and public.role_can(d.project_id, 'add_docs') and public.can_see_doc(d.project_id, d.id)) );
+        and public.can_see_doc(d.project_id, d.id)
+        and ( (storage.objects.name = d.id::text || '.pdf'      and public.is_admin(d.project_id))
+           or (storage.objects.name = d.id::text || '.idx.json' and public.role_can(d.project_id, 'add_docs')) )) );
   drop policy if exists "pdfs_delete" on storage.objects;
   create policy "pdfs_delete" on storage.objects for delete to authenticated
     using ( bucket_id='pdfs' and exists (select 1 from public.documents d
       where d.id::text = split_part(storage.objects.name,'.',1)
-        and public.role_can(d.project_id, 'add_docs') and public.can_see_doc(d.project_id, d.id)) );
+        and public.can_see_doc(d.project_id, d.id)
+        and ( (storage.objects.name = d.id::text || '.pdf'      and public.is_admin(d.project_id))
+           or (storage.objects.name = d.id::text || '.idx.json' and public.role_can(d.project_id, 'add_docs')) )) );
 end $$;
 
 -- ---------- realtime ----------
@@ -1162,6 +1334,50 @@ drop trigger if exists trg_codes_color_guard on public.codes;
 create trigger trg_codes_color_guard before insert or update on public.codes
   for each row execute function public.codes_color_guard();
 
+-- S05: NADA IMPEDIA UM CICLO. A FK de `parent_id` garante que o pai EXISTE, nunca que a arvore
+-- seja aciclica; com A->B e B->A todo percurso que sobe a hierarquia para agregar contagem nao
+-- termina, e congela a sessao de QUALQUER pessoa que carregue o esquema -- nao so a de quem criou
+-- o ciclo. As guardas que havia viviam na UI (o isDescendantOf do Esquema), e UI nao protege
+-- contra chamada direta a API nem contra arquivo importado.
+-- O TETO DE PROFUNDIDADE NAO E REDUNDANTE com a checagem de ciclo: ele barra tambem um ciclo que
+-- JA exista no banco (a subida partiria de um no que nunca alcanca `new.id`) e limita o custo do
+-- proprio trigger. 64 e folgado -- a profundidade vira LUMINOSIDADE na cor (32 + depth*13), e
+-- acima de ~7 niveis a hierarquia ja e ilegivel.
+-- O PAI NO MESMO PROJETO e a outra metade: sem ela a arvore atravessa a fronteira do projeto e a
+-- contagem agregada de um soma trechos de outro.
+-- O CLIENTE TEM A PROPRIA DEFESA (`ancestorsOf`), e ela nao e redundante: rascunho, arquivo e
+-- `.qualilab` de terceiro nao passam por trigger nenhum.
+create or replace function public.codes_acyclic_guard()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare v_p uuid; v_n int := 0;
+begin
+  if new.parent_id is null then return new; end if;
+  if new.parent_id = new.id then
+    raise exception 'Um codigo nao pode ser pai de si mesmo';
+  end if;
+  if not exists (select 1 from public.codes
+                  where id = new.parent_id and project_id = new.project_id) then
+    raise exception 'O codigo pai precisa existir e ser do mesmo projeto';
+  end if;
+  v_p := new.parent_id;
+  while v_p is not null loop
+    v_n := v_n + 1;
+    if v_p = new.id then
+      raise exception 'Ciclo na hierarquia de codigos';
+    end if;
+    if v_n > 64 then
+      raise exception 'Hierarquia de codigos profunda demais ou ciclica';
+    end if;
+    select parent_id into v_p from public.codes where id = v_p;
+  end loop;
+  return new;
+end; $$;
+revoke execute on function public.codes_acyclic_guard() from public, anon, authenticated;
+
+drop trigger if exists trg_codes_acyclic_guard on public.codes;
+create trigger trg_codes_acyclic_guard before insert or update on public.codes
+  for each row execute function public.codes_acyclic_guard();
+
 -- S8: a proveniencia e IMUTAVEL depois do insert, e a trava vale para TODO MUNDO, admin incluso.
 -- Nao e permissao, e invariante do dado: a linha nasce com a origem que teve, e nenhum caminho
 -- legitimo do app muda esse campo depois (moveCodings troca code_id, o remap de edicao de texto
@@ -1183,6 +1399,37 @@ revoke execute on function public.codings_source_guard() from public, anon, auth
 drop trigger if exists trg_codings_source_guard on public.codings;
 create trigger trg_codings_source_guard before update on public.codings
   for each row execute function public.codings_source_guard();
+
+-- SEG-2: O PROJETO DE UMA LINHA E IMUTAVEL. As policies de update avaliam USING no OLD e
+-- WITH CHECK no NEW e nenhuma prendia o dono: um membro de A criava o projeto B (onde e admin),
+-- movia a linha para B -- passando nas duas pontas, cada uma verdadeira no seu projeto -- e la
+-- os deletes de admin liberavam; o cascade levava codings, valores, filhos e memos. Em
+-- documents era pior: o documents_guard olha `new.project_id`, entao mover e editar o texto no
+-- MESMO update escapava tambem da trava de admin sobre o conteudo.
+-- E trigger, e nao mais uma condicao nas policies, porque a pergunta nao e "quem pode?" e sim
+-- "esta coluna pode mudar?" -- vale para admin tambem, como no codings_source_guard, e uma
+-- condicao por policy seria a mesma regra escrita dez vezes. Nenhum caminho do app altera
+-- project_id: import e merge INSEREM linhas novas, moveCodings troca code_id, o remap de
+-- edicao de texto troca span/quote.
+create or replace function public.project_id_guard()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if new.project_id is distinct from old.project_id then
+    raise exception 'O projeto de uma linha nao pode ser alterado depois de criada';
+  end if;
+  return new;
+end; $$;
+revoke execute on function public.project_id_guard() from public, anon, authenticated;
+
+do $$
+declare tb text;
+begin
+  foreach tb in array array['documents','codes','codings','doc_values','memos'] loop
+    execute format('drop trigger if exists trg_project_id_guard on public.%I;', tb);
+    execute format('create trigger trg_project_id_guard before update on public.%I '
+                   'for each row execute function public.project_id_guard();', tb);
+  end loop;
+end $$;
 
 -- ---------- S7: quem pode usar a IA, e a trava de uma via ----------
 -- can_use_ai responde a MESMA pergunta que a UI responde ao esconder os paineis, e existe para
@@ -1310,7 +1557,11 @@ begin
   if v_pid is null then raise exception 'Memória não encontrada'; end if;
   -- o gate vai AQUI e nao so na policy: a RPC e security definer, entao sem ele ela seria a
   -- porta de fuga do viewer para o toggle de "usar na análise".
-  if not public.role_can(v_pid, 'use_ai') then raise exception 'Este papel não altera a memória do projeto'; end if;
+  -- S02: `is not true` em vez de `not`, e a sessao conferida antes. Com o role_can ja total o
+  -- `not` bastaria; as duas linhas ficam porque esta e uma RPC security definer aberta a anon --
+  -- a guarda nao pode depender de o helper continuar total para sempre.
+  if auth.uid() is null then raise exception 'E preciso estar autenticado'; end if;
+  if public.role_can(v_pid, 'use_ai') is not true then raise exception 'Este papel não altera a memória do projeto'; end if;
   update public.ia_memory set active = p_active where id = p_id;
 end; $$;
 grant execute on function public.set_memory_active(uuid, boolean) to anon, authenticated;

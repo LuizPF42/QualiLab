@@ -913,7 +913,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.55';
+const QUALILAB_VERSION = '1.4.56';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -1260,7 +1260,6 @@ const MSG_PT = {
   'imp.taguette.brokenAnchor': ' ATENÇÃO: em {n} trecho(s) o texto guardado no Taguette não corresponde ao texto do documento; eles foram importados na posição indicada, mas confira antes de usar.',
 
   // -- erros e avisos que faltavam --
-  'err.load.partial': 'Falha ao carregar parte dos documentos (rede?). A tela não foi atualizada.',
   'err.admin.color': 'Apenas administradores podem alterar a cor de uma família de código.',
   'err.move.failed': '{n} trecho(s) não puderam ser movidos.',
   'err.remap.partial': 'parte dos grifos não pôde ser reancorada',
@@ -3549,7 +3548,6 @@ const MSG_EN = {
   'imp.taguette.brokenAnchor': ' WARNING: in {n} passage(s) the text stored in Taguette does not match the document text; they were imported at the position given, but check them before use.',
 
   // -- errors and warnings that were still missing --
-  'err.load.partial': 'Could not load part of the documents (network?). The screen was not updated.',
   'err.admin.color': 'Only administrators can change the colour of a code family.',
   'err.move.failed': '{n} passage(s) could not be moved.',
   'err.remap.partial': 'some of the highlights could not be re-anchored',
@@ -5954,6 +5952,24 @@ async function moveCodings(store, items, newCodeId, onProgress){
    cru); vale uniformizar quando alguem mexer la. */
 const foldText = (s)=> (s||'').normalize('NFD').replace(/\p{M}/gu,'').toLowerCase();
 
+/* S05 — SUBIR A HIERARQUIA SEM RISCO DE NÃO TERMINAR. A FK de `codes.parent_id` garante que o
+   pai EXISTE, nunca que a árvore seja acíclica: com A→B e B→A, todo `while(p) p=parentOf[p]`
+   roda para sempre e CONGELA a aba — a de quem criou o ciclo e a de todo mundo que carregar o
+   mesmo esquema. O trigger `codes_acyclic_guard` fecha a porta da nuvem; esta função fecha a do
+   CLIENTE, que é por onde entra o resto: `.qualilab` de terceiro (o contrato mínimo exige só
+   `documents[]`), rascunho e arquivo, que não têm trigger nenhum.
+   DEVOLVE OS ANCESTRAIS EM ORDEM, e para no primeiro repetido — um ciclo produz a subida até
+   fechar e nada mais. `visto` em vez de só um teto porque o Set responde a pergunta certa
+   ("já passei por aqui?") e o teto responde outra ("está fundo demais?"); os dois juntos custam
+   nada e o segundo ainda protege contra cadeia legítima absurda vinda de arquivo. */
+const ANCESTOR_MAX_DEPTH = 64;
+function ancestorsOf(id, getParent){
+  const out = [], visto = new Set([id]);
+  let p = getParent(id);
+  while(p && !visto.has(p) && out.length < ANCESTOR_MAX_DEPTH){ out.push(p); visto.add(p); p = getParent(p); }
+  return out;
+}
+
 /* contagem por código AGREGADA na família: cada codificação conta no próprio código e sobe a
    cadeia de pais. Virou obrigatório quando família passou a NÃO receber trechos — a contagem direta
    dela é sempre zero, e a árvore ficaria dizendo que a família não é usada quando todo o uso está
@@ -5967,7 +5983,7 @@ function aggCounts(codings, codes){
   const direct={}; (codings||[]).forEach(c=>{ direct[c.code_id]=(direct[c.code_id]||0)+1; });
   const parentOf={}; (codes||[]).forEach(c=>{ parentOf[c.id]=c.parent_id; });
   const agg={...direct};
-  Object.entries(direct).forEach(([codeId,n])=>{ let p=parentOf[codeId]; while(p){ agg[p]=(agg[p]||0)+n; p=parentOf[p]; } });
+  Object.entries(direct).forEach(([codeId,n])=>{ for(const p of ancestorsOf(codeId, x=>parentOf[x])) agg[p]=(agg[p]||0)+n; });
   return agg;
 }
 
@@ -7590,7 +7606,25 @@ function humanizeError(raw){
 // sumia só de espiar outra tela. Morre com a aba (não é persistido).
 const IA_CONV_CACHE = {};
 
-function csvEscape(s){ s = s==null ? "" : String(s); return /[",\n\r]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; }
+/* S08 — CELULA QUE COMECA COM OPERADOR VIRA FORMULA NO CONSUMIDOR, e as aspas do CSV nao
+   impedem isso: elas delimitam o campo, nao declaram que ele e texto. Excel, LibreOffice e
+   Sheets leem `=1+1` como conta, e `=HYPERLINK(...)`/`=WEBSERVICE(...)` como pedido de rede.
+   Aqui o conteudo das celulas vem do CORPUS -- nome de documento, memo, trecho -- ou seja, de
+   material que o pesquisador recebeu de terceiros e exporta para um colega abrir.
+   O PREFIXO E UM APOSTROFO porque e a convencao que as tres planilhas entendem como "o que vem
+   depois e texto" e nao exibem. E ELE E REVERSIVEL DE PROPOSITO: o `qualilab_documentos.csv`
+   volta pelo "Atualizar categorias por planilha", e o round-trip (exportar, reimportar sem
+   editar, obter "Nada a mudar") e testado. Por isso o apostrofo TAMBEM e protegido quando ja
+   inicia a celula: sem isso `'=x` e `=x` sairiam iguais e a volta nao saberia qual era qual.
+   A VOLTA MORA NO `csvFormulaUnguard`, e so o importador do NOSSO arquivo a aplica -- num CSV
+   de terceiro um apostrofo inicial e conteudo, e nao marca nossa. */
+const CSV_FORMULA_INI = /^['=+\-@\t\r]/;
+function csvFormulaGuard(s){ return CSV_FORMULA_INI.test(s) ? "'" + s : s; }
+function csvFormulaUnguard(s){
+  s = s==null ? "" : String(s);
+  return (s.charAt(0) === "'" && CSV_FORMULA_INI.test(s.slice(1))) ? s.slice(1) : s;
+}
+function csvEscape(s){ s = csvFormulaGuard(s==null ? "" : String(s)); return /[",\n\r]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; }
 function toCSV(rows){ return rows.map(r=>r.map(csvEscape).join(",")).join("\r\n"); }
 function codePathFor(codes,id){ const by={}; codes.forEach(c=>by[c.id]=c); const o=[]; let c=by[id],g=0; while(c&&g++<12){o.unshift(c.name);c=c.parent_id?by[c.parent_id]:null;} return o; }
 function downloadBlob(name,blob){ const u=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=u; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),1000); }
@@ -9701,7 +9735,10 @@ function attrDateValue(s){
    CAT_MULTI_SEP, a mesma normalizacao do importCSV. O casamento com a opcao existente ignora
    caixa e acento, senao "sim" nasceria como opcao nova ao lado de "Sim". */
 function attrCellValue(raw, cat){
-  const s = String(raw==null?'':raw).trim();
+  // S08: desfaz a protecao de formula do nosso proprio export, para o round-trip continuar
+  // exato. Num CSV de terceiro nada casa (o apostrofo so e retirado quando o que vem depois
+  // dele e um caractere de formula), entao conteudo alheio passa intacto.
+  const s = csvFormulaUnguard(String(raw==null?'':raw)).trim();
   if(!s) return { value:'', novas:[], erro:null };
   if(cat.kind==='date'){ const v = attrDateValue(s); return v===null ? { value:'', novas:[], erro:'data' } : { value:v, novas:[], erro:null }; }
   if(cat.kind==='number'){ const v = catNumberValue(s); return v===null ? { value:'', novas:[], erro:'número' } : { value:v, novas:[], erro:null }; }
@@ -10908,7 +10945,7 @@ function buildTransparencyReaderHTML(docs, codes, allC, memos, project, anonymiz
   // Swatch + nome + contagem agregada; código com memo vira "link" pro memo (abre no painel).
   const usedIds = new Set(useC.map(c=>c.code_id));
   const showIds = new Set(usedIds);
-  usedIds.forEach(id=>{ let p=codeById[id]?.parent_id; while(p){ showIds.add(p); p=codeById[p]?.parent_id; } });
+  usedIds.forEach(id=>{ for(const p of ancestorsOf(id, x=>codeById[x]?.parent_id)) showIds.add(p); });   // S05: nao sobe em ciclo
   const legAgg = {}; // contagem agregada (código + descendentes) no recorte da transparência
   useC.forEach(c=>{ let id=c.code_id; while(id){ legAgg[id]=(legAgg[id]||0)+1; id=codeById[id]?.parent_id; } });
   const byPos = (a,b)=> (a.position??0)-(b.position??0) || String(a.name).localeCompare(String(b.name));
@@ -11339,8 +11376,16 @@ const IDB = {
      de operacoes de poucos KB — o que passa disso e import, que NAO e enfileirado) e reescrever a
      lista toda a cada mudanca elimina a classe de bug de indice dessincronizado com os registros.
      Falha de IDB nao propaga: a fila continua valendo em memoria, so nao sobrevive ao F5. */
-  async putQ(list){ try{ return await this.tx('wqueue','readwrite',s=>s.put(list,'pending')); }catch(e){ return null; } },
-  async getQ(){ try{ return (await this.tx('wqueue','readonly',s=>s.get('pending'))) || []; }catch(e){ return []; } },
+  /* S03: a fila passou a ter uma CHAVE por (nuvem, usuario) — era uma so, 'pending', para o
+     navegador inteiro. Numa maquina compartilhada (laboratorio, sala de aula) a conta A saia
+     deixando pendencias e a conta B carregava a fila dela: o overlay das leituras mostrava a B
+     o memo privado da A, e o replay tentava gravar as operacoes da A com as credenciais da B.
+     A RLS recusaria a gravacao, mas o overlay e LOCAL e nao passa por RLS nenhuma.
+     A chave carrega a nuvem tambem porque o app aponta Supabase pessoal: dois backends com
+     projetos de mesmo uuid nao podem compartilhar fila. */
+  async putQ(list, chave){ try{ return await this.tx('wqueue','readwrite',s=>s.put(list, chave||'pending')); }catch(e){ return null; } },
+  async getQ(chave){ try{ return (await this.tx('wqueue','readonly',s=>s.get(chave||'pending'))) || []; }catch(e){ return []; } },
+  async delQ(chave){ try{ return await this.tx('wqueue','readwrite',s=>s.delete(chave||'pending')); }catch(e){ return null; } },
   /* ESPELHAR BASE (rascunho): {meta, json} por id. `allSnaps` devolve os registros inteiros — o
      chamador filtra por project_id e descarta o json ao listar; ler o retrato de volta e `getSnap`. */
   async putSnap(id, rec){ return this.tx('snapshots','readwrite',s=>s.put(rec,id)); },
@@ -12150,6 +12195,12 @@ function LocalStore(){
     updateCode(id,patch){ db.codes=db.codes.map(c=>c.id===id?{...c,...patch}:c); save(); return P(); },
     deleteCode(id){ const kill=new Set([id]); let added=true; while(added){added=false; db.codes.forEach(c=>{if(c.parent_id&&kill.has(c.parent_id)&&!kill.has(c.id)){kill.add(c.id);added=true;}});} const cids=new Set(db.codings.filter(c=>kill.has(c.code_id)).map(c=>c.id)); db.codes=db.codes.filter(c=>!kill.has(c.id)); db.codings=db.codings.filter(c=>!kill.has(c.code_id)); db.memos=db.memos.filter(m=>!(m.scope==='code'&&kill.has(m.target_id)) && !(m.scope==='coding'&&cids.has(m.target_id))); save(); return P(); },
     listCodings(pid,docId){ return P(db.codings.filter(c=>c.document_id===docId)); },
+    /* P01: as telas agregadas leem o projeto de uma vez, em vez de dois acessos por
+       documento. Aqui e memoria, entao nao ha ganho de rede -- o metodo existe para o
+       App ter UM caminho so (regra de ouro #5). Filtra por projeto porque o Local/File
+       guarda um projeto por db, mas o contrato do metodo e por projeto. */
+    listAllCodings(pid){ return P(db.codings.slice()); },
+    listAllDocValues(pid){ return P(db.doc_values.slice()); },
     addCoding(pid,co){ const c={id:uid(),author_name:name,created_at:new Date().toISOString(),...co}; db.codings.push(c); save(); return P(c); },
     deleteCoding(id){ db.codings=db.codings.filter(c=>c.id!==id); db.memos=db.memos.filter(m=>!(m.scope==='coding'&&m.target_id===id)); save(); return P(); },
   };
@@ -12325,6 +12376,12 @@ async function createFileStore(fileHandle, isNew){
     async updateCode(id,patch){ db.codes=db.codes.map(c=>c.id===id?{...c,...patch}:c); await save(); },
     async deleteCode(id){ const kill=new Set([id]); let added=true; while(added){added=false; db.codes.forEach(c=>{if(c.parent_id&&kill.has(c.parent_id)&&!kill.has(c.id)){kill.add(c.id);added=true;}});} const cids=new Set(db.codings.filter(c=>kill.has(c.code_id)).map(c=>c.id)); db.codes=db.codes.filter(c=>!kill.has(c.id)); db.codings=db.codings.filter(c=>!kill.has(c.code_id)); db.memos=db.memos.filter(m=>!(m.scope==='code'&&kill.has(m.target_id)) && !(m.scope==='coding'&&cids.has(m.target_id))); await save(); },
     async listCodings(pid,docId){ return db.codings.filter(c=>c.document_id===docId); },
+    /* P01: as telas agregadas leem o projeto de uma vez, em vez de dois acessos por
+       documento. Aqui e memoria, entao nao ha ganho de rede -- o metodo existe para o
+       App ter UM caminho so (regra de ouro #5). Filtra por projeto porque o Local/File
+       guarda um projeto por db, mas o contrato do metodo e por projeto. */
+    async listAllCodings(pid){ return db.codings.slice(); },
+    async listAllDocValues(pid){ return db.doc_values.slice(); },
     async addCoding(pid,co){ const c={id:uid(),author_name:name,created_at:new Date().toISOString(),...co}; db.codings.push(c); await save(); return c; },
     async deleteCoding(id){ db.codings=db.codings.filter(c=>c.id!==id); db.memos=db.memos.filter(m=>!(m.scope==='coding'&&m.target_id===id)); await save(); },
     async listMemos(){ return db.memos.slice(); },
@@ -12418,6 +12475,37 @@ function activityCloudRow(pid, e){
 function SupabaseStore(sb){
   let user=null, name='anonimo';
   const must = (r)=>{ if(r.error) throw r.error; return r.data; };
+
+  /* D01 — PAGINACAO. O PostgREST corta a resposta no `max-rows` do projeto (1.000 por padrao) e
+     devolve **200**: lista incompleta chega como SUCESSO, sem erro, sem aviso. Nao e hipotese --
+     um documento muito codificado, a trilha de um projeto antigo ou o corpus de uma turma passam
+     disso. E o pior modo de falha do repo: contagem menor, codificacao ausente, exportacao
+     incompleta, e -- se o que ficou de fora for uma coding de CENSURA -- mascara montada a menos.
+     COMO ISTO SABE QUE ACABOU, e por que nao basta olhar `rows.length < PAGE`: se o `max-rows` do
+     servidor for MENOR que a nossa pagina, toda pagina vem "curta" e um teste assim pararia na
+     primeira, concluindo fim onde ha corte. Quem responde e o TOTAL do Content-Range
+     (`count:'exact'`), que o PostgREST calcula na MESMA varredura (window function) -- ou seja,
+     conjunto que cabe numa pagina continua custando UMA requisicao.
+     ORDEM TOTAL E REQUISITO, nao capricho: sem desempate unico duas paginas podem repetir ou
+     pular linha (e `created_at` empata em lote -- ver o comentario do listDocuments). Por isso
+     toda consulta paginada daqui termina em `.order('id')`.
+     O `build()` e chamado A CADA pagina porque o construtor do supabase-js e mutavel: reusar a
+     mesma instancia acumularia os `range`. */
+  const PAGE_ROWS = 1000, PAGE_MAX = 500;
+  async function pageAll(build, quem){
+    const pri = await build().range(0, PAGE_ROWS - 1);
+    if(pri.error) throw pri.error;
+    const total = (typeof pri.count === 'number') ? pri.count : (pri.data||[]).length;
+    const out = (pri.data||[]).slice();
+    for(let p = 1; out.length < total; p++){
+      if(p >= PAGE_MAX) throw new Error(`leitura de ${quem} passou de ${PAGE_MAX} páginas`);
+      const r = await build().range(out.length, out.length + PAGE_ROWS - 1);
+      if(r.error) throw r.error;
+      if(!(r.data||[]).length) break;   // mudou por baixo: para em vez de lacar
+      out.push(...r.data);
+    }
+    return out;
+  }
   /* PERF: insercao em lote — usada pelo merge de .qualilab (importar arquivo / "enviar pra
      nuvem"), onde mergeQualilabDb fazia ATE ENTAO uma requisicao de rede por LINHA (documents/
      doc_values/codings/memos). Um arquivo de stress com milhares de codings+doc_values virava
@@ -12470,16 +12558,30 @@ function SupabaseStore(sb){
   const QUEUE_MAX_TRIES = 8;
   const QUEUE_BACKOFF = [2000, 5000, 10000, 20000, 30000, 60000];
   let queue = [], rejected = [], qSeq = 0;
-  let qFlushing = false, qTimer = null, qStep = 0, qLoaded = false, onQueueCb = null;
+  let qFlushing = false, qTimer = null, qStep = 0, qLoaded = false, onQueueCb = null, qRetry = false;
 
   const qState = ()=>({ pending: queue.length, rejected: rejected.slice(), lastError: queue[0]?.lastError || null });
   const qNotify = ()=>{ try{ onQueueCb?.(qState()); }catch(e){} };
+  /* S03: UMA FILA POR (NUVEM, USUARIO). Sem sessao nao ha chave, e sem chave nao se carrega nem
+     se persiste nada — o que tambem impede que a fila de alguem seja lida na tela de login. */
+  const qKey = ()=> user ? ('pending:' + (sb?.supabaseUrl || SUPABASE_URL || '?') + ':' + user.id) : null;
   // so o que e serializavel: nada de closure na fila (e o que permitiu persistir de verdade)
-  const qPersist = ()=> IDB.putQ(queue.map(i=>({ seq:i.seq, pid:i.pid, label:i.label, jobs:i.jobs, effs:i.effs, tries:i.tries, ts:i.ts })));
+  const qPersist = ()=>{ const k = qKey(); return k ? IDB.putQ(queue.map(i=>({ seq:i.seq, pid:i.pid, label:i.label, jobs:i.jobs, effs:i.effs, tries:i.tries, ts:i.ts })), k) : null; };
 
   async function qLoad(){
-    if(qLoaded) return; qLoaded = true;
-    const saved = await IDB.getQ();
+    const k = qKey();
+    if(qLoaded || !k) return;   // sem sessao ainda: o proximo chamador tenta de novo
+    qLoaded = true;
+    let saved = await IDB.getQ(k);
+    /* MIGRACAO DA CHAVE UNICA, uma vez so: quem atualizar o app com pendencias na fila antiga
+       nao pode simplesmente perde-las (sao escritas que a tela ja mostra como feitas). Elas sao
+       adotadas pela PRIMEIRA sessao que abrir depois da atualizacao, que e exatamente o que
+       aconteceria antes — e a chave velha e apagada, entao a janela de risco e uma so. */
+    if(!saved.length){
+      const legado = await IDB.getQ('pending');
+      if(legado.length){ saved = legado; await IDB.putQ(saved, k); }
+      if(legado.length || legado) await IDB.delQ('pending');
+    }
     if(saved?.length){ queue = saved; qSeq = Math.max(...saved.map(i=>i.seq||0)); qNotify(); qSchedule(); }
   }
 
@@ -12530,10 +12632,15 @@ function SupabaseStore(sb){
           if(queueErrKind(e)==='permanent' || item.tries >= QUEUE_MAX_TRIES){
             rejected.push(queue.shift()); await qPersist(); qNotify(); continue;
           }
-          await qPersist(); qNotify(); qSchedule(); return;
+          /* D03: aqui NAO da para chamar qSchedule() direto -- `qFlushing` ainda e true e ele
+             volta sem agendar nada; o `finally` libera a flag e a fila ficava parada ate a
+             proxima escrita, um evento `online` ou um F5. E o caso comum e justamente aquele em
+             que `online` nao ajuda: o navegador nunca ficou offline, quem caiu foi o servidor.
+             Marcar e agendar DEPOIS de liberar preserva o backoff e o teto de tentativas. */
+          await qPersist(); qNotify(); qRetry = true; return;
         }
       }
-    } finally { qFlushing = false; qNotify(); }
+    } finally { qFlushing = false; qNotify(); if(qRetry){ qRetry = false; qSchedule(); } }
   }
 
   async function qPush(item){
@@ -12569,7 +12676,7 @@ function SupabaseStore(sb){
     async init(display){
       const { data:{ session } } = await sb.auth.getSession();
       if(session && !session.user.is_anonymous){
-        user = session.user; name = nameOf(user, display);
+        user = session.user; name = nameOf(user, display); qLoad();   // S03: a fila e DESTA sessao
         return { id:user.id, name, email:user.email||null, anon:false };
       }
       if(display) name = display;
@@ -12577,13 +12684,13 @@ function SupabaseStore(sb){
     },
     async signIn(email, password){
       const r = await sb.auth.signInWithPassword({ email:email.trim(), password }); if(r.error) throw r.error;
-      user = r.data.user; name = nameOf(user); return { id:user.id, name, email:user.email||null, anon:false };
+      user = r.data.user; name = nameOf(user); qLoad(); return { id:user.id, name, email:user.email||null, anon:false };
     },
     async signUp(email, password, display){
       const r = await sb.auth.signUp({ email:email.trim(), password, options:{ data:{ name: display||'pesquisador' } } });
       if(r.error) throw r.error;
       // se a confirmacao de e-mail estiver ativa, ainda nao ha sessao
-      if(r.data.session){ user = r.data.session.user; name = nameOf(user, display); return { confirmed:true, user:{ id:user.id, name, email:user.email||null, anon:false } }; }
+      if(r.data.session){ user = r.data.session.user; name = nameOf(user, display); qLoad(); return { confirmed:true, user:{ id:user.id, name, email:user.email||null, anon:false } }; }
       return { confirmed:false };
     },
     /* Confirmacao de cadastro por CODIGO DIGITADO, nao por link clicado (v1.4.19).
@@ -12607,7 +12714,7 @@ function SupabaseStore(sb){
       // verifyOtp sem sessao nao acontece no caminho feliz; se acontecer, e mais honesto pedir
       // codigo novo do que devolver um usuario sem JWT (toda escrita seguinte cairia na RLS).
       if(!sess) throw new Error('Não foi possível confirmar o cadastro. Peça um código novo.');
-      user = sess.user; name = nameOf(user, display);
+      user = sess.user; name = nameOf(user, display); qLoad();   // S03: a fila e DESTA sessao
       return { id:user.id, name, email:user.email||null, anon:false };
     },
     async resendSignup(email){
@@ -12627,7 +12734,16 @@ function SupabaseStore(sb){
       const r = await sb.auth.signInWithOAuth({ provider:'google', options:{ redirectTo, scopes:'openid email', queryParams:{ prompt:'select_account' } } });
       if(r.error) throw r.error;   // em geral nao chega aqui: o navegador ja redirecionou
     },
-    async signOut(){ try{ await sb.auth.signOut(); }catch(e){} user=null; },
+    /* S03: sair descarta a fila DA MEMORIA e para os timers. O que esta no IDB fica, sob a
+       chave daquele usuario, e volta quando ele entrar de novo; o que nao pode e continuar em
+       memoria para a proxima sessao sobrepor as leituras dela (o `applyQueue` e local e nao
+       passa por RLS). `qLoaded` volta a false para a proxima sessao carregar a fila DELA. */
+    async signOut(){
+      try{ await sb.auth.signOut(); }catch(e){}
+      user=null; queue = []; rejected = []; qLoaded = false; qStep = 0;
+      if(qTimer){ clearTimeout(qTimer); qTimer = null; }
+      qNotify();
+    },
     currentUser(){ return user ? { id:user.id, name, email:user.email||null, anon:!!user.is_anonymous } : null; },
     async changePassword(newPw){ const r = await sb.auth.updateUser({ password:newPw }); if(r.error) throw r.error; },
     // "Esqueci minha senha": manda o e-mail de redefinicao. O redirectTo traz de volta pra ESTA
@@ -12728,7 +12844,10 @@ function SupabaseStore(sb){
        fora de ordem entre si, entao a lista fica em blocos (cada um ordenado por nome). Quem
        precisa de ordem previsivel na tela ordena explicitamente (DocsNav e os dois modos
        "todos os documentos" da Reconciliacao ordenam por nome). */
-    async listDocuments(pid){ return must(await sb.from('documents').select('*').eq('project_id',pid).order('created_at').order('name')); },
+    async listDocuments(pid){
+      return pageAll(()=> sb.from('documents').select('*',{count:'exact'}).eq('project_id',pid)
+        .order('created_at').order('name').order('id'), 'documentos');
+    },
     async addDocument(pid,{id,name:dn,content}){ const row={project_id:pid,name:dn,content,created_by:user.id}; if(id) row.id=id; return must(await sb.from('documents').insert(row).select().single()); },
     // PERF: usado por mergeQualilabDb quando o store suporta lote (ver bulkWrite). items ja
     // trazem `id` pre-gerado (uid(), igual ao docMap do merge) — nao precisa .select() de volta.
@@ -12771,7 +12890,10 @@ function SupabaseStore(sb){
       // memos_gc no banco tambem cobre isso; aqui e o cinto pra banco ainda nao migrado.
       await sb.from('memos').delete().eq('project_id',pid).in('scope',MEMO_MATERIAL_SCOPES);
     },
-    async listCategories(pid){ return must(await sb.from('categories').select('*').eq('project_id',pid).order('position')); },
+    async listCategories(pid){
+      return pageAll(()=> sb.from('categories').select('*',{count:'exact'}).eq('project_id',pid)
+        .order('position').order('id'), 'categorias');
+    },
     async addCategory(pid,cat){
       try { return must(await sb.from('categories').insert({project_id:pid,...cat}).select().single()); }
       catch(e){ if(!/description/i.test(String(e.message||e))) throw e;
@@ -12786,7 +12908,8 @@ function SupabaseStore(sb){
     },
     async deleteCategory(id){ must(await sb.from('categories').delete().eq('id',id)); },
     async getDocValues(docId){
-      const rows = must(await sb.from('doc_values').select('*').eq('document_id',docId));
+      const rows = await pageAll(()=> sb.from('doc_values').select('*',{count:'exact'}).eq('document_id',docId)
+        .order('id'), 'valores do documento');
       return applyQueue(rows, qEffs('value'), r=> r.document_id===docId);
     },
     // valor individual do usuario atual (cada pesquisador responde o seu)
@@ -12864,7 +12987,10 @@ function SupabaseStore(sb){
       const rows = items.map(v=>({ project_id:pid, document_id:v.document_id, category_id:v.category_id, value:v.value, set_by:user.id, author_name:name, layer:'individual', updated_at:now }));
       return bulkWrite('doc_values', rows, { upsert:true, onConflict:'document_id,category_id,set_by,layer' });
     },
-    async listCodes(pid){ return must(await sb.from('codes').select('*').eq('project_id',pid).order('depth').order('position')); },
+    async listCodes(pid){
+      return pageAll(()=> sb.from('codes').select('*',{count:'exact'}).eq('project_id',pid)
+        .order('depth').order('position').order('id'), 'códigos');
+    },
     async addCode(pid,code){ return must(await sb.from('codes').insert({project_id:pid,...code}).select().single()); },
     // trechos de UM codigo, em todos os documentos. A tela de Codificacao nao carrega o agregado
     // (nao esta em AGG_VIEWS, e nao deve estar: sao 2 requests por documento), mas a conversao em
@@ -12875,8 +13001,8 @@ function SupabaseStore(sb){
     // document_id antes do span. O document_id ordena por UUID: agrupa de forma ESTAVEL, nao
     // semantica (ordenar pelo NOME do documento e da tela, que e quem conhece os nomes).
     async listCodingsByCode(pid,codeId){
-      const rows = must(await sb.from('codings').select('*').eq('project_id',pid).eq('code_id',codeId)
-        .order('document_id').order('span_start').order('span_end').order('id'));
+      const rows = await pageAll(()=> sb.from('codings').select('*',{count:'exact'}).eq('project_id',pid).eq('code_id',codeId)
+        .order('document_id').order('span_start').order('span_end').order('id'), 'codificações do código');
       return applyQueue(rows, qEffs('coding',pid), r=> r.code_id===codeId);
     },
     // PERF: codes.parent_id e uma FK auto-referenciada NAO deferravel (schema.sql) — um pai
@@ -12906,9 +13032,27 @@ function SupabaseStore(sb){
        o applyQueue empilha o pendente no FIM, entao sem reordenar aqui uma codificacao na fila
        ficaria fora de lugar e ganharia a cor do run ate o flush. */
     async listCodings(pid,docId){
-      const rows = must(await sb.from('codings').select('*').eq('project_id',pid).eq('document_id',docId)
-        .order('span_start').order('span_end').order('id'));
+      const rows = await pageAll(()=> sb.from('codings').select('*',{count:'exact'}).eq('project_id',pid).eq('document_id',docId)
+        .order('span_start').order('span_end').order('id'), 'codificações do documento');
       return sortCodingSpans(applyQueue(rows, qEffs('coding',pid), r=> r.document_id===docId));
+    },
+    /* P01 — AS TELAS AGREGADAS LEEM O PROJETO NUMA CONSULTA, nao duas por documento.
+       O `loadAll` buscava valores+codings de CADA documento com pool de 8: 500 documentos = 1.000
+       requisicoes por recarga, cada uma com autenticacao e avaliacao de RLS -- e ele roda a cada
+       evento de realtime e no poll de reserva. O pool controlava a RAJADA e nao o TRABALHO.
+       Estas duas devolvem o projeto inteiro, paginado; quem reagrupa por documento e o chamador,
+       na ordem de `docs`, para o array continuar identico ao de antes.
+       O overlay da fila continua DENTRO da leitura (regra do FILA-BLOCK): as telas seguem sem
+       saber que a fila existe. */
+    async listAllCodings(pid){
+      const rows = await pageAll(()=> sb.from('codings').select('*',{count:'exact'}).eq('project_id',pid)
+        .order('document_id').order('span_start').order('span_end').order('id'), 'codificações do projeto');
+      return applyQueue(rows, qEffs('coding',pid), r=> r.project_id===pid);
+    },
+    async listAllDocValues(pid){
+      const rows = await pageAll(()=> sb.from('doc_values').select('*',{count:'exact'}).eq('project_id',pid)
+        .order('document_id').order('category_id').order('id'), 'valores de categoria do projeto');
+      return applyQueue(rows, qEffs('value',pid), r=> r.project_id===pid);
     },
     async addCoding(pid,co){
       const hasCB = Object.prototype.hasOwnProperty.call(co,'created_by');
@@ -12951,11 +13095,13 @@ function SupabaseStore(sb){
         async ()=>{ must(await sb.from('codings').delete().eq('id',id)); await sb.from('memos').delete().eq('scope','coding').eq('target_id',id); });
     },
     // memos: nota unica compartilhada por alvo (projeto/documento/codigo); ultima edicao vale
+    /* D02: sem `catch(e){ return [] }`. Falha de leitura tem de CHEGAR a quem chamou -- as
+       telas ja tratam (loadMemos e companhia envolvem em try/catch e pintam vazio), e a
+       exportacao/espelho PRECISA lancar em vez de gravar um arquivo que parece completo. */
     async listMemos(pid){
-      try{
-        const rows = must(await sb.from('memos').select('*').eq('project_id',pid));
-        return applyQueue(rows, qEffs('memo',pid), r=> r.project_id===pid);
-      }catch(e){ return []; }
+      const rows = await pageAll(()=> sb.from('memos').select('*',{count:'exact'}).eq('project_id',pid)
+        .order('id'), 'memos');
+      return applyQueue(rows, qEffs('memo',pid), r=> r.project_id===pid);
     },
     async setMemo(pid, scope, targetId, content, authorName, label){
       const key = ['project_id','scope','target_id'];
@@ -12992,11 +13138,10 @@ function SupabaseStore(sb){
     },
     // resultados salvos da aba "Analisar com IA"
     async listIaResults(pid){
-      try{
-        const rows = must(await sb.from('ia_results').select('*').eq('project_id',pid).order('created_at',{ascending:false}));
-        // reordena: o overlay empilha no FIM, e esta lista e ordenada por created_at desc
-        return qSortDesc(applyQueue(rows, qEffs('ia_result',pid), r=> r.project_id===pid));
-      }catch(e){ return []; }
+      const rows = await pageAll(()=> sb.from('ia_results').select('*',{count:'exact'}).eq('project_id',pid)
+        .order('created_at',{ascending:false}).order('id'), 'conversas de IA');
+      // reordena: o overlay empilha no FIM, e esta lista e ordenada por created_at desc
+      return qSortDesc(applyQueue(rows, qEffs('ia_result',pid), r=> r.project_id===pid));
     },
     /* FILA-BLOCK: esta e a operacao que motivou a fila — a conversa da tela Analisar vive SO na
        memoria da aba ate ser salva (o IA_CONV_CACHE nao sobrevive ao F5), entao um 504 aqui
@@ -13031,10 +13176,9 @@ function SupabaseStore(sb){
         async ()=>{ must(await sb.from('ia_results').delete().eq('id',id)); });
     },
     async listMemory(pid){
-      try{
-        const rows = must(await sb.from('ia_memory').select('*').eq('project_id',pid).order('created_at',{ascending:false}));
-        return qSortDesc(applyQueue(rows, qEffs('ia_memory',pid), r=> r.project_id===pid));
-      }catch(e){ return []; }
+      const rows = await pageAll(()=> sb.from('ia_memory').select('*',{count:'exact'}).eq('project_id',pid)
+        .order('created_at',{ascending:false}).order('id'), 'memórias do projeto');
+      return qSortDesc(applyQueue(rows, qEffs('ia_memory',pid), r=> r.project_id===pid));
     },
     async addMemory(pid,{content,reason,source,ai_model,mode_label,author_name}){
       const row = { id:uid(), project_id:pid, content, reason:reason||'', source:source||'ai', active:true, ai_model:ai_model||'', mode_label:mode_label||'', author_name:author_name||'anonimo', created_by:user?.id||null, created_at:new Date().toISOString() };
@@ -13095,7 +13239,8 @@ function SupabaseStore(sb){
        'local'/'file-project' de um rascunho, ou o fallback do uid() em navegador sem randomUUID)
        vira null em vez de derrubar o insert com 22P02. */
     async listActivity(pid){
-      const rows = must(await sb.from('activity').select('*').eq('project_id',pid).order('created_at').order('at'));
+      const rows = await pageAll(()=> sb.from('activity').select('*',{count:'exact'}).eq('project_id',pid)
+        .order('created_at').order('at').order('id'), 'histórico do projeto');
       return applyQueue(rows, qEffs('activity',pid), r=> r.project_id===pid);
     },
     async logActivity(pid, entry){
@@ -13131,7 +13276,10 @@ function SupabaseStore(sb){
        erro, que decide (o automatico vira aviso e a operacao segue; o manual vira banner). O objeto
        sobe ANTES da linha, e uma linha recusada apaga o objeto: linha sem retrato seria um espelho
        que nao restaura, e retrato sem linha e sobra que ninguem lista. */
-    async listSnapshots(pid){ return must(await sb.from('snapshots').select('*').eq('project_id',pid).order('at',{ ascending:false })); },
+    async listSnapshots(pid){
+      return pageAll(()=> sb.from('snapshots').select('*',{count:'exact'}).eq('project_id',pid)
+        .order('at',{ ascending:false }).order('id'), 'espelhos');
+    },
     async createSnapshot(pid, meta, json){
       const path = `${pid}/${meta.id}.json`;
       const up = await sb.storage.from('snapshots').upload(path, new Blob([json],{ type:'application/json' }), { upsert:true, contentType:'application/json' });
@@ -13144,11 +13292,16 @@ function SupabaseStore(sb){
     async getSnapshot(pid, id){ const r = await sb.storage.from('snapshots').download(`${pid}/${id}.json`); if(r.error || !r.data) throw (r.error || new Error('espelho ausente')); return JSON.parse(await r.data.text()); },
     async deleteSnapshot(pid, id){ must(await sb.from('snapshots').delete().eq('id',id).eq('project_id',pid)); try{ await sb.storage.from('snapshots').remove([`${pid}/${id}.json`]); }catch(e){} },
     // sincronizacao ao vivo: dispara onChange a cada alteracao em codings/doc_values do projeto
-    realtime(projectId, onChange){
+    /* `onStatus` (opcional) diz se o canal esta DE PE. Quem usa e o poll de reserva: ele
+       existe porque evento pode se perder, entao com o canal vivo ele pode ser raro e com o
+       canal caido ele e a unica sincronizacao que sobra. Sem isso o poll agregado roda na
+       mesma cadencia nos dois casos -- e num corpus grande ele e a maior fonte de trafego do
+       app, rodando de minuto em minuto mesmo com ninguem escrevendo nada. */
+    realtime(projectId, onChange, onStatus){
       const ch = sb.channel('qualilab:'+projectId)
         .on('postgres_changes', { event:'*', schema:'public', table:'codings',    filter:'project_id=eq.'+projectId }, onChange)
         .on('postgres_changes', { event:'*', schema:'public', table:'doc_values', filter:'project_id=eq.'+projectId }, onChange)
-        .subscribe();
+        .subscribe(st=>{ try{ onStatus?.(st === 'SUBSCRIBED'); }catch(e){} });
       return ()=>{ try{ sb.removeChannel(ch); }catch(e){} };
     },
     /* FILA-BLOCK: superfície da fila pro App (só na nuvem — Local/File gravam sem rede e o
@@ -13681,23 +13834,39 @@ function useRealtimeReload({ busy, loadDoc, loadAll, mainView, mode, phase, proj
      Aqui: eventos que chegam durante a janela de debounce (ou com uma recarga em voo) sao
      ABSORVIDOS num unico pedido; depois de cada recarga ha um intervalo minimo antes da
      proxima, pra um projeto muito ativo nao viver em loop de recarga agregada. */
-  const RELOAD_DEBOUNCE_MS = 1200, RELOAD_COOLDOWN_MS = 3000;
-  const reloadJobRef = useRef({ timer:null, running:false, pending:false, full:false });
+  /* DOIS INTERVALOS MINIMOS, e a razao e que as duas recargas nao custam a mesma coisa.
+     A leve e o documento aberto (dois requests). A COMPLETA le o projeto inteiro: mesmo depois
+     do P01, que a trouxe de 2 requisicoes POR DOCUMENTO para duas no total, ela transporta
+     todas as codificacoes e todos os valores do corpus -- num projeto de 500 documentos sao
+     dezenas de MB por recarga. Com uma equipe escrevendo sem parar, o ciclo
+     debounce + duracao + intervalo se fecha em poucos segundos e a tela agregada passa a viver
+     em recarga continua: a mesma dezena de MB, de novo, a cada ciclo.
+     O preco de subir o intervalo da completa e ver a codificacao de um colega alguns segundos
+     mais tarde numa tela de LEITURA (Reconciliacao, Graficos, Relatorio) -- e nenhuma delas e
+     tela de digitar. A tela de codificar continua na cadencia curta. */
+  const RELOAD_DEBOUNCE_MS = 1200, RELOAD_COOLDOWN_MS = 3000, RELOAD_COOLDOWN_FULL_MS = 15000;
+  const reloadJobRef = useRef({ timer:null, running:false, pending:false, full:false, eraFull:false });
   function runReload(){
     const j = reloadJobRef.current;
     j.timer = null; j.running = true;
     const full = j.full; j.full = false;
     Promise.resolve(reloadRef.current(full)).then(r=>{
+      /* QUEM PAGA O INTERVALO LONGO E A LEITURA QUE ACONTECEU, nao a que foi PEDIDA. `busy` quer
+         dizer que a recarga nem tentou (lote local em curso): nada foi transferido, entao cobrar
+         dela o intervalo da completa so atrasaria o reencontro com o servidor de graca. Foi o
+         `reload.spec` #7 que pegou isto -- a primeira versao marcava pela intencao. */
+      j.eraFull = full && r !== 'busy';
       if(r==='busy'){ j.pending = true; if(full) j.full = true; }   // em lote: refaz quando terminar
     }, e=>{
       // recarga de FUNDO: falha nao e acao do usuario — nao vira banner (o guard global diria
       // "a alteracao NAO foi salva", o que aqui e mentira: isto e leitura). O proximo evento
       // ou o poll de reserva refaz; a pilula offline ja cobre o estado da conexao.
       console.warn('[QualiLab] recarga automática falhou (será refeita no próximo evento/poll):', e);
+      j.eraFull = false;   // falhou: nao houve leitura a encarecer a proxima
       if(full) j.full = true;
     }).then(()=>{
       j.running = false;
-      if(j.pending){ j.pending = false; j.timer = setTimeout(runReload, RELOAD_COOLDOWN_MS); }
+      if(j.pending){ j.pending = false; j.timer = setTimeout(runReload, j.eraFull ? RELOAD_COOLDOWN_FULL_MS : RELOAD_COOLDOWN_MS); }
     });
   }
   function scheduleReload(full){
@@ -13713,14 +13882,29 @@ function useRealtimeReload({ busy, loadDoc, loadAll, mainView, mode, phase, proj
      doc ativo a cada 20s (leve) e agregado a cada 60s — o formato antigo (tudo a cada 20s)
      custava 2 requests POR DOCUMENTO a cada 20s nas telas agregadas.
      Tudo passa pelo scheduleReload: e ele que garante uma recarga em voo por vez. */
+  /* O POLL AGREGADO PASSOU A DEPENDER DA SAUDE DO CANAL, e nao e otimizacao gratuita: ele e
+     RESERVA -- existe para o caso de um evento se perder. Com o canal de pe, ele estava
+     relendo o corpus inteiro de minuto em minuto com ninguem escrevendo nada, e num projeto
+     grande isso sozinho e a maior fonte de trafego do app (num corpus de 500 documentos, da
+     ordem de centenas de MB por hora, por pessoa com uma tela agregada aberta). Com o canal
+     caido ele volta a 60s, porque ai e a unica sincronizacao que sobra. O poll do documento
+     ativo NAO muda: e barato e e a tela de trabalho. */
+  const POLL_DOC_MS = 20000, POLL_FULL_MS = 60000, POLL_FULL_VIVO_MS = 300000;
   useEffect(()=>{
     if(mode!=='cloud' || phase!=='work' || !project || !store || !store.realtime) return;
     const onChange = ()=>scheduleReload(true);
-    const unsub = store.realtime(project.id, onChange);
-    const t  = setInterval(()=>scheduleReload(false), 20000);
-    const t2 = setInterval(()=>scheduleReload(true), 60000);
+    let t2 = null, vivo = null;
+    const agenda = (ok)=>{
+      if(vivo === ok) return;          // sem re-agendar a cada evento de status igual
+      vivo = ok;
+      if(t2) clearInterval(t2);
+      t2 = setInterval(()=>scheduleReload(true), ok ? POLL_FULL_VIVO_MS : POLL_FULL_MS);
+    };
+    agenda(false);                     // ate o canal confirmar, assume-se o pior
+    const unsub = store.realtime(project.id, onChange, agenda);
+    const t  = setInterval(()=>scheduleReload(false), POLL_DOC_MS);
     return ()=>{
-      if(unsub) unsub(); clearInterval(t); clearInterval(t2);
+      if(unsub) unsub(); clearInterval(t); if(t2) clearInterval(t2);
       const j = reloadJobRef.current;
       if(j.timer){ clearTimeout(j.timer); j.timer = null; }
       j.pending = false; j.full = false;
@@ -14627,26 +14811,36 @@ function App(){
     // o busy de um loadAll mais novo).
     mudaUi({aggBusy:true});
     try{
-    // busca os valores+codings de TODOS os documentos em paralelo (antes era doc-a-doc em
-    // serie: N round-trips sequenciais, lento na nuvem com muitos docs).
-    // O pool (8) substituiu um Promise.all ILIMITADO: com HTTP/1.1 o navegador enfileirava
-    // sozinho (6 por host), mas o Supabase e HTTP/2 — 297 docs abriam ~600 streams de uma vez,
-    // cada um com checagem de RLS. Nao muda o resultado (mapPool devolve na ORDEM dos items),
-    // so evita a rajada; a sobreposicao de latencia continua.
-    const per = await mapPool(docs, 8, async d=>{
-      const [v,co]=await Promise.all([store.getDocValues(d.id), store.listCodings(project.id, d.id)]);
-      return { d, v, co };
-    });
-    // mapPool e tolerante a erro por item (devolve null) — util em import/export, ERRADO aqui:
-    // o Promise.all de antes REJEITAVA, e essa rejeicao e o que faz o banner de falha aparecer
-    // (guard global __qlNotify). Sem isto, uma queda de rede no meio pintaria a tela com dados
-    // PARCIAIS como se fossem o projeto inteiro (codificacoes sumindo sem aviso).
-    if(per.some(x=>!x)) throw new Error(t('err.load.partial'));
+    /* P01 — DUAS consultas no projeto inteiro, nao duas POR DOCUMENTO.
+       Antes: pool de 8 sobre `docs`, com getDocValues + listCodings de cada um. Num corpus de
+       500 documentos isso e 1.000 requisicoes por recarga -- e esta funcao roda a cada evento de
+       realtime (qualquer pessoa da equipe escrevendo) e no poll de reserva. O pool controlava a
+       RAJADA, nunca o TRABALHO: continuavam 1.000 autenticacoes e 1.000 avaliacoes de RLS.
+       O que ele resolvia (nao abrir ~600 streams HTTP/2 de uma vez) deixa de existir com duas
+       consultas, entao ele sai daqui e segue valendo onde ha N itens de verdade (import/export).
+       A leitura por documento continua no `loadDoc`, que e a tela de codificacao -- ali sao dois
+       requests e so do documento aberto.
+       FALHA PARCIAL DEIXOU DE SER EXPRIMIVEL, e por isso a mensagem sumiu: nao ha mais N leituras
+       das quais algumas podem falhar. Ou a consulta paginada completa, ou ela LANCA -- e o throw
+       e o que levanta o banner (guard global __qlNotify), que era exatamente o papel do
+       `per.some(x=>!x)`. */
+    const [allV, allC] = await Promise.all([
+      store.listAllDocValues(project.id),
+      store.listAllCodings(project.id),
+    ]);
     if(tok !== reqSeqRef.current.all) return; // resposta velha (outro loadAll ja começou)
+    /* REAGRUPA POR DOCUMENTO E MONTA NA ORDEM DE `docs`, para os dois arrays sairem IDENTICOS
+       aos de antes. Nao e zelo: o `sameJson` logo abaixo compara por JSON.stringify, entao uma
+       ordem nova trocaria a referencia e invalidaria o useMemo de TODA tela agregada sem nada
+       ter mudado no dado. `sortCodingSpans` por documento reproduz o que o `listCodings` fazia.
+       Documento fora de `docs` fica de fora, como ja ficava. */
+    const vPorDoc = new Map(), cPorDoc = new Map();
+    for(const x of allV){ const a = vPorDoc.get(x.document_id); if(a) a.push(x); else vPorDoc.set(x.document_id, [x]); }
+    for(const x of allC){ const a = cPorDoc.get(x.document_id); if(a) a.push(x); else cPorDoc.set(x.document_id, [x]); }
     const V=[], C=[];
-    for(const { d, v, co } of per){
-      v.forEach(x=>V.push({ document_id:d.id, category_id:x.category_id, value:x.value, set_by:x.set_by??null, author_name:x.author_name, layer:x.layer||'individual' }));
-      co.forEach(x=>C.push(x));
+    for(const d of docs){
+      for(const x of (vPorDoc.get(d.id)||[])) V.push({ document_id:d.id, category_id:x.category_id, value:x.value, set_by:x.set_by??null, author_name:x.author_name, layer:x.layer||'individual' });
+      for(const x of sortCodingSpans(cPorDoc.get(d.id)||[])) C.push(x);
     }
     setAllValues(x=> sameJson(x,V) ? x : V);
     setAllCodings(x=> sameJson(x,C) ? x : C);
@@ -14670,10 +14864,13 @@ function App(){
     if(navVals.pid===project.id && (navVals.loading || navVals.rows)) return;
     setNavVals({ pid:project.id, loading:true, rows:null });
     try{
-      const per = await mapPool(docs, 8, async d=>({ d, v: await store.getDocValues(d.id) }));
-      if(per.some(x=>!x)){ setNavVals({ pid:project.id, loading:false, rows:[] }); return; }
+      // P01: uma consulta no projeto, como no loadAll. Era metade do custo dele (so valores);
+      // hoje e UMA requisicao, entao o "quem nunca agrupa nao paga nada" ficou ainda mais barato.
+      const allV = await store.listAllDocValues(project.id);
+      const soDocs = new Set(docs.map(d=>d.id));
       const V=[];
-      for(const { d, v } of per) v.forEach(x=>V.push({ document_id:d.id, category_id:x.category_id, value:x.value, set_by:x.set_by??null, author_name:x.author_name, layer:x.layer||'individual' }));
+      for(const x of allV) if(soDocs.has(x.document_id))
+        V.push({ document_id:x.document_id, category_id:x.category_id, value:x.value, set_by:x.set_by??null, author_name:x.author_name, layer:x.layer||'individual' });
       setNavVals({ pid:project.id, loading:false, rows:V });
     }catch(e){ setNavVals({ pid:project.id, loading:false, rows:[] }); }
   }, [store, project, docs, navVals]);
@@ -15364,16 +15561,26 @@ function App(){
     const categories = cats.map((c,i)=>({ id:c.id, position:c.position??i, name:c.name, kind:c.kind, options:c.options||[], description:c.description||'', color:c.color||0 }));
     const codesOut = codes.map((c,i)=>({ id:c.id, position:c.position??i, parent_id:c.parent_id||null, name:c.name, hue:c.hue||0, depth:c.depth||0, hue_deg:c.hue_deg??null, sat:c.sat??null, is_redaction:!!c.is_redaction, pos_x:c.pos_x??null, pos_y:c.pos_y??null }));
     const doc_values=[], codings=[];
-    // le respostas+codificacoes de cada doc EM PARALELO (era 1 a 1 sobre os ~297 docs; essa fase
-    // silenciosa "Gerando .qualilab..." e a que parecia travada ANTES da barra de PDFs aparecer).
-    // mapPool devolve na ORDEM dos docs, entao doc_values/codings ficam com ordem deterministica.
-    const per = await mapPool(docs, 8, async (d)=>{
-      const [v,co]=await Promise.all([store.getDocValues(d.id), store.listCodings(project.id, d.id)]);
-      return { d, v, co };
-    }, onProgress);
-    for(const r of per){
-      if(!r) continue;
-      const d = r.d;
+    /* P01: o retrato le o projeto de uma vez. A exportacao repetia o padrao do loadAll -- dois
+       requests POR DOCUMENTO --, entao um corpus de 500 documentos custava 1.000 idas so para
+       montar o `.qualilab`. A ordem continua deterministica porque quem monta e o laco sobre
+       `docs`, nao a ordem de chegada.
+       D02: E O `if(!r) continue` SAIU DAQUI, que era o pior modo de falha do arquivo. O `mapPool`
+       devolve `null` no item que falhou; a exportacao pulava esse documento e seguia, entao um
+       504 no meio produzia um `.qualilab` com o TEXTO do documento e NENHUMA codificacao dele --
+       apresentado como backup bem-sucedido. Pior no ESPELHO, que usa este mesmo retrato: um
+       espelho incompleto vira ponto de restauracao e SUBSTITUI o estado correto. Hoje a leitura
+       ou completa ou lanca, e quem chama (saveQualilab, saveAsFile, snapshotNow) ja trata. */
+    const [allV, allC] = await Promise.all([
+      store.listAllDocValues(project.id),
+      store.listAllCodings(project.id),
+    ]);
+    onProgress?.(docs.length, docs.length);
+    const vPorDoc = new Map(), cPorDoc = new Map();
+    for(const x of allV){ const a = vPorDoc.get(x.document_id); if(a) a.push(x); else vPorDoc.set(x.document_id, [x]); }
+    for(const x of allC){ const a = cPorDoc.get(x.document_id); if(a) a.push(x); else cPorDoc.set(x.document_id, [x]); }
+    for(const d of docs){
+      const r = { v: vPorDoc.get(d.id)||[], co: sortCodingSpans(cPorDoc.get(d.id)||[]) };
       // set_by null é semântica de multi-autor importado (o autor de fato está em author_name)
       // e PRECISA sobreviver ao export — reescrever como 'file-user' fazia o valOf estrito
       // mostrar resposta alheia como "minha" ao reabrir o arquivo
@@ -15382,11 +15589,17 @@ function App(){
       // autodescritivo, e o merge do outro lado nao precisa saber o que a ausencia significava.
       r.co.forEach(x=>codings.push({ id:x.id||uid(), document_id:x.document_id, code_id:x.code_id, span_start:x.span_start, span_end:x.span_end, quote:x.quote, layer:x.layer||'individual', created_by:x.created_by??null, author_name:x.author_name||'anonimo', created_at:x.created_at||new Date().toISOString(), pdf_region:x.pdf_region??null, source:codingSource(x) }));
     }
-    let memos=[], ia_results=[], ia_memory=[];
-    try{ memos = (await store.listMemos?.(project.id))||[]; }catch(e){}
-    try{ ia_results = ((await store.listIaResults?.(project.id))||[]).slice().reverse(); }catch(e){}
-    try{ ia_memory = ((await store.listMemory?.(project.id))||[]).slice().reverse(); }catch(e){}
-    let activity=[]; try{ activity = (await store.listActivity?.(project.id))||[]; }catch(e){}   // TRILHA (S4): viaja; o merge deduplica por id
+    /* D02, a outra metade: estas quatro coleções eram lidas dentro de `try{}catch(e){}` MUDO.
+       Um erro de leitura virava lista vazia e o arquivo saia dizendo que o projeto nao tem memo
+       nenhum -- indistinguivel de um projeto que de fato nao tem. Quem NAO TEM o metodo continua
+       em `[]` (é ausência de recurso, não falha); quem tem e falha, lança.
+       O `catch` que os stores tinham DENTRO de listMemos/listIaResults/listMemory saiu junto,
+       pelo mesmo motivo: as telas que os chamam ja tratam erro por conta propria (loadMemos e
+       companhia), entao o engolidor so servia para esconder falha de quem precisava sabe-la. */
+    const memos = (await store.listMemos?.(project.id))||[];
+    const ia_results = ((await store.listIaResults?.(project.id))||[]).slice().reverse();
+    const ia_memory = ((await store.listMemory?.(project.id))||[]).slice().reverse();
+    const activity = (await store.listActivity?.(project.id))||[];   // TRILHA (S4): viaja; o merge deduplica por id
     /* S7: a declaracao viaja no `_meta`, que e de onde o createFileStore le — entao ABRIR este
        arquivo ja honra a chave, sem codigo novo do lado de la. `ai_ever_enabled` vai junto porque
        e trava: um projeto exportado e reaberto nao pode "esquecer" que a IA esteve disponivel. */
@@ -19907,6 +20120,43 @@ function DateInput({ value, onCommit, disabled }){
    Leitura usa no filtro: gabarito (layer 'final') vence; sem gabarito, a primeira
    resposta individual. Multi-valor (checkbox) volta CRU, com o CAT_MULTI_SEP — quem
    agrupa é que decide se um documento entra em vários grupos. */
+/* P03 — FILTRO POR CATEGORIA COM INDICE, e UMA implementacao para as tres telas.
+   A regra estava escrita TRES vezes (Leitura, Graficos e Analisar), identica, e cada copia fazia
+   `allValues.filter(...)` DENTRO do laco de documentos: com D documentos, F filtros e V valores o
+   custo e O(D x F x V). Para 1.000 documentos, 3 filtros e 10 mil valores sao ~30 milhoes de
+   comparacoes a cada troca de filtro -- e a troca de filtro e um clique.
+   Aqui o indice por (documento, categoria) e montado UMA vez e o resto e busca direta. Tres
+   copias da mesma regra tambem eram risco de divergencia: bastava uma delas passar a tratar o
+   gabarito de outro jeito para duas telas discordarem sobre quais documentos entram no recorte.
+   A SEMANTICA E A DE ANTES, linha a linha: o gabarito (`final`), quando existe, VENCE as
+   respostas individuais -- nao se somam; sem gabarito, qualquer resposta individual serve; e o
+   valor multiplo (`checkbox`) e comparado pelos seus pedacos, nao pela string inteira. */
+function catValueIndex(allValues){
+  const ix = new Map();
+  for(const x of (allValues||[])){
+    const k = String(x.document_id) + '\u0000' + String(x.category_id);
+    const a = ix.get(k); if(a) a.push(x); else ix.set(k, [x]);
+  }
+  return ix;
+}
+function docMatchesCatFilter(docId, catFilter, ix){
+  for(const catId of Object.keys(catFilter||{})){
+    const want = catFilter[catId];
+    if(!want) continue;
+    const rows = ix.get(String(docId) + '\u0000' + String(catId)) || [];
+    const fin = rows.find(r=>r.layer==='final');
+    const pool = fin ? [fin.value] : rows.map(r=>r.value);
+    if(!pool.some(v=>v!=null && String(v).split(CAT_MULTI_SEP).includes(want))) return false;
+  }
+  return true;
+}
+function filterDocIdsByCats(docs, allValues, catFilter){
+  const ix = catValueIndex(allValues);
+  const s = new Set();
+  for(const d of (docs||[])) if(docMatchesCatFilter(d.id, catFilter, ix)) s.add(d.id);
+  return s;
+}
+
 function docValueOf(allValues, docId, catId){
   const rows = (allValues||[]).filter(v=>v.document_id===docId && v.category_id===catId);
   if(!rows.length) return '';
@@ -20228,18 +20478,7 @@ function VizNav({ cats, codes, allCodings, allValues, docs, view, catFilter, sel
   , [allCodings, view, userId, projectMode]);
 
   const matchingDocIds = useMemo(()=>{
-    const s=new Set();
-    docs.forEach(d=>{
-      const ok = Object.entries(catFilter).every(([catId,want])=>{
-        if(!want) return true;
-        const rows = allValues.filter(x=>x.document_id===d.id && x.category_id===catId);
-        const fin = rows.find(r=>r.layer==='final');
-        const pool = fin ? [fin.value] : rows.map(r=>r.value);
-        return pool.some(v=>v!=null && String(v).split(CAT_MULTI_SEP).includes(want));
-      });
-      if(ok) s.add(d.id);
-    });
-    return s;
+    return filterDocIdsByCats(docs, allValues, catFilter);   // P03: indice unico, peca compartilhada
   }, [docs, allValues, catFilter]);
 
   // contagem direta por código + agregada nos ancestrais (família mostra a soma de todos os subcódigos)
@@ -20248,9 +20487,9 @@ function VizNav({ cats, codes, allCodings, allValues, docs, view, catFilter, sel
     layerCodings.filter(c=>matchingDocIds.has(c.document_id)).forEach(c=>{ direct[c.code_id]=(direct[c.code_id]||0)+1; });
     const parentOf = {}; codes.forEach(c=>{ parentOf[c.id]=c.parent_id; });
     const agg = {...direct};
+    // S05: sobe pelo ancestorsOf, que para no primeiro repetido (ciclo travava a aba aqui)
     Object.entries(direct).forEach(([codeId,n])=>{
-      let p = parentOf[codeId];
-      while(p){ agg[p]=(agg[p]||0)+n; p = parentOf[p]; }
+      for(const a of ancestorsOf(codeId, x=>parentOf[x])) agg[a]=(agg[a]||0)+n;
     });
     return agg;
   }, [layerCodings, matchingDocIds, codes]);
@@ -20816,7 +21055,8 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
   // evita ciclo: nao deixa mover um codigo pra dentro de um dos seus proprios descendentes
   const isDescendantOf = (nodeId, maybeAncestorId)=>{
     let p = codeById[nodeId]?.parent_id;
-    while(p){ if(p===maybeAncestorId) return true; p = codeById[p]?.parent_id; }
+    // S05: por ancestorsOf, que para no primeiro repetido — antes um ciclo travava a tela aqui
+    if(ancestorsOf(nodeId, x=>codeById[x]?.parent_id).includes(maybeAncestorId)) return true;
     return false;
   };
 
@@ -22628,18 +22868,7 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
   const delStopWord = (w)=> saveStopCfg({ ...stopCfg, words: stopCfg.words.filter(x=>x!==w) });
   const stopMatcher = useMemo(()=>makeStopMatcher(stopCfg.words), [stopCfg.words]);
   const matchingDocIds = useMemo(()=>{
-    const s=new Set();
-    docs.forEach(d=>{
-      const ok = Object.entries(catFilter).every(([cId,want])=>{
-        if(!want) return true;
-        const rows = allValues.filter(x=>x.document_id===d.id && x.category_id===cId);
-        const fin = rows.find(r=>r.layer==='final');
-        const pool = fin ? [fin.value] : rows.map(r=>r.value);
-        return pool.some(v=>v!=null && String(v).split(CAT_MULTI_SEP).includes(want));
-      });
-      if(ok) s.add(d.id);
-    });
-    return s;
+    return filterDocIdsByCats(docs, allValues, catFilter);   // P03: indice unico, peca compartilhada
   }, [docs, allValues, catFilter]);
   const fdocs = useMemo(()=> docs.filter(d=>matchingDocIds.has(d.id)), [docs, matchingDocIds]);
 
@@ -22677,7 +22906,7 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
     const direct={}; cod.forEach(c=>{ direct[c.code_id]=(direct[c.code_id]||0)+1; });
     const parentOf={}; codes.forEach(c=>{ parentOf[c.id]=c.parent_id; });
     const agg={...direct};
-    Object.entries(direct).forEach(([id,n])=>{ let p=parentOf[id]; while(p){ agg[p]=(agg[p]||0)+n; p=parentOf[p]; } });
+    Object.entries(direct).forEach(([id,n])=>{ for(const p of ancestorsOf(id, x=>parentOf[x])) agg[p]=(agg[p]||0)+n; });   // S05: nao sobe em ciclo
     return agg;
   }, [cod, codes]);
   // marcar um pai já marca a subárvore (toggleFamily), então a seleção é literal — sem
@@ -24972,18 +25201,7 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
   const closedCats = (cats||[]).filter(c=>CAT_CLOSED(c.kind));
   const hasDocFilter = Object.values(docFilter).some(Boolean);
   const matchingDocIds = useMemo(()=>{
-    const s = new Set();
-    docs.forEach(d=>{
-      const ok = Object.entries(docFilter).every(([catId,want])=>{
-        if(!want) return true;
-        const rows = (allValues||[]).filter(x=>x.document_id===d.id && x.category_id===catId);
-        const fin = rows.find(r=>r.layer==='final');
-        const pool = fin ? [fin.value] : rows.map(r=>r.value);
-        return pool.some(v=>v!=null && String(v).split(CAT_MULTI_SEP).includes(want));
-      });
-      if(ok) s.add(d.id);
-    });
-    return s;
+    return filterDocIdsByCats(docs, allValues, docFilter);   // P03: indice unico, peca compartilhada
   }, [docs, allValues, docFilter]);
   const visibleDocs = hasDocFilter ? docs.filter(d=>matchingDocIds.has(d.id)) : docs;
 
@@ -25939,7 +26157,8 @@ function IAOrganizarPanel({ onLog, onSnapshot, project, docs, codes, codeById, c
     const work = codes.map(c=>({ ...c }));
     const byId = id => work.find(c=>c.id===id);
     const childrenOf = id => work.filter(c=>c.parent_id===id && !c._deleted);
-    const isDescendantOf = (nodeId, ancId)=>{ let p=byId(nodeId)?.parent_id; while(p){ if(p===ancId) return true; p=byId(p)?.parent_id; } return false; };
+    // S05: ancestorsOf para no primeiro repetido; um ciclo vindo de arquivo travava esta checagem
+    const isDescendantOf = (nodeId, ancId)=> ancestorsOf(nodeId, x=>byId(x)?.parent_id).includes(ancId);
     async function reparentSubtree(codeId, newParentId, newDepth, adoptColor){
       const node = byId(codeId); if(!node) return;
       const patch = { parent_id:newParentId, depth:newDepth };

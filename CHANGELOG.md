@@ -14,6 +14,102 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.56 (06/09/2026)
+
+Esta versão tem dois objetivos, e eles se encontram no mesmo lugar: **aguentar uma equipe grande
+codificando ao mesmo tempo** e **fechar portas de segurança**. A maior parte dos achados veio de
+uma auditoria independente de segurança e desempenho feita pelo **ChatGPT 5.6 Astra**, que leu o
+código, o SQL e as dependências e reproduziu cada problema antes de relatá-lo.
+
+### As telas de conjunto pararam de reler o corpus documento por documento
+
+A Leitura, os Gráficos, a Reconciliação e o Relatório precisam das codificações e das respostas de
+**todo** o projeto. Até aqui elas buscavam isso **duas vezes por documento**: num corpus de 500
+decisões, mil idas ao servidor a cada atualização — e essas telas se atualizam sozinhas sempre que
+qualquer pessoa da equipe grava alguma coisa. Agora são **duas consultas**, uma de cada tipo.
+
+Junto disso, duas mudanças de ritmo. A releitura periódica existe como reserva, para o caso de um
+aviso de mudança se perder no caminho, e estava relendo o projeto de minuto em minuto mesmo com
+ninguém escrevendo nada: com a conexão ao vivo funcionando ela passou a ser rara, e se a conexão
+cair ela volta a ser frequente, porque aí é a única sincronização que resta. E, com a equipe
+escrevendo sem parar, as telas de conjunto esperam um pouco mais entre duas releituras completas —
+a de codificar, onde se digita, continua na cadência curta.
+
+Do lado do servidor, a checagem de permissão que roda **em cada linha lida** foi reescrita para
+fazer uma consulta em vez de cinco. Num projeto real de cinco mil codificações, com codificação
+cega e distribuição restritiva ligadas, ler o projeto inteiro passou de **1,4 segundo para
+0,2 segundo**. A regra é exatamente a mesma: as duas formas foram executadas lado a lado, contando
+linha por linha, em 36 combinações de papel e de configuração do estudo, sem uma única diferença.
+
+**O que você percebe:** as telas de conjunto abrem e atualizam bem mais rápido em projetos
+grandes, e o consumo de dados cai muito. Numa equipe grande, a diferença é de outra ordem.
+
+### Listas longas podiam vir cortadas, sem erro e sem aviso
+
+O servidor devolve no máximo mil linhas por consulta e **não avisa** quando corta — a resposta
+chega como sucesso. Um documento muito codificado, o histórico de um projeto antigo ou o corpus de
+uma turma passam disso. Agora toda leitura de lista continua até o fim.
+
+**Por que importa:** contagem menor que a real, codificações que não aparecem, exportação
+incompleta. E se o que ficasse de fora fosse uma marcação de **censura**, a máscara sairia
+incompleta. Se você trabalha com um projeto grande, vale reconferir números que pareciam baixos.
+
+### Um backup que falhou no meio parecia completo
+
+Ao gerar um `.qualilab` (ou um espelho do projeto), uma falha de leitura era **engolida**: o
+documento entrava com o texto e **sem nenhuma codificação**, e o arquivo era apresentado como
+salvo com sucesso. No espelho isso é pior, porque ele é ponto de restauração — restaurar a partir
+de um espelho incompleto substituiria o estado correto. Agora a exportação **falha e avisa** em vez
+de gravar um arquivo pela metade.
+
+### O trabalho pendente deixou de esperar por um gesto seu
+
+Quando o servidor falha de forma temporária, o QualiLab guarda a alteração e tenta de novo sozinho.
+Havia um caso em que ele **desistia de reagendar** e a fila ficava parada até você escrever outra
+coisa ou recarregar a página — justamente quando a internet nunca caiu e quem falhou foi o servidor.
+
+### Portas fechadas
+
+- **O espelho do projeto** era baixável por qualquer membro. Ele contém o projeto inteiro num
+  arquivo só: num estudo com codificação cega ou distribuição restritiva, isso entregava o que as
+  telas recusam — inclusive o trabalho dos outros e o gabarito. Continua **visível na lista** para
+  todo mundo; **baixar** passou a ser da coordenação.
+- **A fila de trabalho pendente** era do navegador, não da sua conta. Num computador compartilhado,
+  quem entrasse depois carregava as pendências de quem saiu e chegava a **ver na tela** um memo que
+  não era seu. Agora cada conta (e cada nuvem) tem a sua, e sair descarta a da sessão sem jogar o
+  trabalho fora.
+- **Um codificador podia promover a própria codificação ao gabarito** por um caminho que não
+  passava pela Reconciliação.
+- **Uma atribuição de documento forjada** derrubava a distribuição restritiva de outro projeto.
+- **Linhas do projeto podiam ser movidas para outro projeto** e apagadas de lá, levando junto o
+  trabalho de todo mundo em cascata.
+- **Um ciclo na hierarquia de códigos** (A dentro de B, B dentro de A) **congelava a aba** de
+  qualquer pessoa que abrisse o projeto. Agora o servidor recusa criar o ciclo e as telas não
+  travam nem com um arquivo que já venha com um.
+- **Um convite de uso único** podia admitir duas pessoas se as duas o resgatassem ao mesmo tempo.
+- **Uma função de gestão rodava sem sessão**, e outra aceitava quem não é mais do projeto.
+- **Células de CSV começadas por `=`, `+`, `-` ou `@`** eram interpretadas como fórmula por quem
+  abrisse o arquivo numa planilha. O conteúdo delas vem do corpus, ou seja, de material recebido de
+  terceiros. Agora saem como texto — e a reimportação da planilha de categorias continua exata.
+
+### Filtro por categoria mais rápido
+
+Filtrar por categoria comparava todas as respostas do projeto, para cada documento e cada filtro.
+Em corpus grande isso eram dezenas de milhões de comparações a cada clique.
+
+### O que a auditoria apontou e ainda não foi feito
+
+Fica registrado com todas as letras, porque metade de uma correção de segurança é dizer o que
+falta: a biblioteca de leitura de planilhas está numa versão com falhas conhecidas (a corrigida só
+existe fora do repositório de pacotes usado hoje, e trocar de origem é decisão à parte); uma
+expressão de busca avançada propositalmente maliciosa ainda pode travar a aba; a leitura de
+arquivos compactados não tem teto de expansão; e a função que fala com os provedores de IA valida o
+endereço, mas não o endereço para o qual ele resolve. Nenhum desses depende de outra pessoa da sua
+equipe — todos exigem um arquivo ou uma entrada que **você** forneça.
+
+Exige as migrações de banco desta versão, já aplicadas no projeto público em 06/09/2026 (os blocos
+estão no `supabase/schema.sql`).
+
 ## 1.4.55 (03/09/2026)
 
 ### O que cada papel pode fazer, decidido item a item na criação do projeto
