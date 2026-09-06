@@ -14,6 +14,37 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.58 (06/09/2026)
+
+### Excluir um documento agora apaga mesmo o PDF original
+
+O QualiLab promete que o material sai quando você o exclui. Não estava saindo: o **arquivo PDF
+original continuava no armazenamento da nuvem** depois de você excluir o documento, limpar o
+conteúdo do projeto ou até excluir o projeto inteiro.
+
+**Como isso passava despercebido.** A remoção do original era pedida *depois* de a linha do
+documento ser apagada — e, nesse instante, as regras de acesso do arquivo já não reconhecem o
+documento a que ele pertence. O pedido não tinha como funcionar, e o erro era descartado em
+silêncio. O arquivo ficava lá, **sem ninguém conseguir lê-lo nem apagá-lo**: nem você, nem a
+equipe, nem o próprio aplicativo. Medido em 06/09/2026 neste projeto: **350 dos 692 arquivos
+guardados**, cerca de 122 MB, eram originais de documentos que já não existiam.
+
+**O que muda.** O original é apagado **antes** da exclusão, que é o único momento em que isso
+funciona, e vale nas três portas: excluir um documento, "Limpar conteúdo" e excluir o projeto —
+esta última era a que mais deixava resto, porque a exclusão do projeto apaga as informações em
+cascata e os arquivos não vinham junto.
+
+Se a remoção do arquivo falhar de verdade, a exclusão **para e avisa**, em vez de seguir: uma vez
+apagada a informação do documento não há como voltar atrás e remover o arquivo, enquanto a
+exclusão do documento você pode simplesmente repetir. Projeto que nunca usou PDF continua
+excluindo normalmente.
+
+No modo rascunho havia a mesma falha em miniatura, sem armazenamento em jogo: o índice de páginas
+do PDF ficava no navegador depois de o documento sair. Agora sai junto.
+
+**Os arquivos que já ficaram para trás** são uma limpeza à parte, feita fora do aplicativo por
+quem administra o servidor — esta versão impede que novos apareçam.
+
 ## 1.4.57 (06/09/2026)
 
 ### As telas de conjunto abrem muito mais rápido em projetos grandes

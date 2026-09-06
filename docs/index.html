@@ -931,7 +931,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.57';
+const QUALILAB_VERSION = '1.4.58';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -12139,7 +12139,7 @@ function LocalStore(){
     // se conhece o valor NOVO — o detail leva `to` e o `from` fica de fora, em vez de inventado.
     async renameProject(pid,pn){ if(pn) await this.logActivity(pid, { op:'project_renamed', target_kind:'project', target_id:pid, target_name:pn, detail:{ to:pn } }); },
     // idem FileStore: sem memos/ia_* aqui, db.memos ficava undefined até recarregar a página
-    async deleteProject(){ const ids=db.documents.map(d=>d.id); db={ documents:[], categories:[], doc_values:[], codes:[], codings:[], memos:[], ia_results:[], ia_memory:[] }; ids.forEach(id=>IDB.delBlob(id)); save(); return P(); },
+    async deleteProject(){ const ids=db.documents.map(d=>d.id); db={ documents:[], categories:[], doc_values:[], codes:[], codings:[], memos:[], ia_results:[], ia_memory:[] }; ids.forEach(id=>{ IDB.delBlob(id); IDB.delIdx(id); }); save(); return P(); },
     async setProjectMode(pid,pmode){ if(pmode) await this.logActivity(pid, { op:'mode_changed', target_kind:'project', target_id:pid, detail:{ to:pmode } }); },
     // DISTRIBUICAO/CEGO: idem createFileStore — usuario unico e sempre admin, stubs inertes.
     async listAssignments(){ return P([]); },
@@ -12197,14 +12197,18 @@ function LocalStore(){
     async setPdfIndex(docId,data){ await IDB.putIdx(docId, packPdfIndex(data)); },
     async deletePdfIndex(docId){ await IDB.delIdx(docId); },
     updateCoding(id,patch){ const c=db.codings.find(x=>x.id===id); if(c) Object.assign(c,patch); save(); return P(); },
-    deleteDocument(id){ const cids=new Set(db.codings.filter(c=>c.document_id===id).map(c=>c.id)); db.documents=db.documents.filter(d=>d.id!==id); db.doc_values=db.doc_values.filter(v=>v.document_id!==id); db.codings=db.codings.filter(c=>c.document_id!==id); db.memos=db.memos.filter(m=>!(m.scope==='document'&&m.target_id===id) && !(m.scope==='coding'&&cids.has(m.target_id))); IDB.delBlob(id); save(); return P(); },
+    /* PDF-BLOCK: sai o blob E o INDICE. Ate set/2026 so o blob saia daqui, e o indice ficava
+       orfao no IDB para sempre -- a mesma falha da nuvem, em miniatura e sem conta a pagar. Vale
+       igual no clearProject e no deleteProject, logo abaixo. Comentario vai ACIMA: estes metodos
+       sao de UMA linha, e um `//` no fim engoliria o resto dela. */
+    deleteDocument(id){ const cids=new Set(db.codings.filter(c=>c.document_id===id).map(c=>c.id)); db.documents=db.documents.filter(d=>d.id!==id); db.doc_values=db.doc_values.filter(v=>v.document_id!==id); db.codings=db.codings.filter(c=>c.document_id!==id); db.memos=db.memos.filter(m=>!(m.scope==='document'&&m.target_id===id) && !(m.scope==='coding'&&cids.has(m.target_id))); IDB.delBlob(id); IDB.delIdx(id); save(); return P(); },
     // "limpar projeto" apaga o material, NÃO o diário de insights nem as conversas salvas
     // de IA (a versão antiga recriava o db sem essas chaves e as destruía junto) — nem a
     // configuração do estudo, que mora em memos de projeto (ver MEMO_MATERIAL_SCOPES)
     // o db e RECONSTRUIDO por lista branca aqui, entao campo de CONFIGURACAO tem de ser repetido
     // explicitamente ou some no "Limpar conteudo" — restrict_ai/ai_ever_enabled sao decisao do
     // ESTUDO (como os memos de projeto e a config de IA), e sobrevivem a troca de corpus.
-    clearProject(){ const ids=db.documents.map(d=>d.id); const keepMemos=(db.memos||[]).filter(m=>!MEMO_MATERIAL_SCOPES.includes(m.scope)); db={ documents:[], categories:[], doc_values:[], codes:[], codings:[], memos:keepMemos, ia_results:db.ia_results||[], ia_memory:db.ia_memory||[], restrict_ai:db.restrict_ai||'none', ai_ever_enabled:!!db.ai_ever_enabled, snapshots_auto:db.snapshots_auto!==false, activity:db.activity||[] }; ids.forEach(id=>IDB.delBlob(id)); save(); return P(); },
+    clearProject(){ const ids=db.documents.map(d=>d.id); const keepMemos=(db.memos||[]).filter(m=>!MEMO_MATERIAL_SCOPES.includes(m.scope)); db={ documents:[], categories:[], doc_values:[], codes:[], codings:[], memos:keepMemos, ia_results:db.ia_results||[], ia_memory:db.ia_memory||[], restrict_ai:db.restrict_ai||'none', ai_ever_enabled:!!db.ai_ever_enabled, snapshots_auto:db.snapshots_auto!==false, activity:db.activity||[] }; ids.forEach(id=>{ IDB.delBlob(id); IDB.delIdx(id); }); save(); return P(); },
     listCategories(){ return P(db.categories.slice().sort((a,b)=>a.position-b.position)); },
     addCategory(pid,cat){ const c={id:uid(),position:db.categories.length,...cat}; db.categories.push(c); save(); return P(c); },
     updateCategory(id,patch){ db.categories=db.categories.map(c=>c.id===id?{...c,...patch}:c); save(); return P(); },
@@ -12499,6 +12503,20 @@ function activityCloudRow(pid, e){
   if(row.actor && !UUID_RE.test(String(row.actor))) row.actor = null;
   return row;
 }
+/* PDF-BLOCK: separa "nao havia o que apagar" de "a exclusao FALHOU", e a distincao decide se a
+   exclusao do documento segue ou aborta. Bucket ausente (projeto que nunca usou PDF) responde 404;
+   tratar isso como falha travaria a exclusao de documento em TODO projeto sem bucket, que seria um
+   estrago maior que o vazamento que esta correcao fecha. Objeto que nao existe nem chega aqui -- o
+   `remove` do supabase-js nao reclama de chave ausente. Qualquer outra coisa (403 da RLS, rede,
+   5xx) e falha de verdade. Na duvida, FALHA: abortar e reversivel, apagar a linha nao e. */
+function pdfPurgeErrKind(err){
+  if(!err) return 'ok';
+  const cod = String(err.statusCode ?? err.status ?? '');
+  const msg = String(err.message || err.error || '');
+  if(cod === '404' || /not\s*found/i.test(msg)) return 'ausente';
+  return 'falha';
+}
+
 function SupabaseStore(sb){
   let user=null, name='anonimo';
   const must = (r)=>{ if(r.error) throw r.error; return r.data; };
@@ -12736,6 +12754,27 @@ function SupabaseStore(sb){
 
   if(typeof window !== 'undefined') window.addEventListener('online', ()=>{ qStep = 0; qFlush(); });
 
+  /* PDF-BLOCK: apaga do bucket os objetos dos documentos dados. A ORDEM E O CONSERTO INTEIRO --
+     isto roda ANTES de a linha de `documents` sumir, sempre. Depois que ela some, as policies do
+     bucket (que exigem `exists ... from documents`) tornam o objeto INALCANCAVEL pela API: ninguem
+     le e ninguem apaga, e ele fica para sempre ocupando armazenamento pago. Era assim que metade
+     do bucket virava orfao (medido em 06/set/2026: 350 de 692 objetos na producao, 1.983 de 2.390
+     no ai-lab), e o `catch(e){}` de antes nem era o problema principal -- a remocao acontecia
+     DEPOIS e nao tinha como funcionar, com ou sem o erro engolido.
+     ABORTA em falha de verdade em vez de avisar, e isso e deliberado: uma vez apagada a linha nao
+     ha retentativa possivel de dentro do app, enquanto a exclusao do documento o usuario repete.
+     Falha para o lado de nao apagar. As duas chaves de cada documento vao juntas (o `.idx.json`
+     e derivado, mas orfao dele tambem e lixo pago), em lotes, porque `clearProject` pode levar
+     centenas de documentos de uma vez. */
+  async function purgePdfObjects(docIds){
+    const chaves = [];
+    for(const id of docIds) chaves.push(`${id}.pdf`, `${id}.idx.json`);
+    for(let i = 0; i < chaves.length; i += 100){
+      const r = await sb.storage.from('pdfs').remove(chaves.slice(i, i + 100));
+      if(pdfPurgeErrKind(r?.error) === 'falha') throw new Error('nao foi possivel remover o PDF original: ' + (r.error.message || r.error));
+    }
+  }
+
   return {
     mode:'cloud',
     // retoma sessão de e-mail/senha; sessões anônimas são ignoradas (usuário volta à tela de auth)
@@ -12854,6 +12893,9 @@ function SupabaseStore(sb){
     async deleteProject(pid){
       // ESPELHAR BASE: as linhas de `snapshots` cascateiam pelo FK; os OBJETOS do bucket nao — best-effort
       try{ const l = await sb.storage.from('snapshots').list(pid); const names = (l.data||[]).map(o=>`${pid}/${o.name}`); if(names.length) await sb.storage.from('snapshots').remove(names); }catch(e){}
+      // PDF-BLOCK: os originais TAMBEM nao cascateiam. Antes da RPC, sempre: com o projeto fora,
+      // somem os `documents` E os `members`, e o objeto deixa de ser alcancavel por qualquer um.
+      await purgePdfObjects((await pageAllByKey(()=> sb.from('documents').select('id').eq('project_id',pid), 'documentos a purgar')).map(d=>d.id));
       must(await sb.rpc('delete_project',{ p_project:pid }));
     },
     async setProjectMode(pid, pmode, authorName){ must(await sb.rpc('set_project_mode',{ p_project:pid, p_mode:pmode, p_author:authorName||'pesquisador' })); },
@@ -12929,12 +12971,19 @@ function SupabaseStore(sb){
        (decisão do autor); ausência do bucket/coluna degrada com erro claro, não quebra o resto. */
     async getPdfBlob(docId){ try{ const r=await sb.storage.from('pdfs').download(`${docId}.pdf`); if(r.error||!r.data) return null; return new Uint8Array(await r.data.arrayBuffer()); }catch(e){ return null; } },
     async setPdfBlob(docId,bytes){ const body = bytes instanceof Blob ? bytes : new Blob([bytes],{type:'application/pdf'}); const r=await sb.storage.from('pdfs').upload(`${docId}.pdf`, body, { upsert:true, contentType:'application/pdf' }); if(r.error) throw r.error; try{ await sb.from('documents').update({ has_pdf:true }).eq('id',docId); }catch(e){} },
-    async deletePdfBlob(docId){ try{ await sb.storage.from('pdfs').remove([`${docId}.pdf`]); }catch(e){} try{ await sb.from('documents').update({ has_pdf:false }).eq('id',docId); }catch(e){} },
+    async deletePdfBlob(docId){
+      const r = await sb.storage.from('pdfs').remove([`${docId}.pdf`]);
+      if(pdfPurgeErrKind(r?.error) === 'falha') throw new Error('nao foi possivel remover o PDF original: ' + (r.error.message || r.error));
+      must(await sb.from('documents').update({ has_pdf:false }).eq('id',docId));
+    },
     /* PDF-BLOCK/§4: indice reversivel como objeto <docId>.idx.json no MESMO bucket 'pdfs' — as
        policies existentes ja cobrem (split_part(name,'.',1) = docId), zero SQL novo */
     async getPdfIndex(docId){ try{ const r=await sb.storage.from('pdfs').download(`${docId}.idx.json`); if(r.error||!r.data) return null; return unpackPdfIndex(await r.data.text()); }catch(e){ return null; } },
     async setPdfIndex(docId,data){ try{ const body=new Blob([packPdfIndex(data)],{type:'application/json'}); const r=await sb.storage.from('pdfs').upload(`${docId}.idx.json`, body, { upsert:true, contentType:'application/json' }); if(r.error) console.warn('índice do PDF não enviado:', r.error); }catch(e){ console.warn('índice do PDF não enviado:', e); } },
-    async deletePdfIndex(docId){ try{ await sb.storage.from('pdfs').remove([`${docId}.idx.json`]); }catch(e){} },
+    async deletePdfIndex(docId){
+      const r = await sb.storage.from('pdfs').remove([`${docId}.idx.json`]);
+      if(pdfPurgeErrKind(r?.error) === 'falha') throw new Error('nao foi possivel remover o indice do PDF: ' + (r.error.message || r.error));
+    },
     /* FILA-BLOCK: updateCoding NAO e enfileiravel, e a razao e um contrato, nao uma omissao.
        Ele e a base do moveCodings, cujo contrato (ver regra de ouro #0 / secao Stores) e que
        `failed > 0` ABORTA antes de qualquer deleteCode. Enfileirar faria `failed` ser sempre 0:
@@ -12942,8 +12991,15 @@ function SupabaseStore(sb){
        migraram, e a fila reaplicaria updates que nao casam com linha nenhuma (update sem alvo nao
        da erro). Trocaria um banner por perda silenciosa de dados. Mexeu aqui? Releia isto. */
     async updateCoding(id,patch){ must(await sb.from('codings').update(patch).eq('id',id)); },
-    async deleteDocument(id){ let cids=[]; try{ cids=(await sb.from('codings').select('id').eq('document_id',id)).data?.map(r=>r.id)||[]; }catch(e){} must(await sb.from('documents').delete().eq('id',id)); await sb.from('memos').delete().eq('scope','document').eq('target_id',id); if(cids.length) await sb.from('memos').delete().eq('scope','coding').in('target_id',cids); },
+    async deleteDocument(id){ let cids=[]; try{ cids=(await sb.from('codings').select('id').eq('document_id',id)).data?.map(r=>r.id)||[]; }catch(e){}
+      await purgePdfObjects([id]);   // ANTES do delete da linha -- ver o comentario de purgePdfObjects
+      must(await sb.from('documents').delete().eq('id',id)); await sb.from('memos').delete().eq('scope','document').eq('target_id',id); if(cids.length) await sb.from('memos').delete().eq('scope','coding').in('target_id',cids); },
     async clearProject(pid){
+      // PDF-BLOCK: os originais saem ANTES das linhas. E a lista vai PAGINADA de proposito: um
+      // `select` seco para no `max-rows` do PostgREST e devolve 200, entao num corpus grande a
+      // limpeza purgaria os 1.000 primeiros e transformaria o resto em orfao permanente, em
+      // silencio. E o D01 outra vez, aqui em lote. Falha na leitura LEVANTA e nada e apagado.
+      await purgePdfObjects((await pageAllByKey(()=> sb.from('documents').select('id').eq('project_id',pid), 'documentos a purgar')).map(d=>d.id));
       // #12: cada delete e verificado com must() — supabase-js resolve {data,error} sem rejeitar,
       // entao sem isso uma falha de rede/RLS/timeout virava "Projeto limpo" com dados restantes.
       must(await sb.from('codings').delete().eq('project_id',pid));
@@ -15186,9 +15242,11 @@ function App(){
     await snapshotBefore('document_deleted');   // ESPELHAR BASE: o retrato de antes
     try{
       let nCod = n; if(nCod==null){ try{ nCod = ((await store.listCodings(project.id, id))||[]).length; }catch(e){ nCod = undefined; } }   // TRILHA: o que cai junto
+      // PDF-BLOCK: a purga do original mora DENTRO do deleteDocument dos tres stores desde
+      // set/2026. Aqui ela era feita DEPOIS, quando as policies do bucket ja tinham tornado o
+      // objeto inalcancavel -- nao funcionava, e o try/catch escondia. Chamar de novo daqui hoje
+      // seria um segundo remove sobre linha inexistente, ou seja, erro em exclusao bem-sucedida.
       await store.deleteDocument(id);
-      try{ await store.deletePdfBlob?.(id); }catch(e){}   // PDF-BLOCK: purga bytes (nuvem; local/arquivo já purgam no deleteDocument)
-      try{ await store.deletePdfIndex?.(id); }catch(e){}  // §4: purga o índice reversível persistido
       PDF_INDEX_CACHE.delete(id);
       logAct({ op:'document_deleted', target_kind:'document', target_id:id, target_name:d?.name, detail:{ codings:nCod } });
       setDocs(x=>x.filter(y=>y.id!==id)); if(activeId===id) setActiveId(docs.find(x=>x.id!==id)?.id||null);
@@ -16189,6 +16247,7 @@ function App(){
       const nDocs = docs.length, nCats = cats.length, nCodes = codes.length;   // TRILHA: o que sai, contado antes
       let nCod; try{ const per = await mapPool(docs, 8, async (d)=> ((await store.listCodings(project.id, d.id))||[]).length); nCod = per.reduce((a,x)=>a+(x||0),0); }catch(e){}
       await store.clearProject(project.id);
+      PDF_INDEX_CACHE.clear();   // os documentos sairam; indice em memoria deles nao volta a ser pedido
       setActiveId(null); setSel(null); setSelCode(null);
       await loadProject(store, project.id);
       setBusy(null); setImportMsg(t('imp.cleared'));
