@@ -1427,16 +1427,11 @@ drop trigger if exists trg_links_gc_categories on public.categories;
 create trigger trg_links_gc_categories after delete on public.categories
   for each row execute function public.links_gc('category');
 
--- SEG-2 nas duas tabelas novas: o projeto de uma linha nao muda depois de criada
-do $$
-declare tb text;
-begin
-  foreach tb in array array['links','link_relations'] loop
-    execute format('drop trigger if exists trg_project_id_guard on public.%I;', tb);
-    execute format('create trigger trg_project_id_guard before update on public.%I '
-                   'for each row execute function public.project_id_guard();', tb);
-  end loop;
-end $$;
+-- SEG-2 nas duas tabelas novas: o projeto de uma linha nao muda depois de criada. O trigger e
+-- criado JUNTO com os das outras tabelas, no bloco UNICO do project_id_guard (mais abaixo, logo
+-- depois da funcao). Aqui ele vinha ~120 linhas ANTES de a funcao existir, e com isso o
+-- schema.sql deixou de ser aplicavel de cima a baixo num banco NOVO (achado pelo pgTAP em
+-- 07/set/2026; nos dois Supabase no ar nao apareceu porque la a funcao ja existia de antes).
 
 -- ---------- cor personalizada de codigo (somente nivel 0 / familia) ----------
 alter table public.codes add column if not exists hue_deg int;
@@ -1566,7 +1561,7 @@ revoke execute on function public.project_id_guard() from public, anon, authenti
 do $$
 declare tb text;
 begin
-  foreach tb in array array['documents','codes','codings','doc_values','memos'] loop
+  foreach tb in array array['documents','codes','codings','doc_values','memos','links','link_relations'] loop
     execute format('drop trigger if exists trg_project_id_guard on public.%I;', tb);
     execute format('create trigger trg_project_id_guard before update on public.%I '
                    'for each row execute function public.project_id_guard();', tb);
