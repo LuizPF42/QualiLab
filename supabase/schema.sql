@@ -1296,6 +1296,148 @@ drop trigger if exists trg_memos_provenance on public.memos;
 create trigger trg_memos_provenance before insert or update on public.memos
   for each row execute function public.memos_provenance();
 
+
+-- ---------- CONEXOES: relacao nomeada entre codigos e categorias (item R, set/2026) ----------
+-- spec: to-do/spec-links.md. DUAS pecas: `link_relations` e o VOCABULARIO do estudo (o tipo da
+-- seta, com direcao) e `links` e a INSTANCIA. Renomear a relacao repropaga a todos os links que a
+-- usam, e e por isso que ela e entidade e nao texto livre no link.
+--
+-- AS SEIS RELACOES PADRAO NAO SAO SEMEADAS AQUI, de proposito: elas vivem numa constante do
+-- cliente (DEFAULT_LINK_RELATIONS), aparecem sempre no seletor e a LINHA so nasce no primeiro uso.
+-- Isso cobre projeto novo E projeto que ja existe sem migracao de dados nenhuma, e o unique
+-- (project_id, name) elimina a raca de dois membros usarem "contradicts" ao mesmo tempo.
+create table if not exists public.link_relations (
+  id          uuid primary key default gen_random_uuid(),
+  project_id  uuid not null references public.projects(id) on delete cascade,
+  name        text not null,
+  direction   text not null default 'associative' check (direction in ('associative','oneway','bidirectional')),
+  created_at  timestamptz not null default now(),
+  unique (project_id, name)
+);
+-- as pontas sao POLIMORFICAS (kind + id), entao nao ha FK possivel nelas: a integridade vem do
+-- trigger links_gc, abaixo. A evidencia, essa, TEM FK — e `on delete set null`, nao cascade:
+-- apagar o grifo que sustentava uma afirmacao nao pode apagar a afirmacao de alguem.
+create table if not exists public.links (
+  id            uuid primary key default gen_random_uuid(),
+  project_id    uuid not null references public.projects(id) on delete cascade,
+  -- NO ACTION, e NAO restrict: as duas recusam apagar uma relacao EM USO (mesmo 23503), e a
+  -- diferenca e QUANDO a checagem roda — restrict na hora, no action no FIM DA INSTRUCAO.
+  -- Excluir o PROJETO e um delete so em `projects` que cascateia para as DUAS tabelas, e a ordem
+  -- entre os gatilhos de cascade nao e garantida: com restrict, apagar link_relations antes de
+  -- links levantaria 23503 e derrubaria a exclusao inteira.
+  -- E O CONTROLE DESMENTIU A HIPOTESE, entao fica escrito o que foi MEDIDO (06/set, no ai-lab):
+  -- com a FK em restrict a exclusao do projeto PASSOU — nesta base a ordem dos gatilhos e hoje
+  -- favoravel e o bug NAO se reproduz. O `no action` e o que torna isso independente da ordem,
+  -- que depende de OID e e recriada por um dump/restore. Ou seja: correcao PREVENTIVA, de custo
+  -- zero, e nao um bug medido — e a asserção do pgTAP existe para o dia em que a ordem virar.
+  relation_id   uuid not null references public.link_relations(id) on delete no action,
+  origin_kind   text not null check (origin_kind in ('code','category')),
+  origin_id     uuid not null,
+  target_kind   text not null check (target_kind in ('code','category')),
+  target_id     uuid not null,
+  comment       text not null default '',
+  color         text,
+  evidence_coding_id uuid references public.codings(id) on delete set null,
+  created_by    uuid default auth.uid(),
+  author_name   text not null default 'anonimo',
+  created_at    timestamptz not null default now(),
+  constraint links_no_self check (origin_kind <> target_kind or origin_id <> target_id),
+  unique (project_id, relation_id, origin_kind, origin_id, target_kind, target_id)
+);
+create index if not exists links_project_idx on public.links (project_id, id);
+create index if not exists links_origin_idx on public.links (origin_kind, origin_id);
+create index if not exists links_target_idx on public.links (target_kind, target_id);
+-- migracao p/ bancos que ja tenham a tabela sem a coluna (D6 entrou depois da spec fechada)
+alter table public.links add column if not exists evidence_coding_id uuid references public.codings(id) on delete set null;
+
+alter table public.link_relations enable row level security;
+alter table public.links enable row level security;
+revoke all on public.link_relations from anon, authenticated;
+revoke all on public.links from anon, authenticated;
+grant select, insert, update, delete on public.link_relations to authenticated;
+grant select, insert, update, delete on public.links to authenticated;
+
+-- LER e de qualquer membro: a conexao e ESTRUTURA do esquema, como o codigo e como o memo de
+-- codigo, e nao abre canal novo sob cego (o `comment` carrega raciocinio, no mesmo grau de
+-- exposicao do memo de codigo, que ja e compartilhado).
+-- CUSTO, para quem for medir depois: a policy de leitura chama is_member UMA vez por linha, e a
+-- licao da 1.4.56 e que o caro na RLS e a CHAMADA DE FUNCAO, nao o acesso ao dado. Aqui isso e
+-- aceitavel porque a leitura acontece na tela de Esquema (fria) e uma vez por projeto (o cache de
+-- modulo do cliente). Se um dia uma rede de dezenas de milhares de arestas doer, o caminho ja
+-- medido e o do can_read_coding: UMA funcao definer que responda tudo, e nao o truque do
+-- (select auth.uid()), que ali rendeu ~5%.
+drop policy if exists link_relations_select on public.link_relations;
+create policy link_relations_select on public.link_relations for select using ( public.is_member(project_id) );
+drop policy if exists links_select on public.links;
+create policy links_select on public.links for select using ( public.is_member(project_id) );
+
+-- ESCREVER passa por role_can(..., 'edit_codes'), e a escolha e declarada: a conexao muda a
+-- estrutura semantica do esquema (aparece no Esquema, viaja no <Links> do .qdpx, e renomear a
+-- relacao repropaga), entao ela segue a mesma chave que criar e editar codigo — e num preset de
+-- "painel de juizes", que congela o instrumento, ela congela junto, que e o desejado. Nao foi
+-- criada uma 7a capacidade `link` para nao mexer na matriz por causa desta feature; se a fronteira
+-- doer, e ali que se resolve, nao aqui.
+drop policy if exists link_relations_insert on public.link_relations;
+create policy link_relations_insert on public.link_relations for insert
+  with check ( public.role_can(project_id, 'edit_codes') );
+-- renomear/mudar direcao e ADMIN: repropaga a TODOS os links do projeto de uma vez
+drop policy if exists link_relations_update on public.link_relations;
+create policy link_relations_update on public.link_relations for update
+  using ( public.is_admin(project_id) ) with check ( public.is_admin(project_id) );
+drop policy if exists link_relations_delete on public.link_relations;
+create policy link_relations_delete on public.link_relations for delete using ( public.is_admin(project_id) );
+
+-- created_by nulo ou alheio = ADMIN: e o import em coletivo, o mesmo contrato de `codings`
+drop policy if exists links_insert on public.links;
+create policy links_insert on public.links for insert with check (
+  public.role_can(project_id, 'edit_codes')
+  and ( created_by = auth.uid() or public.is_admin(project_id) )
+);
+-- o SEG-2 (mover a linha para outro projeto) NAO e resolvido aqui: quem o resolve e o
+-- trg_project_id_guard, que ja roda em todas as tabelas de material e ganhou estas duas — a
+-- licao do proprio SEG-2 e que a policy confere QUEM muda e nao O QUE muda.
+-- O WITH CHECK REPETE O PREDICADO DO USING, como em codings_update, e nao e redundancia: o
+-- USING julga a linha ANTIGA e o WITH CHECK a NOVA. Sem repetir, o dono podia reescrever o
+-- proprio `created_by` para outra pessoa e sair fora do alcance da propria policy.
+drop policy if exists links_update on public.links;
+create policy links_update on public.links for update
+  using ( public.role_can(project_id, 'edit_codes') and ( created_by = auth.uid() or public.is_admin(project_id) ) )
+  with check ( public.role_can(project_id, 'edit_codes') and ( created_by = auth.uid() or public.is_admin(project_id) ) );
+drop policy if exists links_delete on public.links;
+create policy links_delete on public.links for delete
+  using ( public.role_can(project_id, 'edit_codes') and ( created_by = auth.uid() or public.is_admin(project_id) ) );
+
+-- INTEGRIDADE DAS PONTAS. `origin_id`/`target_id` nao tem FK (apontam para tabelas diferentes
+-- conforme o kind), entao o Postgres nao limpa sozinho — e as CASCATAS do proprio banco (apagar
+-- um codigo apaga a subarvore linha a linha) deixariam links pendurados apontando para nada.
+-- AFTER DELETE por linha cobre tudo, inclusive o que sai por cascade. Mesmo molde do memos_gc.
+create or replace function public.links_gc()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  delete from public.links
+   where (origin_kind = TG_ARGV[0] and origin_id = old.id)
+      or (target_kind = TG_ARGV[0] and target_id = old.id);
+  return old;
+end; $$;
+revoke execute on function public.links_gc() from public, anon, authenticated;
+drop trigger if exists trg_links_gc_codes on public.codes;
+create trigger trg_links_gc_codes after delete on public.codes
+  for each row execute function public.links_gc('code');
+drop trigger if exists trg_links_gc_categories on public.categories;
+create trigger trg_links_gc_categories after delete on public.categories
+  for each row execute function public.links_gc('category');
+
+-- SEG-2 nas duas tabelas novas: o projeto de uma linha nao muda depois de criada
+do $$
+declare tb text;
+begin
+  foreach tb in array array['links','link_relations'] loop
+    execute format('drop trigger if exists trg_project_id_guard on public.%I;', tb);
+    execute format('create trigger trg_project_id_guard before update on public.%I '
+                   'for each row execute function public.project_id_guard();', tb);
+  end loop;
+end $$;
+
 -- ---------- cor personalizada de codigo (somente nivel 0 / familia) ----------
 alter table public.codes add column if not exists hue_deg int;
 -- saturacao personalizada da familia (eixo vivo<->apagado, 35-75; null = padrao 58). Propaga aos

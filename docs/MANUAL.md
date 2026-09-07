@@ -25,7 +25,7 @@ Este manual ensina a *usar* o QualiLab passo a passo. Para a lista de recursos e
 4. [Documentos](#4-documentos): enviar, colar, renomear, editar o texto, ver o PDF original e OCR
 5. [Codificação de trechos](#5-codificação-de-trechos): o coração da ferramenta
 6. [Categorias (atributos do documento)](#6-categorias-atributos-do-documento)
-7. [Esquema](#7-esquema): organizar códigos e categorias em lote
+7. [Esquema](#7-esquema): organizar códigos e categorias em lote, e conectá-los entre si
 8. [Reconciliação](#8-reconciliação): consolidar o gabarito (projeto coletivo)
 9. [Leitura](#9-leitura): ler o corpus e os trechos codificados
 10. [Gráficos](#10-gráficos)
@@ -563,6 +563,36 @@ Ao editar um código, o admin pode:
 **A censura acompanha a posição na árvore.** Subcódigo criado dentro de uma família de censura já nasce censurado, e **mover ou agrupar** um código para dentro dela também o marca, junto com os subcódigos dele. O QualiLab avisa antes, dizendo quantos códigos e quantos trechos passam a ser mascarados; em pesquisa coletiva isso conta como alteração de censura, então é ação de admin. O caminho inverso é diferente de propósito: tirar um código de dentro da família **não** desmarca a censura dele, porque desmarcar deve ser uma decisão explícita, tomada na caixa **censura** do próprio código. Se você **mesclar** um código de censura em um código normal, os trechos dele deixam de ser mascarados: o QualiLab avisa e pede confirmação, mas quem decide é você.
 
 > **Importante:** o painel de Códigos da aba **Codificação** continua existindo e é independente. A reorganização em lote é só aqui no Esquema, de propósito (menos mudança de hábito na tela de codificar).
+
+### 7.5. Conexões: dizer o que um código tem a ver com outro
+Codificar cria **conjuntos**: "estes trechos falam de X". A conexão registra o que o código sozinho não diz — a estrutura **entre** os conjuntos: *Ativismo judicial* **contradiz** *Deferência ao legislador*, *Dano moral coletivo* **é parte de** *Responsabilidade civil*, *Fundamentação econômica* **está associada à** categoria *Resultado do julgamento*.
+
+**Onde fica.** Com um código selecionado, a seção **Conexões** aparece no painel da direita, abaixo do editor do código. Para uma categoria, ela está dentro do card dela, em **Esquema ▸ Categorias**, recolhida num "Conexões" que você abre.
+
+**Como criar.** Clique em **+ conectar** e responda: a **relação** (o tipo da seta), o **outro lado** (um código ou uma categoria, na mesma busca) e, se quiser, um **comentário** dizendo por que você ligou os dois. O seu nome fica junto.
+
+**Evidência (opcional).** Quando a origem é um código que já tem trechos, o modal oferece escolher **um deles como evidência** da afirmação — é a passagem que sustenta o que você está dizendo. A lista mostra os primeiros trechos daquele código; para apontar outro, cite-o no comentário. A âncora viaja no `.qualilab`, e o aviso da exportação avisa que ela **não** cabe no `.qdpx`.
+
+**Como ler a lista.** A seta se lê a partir do código ou da categoria que você está vendo:
+
+| seta | significa |
+|---|---|
+| `→` | daqui para lá |
+| `←` | de lá para cá |
+| `↔` | vale nos dois sentidos |
+| `·` | sem sentido definido (associação) |
+
+**As relações são o vocabulário do seu estudo.** O projeto já vem com seis prontas — *está associado a*, *é parte de*, *é causa de*, *contradiz*, *é um(a)*, *é propriedade de* —, as mesmas de outras ferramentas de análise qualitativa. Você cria as suas escolhendo **nova relação…** no seletor: dê o nome (*depende de*, *precede*, *justifica*) e diga se ela tem sentido (daqui para lá), vale nos dois ou não tem sentido nenhum. Renomear uma relação vale para **todas** as conexões que a usam.
+
+> ⚠️ **Uma conexão é uma anotação, não uma medida.** Ela registra o que **você** observa ou supõe, com o seu nome. Ela não conta nada no corpus e não prova associação nenhuma. Quem mede associação nos seus dados é a **Co-ocorrência** e o **Código × atributo**, em [Gráficos](#10-gráficos). As duas leituras convivem, e é bom que convivam: a conexão diz o que você sustenta, o gráfico diz o que o material mostra — e a divergência entre as duas costuma ser o achado.
+
+**O que o QualiLab não deixa fazer, e por quê.** Um código não se conecta a si mesmo. A mesma conexão não entra duas vezes (numa relação sem sentido, A→B e B→A são a mesma afirmação). **Código de censura não entra numa conexão**: ele marca o que fica oculto, não é categoria de análise.
+
+**Ao mexer no esquema.** Excluir um código ou uma categoria leva as conexões em que ele era ponta — o aviso diz quantas antes de você confirmar. Ao **mesclar** códigos, as conexões passam para o código que fica; as que virariam repetidas (ou uma ligação do código com ele mesmo) são descartadas, e o QualiLab avisa quantas.
+
+**Quem pode.** Ler é de qualquer integrante. Criar e apagar segue a mesma permissão de **criar e editar códigos** na matriz de regras do projeto ([13](#13-colaboração)). Renomear ou excluir uma **relação** é do administrador, porque muda o vocabulário do projeto inteiro.
+
+**Nos arquivos.** No `.qualilab` as conexões vão e voltam inteiras. No `.qdpx` (REFI-QDA) elas saem como `<Link>`, que é a forma do padrão, e o QualiLab também **lê** os `<Link>` de projetos vindos de outras ferramentas. Duas coisas ficam de fora do `.qdpx` e são ditas no aviso da exportação: o trecho marcado como evidência de uma conexão (o padrão não tem onde apontá-lo) e, na importação, conexões **entre trechos**, que o QualiLab ainda não faz.
 
 ---
 

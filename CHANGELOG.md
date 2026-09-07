@@ -14,6 +14,66 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.59 (06/09/2026)
+
+### Conexões: dizer o que um código tem a ver com outro
+
+Codificar cria conjuntos — "estes trechos falam de X". O que faltava era registrar a estrutura
+**entre** os conjuntos: *Ativismo judicial* **contradiz** *Deferência ao legislador*; *Dano moral
+coletivo* **é parte de** *Responsabilidade civil*; *Fundamentação econômica* **está associada à**
+categoria *Resultado do julgamento*.
+
+Agora dá. No **Esquema ▸ Códigos**, com um código selecionado, apareceu a seção **Conexões**: uma
+lista das ligações daquele código e um botão **+ conectar**. O mesmo está dentro do card de cada
+categoria, em **Esquema ▸ Categorias**.
+
+Cada conexão tem a **relação** (o tipo da seta), o **outro lado**, um **comentário** opcional ("por
+que liguei estes dois"), o **seu nome** e — se você quiser — um **trecho como evidência**, escolhido
+entre os que o código de origem já tem. A seta na lista se lê a partir do código que você está
+vendo: `→` sai daqui, `←` chega aqui, `↔` vale nos dois sentidos, `·` não tem sentido definido.
+
+**As relações são o vocabulário do seu estudo.** O projeto já encontra seis prontas — está
+associado a, é parte de, é causa de, contradiz, é um(a), é propriedade de — e você cria as suas
+(*depende de*, *precede*, *justifica*) escolhendo "nova relação…" no seletor. Renomear uma relação
+vale para todas as conexões que a usam, porque ela é uma peça do projeto e não um texto solto
+dentro de cada ligação.
+
+**O que a conexão é, e o que ela não é.** Ela é uma **anotação**: o que você observa ou supõe, dito
+com nome e autor. Ela **não mede nada** — quem mede associação nos seus dados continua sendo a
+**Co-ocorrência** e o **Código × atributo**, nos Gráficos. As duas coisas convivem: a conexão diz o
+que você sustenta; o gráfico diz o que o corpus mostra.
+
+**Cuidados que o app toma por você.** Um código não se conecta a si mesmo; a mesma conexão não
+entra duas vezes (e, quando a relação não tem sentido, A→B e B→A são a mesma afirmação); **códigos
+de censura ficam fora** — eles marcam o que fica oculto, não são categoria de análise. Ao **excluir**
+um código ou uma categoria, o aviso agora diz quantas conexões vão junto. Ao **mesclar** códigos, as
+conexões passam para o código que fica, e o app avisa quando alguma foi descartada por virar
+repetida.
+
+### As conexões viajam nos arquivos
+
+- No **`.qualilab`**, ida e volta sem perda — inclusive o comentário e a relação. Reimportar o mesmo
+  arquivo não duplica nada.
+- No **`.qdpx` (REFI-QDA)**, elas saem como `<Link>`, que é a forma normativa do padrão, com o
+  comentário numa nota anexada. E, na entrada, o QualiLab passou a **ler** os `<Link>` de projetos
+  do ATLAS.ti, que antes eram descartados sem uma palavra: agora o resumo da importação diz quantos
+  entraram, quantos ficaram de fora por serem **conexões entre trechos** (que o QualiLab ainda não
+  faz) e quantos apontavam para algo que não veio junto.
+- Uma coisa **não** cabe no `.qdpx`: o trecho que você marcou como evidência de uma conexão. O
+  padrão guarda a ligação, mas não tem onde apontar a passagem que a sustenta — o aviso de perda da
+  exportação diz isso, e a âncora continua viajando no `.qualilab`.
+
+### Para quem trabalha em equipe
+
+Ler as conexões é de qualquer integrante. Criar e apagar segue a mesma permissão de **criar e
+editar códigos**, na matriz de regras do projeto — então num estudo com o instrumento congelado
+(o preset de painel de juízes) elas congelam junto. Renomear ou excluir uma **relação** é do
+administrador, porque a mudança repropaga para o projeto inteiro.
+
+> **Ainda não:** conectar dois **trechos** entre si (o "hyperlink" do ATLAS.ti) e o mapa visual da
+> rede. O dado já nasce no formato que um mapa futuro vai desenhar; esta versão entrega a estrutura,
+> não o desenho.
+
 ## 1.4.58 (06/09/2026)
 
 ### Excluir um documento agora apaga mesmo o PDF original

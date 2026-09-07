@@ -931,7 +931,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.58';
+const QUALILAB_VERSION = '1.4.59';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -3366,6 +3366,72 @@ const MSG_PT = {
   'imp.activity': ' Histórico: {n} evento(s) novo(s){rep}.',
   'imp.qualilab.collapsed': ' {n} codificação(ões) do arquivo não foram gravadas em separado: eram o gabarito de trechos que já tinham codificação individual (em projeto individual as duas camadas se fundem).',
   'imp.activity.rep': ', {n} já registrado(s)',
+  /* CONEXOES (item R) — os nomes das 6 relacoes que o projeto ja encontra prontas. O nome
+     GRAVADO e o canonico em ingles (o do ATLAS.ti, que viaja no <Link name> do .qdpx); estas
+     chaves so o EXIBEM. Relacao criada pela equipe nao passa por aqui: sai como foi digitada. */
+  'link.rel.assoc': 'está associado a',
+  'link.rel.part': 'é parte de',
+  'link.rel.cause': 'é causa de',
+  'link.rel.contradicts': 'contradiz',
+  'link.rel.isa': 'é um(a)',
+  'link.rel.property': 'é propriedade de',
+  'imp.links': ', {n} conexão(ões)',
+  'imp.links.rep': ' {n} conexão(ões) do arquivo já existiam neste projeto.',
+  'imp.links.dropped': ' {n} conexão(ões) não entraram: a origem ou o alvo não existe neste projeto (ou é um código de censura).',
+  'qdpx.loss.linkEvidence': 'O trecho que serve de evidência a {n} conexão(ões) fica de fora: o REFI-QDA guarda a conexão, mas não tem onde apontar o trecho que a sustenta. A âncora viaja no .qualilab.',
+  'imp.links.in': ' {n} conexão(ões) entre códigos e categorias entraram, com a relação de cada uma.',
+  'imp.links.between': ' {n} conexão(ões) entre trechos ficaram de fora: o QualiLab ainda não conecta trechos, só códigos e categorias.',
+  'imp.links.noTarget': ' {n} conexão(ões) apontam para algo que não foi importado e ficaram de fora.',
+  'imp.links.redaction': ' {n} conexão(ões) tocavam um código de censura e ficaram de fora.',
+  'imp.links.graphs': ' O arquivo traz {n} diagrama(s) de rede; o QualiLab guarda as conexões, mas não desenha o mapa.',
+  /* CONEXOES (item R) — a seccao do Esquema. A frase do link.new.hint carrega a distincao que
+     o MANUAL repete: conexao e ANOTACAO (a hipotese de quem escreve), nao medida. */
+  'link.title': 'Conexões',
+  'link.empty': 'Sem conexões. Uma conexão diz o que este código ou categoria tem a ver com outro: “contradiz”, “é parte de”, “é causa de”.',
+  'link.add': '+ conectar',
+  'link.del': 'Remover esta conexão',
+  'link.confirmDel': 'Remover esta conexão? O código e a categoria continuam como estão; só a ligação entre eles sai.',
+  'link.gone': '(não está mais no projeto)',
+  'link.isCode': 'código',
+  'link.isCategory': 'categoria',
+  'link.dir.out': 'daqui para lá',
+  'link.dir.in': 'de lá para cá',
+  'link.dir.both': 'vale nos dois sentidos',
+  'link.dir.none': 'sem sentido definido',
+  'link.dir.associative': 'sem sentido (associação)',
+  'link.dir.oneway': 'com sentido (daqui para lá)',
+  'link.dir.bidirectional': 'nos dois sentidos',
+  'link.new.title': 'Nova conexão',
+  'link.new.hint': 'Uma conexão registra o que você observa ou supõe entre dois pontos do esquema, com o seu nome. Ela não mede nada: quem mede associação nos dados é a Co-ocorrência, nos Gráficos.',
+  'link.relation': 'Relação',
+  'link.newRelation': 'nova relação…',
+  'link.newRelation.ph': 'nome da relação (ex.: depende de)',
+  'link.target': 'Conectar a',
+  'link.target.ph': 'buscar código ou categoria…',
+  'link.change': 'trocar',
+  'link.noMatch': 'Nada com esse nome.',
+  'link.comment': 'Comentário (opcional)',
+  'link.comment.ph': 'por que estes dois estão ligados',
+  'link.save': 'Conectar',
+  'link.saving': 'Conectando…',
+  'link.err.load': 'Não foi possível carregar as conexões: {e}',
+  'link.err.del': 'Não foi possível remover: {e}',
+  'link.err.save': 'Não foi possível conectar: {e}',
+  'link.err.noTarget': 'Escolha o código ou a categoria do outro lado.',
+  'link.err.noRelation': 'Dê um nome à relação.',
+  'link.problem.incompleto': 'Faltou escolher os dois lados.',
+  'link.problem.ponta_invalida': 'Só é possível conectar códigos e categorias.',
+  'link.problem.auto': 'Um código não se conecta a si mesmo.',
+  'link.problem.ponta_ausente': 'Um dos lados não existe mais no projeto.',
+  'link.problem.censura': 'Código de censura não entra numa conexão: ele marca o que fica oculto, não é categoria de análise.',
+  'link.problem.repetida': 'Essa conexão já existe.',
+  'link.willDelete': ' e {n} conexão(ões)',
+  'sch.merge.links': 'Conexões: {moved} passaram para o código que ficou; {dropped} saíram por virarem repetidas ou ligação de um código com ele mesmo.',
+  'link.evidence': 'Evidência (opcional)',
+  'link.evidence.none': 'sem trecho anexado',
+  'link.evidence.hint': 'Um trecho deste código que sustenta a afirmação. Só os primeiros aparecem aqui; para outro, cite-o no comentário.',
+  'link.hasEvidence': 'com evidência',
+  'link.hasEvidence.tip': 'Esta conexão aponta um trecho que a sustenta. A âncora viaja no .qualilab; o REFI-QDA não tem onde guardá-la.',
 };
 /* ============ CATALOGO EN ============
    Mesmas chaves do msg-pt.js, sem excecao: o scripts/check_i18n.py compara os dois conjuntos nos
@@ -5654,6 +5720,72 @@ const MSG_EN = {
   'imp.activity': ' History: {n} new event(s){rep}.',
   'imp.qualilab.collapsed': ' {n} coding(s) from the file were not saved separately: they were the reference layer of passages that already had an individual coding (individual projects merge the two layers).',
   'imp.activity.rep': ', {n} already recorded',
+  /* LINKS (item R) — the six relations a project already finds ready to use. The STORED name is
+     the canonical English one (the ATLAS.ti one, which travels in the .qdpx <Link name>); these
+     keys only DISPLAY it. A relation the team creates does not pass here: it shows as typed. */
+  'link.rel.assoc': 'is associated with',
+  'link.rel.part': 'is part of',
+  'link.rel.cause': 'is cause of',
+  'link.rel.contradicts': 'contradicts',
+  'link.rel.isa': 'is a',
+  'link.rel.property': 'is property of',
+  'imp.links': ', {n} link(s)',
+  'imp.links.rep': ' {n} link(s) from the file were already in this project.',
+  'imp.links.dropped': ' {n} link(s) did not come in: the origin or the target does not exist in this project (or is a redaction code).',
+  'qdpx.loss.linkEvidence': 'The passage that backs {n} link(s) stays behind: REFI-QDA keeps the link, but has nowhere to point at the passage that supports it. The anchor travels in the .qualilab.',
+  'imp.links.in': ' {n} link(s) between codes and categories came in, each with its relation.',
+  'imp.links.between': ' {n} link(s) between passages stayed out: QualiLab does not connect passages yet, only codes and categories.',
+  'imp.links.noTarget': ' {n} link(s) point at something that was not imported and stayed out.',
+  'imp.links.redaction': ' {n} link(s) touched a redaction code and stayed out.',
+  'imp.links.graphs': ' The file brings {n} network diagram(s); QualiLab keeps the links, but does not draw the map.',
+  /* LINKS (item R) — the Scheme section. The link.new.hint sentence carries the distinction the
+     MANUAL repeats: a link is an ANNOTATION (what the writer claims), not a measurement. */
+  'link.title': 'Links',
+  'link.empty': 'No links yet. A link says what this code or category has to do with another one: “contradicts”, “is part of”, “is cause of”.',
+  'link.add': '+ connect',
+  'link.del': 'Remove this link',
+  'link.confirmDel': 'Remove this link? The code and the category stay as they are; only the connection between them goes.',
+  'link.gone': '(no longer in the project)',
+  'link.isCode': 'code',
+  'link.isCategory': 'category',
+  'link.dir.out': 'from here to there',
+  'link.dir.in': 'from there to here',
+  'link.dir.both': 'holds both ways',
+  'link.dir.none': 'no defined direction',
+  'link.dir.associative': 'no direction (association)',
+  'link.dir.oneway': 'directed (from here to there)',
+  'link.dir.bidirectional': 'both ways',
+  'link.new.title': 'New link',
+  'link.new.hint': 'A link records what you observe or suppose between two points of the scheme, under your name. It measures nothing: what measures association in the data is Co-occurrence, in Charts.',
+  'link.relation': 'Relation',
+  'link.newRelation': 'new relation…',
+  'link.newRelation.ph': 'relation name (e.g. depends on)',
+  'link.target': 'Connect to',
+  'link.target.ph': 'search code or category…',
+  'link.change': 'change',
+  'link.noMatch': 'Nothing by that name.',
+  'link.comment': 'Comment (optional)',
+  'link.comment.ph': 'why these two are linked',
+  'link.save': 'Connect',
+  'link.saving': 'Connecting…',
+  'link.err.load': 'Could not load the links: {e}',
+  'link.err.del': 'Could not remove: {e}',
+  'link.err.save': 'Could not connect: {e}',
+  'link.err.noTarget': 'Pick the code or category on the other side.',
+  'link.err.noRelation': 'Give the relation a name.',
+  'link.problem.incompleto': 'Both sides are required.',
+  'link.problem.ponta_invalida': 'Only codes and categories can be connected.',
+  'link.problem.auto': 'A code does not connect to itself.',
+  'link.problem.ponta_ausente': 'One of the sides is no longer in the project.',
+  'link.problem.censura': 'A redaction code does not go into a link: it marks what stays hidden, it is not an analytic category.',
+  'link.problem.repetida': 'That link already exists.',
+  'link.willDelete': ' and {n} link(s)',
+  'sch.merge.links': 'Links: {moved} moved to the surviving code; {dropped} were dropped for becoming duplicates or a code linked to itself.',
+  'link.evidence': 'Evidence (optional)',
+  'link.evidence.none': 'no passage attached',
+  'link.evidence.hint': 'A passage of this code that backs the claim. Only the first ones show up here; for another one, cite it in the comment.',
+  'link.hasEvidence': 'with evidence',
+  'link.hasEvidence.tip': 'This link points at a passage that backs it. The anchor travels in the .qualilab; REFI-QDA has nowhere to keep it.',
 };
 const HUES = [210, 28, 150, 350, 268, 184, 322, 70, 48, 96, 122, 238, 295, 8];
 function codeColor(hue, depth, hueDeg, dark=false, sat=null){
@@ -7784,7 +7916,7 @@ const QDPX_SET_REDACTION = 'QualiLab::Redaction';
    Called from doExport, which builds allV/allC from the STORE — not from the screen state,
    which is empty on the Codificação view (AGG_VIEWS). Reading the state here would make the
    warning silently disappear on the most used screen. */
-function qdpxDataLoss(cats, allV, allC, nActivity){
+function qdpxDataLoss(cats, allV, allC, nActivity, nLinkEvidence){
   const perdas = [];
   const cods = allC || [], vals = allV || [];
   const finais = cods.filter(c => c.layer === 'final').length;
@@ -7801,6 +7933,11 @@ function qdpxDataLoss(cats, allV, allC, nActivity){
   // se inventa uma. Condicionada a haver eventos, como as tres acima.
   const nAct = Number(nActivity) || 0;
   if(nAct) perdas.push(t('qdpx.loss.trail', { n:nAct }));
+  /* item R: a CONEXAO viaja (<Link> e normativo); a EVIDENCIA dela, nao — o LinkType nao aceita
+     SelectionRef, entao a ancora no trecho fica so no .qualilab. Condicionada a haver ancora,
+     como as outras: projeto que so tem conexao sem evidencia nao ve nada. */
+  const nEv = Number(nLinkEvidence) || 0;
+  if(nEv) perdas.push(t('qdpx.loss.linkEvidence', { n:nEv }));
   return perdas;
 }
 
@@ -8420,6 +8557,52 @@ async function importQDPX(file, store, projectId, projectMode, onProgress, opts)
     }
   }
 
+  /* CONEXOES (item R) — fecha o Q5: ate aqui o <Link> do ATLAS.ti era descartado SEM MENCAO.
+     A ponta resolve na ordem codigo -> categoria -> TRECHO; o trecho e o "hyperlink" deles, que o
+     QualiLab ainda nao conecta (D1), entao ele e descartado e DITO com essa frase — §7 do REFI
+     manda avisar a perda no ponto do import, "in as much detail as possible", e a diferenca entre
+     "nao entendi este alvo" e "voces nao ligam trechos" e o que decide se a pessoa perde tempo
+     procurando o erro no arquivo dela.
+     A RELACAO e reconstituida por NOME (o padrao nao tem entidade de tipo: o nome viaja em cada
+     link), canonizada — assim "is cause of" de la e "e causa de" de um arquivo nosso antigo dobram
+     na MESMA relacao, em vez de virarem duas identicas na tela.
+     O COMENTARIO vem por <NoteRef>, e essas notas SAEM do saco "nota sem dono -> memo de projeto"
+     (a mesma regra que o Q2 aplicou as notas de codigo): o guid entra em notaDeLink, e o laco de
+     <Notes> logo abaixo o consulta. */
+  const codeIds = new Set(newCodes.map(c=>c.id));
+  const catIds = new Set(newCats.map(c=>c.id));
+  const codingIds = new Set(newCodings.map(c=>c.id).filter(Boolean));
+  const newLinks = [];
+  const notaDeLink = new Map();   // guid da <Note> -> indice do link que a referencia
+  let linksTrecho = 0, linksSemAlvo = 0, grafos = 0, linksGravados = 0, linksCensura = 0, linksRepetidos = 0;
+  const linksEl = xml.querySelector('Links');
+  if(linksEl){
+    for(const el of directChildren(linksEl, 'Link')){
+      const oid = stripGuid(el.getAttribute('originGUID'));
+      const tid = stripGuid(el.getAttribute('targetGUID'));
+      if(!oid || !tid) { linksSemAlvo++; continue; }
+      const tipo = (id)=> codeIds.has(id) ? 'code' : catIds.has(id) ? 'category' : codingIds.has(id) ? 'coding' : null;
+      const ok = tipo(oid), ot = tipo(tid);
+      if(ok === 'coding' || ot === 'coding'){ linksTrecho++; continue; }
+      if(!ok || !ot){ linksSemAlvo++; continue; }
+      // <Link> sem name: relacao literal "(sem nome)" — nao se inventa semantica que o arquivo
+      // nao declarou, e o pesquisador renomeia depois se souber o que era.
+      const nome = linkRelationCanonical(el.getAttribute('name') || '') || '(sem nome)';
+      const idx = newLinks.length;
+      newLinks.push({ id: stripGuid(el.getAttribute('guid')) || uid(), relName:nome,
+        direction: linkDirectionFromRefi(el.getAttribute('direction')),
+        origin_kind:ok, origin_id:oid, target_kind:ot, target_id:tid,
+        color: el.getAttribute('color') || null, comment:'' });
+      for(const nr of directChildren(el, 'NoteRef')){
+        const alvo = stripGuid(nr.getAttribute('targetGUID'));
+        if(alvo) notaDeLink.set(alvo, idx);
+      }
+    }
+  }
+  // <Graphs> e DESENHO (vertices com x/y que apenas representam links por representedGUID) e o
+  // QualiLab nao tem editor de rede. Nao exibir e decisao; nao DIZER seria a falha silenciosa.
+  grafos = xml.querySelectorAll('Graphs > Graph').length;
+
   // notas livres do projeto (<Notes><Note>) -> um unico memo de PROJETO (o modelo de memo do
   // QualiLab nao tem nota livre sem alvo). Cada Note tem name (titulo) + texto em plainTextPath.
   // NOTA COM DONO VAI PARA O DONO. A que nenhum <Code> referencia continua indo para o memo de
@@ -8433,7 +8616,10 @@ async function importQDPX(file, store, projectId, projectMode, onProgress, opts)
       const title = (note.getAttribute('name')||'Nota').trim();
       const body = ((await readPlainText(note))||'').trim();
       if(!title && !body) continue;
-      const donos = notaDeCodigo.get(stripGuid(note.getAttribute('guid'))) || [];
+      const gNota = stripGuid(note.getAttribute('guid'));
+      // a nota de um <Link> e o comentario DELE: nao entra no memo de projeto nem no de codigo
+      if(notaDeLink.has(gNota)){ const alvo = newLinks[notaDeLink.get(gNota)]; if(alvo) alvo.comment = body || title; continue; }
+      const donos = notaDeCodigo.get(gNota) || [];
       if(donos.length){
         // DECISAO DO AUTOR (15/ago/2026): nota apontada por VARIOS codigos e COPIADA em cada um,
         // com a partilha declarada no texto. O QualiLab nao tem nota compartilhada, entao toda
@@ -8725,6 +8911,60 @@ async function importQDPX(file, store, projectId, projectMode, onProgress, opts)
         await store.setMemo(projectId, 'project', projectId, content);
       }
     }
+    /* CONEXOES: grava o que sobrou, com o vocabulario reconstituido por UPSERT DE NOME. Duas
+       recusas a mais, que so aqui podem ser vistas: ponta em codigo de CENSURA (censura nao e
+       categoria analitica — os precedentes sao o selectableCodes das telas de IA e o analyticCodes
+       do Relatorio) e link repetido, que e dedup contra o que este mesmo arquivo ja trouxe.
+       `created_by:null` porque quem importa nao e o autor (o mesmo contrato do addCoding); o
+       LinkType nao tem creatingUser, entao o nome sai do atributo `origin` do <Project>. */
+    if(store.addLink && newLinks.length){
+      const autor = (xml.documentElement && xml.documentElement.getAttribute('origin')) || 'importado';
+      const relPorNome = {};
+      const relDir = {};
+      const vistos = new Set();
+      /* DEDUP CONTRA O QUE O PROJETO JA TEM, e nao so contra o que este arquivo trouxe: importar
+         um .qdpx dentro de um projeto que ja tem conexoes duplicaria em silencio (o §7.2 da spec
+         manda passar pelo mesmo dedup do merge). Leitura tolerante: sem ela, nao deduplica, mas
+         nao impede o import. */
+      try{
+        const jaLa = (await store.listLinkRelations?.(projectId)) || [];
+        jaLa.forEach(r=>{ if(r && r.id){ relPorNome[linkRelationKey(r.name)] = r.id; relDir[r.id] = normLinkDirection(r.direction); } });
+        const jaLinks = (await store.listLinks?.(projectId)) || [];
+        jaLinks.forEach(l=>{ if(!l) return;
+          vistos.add(String(l.relation_id) + LINK_SEP + linkPairKey(l));
+          if(relDir[l.relation_id] !== 'oneway') vistos.add(String(l.relation_id) + LINK_SEP + linkPairKeyInvertida(l)); });
+      }catch(e){}
+      const linkRows = [];
+      for(const l of newLinks){
+        const oid = l.origin_kind === 'code' ? codeMap[l.origin_id] : catMap[l.origin_id];
+        const tid = l.target_kind === 'code' ? codeMap[l.target_id] : catMap[l.target_id];
+        if(!oid || !tid){ linksSemAlvo++; continue; }
+        if((l.origin_kind === 'code' && censuraIds.has(l.origin_id)) || (l.target_kind === 'code' && censuraIds.has(l.target_id))){ linksCensura++; continue; }
+        const k = linkRelationKey(l.relName);
+        if(!relPorNome[k]){
+          const linha = await store.addLinkRelation(projectId, { name:l.relName, direction:l.direction });
+          // recusa do servidor nao e "alvo nao reconhecido": contar no balde errado manda a
+          // pessoa procurar no arquivo um defeito que nao esta la
+          if(!linha || !linha.id){ linhasRecusadas++; continue; }
+          relPorNome[k] = linha.id;
+          relDir[linha.id] = normLinkDirection(linha.direction);
+        }
+        const rid = relPorNome[k];
+        const novo = { relation_id:rid, origin_kind:l.origin_kind, origin_id:oid, target_kind:l.target_kind, target_id:tid };
+        const chave = String(rid) + LINK_SEP + linkPairKey(novo);
+        if(vistos.has(chave)){ linksRepetidos++; continue; }
+        vistos.add(chave);
+        if(relDir[rid] !== 'oneway') vistos.add(String(rid) + LINK_SEP + linkPairKeyInvertida(novo));
+        linkRows.push({ ...novo, comment:l.comment || '', color:l.color || null, created_by:null, author_name:autor });
+      }
+      linksGravados = linkRows.length;
+      linksInvalidate(projectId);   // idem: quem escreve conexao invalida o cache da seccao
+      if(linkRows.length){
+        if(store.addLinksBulk) linhasRecusadas += bulkFails(await store.addLinksBulk(projectId, linkRows));
+        else for(const l of linkRows) await store.addLink(projectId, l);
+      }
+    }
+
     // PDF ORIGINAL + INDICE REVERSIVEL, sob os ids novos. O .qdpx TRAZ os PDFs dentro e o import
     // os descartava: 119 de 119 documentos de uma pesquisa real chegavam com has_pdf false, e com
     // isso o pesquisador perdia "ver original", o "p. N" em toda superficie (cards da Leitura,
@@ -8767,6 +9007,10 @@ async function importQDPX(file, store, projectId, projectMode, onProgress, opts)
     trechosTruncados, nameCap, notasDeTrechoPerdidas: notasDeTrechoPerdidas.size,
     casos: xml.querySelectorAll('Cases > Case').length,
     gruposDocumento, gruposCodigo, censuraRestaurada: censuraIds.size, catsSemValor,
+    // item R (fecha o Q5): conexoes gravadas, e cada descarte pelo MOTIVO — 'entre trechos' e a
+    // unica que o pesquisador nao pode consertar no arquivo dele, entao ela tem frase propria.
+    conexoes: linksGravados, conexoesTrecho: linksTrecho, conexoesSemAlvo: linksSemAlvo,
+    conexoesCensura: linksCensura, conexoesRepetidas: linksRepetidos, grafos,
     descartados: skipped, categoriasFechadasDetectadas: catsFechadasDetectadas, linhasRecusadas
   };
 }
@@ -8838,6 +9082,15 @@ function qdpxImportSummary(r){
     // inteiro (casa exato, so que de uma string truncada, entao nao entra em "aproximado").
     + (r.trechosTruncados>0 ? t('imp.truncated',{n:r.trechosTruncados, cap:r.nameCap}) : '')
     + (r.pdfFail ? t('imp.pdfFail',{n:r.pdfFail}) : '')
+    // CONEXOES (item R / Q5): o que entrou, e cada descarte pelo MOTIVO. A de TRECHO tem frase
+    // propria porque e a unica que nao e defeito do arquivo — e limite nosso, e sem dizer isso a
+    // pessoa procura o erro no .qdpx dela. O DIAGRAMA idem: nao exibimos, e nao dizer seria a
+    // falha silenciosa de sempre.
+    + (r.conexoes>0 ? t('imp.links.in',{n:r.conexoes}) : '')
+    + (r.conexoesTrecho>0 ? t('imp.links.between',{n:r.conexoesTrecho}) : '')
+    + (r.conexoesSemAlvo>0 ? t('imp.links.noTarget',{n:r.conexoesSemAlvo}) : '')
+    + (r.conexoesCensura>0 ? t('imp.links.redaction',{n:r.conexoesCensura}) : '')
+    + (r.grafos>0 ? t('imp.links.graphs',{n:r.grafos}) : '')
     + (r.linhasRecusadas ? t('imp.rejected',{n:r.linhasRecusadas}) : '');
 }
 /* ============ IMPORT .qdc (REFI-QDA Codebook) ============
@@ -9133,6 +9386,8 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
   let trechosGravados = 0, trechosColapsados = 0;   // o resumo conta o que ENTROU, nao o que o arquivo tinha (declarado AQUI: o return fica fora do try)
   let conversas = 0, memorias = 0, conversasRepetidas = 0, memoriasRepetidas = 0;
   let activityEntries = 0, activityRepeated = 0;   // TRILHA (S4): eventos que entraram / ja registrados (dedup por id)
+  // CONEXOES (item R): gravadas / ja existentes no destino / descartadas por ponta que nao resolveu
+  let conexoes = 0, conexoesRepetidas = 0, conexoesDescartadas = 0;
   /* S7 — a chave do DESTINO, lida UMA vez e ANTES das escritas. Ela decide duas coisas: se as
      conversas/memorias do arquivo entram (abaixo), e a frase de divergencia de declaracao (no
      fim). Ler no fim serviria para a frase e chegaria tarde demais para o gate. */
@@ -9437,6 +9692,84 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
         linhasRecusadas += bulkFails(r); activityEntries = novos.length - bulkFails(r);
       }
     }
+
+    /* CONEXOES (item R): o vocabulario entra por UPSERT DE NOME (canonizado, entao "contradiz" de
+       um arquivo antigo dobra em "contradicts" em vez de virar uma setima relacao); os links
+       remapeiam as duas pontas pelos mapas deste merge e a EVIDENCIA pelo codingMap.
+       PONTA que nao resolve DESCARTA o link e conta; EVIDENCIA que nao resolve so zera a ancora —
+       a mesma assimetria do linksAfterNodeDelete/linksAfterCodingDelete, e pelo mesmo motivo.
+       DEDUP POR SET, e nao por linkExists linha a linha: uma rede real passa de dezenas de
+       milhares de arestas, e o teste par a par seria O(n²) (regra de ouro #0). A chave inclui a
+       relacao; para relacao SEM sentido (associative/bidirectional) a chave INVERTIDA tambem
+       entra, porque ali A->B e B->A sao a mesma afirmacao. */
+    if(store.addLink && Array.isArray(db.links) && db.links.length){
+      const relInfo = {};   // id de origem -> { name, direction }
+      (db.link_relations||[]).forEach(r=>{ if(r && r.id) relInfo[r.id] = { name:linkRelationCanonical(r.name), direction:normLinkDirection(r.direction) }; });
+      const existentesRel = await readExisting(store, 'listLinkRelations', projectId);
+      const relPorNome = {};
+      (existentesRel||[]).forEach(r=>{ if(r && r.name) relPorNome[linkRelationKey(r.name)] = r; });
+      const relMap = {};    // id de origem -> id no destino (upsert por nome, sob demanda)
+      /* direcao POR RELACAO DO DESTINO, e ela comeca com as que JA existem la — nao so com as
+         que este merge resolver. Sem isso a direcao de um link antigo seria "desconhecida" e
+         cairia no ramo simetrico, onde A->B ja dito faz um B->A legitimo de relacao COM sentido
+         ser contado como repetido e descartado. Falha muda: o resumo diz "ja existiam". */
+      const relDir = {};
+      (existentesRel||[]).forEach(r=>{ if(r && r.id) relDir[r.id] = normLinkDirection(r.direction); });
+      const resolveRel = async (idAntigo)=>{
+        if(relMap[idAntigo]) return relMap[idAntigo];
+        const info = relInfo[idAntigo] || { name:'(sem nome)', direction:'associative' };
+        const k = linkRelationKey(info.name);
+        let linha = relPorNome[k];
+        if(!linha){
+          linha = await store.addLinkRelation(projectId, { name:info.name, direction:info.direction });
+          if(linha) relPorNome[k] = linha;
+        }
+        if(!linha || !linha.id) return null;
+        relMap[idAntigo] = linha.id;
+        relDir[linha.id] = normLinkDirection(linha.direction);
+        return linha.id;
+      };
+      const censura = new Set((db.codes||[]).filter(c=>c && c.is_redaction).map(c=>c.id));
+      const chaveDe = (l)=> String(l.relation_id) + LINK_SEP + linkPairKey(l);
+      const chaveInv = (l)=> String(l.relation_id) + LINK_SEP + linkPairKeyInvertida(l);
+      const vistos = new Set();
+      const existentes = await readExisting(store, 'listLinks', projectId);
+      (existentes||[]).forEach(l=>{
+        if(!l) return;
+        vistos.add(chaveDe(l));
+        if(relDir[l.relation_id] !== 'oneway') vistos.add(chaveInv(l));
+      });
+      const novosLinks = [];
+      for(const l of db.links){
+        if(!l || !l.origin_id || !l.target_id) continue;
+        // CENSURA NAO E PONTA (§3.4): codigo mascarado nao e categoria analitica, aqui como no cliente
+        if((l.origin_kind==='code' && censura.has(l.origin_id)) || (l.target_kind==='code' && censura.has(l.target_id))){ conexoesDescartadas++; continue; }
+        const oid = l.origin_kind==='code' ? codeMap[l.origin_id] : l.origin_kind==='category' ? catMap[l.origin_id] : null;
+        const tid = l.target_kind==='code' ? codeMap[l.target_id] : l.target_kind==='category' ? catMap[l.target_id] : null;
+        if(!oid || !tid){ conexoesDescartadas++; continue; }
+        const rid = await resolveRel(l.relation_id);
+        // relacao que nao nasceu e LINHA RECUSADA (o servidor negou), e nao "ponta ausente":
+        // contar no balde errado faz o resumo mandar a pessoa procurar um documento que existe.
+        if(!rid){ linhasRecusadas++; continue; }
+        const novo = { relation_id:rid, origin_kind:l.origin_kind, origin_id:oid, target_kind:l.target_kind, target_id:tid };
+        const k = chaveDe(novo);
+        if(vistos.has(k)){ conexoesRepetidas++; continue; }
+        vistos.add(k);
+        if(relDir[rid] !== 'oneway') vistos.add(chaveInv(novo));
+        novosLinks.push({ ...novo, comment:l.comment||'', color:l.color??null,
+          evidence_coding_id: l.evidence_coding_id ? (codingMap[l.evidence_coding_id]||null) : null,
+          created_by:null, author_name:l.author_name||'importado' });
+      }
+      conexoes = novosLinks.length;
+      linksInvalidate(projectId);   // o cache de modulo da seccao do Esquema (ver conexoes-painel.js)
+      if(novosLinks.length){
+        if(store.addLinksBulk){
+          linhasRecusadas += bulkFails(await store.addLinksBulk(projectId, novosLinks));
+        } else {
+          for(const l of novosLinks){ await store.addLink(projectId, l); await tick(); }
+        }
+      }
+    }
   } finally {
     if(store.endBatch) await store.endBatch();
   }
@@ -9464,7 +9797,7 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
       detail:{ file:(origin && origin.file) || null, via:(origin && origin.via) || 'import',
                documents:(db.documents||[]).length, categories:(db.categories||[]).length, codes:(db.codes||[]).length,
                codings:trechosGravados, codings_collapsed:trechosColapsados||undefined, memos:(db.memos||[]).length, conversations:conversas, memories:memorias,
-               activity:activityEntries, rejected:linhasRecusadas, ai_origin_off:iaOrigemSemIa } });
+               activity:activityEntries, links:conexoes||undefined, rejected:linhasRecusadas, ai_origin_off:iaOrigemSemIa } });
   }catch(e){}
 
   return {
@@ -9477,7 +9810,8 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
     // colecoes que o "Limpar conteudo" preserva de proposito, entao numero do arquivo e numero do
     // projeto sao coisas diferentes aqui — e e justamente o caso em que a diferenca importa.
     conversas, memorias, conversasRepetidas, memoriasRepetidas, linhasRecusadas,
-    activity:activityEntries, activityRepeated
+    activity:activityEntries, activityRepeated,
+    conexoes, conexoesRepetidas, conexoesDescartadas
   };
 }
 
@@ -11118,7 +11452,7 @@ function exportTransparencyReader(docs, codes, allC, memos, project, anonymize, 
    A flag is_redaction viaja num <Set> desde ago/2026 (REFI-QDA §12, ver QDPX_SET_REDACTION);
    antes ela nao tinha onde morar e os trechos voltavam como codigo normal. Ferramenta que nao
    preserva conjunto de codigo continua perdendo a MARCA — nunca o trecho. */
-async function exportQDPX(docs, cats, allV, codes, allC, project, memos, pdfBytes){
+async function exportQDPX(docs, cats, allV, codes, allC, project, memos, pdfBytes, links, linkRelations){
   const JSZip = await getJSZip();
   const zip = new JSZip();
   const srcFolder = zip.folder('sources');
@@ -11249,8 +11583,10 @@ async function exportQDPX(docs, cats, allV, codes, allC, project, memos, pdfByte
   // comentario no XSD e literalmente "Note(s) that apply to the project as a whole", e sem ele
   // nada declara de quem a nota e — valida dos dois jeitos, ancorada so com o NoteRef.
   const projNoteGuid = (projectMemo && String(projectMemo).trim()) ? uid() : null;
-  const notesXml = projNoteGuid
-    ? `<Notes><Note guid="${projNoteGuid}" name="Memo do projeto"><PlainTextContent>${xmlEsc(projectMemo)}</PlainTextContent></Note></Notes>`
+  // a nota do projeto e UMA das notas: as dos comentarios de conexao entram no mesmo <Notes>,
+  // que por isso e montado LA EMBAIXO, depois de linkNotes existir.
+  const projNoteXml = projNoteGuid
+    ? `<Note guid="${projNoteGuid}" name="Memo do projeto"><PlainTextContent>${xmlEsc(projectMemo)}</PlainTextContent></Note>`
     : '';
 
   // REFI-QDA §12: "Sources, notes and codes can be grouped in Sets", e o SetType aceita
@@ -11262,6 +11598,37 @@ async function exportQDPX(docs, cats, allV, codes, allC, project, memos, pdfByte
   // ATLAS.ti produz set de codigo por conta propria e mostra como grupo de codigos.
   // A lista e COMPLETA (todo codigo censurado, nao so a raiz da familia): a flag e gravada
   // linha a linha e ja cascateia no app, entao a volta nao precisa repropagar.
+  /* CONEXOES (item R): o `<Link>` do REFI-QDA. O guid de cada ponta e o MESMO id que este export
+     ja emite em <Code> e <Variable>, entao as referencias fecham por construcao. O nome que viaja
+     e o da RELACAO, desnormalizado: o padrao nao tem entidade de tipo de relacao, entao o nome vai
+     em cada link e a volta reconstitui o vocabulario agrupando por nome.
+     O COMENTARIO vai por <NoteRef>, que e a forma normativa (o LinkType nao tem <Description>); as
+     notas dos links entram no MESMO <Notes> do memo de projeto.
+     O QUE NAO TEM CASA NO PADRAO e a EVIDENCIA (o trecho que sustenta a afirmacao): o LinkType nao
+     aceita SelectionRef. Ela fica no .qualilab e e DITA no aviso de perda do §7, em vez de sair por
+     uma convencao inventada dentro de uma <Description>.
+     WRAPPER VAZIO INVALIDA O ARQUIVO INTEIRO (LinksType e sequence com minOccurs=1), entao <Links>
+     so aparece quando ha link — a mesma licao ja paga com o <Variables> vazio. */
+  const linksOut = (links || []).filter(l => l && l.origin_id && l.target_id);
+  const relById = {};
+  (linkRelations || []).forEach(r => { if (r && r.id) relById[r.id] = r; });
+  const linkNotes = [];
+  const linksXml = linksOut.map(l => {
+    const rel = relById[l.relation_id] || {};
+    const nome = String(rel.name || '(sem nome)');
+    let noteRef = '';
+    if (l.comment && String(l.comment).trim()) {
+      const g = uid();
+      linkNotes.push(`<Note guid="${g}" name="Comentario da conexao"><PlainTextContent>${xmlEsc(l.comment)}</PlainTextContent></Note>`);
+      noteRef = `<NoteRef targetGUID="${g}"/>`;
+    }
+    return `<Link guid="${stripGuid(l.id)}" name="${xmlEsc(nome)}" direction="${linkDirectionToRefi(rel.direction)}"`
+      + (l.color ? ` color="${xmlEsc(l.color)}"` : '')
+      + ` originGUID="${stripGuid(l.origin_id)}" targetGUID="${stripGuid(l.target_id)}">${noteRef}</Link>`;
+  }).join('');
+
+  const notesXml = (projNoteXml || linkNotes.length) ? `<Notes>${projNoteXml}${linkNotes.join('')}</Notes>` : '';
+
   const redCodes = codes.filter(c=>c.is_redaction);
   const setsXml = redCodes.length
     ? `<Sets><Set guid="${uid()}" name="${xmlEsc(QDPX_SET_REDACTION)}">`
@@ -11285,7 +11652,8 @@ async function exportQDPX(docs, cats, allV, codes, allC, project, memos, pdfByte
     + (sourcesXml ? `<Sources>${sourcesXml}</Sources>` : '')
     // ordem do ProjectType: Users, CodeBook, Variables, Cases, Sources, Notes, Links, Sets,
     // Graphs, Description, NoteRef. Sets DEPOIS de Notes, NoteRef por ULTIMO.
-    + notesXml            // #18: memo de projeto
+    + notesXml            // #18: memo de projeto + os comentarios das conexoes
+    + (linksXml ? `<Links>${linksXml}</Links>` : '')   // item R
     + setsXml             // §12: is_redaction
     + (projNoteGuid ? `<NoteRef targetGUID="${projNoteGuid}"/>` : '')
     + `</Project>`;
@@ -11960,6 +12328,224 @@ function snapshotSizeText(n){
   if(b >= 1e3) return Math.round(b / 1e3) + ' KB';
   return b + ' B';
 }
+/* ============ CONEXOES (item R; spec: to-do/spec-links.md) — as pecas puras ============
+   O QUE ISTO RESOLVE: codificar cria CONJUNTOS sem estrutura interna, definidos so por
+   equivalencia ("estes trechos sao a mesma coisa"). O que o codigo NAO expressa e a relacao
+   ENTRE os conjuntos — "Ativismo judicial CONTRADIZ Deferencia ao legislador", "Dano moral
+   coletivo E PARTE DE Responsabilidade civil". A conexao registra isso: uma seta nomeada entre
+   dois nos do esquema, com comentario, autor e (D6) uma evidencia opcional no texto.
+
+   DUAS PECAS, e confundi-las e o erro facil: a RELACAO e o TIPO da seta (o vocabulario do
+   estudo, com direcao); a CONEXAO e a instancia. Renomear a relacao repropaga a todos os links
+   que a usam — e por isso ela e entidade do projeto, e nao texto livre no link (D3 da spec).
+
+   O NOME CANONICO DA RELACAO E O DO ATLAS.ti, EM INGLES, e isso e emenda a letra da spec (§2
+   dizia "o seed e em portugues"), tomada por CORRECAO e nao por gosto: (a) o nome viaja no
+   `<Link name>` do .qdpx, entao e string de ARTEFATO — como o REDACTED_LABEL, ele nao pode
+   mudar conforme o idioma do navegador de quem exportou; (b) com nome canonico em portugues, um
+   .qdpx do ATLAS.ti importado traria "is cause of" e nasceria como uma SETIMA relacao, visualmente
+   identica a nossa na UI em ingles e diferente no banco — vocabulario duplicado, em silencio.
+   A exibicao passa por linkRelationLabel(), que traduz SO os seis canonicos e deixa passar
+   INTACTO qualquer outro nome (o precedente e o catValueLabel: casa por igualdade com constante,
+   nunca por heuristica, porque o resto e dado do pesquisador). E os seis aceitam ALIAS para
+   sempre — a licao do `tipo:`/`type:` do QDPX: arquivo com a grafia antiga ja existe no disco de
+   alguem, e derrubar a grafia nao daria erro, criaria vocabulario duplicado. */
+
+// direcao: os tres valores sao o enum directionType do REFI-QDA em minuscula, para a exportacao
+// ser mapeamento de CAIXA e nao traducao. `oneway` le-se ORIGEM->ALVO.
+const LINK_DIRECTIONS = ['associative', 'oneway', 'bidirectional'];
+// pontas do V1 (D1/D5): so no do ESQUEMA. Ampliar para 'document'/'coding' e ampliar esta lista
+// e o check do banco — o modelo ja e polimorfico (kind + id em cada ponta).
+const LINK_KINDS = ['code', 'category'];
+// as 6 do ATLAS.ti. NAO sao semeadas no banco: vivem aqui, aparecem sempre no seletor mescladas
+// por nome com as do projeto, e a linha so NASCE NO PRIMEIRO USO (upsert por (project_id,name)).
+// Isso cobre projeto novo E projeto existente sem migracao de dados, e o unique do banco elimina
+// a raca de dois membros usarem "contradiz" ao mesmo tempo.
+// UMA LINHA de proposito, como o ROUTE_VIEWS: o extractDef dos testes puros conta CHAVES, entao
+// num array cujo 1o item abre e fecha `{}` na propria linha ele para ali e a constante chega
+// truncada ao sandbox (a mesma limitacao que deixa o ZOTERO_FIELDS fora dos testes puros).
+const DEFAULT_LINK_RELATIONS = [{ name:'is associated with', direction:'associative' }, { name:'is part of', direction:'oneway' }, { name:'is cause of', direction:'oneway' }, { name:'contradicts', direction:'bidirectional' }, { name:'is a', direction:'oneway' }, { name:'is property of', direction:'oneway' }];
+// grafias que DOBRAM sobre os seis canonicos, para sempre (a licao do qdpxVarMeta). A chave e
+// passada pelo linkRelationKey, entao acento e caixa nao importam: "Esta associado a" casa.
+const LINK_RELATION_ALIASES = {
+  'esta associado a': 'is associated with',
+  'associado a': 'is associated with',
+  'e parte de': 'is part of',
+  'e causa de': 'is cause of',
+  'contradiz': 'contradicts',
+  'e um(a)': 'is a',
+  'e um': 'is a',
+  'e uma': 'is a',
+  'e propriedade de': 'is property of',
+};
+
+// chave de casamento de nome de relacao: sem acento, sem caixa, espacos colapsados. E ela que
+// torna o upsert-por-nome estavel entre pessoas que digitam o mesmo com pontuacao diferente.
+function linkRelationKey(name) {
+  return foldText(String(name == null ? '' : name)).replace(/\s+/g, ' ').trim();
+}
+// o nome CANONICO de uma relacao escrita de qualquer jeito; nome desconhecido volta como veio
+// (so aparado), porque vocabulario novo e dado do pesquisador.
+function linkRelationCanonical(name) {
+  const k = linkRelationKey(name);
+  if (!k) return '';
+  const seed = DEFAULT_LINK_RELATIONS.find(r => linkRelationKey(r.name) === k);
+  if (seed) return seed.name;
+  if (LINK_RELATION_ALIASES[k]) return LINK_RELATION_ALIASES[k];
+  return String(name).replace(/\s+/g, ' ').trim();
+}
+/* EXIBICAO: traduz so os seis canonicos, deixa passar INTACTO o resto (precedente catValueLabel).
+   A cadeia de `if` e feia de proposito: a chave tem de ser LITERAL no primeiro argumento do t(),
+   senao o scripts/check_i18n.py fica cego — com um mapa `t(chave)` ele acusaria as seis como
+   chaves MORTAS e o CI ficaria vermelho apontando o catalogo, e nao esta funcao. */
+function linkRelationLabel(name) {
+  const k = linkRelationKey(linkRelationCanonical(name));
+  if (k === 'is associated with') return t('link.rel.assoc');
+  if (k === 'is part of') return t('link.rel.part');
+  if (k === 'is cause of') return t('link.rel.cause');
+  if (k === 'contradicts') return t('link.rel.contradicts');
+  if (k === 'is a') return t('link.rel.isa');
+  if (k === 'is property of') return t('link.rel.property');
+  return String(name == null ? '' : name);
+}
+// direcao invalida/ausente cai em 'associative' — o import de arquivo de terceiro nao pode
+// abortar por causa de um atributo que a outra ferramenta escreveu diferente.
+function normLinkDirection(v) {
+  const s = String(v == null ? '' : v).trim().toLowerCase();
+  return LINK_DIRECTIONS.includes(s) ? s : 'associative';
+}
+// caixa do REFI (Associative/OneWay/Bidirectional) nos dois sentidos
+function linkDirectionToRefi(v) {
+  return { associative: 'Associative', oneway: 'OneWay', bidirectional: 'Bidirectional' }[normLinkDirection(v)];
+}
+function linkDirectionFromRefi(v) {
+  return normLinkDirection(String(v == null ? '' : v).trim().toLowerCase());
+}
+
+/* o vocabulario que o seletor mostra: os seis padrao MAIS os do projeto, sem duplicar por nome.
+   A linha do PROJETO vence a semente (a equipe pode ter mudado a direcao de "is a"), e por isso
+   ela entra com o `id` — e o id que o link grava. Semente ainda nao usada aparece sem id, e quem
+   a escolher dispara o upsert. */
+function linkRelationsMerged(saved) {
+  const out = [], vistos = new Set();
+  (saved || []).forEach(r => {
+    if (!r || !r.name) return;
+    const k = linkRelationKey(r.name);
+    if (vistos.has(k)) return;
+    vistos.add(k);
+    out.push({ id: r.id, name: r.name, direction: normLinkDirection(r.direction), saved: true });
+  });
+  DEFAULT_LINK_RELATIONS.forEach(r => {
+    const k = linkRelationKey(r.name);
+    if (vistos.has(k)) return;
+    vistos.add(k);
+    out.push({ id: null, name: r.name, direction: r.direction, saved: false });
+  });
+  return out;
+}
+function findLinkRelation(list, name) {
+  const k = linkRelationKey(linkRelationCanonical(name));
+  if (!k) return null;
+  return (list || []).find(r => r && linkRelationKey(linkRelationCanonical(r.name)) === k) || null;
+}
+
+/* SEPARADOR DE CHAVE: \u0000 escrito como ESCAPE, nunca o byte. Byte NUL no fonte faz o git
+   tratar o arquivo como binario e o diff vira o arquivo inteiro (a licao ja paga no P03). */
+const LINK_SEP = '\u0000';
+function linkPairKey(l) {
+  if (!l) return '';
+  return [l.origin_kind, l.origin_id, l.target_kind, l.target_id].map(x => String(x == null ? '' : x)).join(LINK_SEP);
+}
+// a mesma afirmacao com as pontas trocadas — so faz sentido quando a relacao NAO tem sentido
+function linkPairKeyInvertida(l) {
+  return linkPairKey({ origin_kind: l.target_kind, origin_id: l.target_id, target_kind: l.origin_kind, target_id: l.origin_id });
+}
+/* DEDUPLICACAO SEMANTICA, e ela e do CLIENTE de proposito: o unique do banco cobre o par
+   ORDENADO (relacao, origem, alvo), mas para relacao `associative`/`bidirectional` A->B e B->A
+   sao a MESMA afirmacao e a constraint nao pega o par invertido. Constraint de expressao com
+   least/greatest sobre pontas polimorficas fica ilegivel para proteger de um caminho que a UI
+   nao tem; quem contornar o cliente grava uma duplicata VISIVEL (duas linhas na lista), nunca
+   perda — falha barata, aceita e declarada. */
+function linkExists(links, novo, relations) {
+  if (!novo) return false;
+  const rel = (relations || []).find(r => r && r.id && novo.relation_id && r.id === novo.relation_id)
+    || findLinkRelation(relations, novo.relation_name);
+  const simetrica = !rel || normLinkDirection(rel.direction) !== 'oneway';
+  const alvo = linkPairKey(novo), inv = linkPairKeyInvertida(novo);
+  return (links || []).some(l => {
+    if (!l) return false;
+    if (novo.id && l.id === novo.id) return false; // editar a propria linha nao colide com ela mesma
+    if (novo.relation_id && l.relation_id !== novo.relation_id) return false;
+    const k = linkPairKey(l);
+    return k === alvo || (simetrica && k === inv);
+  });
+}
+
+/* O QUE IMPEDE UMA CONEXAO, respondido por TOKEN e nao por frase — a frase e da UI (catalogo),
+   e este arquivo tem de ser testavel sem idioma. Ordem: forma antes de existencia.
+   CENSURA NAO E PONTA: codigo com is_redaction nao entra nem como origem nem como alvo. Censura
+   nao e categoria analitica — os precedentes sao o selectableCodes das telas de IA, o
+   analyticCodes do Relatorio e o D-B da spec do MCP. Validado aqui (o seletor nem os lista) e de
+   novo no import (descartado + contado). */
+function linkProblem(novo, ctx) {
+  const c = ctx || {};
+  if (!novo || !novo.origin_id || !novo.target_id) return 'incompleto';
+  if (!LINK_KINDS.includes(novo.origin_kind) || !LINK_KINDS.includes(novo.target_kind)) return 'ponta_invalida';
+  if (novo.origin_kind === novo.target_kind && String(novo.origin_id) === String(novo.target_id)) return 'auto';
+  const acha = (kind, id) => kind === 'code'
+    ? (c.codes || []).find(x => x && x.id === id)
+    : (c.categories || []).find(x => x && x.id === id);
+  const o = acha(novo.origin_kind, novo.origin_id), a = acha(novo.target_kind, novo.target_id);
+  if (!o || !a) return 'ponta_ausente';
+  if ((novo.origin_kind === 'code' && o.is_redaction) || (novo.target_kind === 'code' && a.is_redaction)) return 'censura';
+  if (linkExists(c.links, novo, c.relations)) return 'repetida';
+  return null;
+}
+
+/* a OUTRA ponta, do ponto de vista de um no — e o que a lista do Esquema mostra. `dir` diz para
+   que lado a seta aponta A PARTIR DAQUI: 'out' origem->alvo, 'in' alvo->origem, 'none' sem
+   sentido (relacao associative). Bidirecional conta como 'both': a afirmacao vale nos dois. */
+function linkOtherEnd(link, kind, id, relations) {
+  if (!link) return null;
+  const souOrigem = link.origin_kind === kind && String(link.origin_id) === String(id);
+  const souAlvo = link.target_kind === kind && String(link.target_id) === String(id);
+  if (!souOrigem && !souAlvo) return null;
+  const rel = (relations || []).find(r => r && r.id && r.id === link.relation_id);
+  const d = normLinkDirection(rel && rel.direction);
+  const dir = d === 'associative' ? 'none' : d === 'bidirectional' ? 'both' : (souOrigem ? 'out' : 'in');
+  return souOrigem
+    ? { kind: link.target_kind, id: link.target_id, dir }
+    : { kind: link.origin_kind, id: link.origin_id, dir };
+}
+// as conexoes de um no, as duas pontas, em ordem estavel (relacao, depois id do link — o mesmo
+// criterio de ordem TOTAL do sortCodingSpans: sem desempate, duas leituras iguais podem diferir)
+function linksOfNode(links, kind, id) {
+  return (links || [])
+    .filter(l => l && ((l.origin_kind === kind && String(l.origin_id) === String(id)) || (l.target_kind === kind && String(l.target_id) === String(id))))
+    .sort((a, b) => String(a.relation_id || '').localeCompare(String(b.relation_id || '')) || String(a.id || '').localeCompare(String(b.id || '')));
+}
+
+/* INTEGRIDADE DAS PONTAS SEM FK POLIMORFICA (§3.3 da spec). Na nuvem quem faz e o trigger
+   links_gc; aqui e este par, chamado pelo LocalStore e pelo createFileStore no MESMO ponto em
+   que os memos orfaos ja sao limpos. UMA implementacao para os dois de proposito: a mesma regra
+   escrita duas vezes e o defeito que este repo ja pagou meia duzia de vezes.
+
+   E as duas fazem coisas DIFERENTES, o que e o desenho e nao descuido: apagar uma PONTA apaga o
+   link (a afirmacao perdeu um dos dois lados e nao existe mais); apagar a EVIDENCIA so tira a
+   ancora e deixa o link vivo — a evidencia sustenta a afirmacao, nao E a afirmacao, e destruir o
+   julgamento de alguem porque um grifo saiu seria perda silenciosa. */
+function linksAfterNodeDelete(links, kind, ids) {
+  const morto = new Set((ids || []).map(String));
+  // `!l ||` MANTERIA o nulo na lista (e o proximo a ler `l.id` estouraria): nulo nao e conexao.
+  return (links || []).filter(l => !!l && !(
+    (l.origin_kind === kind && morto.has(String(l.origin_id))) ||
+    (l.target_kind === kind && morto.has(String(l.target_id)))));
+}
+function linksAfterCodingDelete(links, codingIds) {
+  const morto = new Set((codingIds || []).map(String));
+  return (links || []).map(l => (l && l.evidence_coding_id && morto.has(String(l.evidence_coding_id)))
+    ? { ...l, evidence_coding_id: null } : l);
+}
 /* ============ STORE LOCAL (navegador) ============ */
 // quota tipica do localStorage em CARACTERES UTF-16 (~5M chars ≈ 5-10MB conforme o navegador).
 // Base do indicador PROATIVO de uso (a pilula avisa antes de estourar; o onSaveError so pega
@@ -12061,6 +12647,39 @@ function LocalStore(){
       save();
     },
     async deleteMemo(id){ db.memos=(db.memos||[]).filter(m=>m.id!==id); save(); },
+    /* CONEXOES (item R) — ver dados/conexoes.js. A RELACAO e upsert POR NOME: as 6 sementes nao
+       sao semeadas em lugar nenhum, aparecem sempre no seletor e so viram linha no primeiro uso.
+       link_relations SOBREVIVE ao clearProject (vocabulario de relacao e decisao metodologica do
+       estudo, como a config de IA) e por isso e repetido na lista branca de la — armadilha ja
+       paga duas vezes neste store: o db e RECONSTRUIDO ali, entao chave nao repetida some. */
+    async listLinks(){ return (db.links||[]).slice(); },
+    async addLink(pid, l){
+      if(!db.links) db.links=[];
+      const row={ id:l.id||uid(), project_id:pid, relation_id:l.relation_id||null,
+        origin_kind:l.origin_kind, origin_id:l.origin_id, target_kind:l.target_kind, target_id:l.target_id,
+        comment:l.comment||'', color:l.color||null, evidence_coding_id:l.evidence_coding_id||null,
+        created_by:l.created_by===undefined?'local-user':l.created_by, author_name:l.author_name||name,
+        created_at:l.created_at||new Date().toISOString() };
+      db.links.push(row); save(); return row;
+    },
+    async updateLink(id,patch){ db.links=(db.links||[]).map(l=>l.id===id?{...l,...patch}:l); save(); },
+    async deleteLink(id){ db.links=(db.links||[]).filter(l=>l.id!==id); save(); },
+    async listLinkRelations(){ return (db.link_relations||[]).slice(); },
+    async addLinkRelation(pid, rel){
+      if(!db.link_relations) db.link_relations=[];
+      const k=linkRelationKey(rel&&rel.name);
+      const achado=db.link_relations.find(r=>linkRelationKey(r.name)===k);
+      if(achado) return achado;
+      const row={ id:(rel&&rel.id)||uid(), project_id:pid, name:String((rel&&rel.name)||'').trim(),
+        direction:normLinkDirection(rel&&rel.direction), created_at:new Date().toISOString() };
+      db.link_relations.push(row); save(); return row;
+    },
+    async updateLinkRelation(id,patch){ db.link_relations=(db.link_relations||[]).map(r=>r.id===id?{...r,...patch}:r); save(); },
+    // a FK `on delete no action` da nuvem, a mao: relacao em uso nao sai (renomear e o caminho)
+    async deleteLinkRelation(id){
+      if((db.links||[]).some(l=>l.relation_id===id)) throw new Error('relation in use');
+      db.link_relations=(db.link_relations||[]).filter(r=>r.id!==id); save();
+    },
     async listIaResults(){ return (db.ia_results||[]).slice().reverse(); },
     async addIaResult(pid,{scope,mode_label,result,author_name}){
       if(!db.ia_results) db.ia_results=[];
@@ -12201,18 +12820,18 @@ function LocalStore(){
        orfao no IDB para sempre -- a mesma falha da nuvem, em miniatura e sem conta a pagar. Vale
        igual no clearProject e no deleteProject, logo abaixo. Comentario vai ACIMA: estes metodos
        sao de UMA linha, e um `//` no fim engoliria o resto dela. */
-    deleteDocument(id){ const cids=new Set(db.codings.filter(c=>c.document_id===id).map(c=>c.id)); db.documents=db.documents.filter(d=>d.id!==id); db.doc_values=db.doc_values.filter(v=>v.document_id!==id); db.codings=db.codings.filter(c=>c.document_id!==id); db.memos=db.memos.filter(m=>!(m.scope==='document'&&m.target_id===id) && !(m.scope==='coding'&&cids.has(m.target_id))); IDB.delBlob(id); IDB.delIdx(id); save(); return P(); },
+    deleteDocument(id){ const cids=new Set(db.codings.filter(c=>c.document_id===id).map(c=>c.id)); db.documents=db.documents.filter(d=>d.id!==id); db.doc_values=db.doc_values.filter(v=>v.document_id!==id); db.codings=db.codings.filter(c=>c.document_id!==id); db.memos=db.memos.filter(m=>!(m.scope==='document'&&m.target_id===id) && !(m.scope==='coding'&&cids.has(m.target_id))); db.links=linksAfterCodingDelete(db.links,cids); IDB.delBlob(id); IDB.delIdx(id); save(); return P(); },
     // "limpar projeto" apaga o material, NÃO o diário de insights nem as conversas salvas
     // de IA (a versão antiga recriava o db sem essas chaves e as destruía junto) — nem a
     // configuração do estudo, que mora em memos de projeto (ver MEMO_MATERIAL_SCOPES)
     // o db e RECONSTRUIDO por lista branca aqui, entao campo de CONFIGURACAO tem de ser repetido
     // explicitamente ou some no "Limpar conteudo" — restrict_ai/ai_ever_enabled sao decisao do
     // ESTUDO (como os memos de projeto e a config de IA), e sobrevivem a troca de corpus.
-    clearProject(){ const ids=db.documents.map(d=>d.id); const keepMemos=(db.memos||[]).filter(m=>!MEMO_MATERIAL_SCOPES.includes(m.scope)); db={ documents:[], categories:[], doc_values:[], codes:[], codings:[], memos:keepMemos, ia_results:db.ia_results||[], ia_memory:db.ia_memory||[], restrict_ai:db.restrict_ai||'none', ai_ever_enabled:!!db.ai_ever_enabled, snapshots_auto:db.snapshots_auto!==false, activity:db.activity||[] }; ids.forEach(id=>{ IDB.delBlob(id); IDB.delIdx(id); }); save(); return P(); },
+    clearProject(){ const ids=db.documents.map(d=>d.id); const keepMemos=(db.memos||[]).filter(m=>!MEMO_MATERIAL_SCOPES.includes(m.scope)); db={ documents:[], categories:[], doc_values:[], codes:[], codings:[], memos:keepMemos, ia_results:db.ia_results||[], ia_memory:db.ia_memory||[], restrict_ai:db.restrict_ai||'none', ai_ever_enabled:!!db.ai_ever_enabled, snapshots_auto:db.snapshots_auto!==false, activity:db.activity||[], links:[], link_relations:db.link_relations||[] }; ids.forEach(id=>{ IDB.delBlob(id); IDB.delIdx(id); }); save(); return P(); },
     listCategories(){ return P(db.categories.slice().sort((a,b)=>a.position-b.position)); },
     addCategory(pid,cat){ const c={id:uid(),position:db.categories.length,...cat}; db.categories.push(c); save(); return P(c); },
     updateCategory(id,patch){ db.categories=db.categories.map(c=>c.id===id?{...c,...patch}:c); save(); return P(); },
-    deleteCategory(id){ db.categories=db.categories.filter(c=>c.id!==id); db.doc_values=db.doc_values.filter(v=>v.category_id!==id); save(); return P(); },
+    deleteCategory(id){ db.categories=db.categories.filter(c=>c.id!==id); db.doc_values=db.doc_values.filter(v=>v.category_id!==id); db.links=linksAfterNodeDelete(db.links,'category',[id]); save(); return P(); },
     getDocValues(docId){ return P(db.doc_values.filter(v=>v.document_id===docId)); },
     setDocValue(pid,docId,catId,value){ db.doc_values=db.doc_values.filter(v=>!(v.document_id===docId&&v.category_id===catId&&v.set_by==='local-user'&&(v.layer||'individual')==='individual')); if(value!=='') db.doc_values.push({id:uid(),document_id:docId,category_id:catId,value,set_by:'local-user',author_name:name,layer:'individual'}); save(); return P(); },
     setFinalValue(pid,docId,catId,value){ db.doc_values=db.doc_values.filter(v=>!(v.document_id===docId&&v.category_id===catId&&v.layer==='final')); if(value!=='') db.doc_values.push({id:uid(),document_id:docId,category_id:catId,value,set_by:'local-user',author_name:name,layer:'final'}); save(); return P(); },
@@ -12224,7 +12843,7 @@ function LocalStore(){
     addCode(pid,code){ const c={id:uid(),position:db.codes.length,...code}; db.codes.push(c); save(); return P(c); },
     listCodingsByCode(pid,codeId){ return P(db.codings.filter(c=>c.code_id===codeId)); },
     updateCode(id,patch){ db.codes=db.codes.map(c=>c.id===id?{...c,...patch}:c); save(); return P(); },
-    deleteCode(id){ const kill=new Set([id]); let added=true; while(added){added=false; db.codes.forEach(c=>{if(c.parent_id&&kill.has(c.parent_id)&&!kill.has(c.id)){kill.add(c.id);added=true;}});} const cids=new Set(db.codings.filter(c=>kill.has(c.code_id)).map(c=>c.id)); db.codes=db.codes.filter(c=>!kill.has(c.id)); db.codings=db.codings.filter(c=>!kill.has(c.code_id)); db.memos=db.memos.filter(m=>!(m.scope==='code'&&kill.has(m.target_id)) && !(m.scope==='coding'&&cids.has(m.target_id))); save(); return P(); },
+    deleteCode(id){ const kill=new Set([id]); let added=true; while(added){added=false; db.codes.forEach(c=>{if(c.parent_id&&kill.has(c.parent_id)&&!kill.has(c.id)){kill.add(c.id);added=true;}});} const cids=new Set(db.codings.filter(c=>kill.has(c.code_id)).map(c=>c.id)); db.codes=db.codes.filter(c=>!kill.has(c.id)); db.codings=db.codings.filter(c=>!kill.has(c.code_id)); db.memos=db.memos.filter(m=>!(m.scope==='code'&&kill.has(m.target_id)) && !(m.scope==='coding'&&cids.has(m.target_id))); db.links=linksAfterCodingDelete(linksAfterNodeDelete(db.links,'code',[...kill]),cids); save(); return P(); },
     listCodings(pid,docId){ return P(db.codings.filter(c=>c.document_id===docId)); },
     /* P01: as telas agregadas leem o projeto de uma vez, em vez de dois acessos por
        documento. Aqui e memoria, entao nao ha ganho de rede -- o metodo existe para o
@@ -12233,7 +12852,7 @@ function LocalStore(){
     listAllCodings(pid){ return P(db.codings.slice()); },
     listAllDocValues(pid){ return P(db.doc_values.slice()); },
     addCoding(pid,co){ const c={id:uid(),author_name:name,created_at:new Date().toISOString(),...co}; db.codings.push(c); save(); return P(c); },
-    deleteCoding(id){ db.codings=db.codings.filter(c=>c.id!==id); db.memos=db.memos.filter(m=>!(m.scope==='coding'&&m.target_id===id)); save(); return P(); },
+    deleteCoding(id){ db.codings=db.codings.filter(c=>c.id!==id); db.memos=db.memos.filter(m=>!(m.scope==='coding'&&m.target_id===id)); db.links=linksAfterCodingDelete(db.links,[id]); save(); return P(); },
   };
 }
 
@@ -12388,13 +13007,13 @@ async function createFileStore(fileHandle, isNew){
     async setPdfIndex(docId,data){ pdfIndexData[docId]=packPdfIndex(data); await save(); },
     async deletePdfIndex(docId){ delete pdfIndexData[docId]; await save(); },
     async updateCoding(id,patch){ const c=db.codings.find(x=>x.id===id); if(c) Object.assign(c,patch); await save(); },
-    async deleteDocument(id){ const cids=new Set(db.codings.filter(c=>c.document_id===id).map(c=>c.id)); db.documents=db.documents.filter(d=>d.id!==id); db.doc_values=db.doc_values.filter(v=>v.document_id!==id); db.codings=db.codings.filter(c=>c.document_id!==id); db.memos=db.memos.filter(m=>!(m.scope==='document'&&m.target_id===id) && !(m.scope==='coding'&&cids.has(m.target_id))); delete pdfBytes[id]; delete pdfIndexData[id]; await save(); },
+    async deleteDocument(id){ const cids=new Set(db.codings.filter(c=>c.document_id===id).map(c=>c.id)); db.documents=db.documents.filter(d=>d.id!==id); db.doc_values=db.doc_values.filter(v=>v.document_id!==id); db.codings=db.codings.filter(c=>c.document_id!==id); db.memos=db.memos.filter(m=>!(m.scope==='document'&&m.target_id===id) && !(m.scope==='coding'&&cids.has(m.target_id))); db.links=linksAfterCodingDelete(db.links,cids); delete pdfBytes[id]; delete pdfIndexData[id]; await save(); },
     // "limpar projeto" esvazia o MATERIAL; config do estudo sobrevive (ver MEMO_MATERIAL_SCOPES)
-    async clearProject(){ db.documents=[]; db.categories=[]; db.doc_values=[]; db.codes=[]; db.codings=[]; db.memos=db.memos.filter(m=>!MEMO_MATERIAL_SCOPES.includes(m.scope)); pdfBytes={}; pdfIndexData={}; await save(); },
+    async clearProject(){ db.documents=[]; db.categories=[]; db.doc_values=[]; db.codes=[]; db.codings=[]; db.memos=db.memos.filter(m=>!MEMO_MATERIAL_SCOPES.includes(m.scope)); db.links=[]; pdfBytes={}; pdfIndexData={}; await save(); },
     listCategories(){ return P(db.categories.slice().sort((a,b)=>a.position-b.position)); },
     async addCategory(pid,cat){ const c={id:uid(),position:db.categories.length,...cat}; db.categories.push(c); await save(); return c; },
     async updateCategory(id,patch){ db.categories=db.categories.map(c=>c.id===id?{...c,...patch}:c); await save(); },
-    async deleteCategory(id){ db.categories=db.categories.filter(c=>c.id!==id); db.doc_values=db.doc_values.filter(v=>v.category_id!==id); await save(); },
+    async deleteCategory(id){ db.categories=db.categories.filter(c=>c.id!==id); db.doc_values=db.doc_values.filter(v=>v.category_id!==id); db.links=linksAfterNodeDelete(db.links,'category',[id]); await save(); },
     async getDocValues(docId){ return db.doc_values.filter(v=>v.document_id===docId); },
     // setDocValue grava a CAMADA INDIVIDUAL do usuário do arquivo (igual ao LocalStore) —
     // era idêntico ao setFinalValue e sobrescrevia o gabarito num .qualilab coletivo
@@ -12405,7 +13024,7 @@ async function createFileStore(fileHandle, isNew){
     async addCode(pid,code){ const c={id:uid(),position:db.codes.length,...code}; db.codes.push(c); await save(); return c; },
     listCodingsByCode(pid,codeId){ return P(db.codings.filter(c=>c.code_id===codeId)); },
     async updateCode(id,patch){ db.codes=db.codes.map(c=>c.id===id?{...c,...patch}:c); await save(); },
-    async deleteCode(id){ const kill=new Set([id]); let added=true; while(added){added=false; db.codes.forEach(c=>{if(c.parent_id&&kill.has(c.parent_id)&&!kill.has(c.id)){kill.add(c.id);added=true;}});} const cids=new Set(db.codings.filter(c=>kill.has(c.code_id)).map(c=>c.id)); db.codes=db.codes.filter(c=>!kill.has(c.id)); db.codings=db.codings.filter(c=>!kill.has(c.code_id)); db.memos=db.memos.filter(m=>!(m.scope==='code'&&kill.has(m.target_id)) && !(m.scope==='coding'&&cids.has(m.target_id))); await save(); },
+    async deleteCode(id){ const kill=new Set([id]); let added=true; while(added){added=false; db.codes.forEach(c=>{if(c.parent_id&&kill.has(c.parent_id)&&!kill.has(c.id)){kill.add(c.id);added=true;}});} const cids=new Set(db.codings.filter(c=>kill.has(c.code_id)).map(c=>c.id)); db.codes=db.codes.filter(c=>!kill.has(c.id)); db.codings=db.codings.filter(c=>!kill.has(c.code_id)); db.memos=db.memos.filter(m=>!(m.scope==='code'&&kill.has(m.target_id)) && !(m.scope==='coding'&&cids.has(m.target_id))); db.links=linksAfterCodingDelete(linksAfterNodeDelete(db.links,'code',[...kill]),cids); await save(); },
     async listCodings(pid,docId){ return db.codings.filter(c=>c.document_id===docId); },
     /* P01: as telas agregadas leem o projeto de uma vez, em vez de dois acessos por
        documento. Aqui e memoria, entao nao ha ganho de rede -- o metodo existe para o
@@ -12414,7 +13033,7 @@ async function createFileStore(fileHandle, isNew){
     async listAllCodings(pid){ return db.codings.slice(); },
     async listAllDocValues(pid){ return db.doc_values.slice(); },
     async addCoding(pid,co){ const c={id:uid(),author_name:name,created_at:new Date().toISOString(),...co}; db.codings.push(c); await save(); return c; },
-    async deleteCoding(id){ db.codings=db.codings.filter(c=>c.id!==id); db.memos=db.memos.filter(m=>!(m.scope==='coding'&&m.target_id===id)); await save(); },
+    async deleteCoding(id){ db.codings=db.codings.filter(c=>c.id!==id); db.memos=db.memos.filter(m=>!(m.scope==='coding'&&m.target_id===id)); db.links=linksAfterCodingDelete(db.links,[id]); await save(); },
     async listMemos(){ return db.memos.slice(); },
     async setMemo(pid, scope, targetId, content, authorName, label){
       db.memos = db.memos.filter(m=>!(m.scope===scope && m.target_id===targetId));
@@ -12422,6 +13041,36 @@ async function createFileStore(fileHandle, isNew){
       await save();
     },
     async deleteMemo(id){ db.memos=(db.memos||[]).filter(m=>m.id!==id); await save(); },
+    /* CONEXOES (item R) — o mesmo contrato do LocalStore; aqui o db vive DENTRO do .qualilab,
+       entao os dois arrays viajam de graca no arquivo (o buildQualilabDb os copia campo a campo).
+       As duas regras de integridade sao as funcoes compartilhadas de dados/conexoes.js. */
+    async listLinks(){ return (db.links||[]).slice(); },
+    async addLink(pid, l){
+      if(!db.links) db.links=[];
+      const row={ id:l.id||uid(), project_id:pid, relation_id:l.relation_id||null,
+        origin_kind:l.origin_kind, origin_id:l.origin_id, target_kind:l.target_kind, target_id:l.target_id,
+        comment:l.comment||'', color:l.color||null, evidence_coding_id:l.evidence_coding_id||null,
+        created_by:l.created_by===undefined?null:l.created_by, author_name:l.author_name||db._meta.displayName||'pesquisador',
+        created_at:l.created_at||new Date().toISOString() };
+      db.links.push(row); await save(); return row;
+    },
+    async updateLink(id,patch){ db.links=(db.links||[]).map(l=>l.id===id?{...l,...patch}:l); await save(); },
+    async deleteLink(id){ db.links=(db.links||[]).filter(l=>l.id!==id); await save(); },
+    async listLinkRelations(){ return (db.link_relations||[]).slice(); },
+    async addLinkRelation(pid, rel){
+      if(!db.link_relations) db.link_relations=[];
+      const k=linkRelationKey(rel&&rel.name);
+      const achado=db.link_relations.find(r=>linkRelationKey(r.name)===k);
+      if(achado) return achado;
+      const row={ id:(rel&&rel.id)||uid(), project_id:pid, name:String((rel&&rel.name)||'').trim(),
+        direction:normLinkDirection(rel&&rel.direction), created_at:new Date().toISOString() };
+      db.link_relations.push(row); await save(); return row;
+    },
+    async updateLinkRelation(id,patch){ db.link_relations=(db.link_relations||[]).map(r=>r.id===id?{...r,...patch}:r); await save(); },
+    async deleteLinkRelation(id){
+      if((db.links||[]).some(l=>l.relation_id===id)) throw new Error('relation in use');
+      db.link_relations=(db.link_relations||[]).filter(r=>r.id!==id); await save();
+    },
     async listIaResults(){ return (db.ia_results||[]).slice().reverse(); },
     async addIaResult(pid,{scope,mode_label,result,author_name}){
       if(!db.ia_results) db.ia_results=[];
@@ -13255,6 +13904,63 @@ function SupabaseStore(sb){
           jobs:[{ t:'delete', table:'memos', eq:{ id } }],
           effs:[{ kind:'memo', act:'del', key:['id'], match:{ id } }] },
         async ()=>{ must(await sb.from('memos').delete().eq('id',id)); });
+    },
+    /* CONEXOES (item R) — ver dados/conexoes.js e to-do/spec-links.md.
+       FORA DA FILA DE ESCRITA, de proposito: link e ESTRUTURA, nao trabalho diario, e replay
+       atrasado de mudanca estrutural em projeto coletivo produz estado que ninguem pediu (o
+       mesmo argumento que mantem `codes` fora da FILA-BLOCK). Falha vira banner, como no esquema.
+       FORA DO REALTIME tambem: ve ao recarregar, como o esquema e a distribuicao.
+       A leitura e por CHAVE (pageAllByKey) e nao por range: a lista do projeto inteiro pode ser
+       grande (uma rede real passa de dezenas de milhares de arestas) e a ordem daqui nao e usada
+       na tela — quem ordena e o linksOfNode. O vocabulario, esse, cabe numa pagina e mantem a
+       ordem por nome, que E usada no seletor. */
+    async listLinks(pid){
+      return pageAllByKey(()=> sb.from('links').select('*').eq('project_id',pid), 'conexões');
+    },
+    async addLink(pid, l){
+      const payload = { project_id:pid, relation_id:l.relation_id, origin_kind:l.origin_kind, origin_id:l.origin_id,
+        target_kind:l.target_kind, target_id:l.target_id, comment:l.comment||'', color:l.color||null,
+        evidence_coding_id:l.evidence_coding_id||null, author_name:l.author_name||name };
+      if(l.id) payload.id = l.id;
+      // created_by fica a cargo do DEFAULT auth.uid() no caminho normal; o import (created_by
+      // nulo/alheio, so admin pela RLS) o manda explicito, como o addCoding ja faz
+      if(l.created_by !== undefined) payload.created_by = l.created_by;
+      return must(await sb.from('links').insert(payload).select().single());
+    },
+    async updateLink(id, patch){ must(await sb.from('links').update(patch).eq('id',id)); },
+    async deleteLink(id){ must(await sb.from('links').delete().eq('id',id)); },
+    async listLinkRelations(pid){
+      return pageAll(c=> sb.from('link_relations').select('*', conta(c)).eq('project_id',pid)
+        .order('name').order('id'), 'relações');
+    },
+    /* UPSERT POR NOME, e NAO um upsert() do PostgREST: `upsert` faria UPDATE na linha que ja
+       existe e sobrescreveria a direcao que a equipe tenha mudado — a semente e um ponto de
+       partida, nao uma regra que se reimpoe a cada uso. Le antes, insere depois, e trata o 23505
+       como SUCESSO: ele prova que outra pessoa criou a mesma relacao no meio do caminho (a mesma
+       leitura que a fila de escrita faz do 23505 no replay). */
+    async addLinkRelation(pid, rel){
+      const nome = String((rel&&rel.name)||'').trim();
+      if(!nome) throw new Error('relation without a name');
+      const achar = async ()=> must(await sb.from('link_relations').select('*').eq('project_id',pid).eq('name',nome).maybeSingle());
+      const ja = await achar();
+      if(ja) return ja;
+      try {
+        return must(await sb.from('link_relations').insert({ project_id:pid, name:nome, direction:normLinkDirection(rel&&rel.direction) }).select().single());
+      } catch(e){
+        if(String(e&&e.code)!=='23505') throw e;
+        const dela = await achar();
+        if(dela) return dela;
+        throw e;
+      }
+    },
+    async updateLinkRelation(id, patch){ must(await sb.from('link_relations').update(patch).eq('id',id)); },
+    // quem recusa de verdade e a FK `on delete no action` (23503, checada no fim da instrucao);
+    // aqui so o erro sobe. Nao ha UI para isto no V1 — o store e a RLS e que ficam prontos.
+    async deleteLinkRelation(id){ must(await sb.from('link_relations').delete().eq('id',id)); },
+    // PERF: conexoes em lote (import). O chamador ja deduplicou; chunk menor que o padrao porque
+    // a linha e curta e o que pesa e a avaliacao de RLS por linha.
+    async addLinksBulk(pid, rows){
+      return bulkWrite('links', rows.map(l=>({ ...l, project_id:pid })), { chunk:200 });
     },
     // resultados salvos da aba "Analisar com IA"
     async listIaResults(pid){
@@ -15274,11 +15980,14 @@ function App(){
   async function updCategory(id,patch){ await store.updateCategory(id,patch); setCats(x=>x.map(c=>c.id===id?{...c,...patch}:c)); }
   async function delCategory(id){
     const cat = cats.find(c=>c.id===id);
-    if(!confirm(t('confirm.cat.delete',{name:cat?.name||''}))) return;
+    // §9 do item R: dizer quantas conexoes vao junto (o links_gc as apaga em cascata)
+    let nLinks = 0;
+    try{ nLinks = await linksCountForNode(store, project.id, 'category', id); }catch(e){}
+    if(!confirm(t('confirm.cat.delete',{name:cat?.name||''}) + (nLinks ? t('link.willDelete',{n:nLinks}) : ''))) return;
     await snapshotBefore('category_deleted');   // ESPELHAR BASE
     try{
       let nVal; try{ const per = await mapPool(docs, 8, async (d)=> ((await store.getDocValues(d.id))||[]).filter(v=>v.category_id===id).length); nVal = per.reduce((a,x)=>a+(x||0),0); }catch(e){}   // TRILHA
-      await store.deleteCategory(id); setCats(x=>x.filter(c=>c.id!==id)); setValues(v=>v.filter(x=>x.category_id!==id));
+      await store.deleteCategory(id); linksInvalidate(project.id); setCats(x=>x.filter(c=>c.id!==id)); setValues(v=>v.filter(x=>x.category_id!==id));
       logAct({ op:'category_deleted', target_kind:'category', target_id:id, target_name:cat?.name, detail:{ values:nVal } });
     }catch(e){ setErr(t('err.cat.delete',{e:String(e.message||e)})); }
   }
@@ -15365,7 +16074,7 @@ function App(){
     while(grew){ grew=false; codes.forEach(c=>{ if(c.parent_id && sub.has(c.parent_id) && !sub.has(c.id)){ sub.add(c.id); grew=true; } }); }
     let nCod; try{ const per = await mapPool([...sub], 8, async (cid)=> ((await store.listCodingsByCode(project.id, cid))||[]).length); nCod = per.reduce((a,x)=>a+(x||0),0); }catch(e){}
     const alvo = codeById[id] ? codePath(id).join(' ▸ ') : undefined;
-    await store.deleteCode(id); loadProject(store,project.id); loadDoc();
+    await store.deleteCode(id); linksInvalidate(project.id); loadProject(store,project.id); loadDoc();
     logAct({ op:'code_deleted', target_kind:'code', target_id:id, target_name:alvo, detail:{ codings:nCod, subcodes:sub.size-1 } });
   }
   function closeCtxMenu(){ setCtxMenu(null); mudaCtxNovo(CTXNEW_INITIAL); }
@@ -15736,12 +16445,21 @@ function App(){
     const ia_results = ((await store.listIaResults?.(project.id))||[]).slice().reverse();
     const ia_memory = ((await store.listMemory?.(project.id))||[]).slice().reverse();
     const activity = (await store.listActivity?.(project.id))||[];   // TRILHA (S4): viaja; o merge deduplica por id
+    /* CONEXOES (item R): as duas colecoes viajam CAMPO A CAMPO, e nao por spread — a licao do
+       `codings.source`, que ficou de fora do arquivo por um commit inteiro sem nada acusar. O
+       `evidence_coding_id` sai como esta: o merge do outro lado o remapeia pelo mapa de codings,
+       e ponta/evidencia que nao resolverem la sao descartadas COM CONTAGEM no resumo. */
+    const link_relations = ((await store.listLinkRelations?.(project.id))||[]).map(r=>({ id:r.id, name:r.name, direction:normLinkDirection(r.direction) }));
+    const links = ((await store.listLinks?.(project.id))||[]).map(l=>({ id:l.id, relation_id:l.relation_id, origin_kind:l.origin_kind, origin_id:l.origin_id,
+      target_kind:l.target_kind, target_id:l.target_id, comment:l.comment||'', color:l.color??null,
+      evidence_coding_id:l.evidence_coding_id??null, created_by:l.created_by??null, author_name:l.author_name||'anonimo',
+      created_at:l.created_at||new Date().toISOString() }));
     /* S7: a declaracao viaja no `_meta`, que e de onde o createFileStore le — entao ABRIR este
        arquivo ja honra a chave, sem codigo novo do lado de la. `ai_ever_enabled` vai junto porque
        e trava: um projeto exportado e reaberto nao pode "esquecer" que a IA esteve disponivel. */
     return { _meta:{ id:'file-project', name:project.name||'Projeto', code:'FILE', mode:projectMode||'individual', displayName:user?.name||'pesquisador',
         restrict_ai: restrictAi||'none', ai_ever_enabled: !!aiEverEnabled },
-      documents, categories, doc_values, codes:codesOut, codings, memos, ia_results, ia_memory, activity };
+      documents, categories, doc_values, codes:codesOut, codings, memos, ia_results, ia_memory, activity, links, link_relations };
   }
   // junta os bytes dos PDFs originais do store ativo, por docId (vazio se nenhum) — reusado pelo
   // saveQualilab (zip do arquivo) e pelo "Enviar para a nuvem" (upload OPCIONAL, com consentimento).
@@ -15889,7 +16607,12 @@ function App(){
         // interrompe quando ha o que dizer: projeto de um codificador so, com uma resposta por
         // categoria e sem caixa de selecao, nao ve nada.
         let nAct = 0; try{ nAct = ((await store.listActivity?.(project.id))||[]).length; }catch(e){}
-        const perdas = qdpxDataLoss(cats, allV, allC, nAct);
+        /* item R: as conexoes saem do STORE, e nao do estado, pelo mesmo motivo dos outros tres
+           avisos — `allLinks` e [] na Codificacao (ela nao esta em AGG_VIEWS), e o menu exportar
+           esta no cabecalho, disponivel ali. */
+        let linksQdpx = [], relsQdpx = [];
+        try{ linksQdpx = (await store.listLinks?.(project.id))||[]; relsQdpx = (await store.listLinkRelations?.(project.id))||[]; }catch(e){}
+        const perdas = qdpxDataLoss(cats, allV, allC, nAct, linksQdpx.filter(l=>l && l.evidence_coding_id).length);
         if(perdas.length && !confirm(t('confirm.qdpx.loss',{list:perdas.join('\n\n• ')}))){
           setBusy(null); setProgress(null); return;
         }
@@ -15911,7 +16634,7 @@ function App(){
             (done,total)=>setProgress({ done, total, label:t('prog.downloadingPdfs') }));
           setProgress(null); setBusy(t('busy.zipQdpx'));
         }
-        await exportQDPX(docs, cats, Object.values(pick), codes, codForQdpx, project, memosForQdpx, qdpxPdfs); // #18 memos + bytes do PDF
+        await exportQDPX(docs, cats, Object.values(pick), codes, codForQdpx, project, memosForQdpx, qdpxPdfs, linksQdpx, relsQdpx); // #18 memos + bytes do PDF + item R
         setBusy(null);
       } else if(kind==='ati' || kind==='leitor'){
         let memosForExport=[]; try{ memosForExport=(await store.listMemos?.(project.id))||[]; }catch(e){}
@@ -15989,8 +16712,11 @@ function App(){
       setImportMsg(t('imp.done.qualilab',{docs:r.documentos, cats:r.categorias, codes:r.codigos, spans:r.trechos, memos:r.memos})
         + (r.conversas ? t('imp.ai.chats',{n:r.conversas}) : '')
         + (r.memorias ? t('imp.ai.memories',{n:r.memorias}) : '')
+        + (r.conexoes ? t('imp.links',{n:r.conexoes}) : '')
         + '.' + (r.trechosColapsados ? t('imp.qualilab.collapsed',{n:r.trechosColapsados}) : '') + iaDupNotice(r) + iaOrigemNotice(r)
         + ((r.activity || r.activityRepeated) ? t('imp.activity',{n:r.activity||0, rep:r.activityRepeated ? t('imp.activity.rep',{n:r.activityRepeated}) : ''}) : '')
+        + (r.conexoesRepetidas ? t('imp.links.rep',{n:r.conexoesRepetidas}) : '')
+        + (r.conexoesDescartadas ? t('imp.links.dropped',{n:r.conexoesDescartadas}) : '')
         + (r.linhasRecusadas ? t('imp.rejected',{n:r.linhasRecusadas}) : ''));
     }catch(e){ setBusy(null); setProgress(null); setErr(t('err.import.qualilab',{e:e.message||e})); }
   }
@@ -16248,6 +16974,7 @@ function App(){
       let nCod; try{ const per = await mapPool(docs, 8, async (d)=> ((await store.listCodings(project.id, d.id))||[]).length); nCod = per.reduce((a,x)=>a+(x||0),0); }catch(e){}
       await store.clearProject(project.id);
       PDF_INDEX_CACHE.clear();   // os documentos sairam; indice em memoria deles nao volta a ser pedido
+      linksInvalidate(project.id);   // as conexoes morreram com as pontas (ver conexoes-painel.js)
       setActiveId(null); setSel(null); setSelCode(null);
       await loadProject(store, project.id);
       setBusy(null); setImportMsg(t('imp.cleared'));
@@ -17049,8 +17776,8 @@ function App(){
       </div>
       ${esquemaTab==='codigos' && html`<${SchemaCodesView} codes=${codes} codeById=${codeById} codePath=${codePath} count=${schemaCodingCount}
              isAdmin=${isAdmin} store=${store} project=${project} reload=${reloadWrite} loadAll=${loadAll}
-             allCodings=${allCodings} selCode=${selCode} setSelCode=${setSelCode} onUpd=${updCode} onSetColor=${setCodeColor} onSetSat=${setCodeSat} onSetRedaction=${setCodeRedaction}
-             onAdd=${addCode} onDel=${delCode} onLog=${logAct} onSnapshot=${snapshotBefore} />`}
+             allCodings=${allCodings} cats=${cats} selCode=${selCode} setSelCode=${setSelCode} onUpd=${updCode} onSetColor=${setCodeColor} onSetSat=${setCodeSat} onSetRedaction=${setCodeRedaction}
+             onAdd=${addCode} onDel=${delCode} onLog=${logAct} onSnapshot=${snapshotBefore} canEditCodes=${can('edit_codes')} />`}
       ${esquemaTab==='categorias' && html`<section class="pane left" style="flex:1 1 100%;border-right:none;max-width:none">
         <div class="pane-body scroll">
           <div style="max-width:760px;margin:0 auto" class="section">
@@ -17060,6 +17787,7 @@ function App(){
             ${isAdmin
               ? html`<div>
                   <${DraggableCategoryList} cats=${cats} onUpd=${updCategory} onDel=${delCategory}
+                    linksCtx=${{ store, project, codes, cats, canEdit:can('edit_codes') }}
                     dragCatId=${dragCatId} setDragCatId=${setDragCatId} onReorder=${reorderCategories} />
                   <button class="btn sm" onClick=${addCategory} style="margin-top:6px">${t('cat.add')}</button>
                 </div>`
@@ -19446,7 +20174,7 @@ function CategoriesPanel({ cats, values, activeDoc, canEditSchema, readOnly, use
 /* lista de categorias com reordenacao por arrastar (drag-and-drop nativo, sem lib) — usado
    tanto em CategoriesPanel quanto na aba Esquema, mesmos dragCatId/onReorder vindos do App
    (so 1 dessas vistas fica visivel por vez, entao reaproveitar o mesmo estado e seguro). */
-function DraggableCategoryList({ cats, onUpd, onDel, dragCatId, setDragCatId, onReorder }){
+function DraggableCategoryList({ cats, onUpd, onDel, dragCatId, setDragCatId, onReorder, linksCtx }){
   const [overId, setOverId] = useState(null);
   const endDrag = ()=>{ setDragCatId(null); setOverId(null); };
   return html`<div>
@@ -19460,7 +20188,7 @@ function DraggableCategoryList({ cats, onUpd, onDel, dragCatId, setDragCatId, on
         <span class="drag-handle" draggable="true" title=${t('cat.drag')}
           onDragStart=${e=>{ e.dataTransfer.effectAllowed='move'; setDragCatId(cat.id); }}
           onDragEnd=${endDrag}>⠿</span>
-        <div style="flex:1;min-width:0"><${CategoryEditor} cat=${cat} onUpd=${onUpd} onDel=${onDel} /></div>
+        <div style="flex:1;min-width:0"><${CategoryEditor} cat=${cat} onUpd=${onUpd} onDel=${onDel} linksCtx=${linksCtx} /></div>
       </div>`;
     })}
   </div>`;
@@ -19482,7 +20210,10 @@ function DraggableCategoryList({ cats, onUpd, onDel, dragCatId, setDragCatId, on
    verbete, fui conferir um documento e voltei" perderia tudo — sem gravar nada, que e o
    ponto. Se nada consumisse o cache, "nao salvar sozinho" viraria "perder por engano". */
 const CAT_DRAFTS = new Map();   // cat.id -> patch pendente {name?, description?}
-function CategoryEditor({ cat, onUpd, onDel }){
+/* `linksCtx` so chega do ESQUEMA (item R, D4): a seccao de conexoes nao aparece no painel da
+   Codificacao, que e a tela quente — la o mesmo componente e listado por documento e a leitura
+   das conexoes seria trabalho a toa numa tela que ja nao carrega o agregado. */
+function CategoryEditor({ cat, onUpd, onDel, linksCtx }){
   const draft = CAT_DRAFTS.get(cat.id) || null;
   const [nv,setNv]=useState('');
   const [nome,setNome]=useState(draft?.name ?? cat.name ?? '');
@@ -19550,6 +20281,11 @@ function CategoryEditor({ cat, onUpd, onDel }){
         title=${salvo?t('cat.saved.tip'):t('cat.save.tip')}>
         ${salvo?t('cat.saved'):t('common.save')}</button>
     </div>
+    ${linksCtx && html`<details style="margin-top:8px">
+      <summary class="hint" style="cursor:pointer">${t('link.title')}</summary>
+      <${LinksSection} store=${linksCtx.store} project=${linksCtx.project} kind="category" id=${cat.id}
+        codes=${linksCtx.codes} cats=${linksCtx.cats} canEdit=${linksCtx.canEdit} compact=${true} />
+    </details>`}
   </div>`;
 }
 
@@ -21147,7 +21883,15 @@ function OcrReviewModal({ text, img, onApply, onCancel }){
    Reaproveita RenameCode (definido mais abaixo, perto de TreeNode) mas NAO toca em
    CodesPanel/TreeNode — o painel da tela de Codificacao continua intocado de proposito. */
 function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, project, reload, loadAll,
-                            allCodings, selCode, setSelCode, onUpd, onSetColor, onSetSat, onSetRedaction, onAdd, onDel, onLog, onSnapshot }){
+                            allCodings, cats, selCode, setSelCode, onUpd, onSetColor, onSetSat, onSetRedaction, onAdd, onDel, onLog, onSnapshot, canEditCodes }){
+  /* §9 do item R: o confirm de exclusao DIZ quantas conexoes vao junto. Nao e zelo — sem isso o
+     links_gc apaga em silencio, que e o pior modo de falha do repo. A contagem e assincrona
+     (le do cache do modulo, ou pergunta ao store), entao o confirm espera por ela. */
+  const askDelete = async (id)=>{
+    let n = 0;
+    try{ n = await linksCountForNode(store, project?.id, 'code', id); }catch(e){}
+    if(confirm(t('tree.delete.ask') + (n ? t('link.willDelete',{n}) : ''))) onDel(id);
+  };
   const [query, setQuery] = useState('');
   const [splitCode, setSplitCode] = useState(null);   // id do código aberto na tela de divisão
   const [groupConfirm, setGroupConfirm] = useState(null); // agrupar num alvo que tem trechos próprios
@@ -21347,6 +22091,37 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
             await reparentSubtree(ch.id, survivorId, survivor.depth+1, { hue:survivor.hue, hue_deg:survivor.hue_deg, sat:survivor.sat }, !!survivor.is_redaction);
           }
         }
+        /* 2b) CONEXOES (§9 do item R): elas MIGRAM para o sobrevivente ANTES do deleteCode —
+           sem isto o links_gc as apagaria em silencio, que e o pior modo de falha do repo. O
+           id e o comentario sao preservados (o espirito do moveCodings). DOIS descartes, e os
+           dois sao contados no aviso: o que viraria AUTO-LINK (A mesclado em B, havendo A→B) e
+           o que viraria DUPLICATA de uma conexao que o sobrevivente ja tem. */
+        let linksMigrados = 0, linksDescartados = 0;
+        if(store.listLinks && store.updateLink){
+          const todos = await store.listLinks(project.id);
+          const rels = store.listLinkRelations ? await store.listLinkRelations(project.id) : [];
+          const relDir = {}; rels.forEach(r=>{ if(r && r.id) relDir[r.id] = normLinkDirection(r.direction); });
+          const chave = (l)=> String(l.relation_id) + LINK_SEP + linkPairKey(l);
+          const vistos = new Set();
+          todos.forEach(l=>{ if(mergedIds.includes(l.origin_id) || mergedIds.includes(l.target_id)) return;
+            vistos.add(chave(l));
+            if(relDir[l.relation_id] !== 'oneway') vistos.add(String(l.relation_id) + LINK_SEP + linkPairKeyInvertida(l)); });
+          for(const l of todos){
+            const mexeOrigem = l.origin_kind==='code' && mergedIds.includes(l.origin_id);
+            const mexeAlvo = l.target_kind==='code' && mergedIds.includes(l.target_id);
+            if(!mexeOrigem && !mexeAlvo) continue;
+            const novo = { ...l, origin_id: mexeOrigem ? survivorId : l.origin_id, target_id: mexeAlvo ? survivorId : l.target_id };
+            const virouAuto = novo.origin_kind===novo.target_kind && String(novo.origin_id)===String(novo.target_id);
+            const k = chave(novo);
+            if(virouAuto || vistos.has(k)){ await store.deleteLink(l.id); linksDescartados++; continue; }
+            vistos.add(k);
+            if(relDir[l.relation_id] !== 'oneway') vistos.add(String(l.relation_id) + LINK_SEP + linkPairKeyInvertida(novo));
+            await store.updateLink(l.id, { origin_id:novo.origin_id, target_id:novo.target_id });
+            linksMigrados++;
+          }
+          linksInvalidate(project.id);
+        }
+        if(linksDescartados) setNotice(t('sch.merge.links',{moved:linksMigrados, dropped:linksDescartados}));
         // 3) exclui os mesclados (ja sem filhos nem codificacoes)
         for(const mid of mergedIds){ await store.deleteCode(mid); }
       } finally { if(store.endBatch) await store.endBatch(); }
@@ -21397,7 +22172,7 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
         <div class="tree" role="tree" aria-label=${t('sch.aria')} ref=${treeKeys.ref} onKeyDown=${treeKeys.onKeyDown}>
           ${tops.length===0 && html`<span class="meta">${t('codes.empty')}</span>`}
           ${!filtered && tops.map(n=>html`<${SchemaTreeNode} key=${n.id} code=${n} childrenOf=${childrenOf} count=${count}
-              selCode=${selCode} setSelCode=${setSelCode} selectedIds=${selectedIds} onToggleSelect=${toggleSelect} onDel=${onDel} depthPad=${0}
+              selCode=${selCode} setSelCode=${setSelCode} selectedIds=${selectedIds} onToggleSelect=${toggleSelect} onDel=${askDelete} depthPad=${0}
               dragId=${dragId} setDragId=${setDragId} overId=${overId} setOverId=${setOverId}
               dragParentId=${dragId ? (codeById[dragId]?.parent_id ?? null) : undefined} onReorder=${reorderSiblings} />`)}
           ${filtered && filtered.length===0 && html`<span class="meta">${t('sch.noMatch')}</span>`}
@@ -21470,7 +22245,7 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
               selCode=${selCode} setSelCode=${setSelCode} selectedIds=${selectedIds} setSelectedIds=${setSelectedIds}
               onUpd=${onUpd} onPersistPositions=${persistPositions}
               onMoveInto=${(t,ids)=>handleGroup(t,'',ids)} onMerge=${handleMerge} onGroupNew=${handleGroupNew}
-              onPromote=${promoteManyToRoot} onAdd=${onAdd} onDel=${onDel} isAdmin=${isAdmin} busy=${busy}
+              onPromote=${promoteManyToRoot} onAdd=${onAdd} onDel=${askDelete} isAdmin=${isAdmin} busy=${busy}
               tool=${mapTool} showLinks=${mapShowLinks} apiRef=${mapApiRef} />
           </div>`}
     </section>
@@ -21487,6 +22262,8 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
                 <${RenameCode} code=${codeById[selCode]} onUpd=${onUpd} onSetColor=${onSetColor} onSetSat=${onSetSat} onSetRedaction=${onSetRedaction} isAdmin=${isAdmin} />
                 ${codeById[selCode].parent_id && html`<button class="btn sm ghost" style="margin-top:10px;width:100%"
                   onClick=${()=>promoteToRoot(codeById[selCode])}>${t('sch.promote')}</button>`}
+                <${LinksSection} store=${store} project=${project} kind="code" id=${selCode}
+                  codes=${codes} cats=${cats} canEdit=${canEditCodes !== false} compact=${true} />
                 ${(()=>{ const proprios = allCodings.filter(c=>c.code_id===selCode);
                   if(!proprios.length) return null;
                   return html`<button class="btn sm ghost" style="margin-top:8px;width:100%" disabled=${!isAdmin}
@@ -21523,7 +22300,7 @@ function SchemaTreeNode({ code, childrenOf, count, selCode, setSelCode, selected
       <span class="swatch" style=${swatchStyle(col, kids.length>0)}></span>
       <span class="node-name" title=${code.name}>${code.is_redaction?'⦸ ':''}${code.name}</span>
       ${count[code.id]?html`<span class="count" title=${kids.length?t('tree.family.tip'):t('tree.own.tip')}>${count[code.id]}</span>`:''}
-      <button class="icon-btn" onClick=${e=>{e.stopPropagation(); if(confirm(t('tree.delete.ask'))) onDel(code.id);}} title=${t('tree.delete')}>✕</button>
+      <button class="icon-btn" onClick=${e=>{e.stopPropagation(); onDel(code.id);}} title=${t('tree.delete')}>✕</button>
     </div>
     ${open && kids.map(k=>html`<${SchemaTreeNode} key=${k.id} code=${k} childrenOf=${childrenOf} count=${count}
       selCode=${selCode} setSelCode=${setSelCode} selectedIds=${selectedIds} onToggleSelect=${onToggleSelect} onDel=${onDel} depthPad=${depthPad+1}
@@ -21799,7 +22576,7 @@ function SchemaMapView({ codes, codeById, count, selCode, setSelCode, selectedId
           if(codes.length>1) items.push({ label:t('map.moveInto'), on:()=>setMovePick([C.id]) });
           if(C.parent_id) items.push({ label:t('map.promote'), on:()=>onPromote([C.id]) });
           items.push({ sep:true });
-          items.push({ label:t('map.delete'), danger:true, on:()=>{ if(confirm(t('tree.delete.ask'))) onDel(C.id); } });
+          items.push({ label:t('map.delete'), danger:true, on:()=>onDel(C.id) });
         } else if(!cInSel){
           items.push({ head:t('map.target',{name:chTrunc(C.name,26)}) });
           items.push({ label:t('map.moveN',{n:selNoC.length}), on:()=>onMoveInto(C.id, selNoC) });
@@ -21857,6 +22634,269 @@ function reconcileGroups(indiv){
   return groups;
 }
 
+/* ============ CONEXOES: a seccao do Esquema (item R, D4) ============
+   A porta de criacao do V1: gesto minimo no Esquema, sem tela nova, sem canvas e sem aba. A
+   seccao aparece no painel do codigo selecionado (Esquema ▸ Codigos) e dentro do card da
+   categoria (Esquema ▸ Categorias), lista as conexoes daquele no em texto e abre um modal para
+   criar. O editor de rede (o <Graphs> do REFI) e o passo 2 do item R e nao existe.
+
+   AUTOCONTIDO, e isso e decisao: nenhum useState novo na App() (o padrao do InvitesCard e do
+   SnapshotsCard). O preco seria uma leitura do projeto por no selecionado, e por isso ha um CACHE
+   DE MODULO por projeto — o mesmo precedente do IA_CONV_CACHE e do CAT_DRAFTS. Quem ESCREVE
+   invalida; quem apaga PONTA em outro lugar chama linksInvalidate(). A lista de fora, hoje, e:
+   delCode e delCategory e "Limpar conteudo" (app.js), o Mesclar (esquema-codigos.js) e os dois
+   importadores que escrevem conexao (mergeQualilabDb e importQDPX). SITIO NOVO QUE APAGUE
+   CODIGO OU CATEGORIA ENTRA NESSA LISTA — senao a seccao mostra seta para lugar nenhum ate o
+   F5, que e a mesma familia do MEMO_PROJECT_SCOPES. LIMITE DECLARADO: quem escreve recarrega
+   SO a propria seccao, entao dois cards irmaos exibindo a MESMA conexao (categoria↔categoria)
+   ficam divergentes ate o proximo render — nao vale um mecanismo de assinatura para isso.
+   Restaurar espelho passa pelos dois
+   caminhos ja cobertos (clearProject + merge), entao nao precisa de linha propria.
+
+   O QUE ESTA SECCAO NAO E (vai no MANUAL, e e a distincao que importa): ela e uma ANOTACAO
+   DECLARATIVA — a hipotese do pesquisador, com nome e autor. Ela NAO mede nada: quem mede
+   associacao empirica e a Co-ocorrencia e o Codigo x atributo dos Graficos. */
+
+const LINKS_CACHE = new Map();   // project_id -> Promise<{ links, relations }>
+// teto do seletor de evidencia: um codigo muito usado tem centenas de trechos, e um <select>
+// com centenas de linhas nao e escolha, e rolagem. Quem precisa de um trecho especifico o cita
+// no comentario — o limite esta dito na dica do campo.
+const LINK_EVID_MAX = 50;
+// a seta le-se A PARTIR DO NO que esta na tela: → sai daqui, ← chega aqui, ↔ vale nos dois
+// sentidos, · sem sentido. Glyph de texto, nao emoji (regra da casa).
+const LINK_SETA = { out:'→', in:'←', both:'↔', none:'·' };
+function linksInvalidate(pid){ if(pid) LINKS_CACHE.delete(pid); else LINKS_CACHE.clear(); }
+/* O CACHE GUARDA A PROMESSA, NAO O RESULTADO, e a diferenca aparece na aba Categorias: ali ha um
+   LinksSection POR CARD, e o Preact monta os filhos de um <details> mesmo fechado — os N
+   componentes chamam isto no MESMO quadro, antes de qualquer resposta chegar. Guardando o
+   resultado, o cache ainda esta vazio para todos e sao N leituras identicas do projeto inteiro
+   (2N requisicoes na nuvem, cada uma paginando a tabela toda). Guardando a promessa, e UMA.
+   FALHA NAO FICA CACHEADA: um 504 no primeiro mount condenaria a tela ate o F5. */
+function linksLoad(store, pid){
+  if(!store || !pid || !store.listLinks) return Promise.resolve({ links:[], relations:[] });
+  const ja = LINKS_CACHE.get(pid);
+  if(ja) return ja;
+  const p = Promise.all([
+    store.listLinks(pid),
+    store.listLinkRelations ? store.listLinkRelations(pid) : Promise.resolve([]),
+  ]).then(([links, relations])=>({ links:links||[], relations:relations||[] }));
+  p.catch(()=>{ if(LINKS_CACHE.get(pid) === p) LINKS_CACHE.delete(pid); });
+  LINKS_CACHE.set(pid, p);
+  return p;
+}
+/* quantas conexoes um no tem — usado pelo confirm de exclusao (§9), que precisa DIZER o que vai
+   junto. Le do cache quando ele existe; sem cache, pergunta ao store. Nunca lanca: um confirm que
+   falha por causa da contagem seria pior que um confirm sem ela. */
+async function linksCountForNode(store, pid, kind, id){
+  try{ const { links } = await linksLoad(store, pid); return linksOfNode(links, kind, id).length; }
+  catch(e){ return 0; }
+}
+
+/* CHAVE LITERAL, sempre: `t(prefixo + variavel)` deixa o scripts/check_i18n.py CEGO — ele
+   acusaria o prefixo como chave usada-e-nao-definida e as dez de verdade como mortas. Duas
+   funcoes feias valem mais que uma guarda desligada (a mesma licao do qdpxImportSummary). */
+function linkDirLabel(dir){
+  if(dir==='out') return t('link.dir.out');
+  if(dir==='in') return t('link.dir.in');
+  if(dir==='both') return t('link.dir.both');
+  return t('link.dir.none');
+}
+function linkProblemLabel(p){
+  if(p==='auto') return t('link.problem.auto');
+  if(p==='censura') return t('link.problem.censura');
+  if(p==='repetida') return t('link.problem.repetida');
+  if(p==='ponta_ausente') return t('link.problem.ponta_ausente');
+  if(p==='ponta_invalida') return t('link.problem.ponta_invalida');
+  return t('link.problem.incompleto');
+}
+
+function LinksSection({ store, project, kind, id, codes, cats, canEdit, compact }){
+  const [rec, setRec] = useState(null);
+  const [erro, setErro] = useState(null);
+  const [abrindo, setAbrindo] = useState(false);
+  const pid = project?.id;
+  const recarrega = async (force)=>{
+    if(force) linksInvalidate(pid);
+    try{ setRec(await linksLoad(store, pid)); setErro(null); }
+    catch(e){ setErro(t('link.err.load',{e:e.message||e})); }
+  };
+  useEffect(()=>{ let vivo=true;
+    (async ()=>{ try{ const r = await linksLoad(store, pid); if(vivo) setRec(r); }
+                 catch(e){ if(vivo) setErro(t('link.err.load',{e:e.message||e})); } })();
+    return ()=>{ vivo=false; };
+  }, [pid, kind, id]);   // eslint-disable-line
+
+  const nomeDe = (k, i)=> k==='code'
+    ? ((codes||[]).find(c=>c.id===i)||{}).name || t('link.gone')
+    : ((cats||[]).find(c=>c.id===i)||{}).name || t('link.gone');
+  /* MEMOIZADO porque o recorte varre a lista do PROJETO INTEIRO: numa rede de verdade sao
+     dezenas de milhares de arestas, e a aba Categorias monta uma seccao por card — sem isto,
+     cada tecla digitada num card refaria N varreduras completas. */
+  const meus = useMemo(()=> rec ? linksOfNode(rec.links, kind, id) : [], [rec, kind, id]);
+  const relById = useMemo(()=>{
+    const m = {};
+    (rec?.relations||[]).forEach(r=>{ if(r && r.id) m[r.id]=r; });
+    return m;
+  }, [rec]);
+
+  const remover = async (l)=>{
+    if(!confirm(t('link.confirmDel'))) return;
+    try{ await store.deleteLink(l.id); await recarrega(true); }
+    catch(e){ setErro(t('link.err.del',{e:e.message||e})); }
+  };
+
+  return html`<div class="section" style=${compact?'margin-top:6px':''}>
+    <p class="h">${t('link.title')}</p>
+    ${erro && html`<p class="hint" style="color:var(--danger)">${erro}</p>`}
+    ${!rec ? html`<p class="hint">${t('common.loading')}</p>`
+      : meus.length===0 ? html`<p class="hint">${t('link.empty')}</p>`
+      : html`<ul style="list-style:none;margin:0 0 8px;padding:0;display:flex;flex-direction:column;gap:6px">
+          ${meus.map(l=>{ const o = linkOtherEnd(l, kind, id, rec.relations); if(!o) return null;
+            const rel = relById[l.relation_id]||{};
+            return html`<li key=${l.id} style="display:flex;gap:6px;align-items:flex-start;font-size:13px;line-height:1.45">
+              <span style="opacity:.75;flex:0 0 auto" title=${linkDirLabel(o.dir)}>${LINK_SETA[o.dir]}</span>
+              <span style="flex:1 1 auto;min-width:0">
+                <i>${linkRelationLabel(rel.name)}</i> <b>${nomeDe(o.kind, o.id)}</b>
+                <span class="hint" style="display:block">${o.kind==='category'?t('link.isCategory'):t('link.isCode')}${l.comment?' · '+l.comment:''} · ${authorLabel(l.author_name)}
+                  ${l.evidence_coding_id ? html`<span title=${t('link.hasEvidence.tip')}> · ${t('link.hasEvidence')}</span>` : ''}</span>
+              </span>
+              ${canEdit && html`<button class="btn sm ghost" style="flex:0 0 auto;padding:2px 6px"
+                title=${t('link.del')} onClick=${()=>remover(l)}>✕</button>`}
+            </li>`; })}
+        </ul>`}
+    ${canEdit && html`<button class="btn sm ghost" style="width:100%" onClick=${()=>setAbrindo(true)}>${t('link.add')}</button>`}
+    ${abrindo && html`<${LinkAddModal} store=${store} project=${project} kind=${kind} id=${id}
+      codes=${codes} cats=${cats} rec=${rec}
+      onClose=${()=>setAbrindo(false)} onSaved=${()=>{ setAbrindo(false); recarrega(true); }} />`}
+  </div>`;
+}
+
+/* O MODAL. Tres campos: a RELACAO (as 6 sementes + as do projeto + "nova relacao"), o ALVO (uma
+   busca so, codigos analiticos e categorias juntos, rotulados por tipo) e um comentario.
+   CENSURA NAO APARECE no seletor de alvo: censura nao e categoria analitica (o mesmo criterio do
+   selectableCodes das telas de IA e do analyticCodes do Relatorio), e o servidor tambem recusa. */
+function LinkAddModal({ store, project, kind, id, codes, cats, rec, onClose, onSaved }){
+  const relacoes = linkRelationsMerged(rec?.relations||[]);
+  const [relIdx, setRelIdx] = useState(0);
+  const [novaRel, setNovaRel] = useState('');
+  const [novaDir, setNovaDir] = useState('associative');
+  const [busca, setBusca] = useState('');
+  const [alvo, setAlvo] = useState(null);      // { kind, id, name }
+  const [comment, setComment] = useState('');
+  const [evid, setEvid] = useState('');       // D6: a ancora opcional no trecho
+  const [trechos, setTrechos] = useState(null);
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState(null);
+  const criandoRel = relIdx === relacoes.length;
+
+  /* A EVIDENCIA E OS TRECHOS DO CODIGO DE ORIGEM, e so eles: e o no cujo painel esta aberto, e
+     buscar os dois lados dobraria a leitura para oferecer uma lista que a pessoa nao pediu.
+     Categoria nao tem trecho, entao ali o campo nem aparece. Falha de leitura vira lista vazia,
+     e nao erro: a evidencia e opcional, e travar o gesto por causa dela seria desproporcional. */
+  useEffect(()=>{ let vivo = true;
+    if(kind !== 'code' || !store.listCodingsByCode){ setTrechos([]); return; }
+    (async ()=>{ try{ const r = await store.listCodingsByCode(project.id, id); if(vivo) setTrechos(r||[]); }
+                 catch(e){ if(vivo) setTrechos([]); } })();
+    return ()=>{ vivo = false; };
+  }, [kind, id]);   // eslint-disable-line
+
+  const opcoes = useMemo(()=>{
+    const q = foldText(busca);
+    const doCodigo = (codes||[]).filter(c=>!c.is_redaction).map(c=>({ kind:'code', id:c.id, name:c.name }));
+    const daCat = (cats||[]).map(c=>({ kind:'category', id:c.id, name:c.name }));
+    return [...doCodigo, ...daCat]
+      .filter(o=> !(o.kind===kind && o.id===id))
+      .filter(o=> !q || foldText(o.name).includes(q))
+      .slice(0, 40);
+  }, [busca, codes, cats, kind, id]);
+
+  /* A ORDEM AQUI IMPORTA: o que da para julgar SEM a relacao (auto-link, censura, ponta que nao
+     existe) e julgado ANTES de criar o vocabulario — senao uma tentativa recusada deixaria uma
+     relacao orfa no projeto, e o pesquisador ganharia "depende de" na lista sem ter conectado
+     nada. So a checagem de REPETIDA precisa do relation_id, e por isso ela fica depois. */
+  const salvar = async ()=>{
+    setErro(null);
+    if(!alvo) return setErro(t('link.err.noTarget'));
+    const semRel = { relation_id:null, origin_kind:kind, origin_id:id, target_kind:alvo.kind, target_id:alvo.id };
+    const cedo = linkProblem(semRel, { codes, categories:cats, links:[], relations:[] });
+    if(cedo) return setErro(linkProblemLabel(cedo));
+    setSalvando(true);
+    try{
+      let rel = criandoRel ? null : relacoes[relIdx];
+      if(criandoRel){
+        const nome = linkRelationCanonical(novaRel);
+        if(!nome){ setSalvando(false); return setErro(t('link.err.noRelation')); }
+        rel = await store.addLinkRelation(project.id, { name:nome, direction:novaDir });
+      } else if(!rel.id){
+        // semente ainda sem linha: a linha nasce AGORA, no primeiro uso (nao ha seed no banco)
+        rel = await store.addLinkRelation(project.id, { name:rel.name, direction:rel.direction });
+      }
+      if(!rel || !rel.id) throw new Error('relation');
+      const novo = { ...semRel, relation_id:rel.id };
+      const relsAgora = [...(rec?.relations||[]).filter(r=>r.id!==rel.id), rel];
+      const problema = linkProblem(novo, { codes, categories:cats, links:rec?.links||[], relations:relsAgora });
+      if(problema){ setSalvando(false); return setErro(linkProblemLabel(problema)); }
+      await store.addLink(project.id, { ...novo, comment, evidence_coding_id: evid || null });
+      onSaved();
+    }catch(e){ setErro(t('link.err.save',{e:e.message||e})); }
+    setSalvando(false);
+  };
+
+  return html`<div class="modal-bg" onClick=${onClose}>
+    <div class="modal" style="max-width:560px" onClick=${e=>e.stopPropagation()}
+         onKeyDown=${e=>{ if(e.key==='Escape') onClose(); }}>
+      <h3 style="margin:0 0 2px">${t('link.new.title')}</h3>
+      <p class="hint" style="margin:0 0 10px">${t('link.new.hint')}</p>
+      <label class="hint">${t('link.relation')}</label>
+      <select class="txtin" value=${String(relIdx)} onInput=${e=>setRelIdx(Number(e.target.value))}>
+        ${relacoes.map((r,i)=>html`<option key=${r.name} value=${String(i)}>${linkRelationLabel(r.name)}</option>`)}
+        <option value=${String(relacoes.length)}>${t('link.newRelation')}</option>
+      </select>
+      ${criandoRel && html`<div class="row" style="gap:6px;margin-top:6px;flex-wrap:wrap">
+        <input class="txtin" style="flex:1 1 150px" placeholder=${t('link.newRelation.ph')}
+          value=${novaRel} onInput=${e=>setNovaRel(e.target.value)} />
+        <select class="txtin" style="flex:0 0 auto" value=${novaDir} onInput=${e=>setNovaDir(e.target.value)}>
+          <option value="associative">${t('link.dir.associative')}</option>
+          <option value="oneway">${t('link.dir.oneway')}</option>
+          <option value="bidirectional">${t('link.dir.bidirectional')}</option>
+        </select>
+      </div>`}
+      <label class="hint" style="display:block;margin-top:10px">${t('link.target')}</label>
+      ${alvo
+        ? html`<div class="row" style="gap:6px;align-items:center">
+            <b style="flex:1 1 auto">${alvo.name}</b>
+            <span class="hint">${alvo.kind==='category'?t('link.isCategory'):t('link.isCode')}</span>
+            <button class="btn sm ghost" onClick=${()=>setAlvo(null)}>${t('link.change')}</button>
+          </div>`
+        : html`<div>
+            <input class="txtin" autofocus placeholder=${t('link.target.ph')} value=${busca} onInput=${e=>setBusca(e.target.value)} />
+            <ul style="list-style:none;margin:6px 0 0;padding:0;max-height:180px;overflow:auto;border:1px solid var(--line);border-radius:var(--r-sm)">
+              ${opcoes.map(o=>html`<li key=${o.kind+o.id}>
+                <button class="btn sm ghost" style="width:100%;justify-content:flex-start;text-align:left"
+                  onClick=${()=>setAlvo(o)}>${o.name} <span class="hint">· ${o.kind==='category'?t('link.isCategory'):t('link.isCode')}</span></button>
+              </li>`)}
+              ${!opcoes.length && html`<li class="hint" style="padding:8px">${t('link.noMatch')}</li>`}
+            </ul>
+          </div>`}
+      <label class="hint" style="display:block;margin-top:10px">${t('link.comment')}</label>
+      <textarea class="txtin" rows="3" style="resize:vertical" placeholder=${t('link.comment.ph')}
+        value=${comment} onInput=${e=>setComment(e.target.value)}></textarea>
+      ${(trechos && trechos.length > 0) && html`<div>
+        <label class="hint" style="display:block;margin-top:10px">${t('link.evidence')}</label>
+        <select class="txtin" value=${evid} onInput=${e=>setEvid(e.target.value)}>
+          <option value="">${t('link.evidence.none')}</option>
+          ${trechos.slice(0, LINK_EVID_MAX).map(c=>html`<option key=${c.id} value=${c.id}>${(c.quote||'').replace(/\s+/g,' ').slice(0, 90)}</option>`)}
+        </select>
+        <p class="hint" style="margin:4px 0 0">${t('link.evidence.hint')}</p>
+      </div>`}
+      ${erro && html`<p class="hint" style="color:var(--danger);margin-top:8px">${erro}</p>`}
+      <div class="row" style="gap:8px;justify-content:flex-end;margin-top:12px">
+        <button class="btn ghost" onClick=${onClose}>${t('common.cancel')}</button>
+        <button class="btn primary" disabled=${salvando||!alvo} onClick=${salvar}>${salvando?t('link.saving'):t('link.save')}</button>
+      </div>
+    </div>
+  </div>`;
+}
 /* ============ ESQUEMA > CODIGOS > DIVIDIR — a tela do split ============
    Inverso do Mesclar. Pega um codigo largo demais e distribui os trechos dele entre VARIOS
    subcodigos novos, de uma vez. E a versao completa do que o ConvertToFamilyModal faz no meio da

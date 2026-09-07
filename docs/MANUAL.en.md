@@ -27,7 +27,7 @@ This manual teaches you to *use* QualiLab step by step. For the feature list and
 4. [Documents](#4-documents): uploading, pasting, renaming, editing the text, viewing the original PDF and OCR
 5. [Coding passages](#5-coding-passages): the heart of the tool
 6. [Attributes (per-document fields)](#6-attributes-per-document-fields)
-7. [Scheme](#7-scheme): organizing codes and attributes in bulk
+7. [Scheme](#7-scheme): organizing codes and attributes in bulk, and linking them to each other
 8. [Reconciliation](#8-reconciliation): consolidating the reference layer (collective project)
 9. [Reading](#9-reading): reading the corpus and the coded passages
 10. [Charts](#10-charts)
@@ -565,6 +565,36 @@ When editing a code, the admin can:
 **Redaction follows the position in the tree.** A subcode created inside a redaction family is born redacted, and **moving or grouping** a code into it also flags it, along with its subcodes. QualiLab warns first, saying how many codes and how many passages become masked; in collective research this counts as a redaction change, so it is an admin action. The reverse path is different on purpose: taking a code out of the family does **not** unflag its redaction, because unflagging must be an explicit decision, made in the code's own **redaction** checkbox. If you **merge** a redaction code into a normal one, its passages stop being masked: QualiLab warns and asks for confirmation, but the decision is yours.
 
 > **Important:** the Codes panel on the **Coding** tab still exists and is independent. Bulk reorganization lives only here in the Scheme, on purpose (fewer habit changes on the coding screen).
+
+### 7.5. Links: saying what one code has to do with another
+Coding creates **sets**: "these passages are about X". A link records what the code alone does not say — the structure **between** the sets: *Judicial activism* **contradicts** *Deference to the legislature*, *Collective moral damage* **is part of** *Civil liability*, *Economic reasoning* **is associated with** the attribute *Ruling outcome*.
+
+**Where it lives.** With a code selected, the **Links** section shows up in the right-hand panel, below the code editor. For an attribute, it sits inside its card, in **Scheme ▸ Attributes**, folded into a "Links" you open.
+
+**How to create one.** Click **+ connect** and answer: the **relation** (the type of arrow), the **other side** (a code or an attribute, in the same search box) and, if you want, a **comment** saying why you linked the two. Your name goes with it.
+
+**Evidence (optional).** When the origin is a code that already has passages, the dialog lets you pick **one of them as evidence** for the claim — the passage that backs what you are saying. The list shows the first passages of that code; to point at another one, cite it in the comment. The anchor travels in the `.qualilab`, and the export warning says it does **not** fit in the `.qdpx`.
+
+**How to read the list.** The arrow reads from the code or attribute you are looking at:
+
+| arrow | means |
+|---|---|
+| `→` | from here to there |
+| `←` | from there to here |
+| `↔` | holds both ways |
+| `·` | no defined direction (association) |
+
+**Relations are your study's vocabulary.** The project already comes with six — *is associated with*, *is part of*, *is cause of*, *contradicts*, *is a*, *is property of* —, the same ones other qualitative analysis tools use. You create your own by picking **new relation…** in the selector: give it a name (*depends on*, *precedes*, *justifies*) and say whether it has a direction (from here to there), holds both ways, or has no direction at all. Renaming a relation applies to **every** link that uses it.
+
+> ⚠️ **A link is an annotation, not a measurement.** It records what **you** observe or suppose, under your name. It counts nothing in the corpus and proves no association. What measures association in your data is **Co-occurrence** and **Code × attribute**, in [Charts](#10-charts). Both readings coexist, and it is good that they do: the link says what you claim, the chart says what the material shows — and the gap between them is often the finding.
+
+**What QualiLab will not let you do, and why.** A code does not connect to itself. The same link does not go in twice (in a relation with no direction, A→B and B→A are the same claim). **A redaction code does not go into a link**: it marks what stays hidden, it is not an analytic category.
+
+**When you change the scheme.** Deleting a code or an attribute takes along the links where it was one of the ends — the warning says how many before you confirm. When you **merge** codes, links move to the surviving code; those that would become duplicates (or a code linked to itself) are dropped, and QualiLab tells you how many.
+
+**Who can.** Reading is for any member. Creating and deleting follows the same permission as **creating and editing codes** in the project's rules matrix ([13](#13-collaboration)). Renaming or deleting a **relation** is for the administrator, because it changes the vocabulary of the whole project.
+
+**In the files.** In the `.qualilab` links go out and come back whole. In the `.qdpx` (REFI-QDA) they leave as `<Link>`, which is the standard's own form, and QualiLab also **reads** the `<Link>` elements of projects coming from other tools. Two things stay out of the `.qdpx` and are named in the export warning: the passage marked as evidence for a link (the standard has nowhere to point at it) and, on import, links **between passages**, which QualiLab does not do yet.
 
 ---
 
