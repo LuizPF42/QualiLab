@@ -617,7 +617,7 @@ Codificar cria **conjuntos**: "estes trechos falam de X". A conexão registra o 
 
 - **Concordo com este código**: registra que **você** também aplicaria aquele código àquele trecho. Cria uma codificação sua na **camada individual** e não encosta no gabarito, então é o gesto de quem **codifica** (qualquer membro), enquanto consolidar é o gesto de quem **consolida** (o admin). O placar sobe na hora ("2 de 3" vira "3 de 3 · consenso"), e o botão **desfazer** ao lado remove a concordância. Se o trecho já tiver uma codificação sua, o card diz **codificação sua** e não oferece o botão: você já está no grupo.
   - A codificação criada assim fica **marcada como concordância**, e não se confunde com a que você fez sozinho lendo o documento. A distinção importa porque concordar aqui é decidir **vendo a resposta dos outros** — o que serve para fechar a reconciliação, mas não é a mesma evidência que duas pessoas chegando ao mesmo trecho de forma independente. É também o que faz o **desfazer** apagar só a concordância, nunca o seu trabalho original.
-  - O mesmo gesto está no **botão direito** sobre um grifo, na [Leitura ▸ Documentos](#9-leitura): concordar lendo o documento inteiro, sem sair do texto. Grava exatamente o mesmo (o trecho do grupo), e esta tela reconhece a concordância como sua.
+  - O mesmo gesto está no **botão direito** sobre um grifo, na [Leitura ▸ Documentos](#9-leitura): concordar lendo o documento inteiro, sem sair do texto. Grava exatamente o mesmo (o trecho do grupo), e esta tela reconhece a concordância como sua. Lá existe também o **Discordo**, que registra que o código não se aplica ao trecho; esta tela ainda não mostra as discordâncias.
 - **Consolidar em massa**: havendo grupos pendentes, aparecem **Consolidar tudo feito por mim (N)** e **Consolidar tudo (N)**, do documento aberto ou, em (Todos os documentos), do projeto inteiro (respeitando o filtro de código). É irreversível; o app confirma antes.
 - **Atalho pelo leitor**: na aba Codificação, o admin pode aceitar um grifo direto no gabarito pelo **botão direito → "Aceitar no gabarito"**, sem passar por esta tela.
 
@@ -660,12 +660,26 @@ pesquisa, disponível enquanto você trabalha — e onde você responde "o que e
   **codificar →** leva você de volta para lá.
 
 Aqui não se codifica: selecionar texto não aplica código. A exceção, em **projeto coletivo**, é
-**concordar**: clique com o **botão direito** num grifo de um colega e aparece **Concordo com este
-código**, o mesmo gesto da [Reconciliação](#8-reconciliação) — grava uma codificação sua, na camada
-individual, no trecho do grupo, e o **desfazer** remove só a concordância. Se o trecho já tem uma
-codificação sua, o menu diz **codificação sua** e não oferece nada. O gesto não aparece em projeto
-individual, na codificação cega, nem para quem tem papel de leitor. Para qualquer outra coisa, use a
-Codificação.
+**dar um veredito** sobre o que outra pessoa codificou. Clique com o **botão direito** num grifo de
+um colega e o menu oferece, para cada código daquele ponto:
+
+- **Concordo com este código**: o mesmo gesto da [Reconciliação](#8-reconciliação). Grava uma
+  codificação sua, na camada individual, no trecho do grupo.
+- **Discordo**: registra que aquele código **não** se aplica ao trecho. Não apaga a codificação de
+  ninguém e não entra nas contagens, nos gráficos nem nas exportações de codificação: é um registro à
+  parte, que viaja no `.qualilab`.
+
+Dado um veredito, o menu passa a mostrar **você concorda** ou **você discorda**, com **desfazer**;
+para trocar de ideia, desfaça primeiro. Se o trecho já tem uma codificação sua, o menu diz
+**codificação sua** e não oferece nada. Os gestos não aparecem em projeto individual, na codificação
+cega, nem para quem tem papel de leitor.
+
+**Para revisar um documento inteiro**, a barra no topo do leitor conta os grifos de outras pessoas
+que ainda não têm veredito seu ("97 de 113 grifos com veredito seu · faltam 16"), e o botão
+**próximo pendente ↓** leva ao próximo deles, já com a nota do grifo aberta embaixo. O grifo em que
+você já concordou ou discordou fica esmaecido; os pendentes continuam com a cor viva. A contagem
+respeita o **Ver:** e o [filtro de código](#59-filtro-de-código-só-os-grifos-de-um-código): com o
+filtro ligado, ela conta só os códigos marcados. Para qualquer outra coisa, use a Codificação.
 
 ### ✎ Trechos — a leitura do esquema
 

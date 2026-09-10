@@ -14,6 +14,25 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.62 (10/09/2026)
+
+### "Discordo": o outro lado do "Concordo com este código"
+
+Em projeto coletivo, o **botão direito** num grifo de um colega, na **Leitura ▸ Documentos**, agora
+oferece dois gestos: **Concordo com este código** e **Discordo**. Discordar registra que aquele
+código não se aplica ao trecho — sem apagar a codificação de ninguém e sem entrar nas contagens,
+nos gráficos ou nas exportações de codificação. Dado o veredito, o menu mostra **você concorda** ou
+**você discorda**, com **desfazer**.
+
+Até aqui, não concordar era a única forma de recusar, e ela se confundia com não ter visto o grifo.
+Com o veredito explícito, dá para saber o que falta: a barra no topo do leitor conta os grifos de
+outras pessoas que ainda não têm veredito seu ("97 de 113 · faltam 16"), o grifo já julgado fica
+esmaecido, e **próximo pendente ↓** leva ao próximo, já com a nota dele aberta. A contagem respeita
+o **Ver:** e o filtro de código.
+
+As discordâncias viajam no arquivo `.qualilab` (e voltam quando ele é importado ou quando um espelho
+é restaurado). A exportação QDPX não tem onde guardá-las, e avisa isso antes de exportar.
+
 ## 1.4.61 (10/09/2026)
 
 ### O filtro de código aceita mais de um código

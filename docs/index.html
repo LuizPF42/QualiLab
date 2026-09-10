@@ -933,7 +933,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.61';
+const QUALILAB_VERSION = '1.4.62';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -2917,7 +2917,21 @@ const MSG_PT = {
   'recon.allDocs': ' · todos os documentos',
   'reading.plain.tip': 'Ler o documento sem os grifos, como o texto limpo',
   'reading.hl': 'grifos',
-  'reading.agree.hint': 'Botão direito: concordar com este código',
+  'reading.agree.hint': 'Botão direito: concordar ou discordar deste código',
+  'rec.disagree': 'Discordo',
+  'rec.disagree.tip': 'Registra que este código NÃO se aplica a este trecho. Não apaga a codificação de ninguém.',
+  'rec.disagreed': '✗ você discorda',
+  'rec.disagreed.tip': 'Você registrou que este código não se aplica a este trecho.',
+  'rec.undoDisagree.tip': 'Remove a sua discordância deste trecho.',
+  'review.progress': '{done} de {total} grifos com veredito seu',
+  'review.pending': 'faltam {n}',
+  'review.allDone': 'nenhum pendente',
+  'review.next': 'próximo pendente ↓',
+  'review.next.tip': 'Leva ao próximo grifo em que você ainda não concordou nem discordou, e abre a nota dele',
+  'review.loadErr': 'Não foi possível ler as suas discordâncias deste documento. Recarregue a tela antes de revisar.',
+  'q.disagree': 'discordância',
+  'q.disagreeDel': 'desfazer discordância',
+  'qdpx.loss.disagreements': 'As discordâncias registradas na Leitura ({n}) ficam de fora: o formato só guarda codificação, não o veredito de que um código não se aplica. Elas continuam no .qualilab.',
   'cf.btn': 'código',
   'cf.aria': 'Filtrar grifos por código',
   'cf.tip': 'Mostrar só os grifos de um ou mais códigos (a família inclui os subcódigos). O filtro vale aqui e no outro leitor.',
@@ -5287,7 +5301,21 @@ const MSG_EN = {
   'recon.allDocs': ' · all documents',
   'reading.plain.tip': 'Read the document without highlights, as plain text',
   'reading.hl': 'highlights',
-  'reading.agree.hint': 'Right-click: agree with this code',
+  'reading.agree.hint': 'Right-click: agree or disagree with this code',
+  'rec.disagree': 'I disagree',
+  'rec.disagree.tip': 'Records that this code does NOT apply to this passage. No coding is deleted.',
+  'rec.disagreed': '✗ you disagree',
+  'rec.disagreed.tip': 'You recorded that this code does not apply to this passage.',
+  'rec.undoDisagree.tip': 'Removes your disagreement from this passage.',
+  'review.progress': '{done} of {total} highlights with your verdict',
+  'review.pending': '{n} to go',
+  'review.allDone': 'none pending',
+  'review.next': 'next pending ↓',
+  'review.next.tip': 'Goes to the next highlight you have neither agreed nor disagreed with, and opens its note',
+  'review.loadErr': 'Could not read your disagreements for this document. Reload the screen before reviewing.',
+  'q.disagree': 'disagreement',
+  'q.disagreeDel': 'undo disagreement',
+  'qdpx.loss.disagreements': 'The disagreements recorded in Reading ({n}) are left out: the format only stores codings, not the verdict that a code does not apply. They remain in the .qualilab.',
   'cf.btn': 'code',
   'cf.aria': 'Filter highlights by code',
   'cf.tip': 'Show only the highlights of one or more codes (a family includes its subcodes). The filter applies here and in the other reader.',
@@ -7950,7 +7978,7 @@ const QDPX_SET_REDACTION = 'QualiLab::Redaction';
    Called from doExport, which builds allV/allC from the STORE — not from the screen state,
    which is empty on the Codificação view (AGG_VIEWS). Reading the state here would make the
    warning silently disappear on the most used screen. */
-function qdpxDataLoss(cats, allV, allC, nActivity, nLinkEvidence){
+function qdpxDataLoss(cats, allV, allC, nActivity, nLinkEvidence, nDisagreements){
   const perdas = [];
   const cods = allC || [], vals = allV || [];
   const finais = cods.filter(c => c.layer === 'final').length;
@@ -7972,6 +8000,11 @@ function qdpxDataLoss(cats, allV, allC, nActivity, nLinkEvidence){
      como as outras: projeto que so tem conexao sem evidencia nao ve nada. */
   const nEv = Number(nLinkEvidence) || 0;
   if(nEv) perdas.push(t('qdpx.loss.linkEvidence', { n:nEv }));
+  // DISCORDAR (v1.4.62): o REFI-QDA nao tem veredito negativo sobre uma codificacao (so <Coding>,
+  // que e presenca) — e inventar um codigo "discordo" la dentro poluiria o esquema de quem abrir.
+  // Ficam so no .qualilab, e o aviso diz isso. Condicionada a haver discordancia, como as outras.
+  const nDis = Number(nDisagreements) || 0;
+  if(nDis) perdas.push(t('qdpx.loss.disagreements', { n:nDis }));
   return perdas;
 }
 
@@ -9422,6 +9455,7 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
   let activityEntries = 0, activityRepeated = 0;   // TRILHA (S4): eventos que entraram / ja registrados (dedup por id)
   // CONEXOES (item R): gravadas / ja existentes no destino / descartadas por ponta que nao resolveu
   let conexoes = 0, conexoesRepetidas = 0, conexoesDescartadas = 0;
+  let discordancias = 0;   // DISCORDAR (v1.4.62): o que ENTROU, declarado fora do try pelo mesmo motivo
   /* S7 — a chave do DESTINO, lida UMA vez e ANTES das escritas. Ela decide duas coisas: se as
      conversas/memorias do arquivo entram (abaixo), e a frase de divergencia de declaracao (no
      fim). Ler no fim serviria para a frase e chegaria tarde demais para o gate. */
@@ -9804,6 +9838,27 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
         }
       }
     }
+
+    /* DISCORDAR (v1.4.62): documento e codigo remapeados; created_by NULO, como nas codificacoes (o
+       uuid de origem nao e ninguem aqui), e o autor segue no author_name. Discordancia cujo documento
+       ou codigo nao entrou fica de fora.
+       SEM DEDUP, e nao e esquecimento: a discordancia e presa ao DOCUMENTO, e o merge sempre cria
+       documentos NOVOS (docMap), entao a chave nunca repete; e, ao contrario de ia_results/ia_memory
+       (que tem o dedupeByField), ela NAO sobrevive ao "Limpar conteudo", entao reimportar o mesmo
+       arquivo depois de limpar nao encontra nada para dobrar. */
+    if(store.addDisagreement && Array.isArray(db.disagreements) && db.disagreements.length){
+      const novas = [];
+      for(const d of db.disagreements){
+        if(!docMap[d.document_id] || !codeMap[d.code_id]) continue;
+        novas.push({ created_by:null, document_id:docMap[d.document_id], code_id:codeMap[d.code_id],
+          span_start:d.span_start, span_end:d.span_end, quote:d.quote||'', author_name:d.author_name||'importado' });
+      }
+      discordancias = novas.length;
+      if(novas.length){
+        if(store.addDisagreementsBulk) linhasRecusadas += bulkFails(await store.addDisagreementsBulk(projectId, novas.map(d=>({ id:uid(), ...d }))));
+        else for(const d of novas){ await store.addDisagreement(projectId, d); await tick(); }
+      }
+    }
   } finally {
     if(store.endBatch) await store.endBatch();
   }
@@ -9831,7 +9886,7 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
       detail:{ file:(origin && origin.file) || null, via:(origin && origin.via) || 'import',
                documents:(db.documents||[]).length, categories:(db.categories||[]).length, codes:(db.codes||[]).length,
                codings:trechosGravados, codings_collapsed:trechosColapsados||undefined, memos:(db.memos||[]).length, conversations:conversas, memories:memorias,
-               activity:activityEntries, links:conexoes||undefined, rejected:linhasRecusadas, ai_origin_off:iaOrigemSemIa } });
+               activity:activityEntries, links:conexoes||undefined, disagreements:discordancias||undefined, rejected:linhasRecusadas, ai_origin_off:iaOrigemSemIa } });
   }catch(e){}
 
   return {
@@ -9845,7 +9900,7 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
     // projeto sao coisas diferentes aqui — e e justamente o caso em que a diferenca importa.
     conversas, memorias, conversasRepetidas, memoriasRepetidas, linhasRecusadas,
     activity:activityEntries, activityRepeated,
-    conexoes, conexoesRepetidas, conexoesDescartadas
+    conexoes, conexoesRepetidas, conexoesDescartadas, discordancias
   };
 }
 
@@ -12854,7 +12909,7 @@ function LocalStore(){
        orfao no IDB para sempre -- a mesma falha da nuvem, em miniatura e sem conta a pagar. Vale
        igual no clearProject e no deleteProject, logo abaixo. Comentario vai ACIMA: estes metodos
        sao de UMA linha, e um `//` no fim engoliria o resto dela. */
-    deleteDocument(id){ const cids=new Set(db.codings.filter(c=>c.document_id===id).map(c=>c.id)); db.documents=db.documents.filter(d=>d.id!==id); db.doc_values=db.doc_values.filter(v=>v.document_id!==id); db.codings=db.codings.filter(c=>c.document_id!==id); db.memos=db.memos.filter(m=>!(m.scope==='document'&&m.target_id===id) && !(m.scope==='coding'&&cids.has(m.target_id))); db.links=linksAfterCodingDelete(db.links,cids); IDB.delBlob(id); IDB.delIdx(id); save(); return P(); },
+    deleteDocument(id){ const cids=new Set(db.codings.filter(c=>c.document_id===id).map(c=>c.id)); db.documents=db.documents.filter(d=>d.id!==id); db.doc_values=db.doc_values.filter(v=>v.document_id!==id); db.codings=db.codings.filter(c=>c.document_id!==id); db.memos=db.memos.filter(m=>!(m.scope==='document'&&m.target_id===id) && !(m.scope==='coding'&&cids.has(m.target_id))); db.links=linksAfterCodingDelete(db.links,cids); db.disagreements=(db.disagreements||[]).filter(d=>d.document_id!==id); IDB.delBlob(id); IDB.delIdx(id); save(); return P(); },
     // "limpar projeto" apaga o material, NÃO o diário de insights nem as conversas salvas
     // de IA (a versão antiga recriava o db sem essas chaves e as destruía junto) — nem a
     // configuração do estudo, que mora em memos de projeto (ver MEMO_MATERIAL_SCOPES)
@@ -12877,7 +12932,7 @@ function LocalStore(){
     addCode(pid,code){ const c={id:uid(),position:db.codes.length,...code}; db.codes.push(c); save(); return P(c); },
     listCodingsByCode(pid,codeId){ return P(db.codings.filter(c=>c.code_id===codeId)); },
     updateCode(id,patch){ db.codes=db.codes.map(c=>c.id===id?{...c,...patch}:c); save(); return P(); },
-    deleteCode(id){ const kill=new Set([id]); let added=true; while(added){added=false; db.codes.forEach(c=>{if(c.parent_id&&kill.has(c.parent_id)&&!kill.has(c.id)){kill.add(c.id);added=true;}});} const cids=new Set(db.codings.filter(c=>kill.has(c.code_id)).map(c=>c.id)); db.codes=db.codes.filter(c=>!kill.has(c.id)); db.codings=db.codings.filter(c=>!kill.has(c.code_id)); db.memos=db.memos.filter(m=>!(m.scope==='code'&&kill.has(m.target_id)) && !(m.scope==='coding'&&cids.has(m.target_id))); db.links=linksAfterCodingDelete(linksAfterNodeDelete(db.links,'code',[...kill]),cids); save(); return P(); },
+    deleteCode(id){ const kill=new Set([id]); let added=true; while(added){added=false; db.codes.forEach(c=>{if(c.parent_id&&kill.has(c.parent_id)&&!kill.has(c.id)){kill.add(c.id);added=true;}});} const cids=new Set(db.codings.filter(c=>kill.has(c.code_id)).map(c=>c.id)); db.codes=db.codes.filter(c=>!kill.has(c.id)); db.codings=db.codings.filter(c=>!kill.has(c.code_id)); db.memos=db.memos.filter(m=>!(m.scope==='code'&&kill.has(m.target_id)) && !(m.scope==='coding'&&cids.has(m.target_id))); db.links=linksAfterCodingDelete(linksAfterNodeDelete(db.links,'code',[...kill]),cids); db.disagreements=(db.disagreements||[]).filter(d=>!kill.has(d.code_id)); save(); return P(); },
     listCodings(pid,docId){ return P(db.codings.filter(c=>c.document_id===docId)); },
     /* P01: as telas agregadas leem o projeto de uma vez, em vez de dois acessos por
        documento. Aqui e memoria, entao nao ha ganho de rede -- o metodo existe para o
@@ -12887,6 +12942,14 @@ function LocalStore(){
     listAllDocValues(pid){ return P(db.doc_values.slice()); },
     addCoding(pid,co){ const c={id:uid(),author_name:name,created_at:new Date().toISOString(),...co}; db.codings.push(c); save(); return P(c); },
     deleteCoding(id){ db.codings=db.codings.filter(c=>c.id!==id); db.memos=db.memos.filter(m=>!(m.scope==='coding'&&m.target_id===id)); db.links=linksAfterCodingDelete(db.links,[id]); save(); return P(); },
+    // DISCORDAR (v1.4.62). O rascunho e sempre individual e o gesto nao aparece nele; os metodos
+    // existem para o .qualilab e o espelho carregarem e devolverem as discordancias sem perda
+    // (regra de ouro #5). Sobre o clearProject: a lista branca dele NAO repete `disagreements`, de
+    // proposito — a discordancia e presa ao MATERIAL (documento + trecho), como a codificacao.
+    listDisagreements(pid,docId){ return P((db.disagreements||[]).filter(d=>!docId||d.document_id===docId)); },
+    addDisagreement(pid,d){ const r={id:uid(),author_name:name,created_at:new Date().toISOString(),...d}; (db.disagreements=db.disagreements||[]).push(r); save(); return P(r); },
+    updateDisagreement(id,patch){ db.disagreements=(db.disagreements||[]).map(d=>d.id===id?{...d,...patch}:d); save(); return P(); },
+    deleteDisagreement(id){ db.disagreements=(db.disagreements||[]).filter(d=>d.id!==id); save(); return P(); },
   };
 }
 
@@ -13041,9 +13104,9 @@ async function createFileStore(fileHandle, isNew){
     async setPdfIndex(docId,data){ pdfIndexData[docId]=packPdfIndex(data); await save(); },
     async deletePdfIndex(docId){ delete pdfIndexData[docId]; await save(); },
     async updateCoding(id,patch){ const c=db.codings.find(x=>x.id===id); if(c) Object.assign(c,patch); await save(); },
-    async deleteDocument(id){ const cids=new Set(db.codings.filter(c=>c.document_id===id).map(c=>c.id)); db.documents=db.documents.filter(d=>d.id!==id); db.doc_values=db.doc_values.filter(v=>v.document_id!==id); db.codings=db.codings.filter(c=>c.document_id!==id); db.memos=db.memos.filter(m=>!(m.scope==='document'&&m.target_id===id) && !(m.scope==='coding'&&cids.has(m.target_id))); db.links=linksAfterCodingDelete(db.links,cids); delete pdfBytes[id]; delete pdfIndexData[id]; await save(); },
+    async deleteDocument(id){ const cids=new Set(db.codings.filter(c=>c.document_id===id).map(c=>c.id)); db.documents=db.documents.filter(d=>d.id!==id); db.doc_values=db.doc_values.filter(v=>v.document_id!==id); db.codings=db.codings.filter(c=>c.document_id!==id); db.memos=db.memos.filter(m=>!(m.scope==='document'&&m.target_id===id) && !(m.scope==='coding'&&cids.has(m.target_id))); db.links=linksAfterCodingDelete(db.links,cids); db.disagreements=(db.disagreements||[]).filter(d=>d.document_id!==id); delete pdfBytes[id]; delete pdfIndexData[id]; await save(); },
     // "limpar projeto" esvazia o MATERIAL; config do estudo sobrevive (ver MEMO_MATERIAL_SCOPES)
-    async clearProject(){ db.documents=[]; db.categories=[]; db.doc_values=[]; db.codes=[]; db.codings=[]; db.memos=db.memos.filter(m=>!MEMO_MATERIAL_SCOPES.includes(m.scope)); db.links=[]; pdfBytes={}; pdfIndexData={}; await save(); },
+    async clearProject(){ db.documents=[]; db.categories=[]; db.doc_values=[]; db.codes=[]; db.codings=[]; db.memos=db.memos.filter(m=>!MEMO_MATERIAL_SCOPES.includes(m.scope)); db.links=[]; db.disagreements=[]; pdfBytes={}; pdfIndexData={}; await save(); },
     listCategories(){ return P(db.categories.slice().sort((a,b)=>a.position-b.position)); },
     async addCategory(pid,cat){ const c={id:uid(),position:db.categories.length,...cat}; db.categories.push(c); await save(); return c; },
     async updateCategory(id,patch){ db.categories=db.categories.map(c=>c.id===id?{...c,...patch}:c); await save(); },
@@ -13058,7 +13121,7 @@ async function createFileStore(fileHandle, isNew){
     async addCode(pid,code){ const c={id:uid(),position:db.codes.length,...code}; db.codes.push(c); await save(); return c; },
     listCodingsByCode(pid,codeId){ return P(db.codings.filter(c=>c.code_id===codeId)); },
     async updateCode(id,patch){ db.codes=db.codes.map(c=>c.id===id?{...c,...patch}:c); await save(); },
-    async deleteCode(id){ const kill=new Set([id]); let added=true; while(added){added=false; db.codes.forEach(c=>{if(c.parent_id&&kill.has(c.parent_id)&&!kill.has(c.id)){kill.add(c.id);added=true;}});} const cids=new Set(db.codings.filter(c=>kill.has(c.code_id)).map(c=>c.id)); db.codes=db.codes.filter(c=>!kill.has(c.id)); db.codings=db.codings.filter(c=>!kill.has(c.code_id)); db.memos=db.memos.filter(m=>!(m.scope==='code'&&kill.has(m.target_id)) && !(m.scope==='coding'&&cids.has(m.target_id))); db.links=linksAfterCodingDelete(linksAfterNodeDelete(db.links,'code',[...kill]),cids); await save(); },
+    async deleteCode(id){ const kill=new Set([id]); let added=true; while(added){added=false; db.codes.forEach(c=>{if(c.parent_id&&kill.has(c.parent_id)&&!kill.has(c.id)){kill.add(c.id);added=true;}});} const cids=new Set(db.codings.filter(c=>kill.has(c.code_id)).map(c=>c.id)); db.codes=db.codes.filter(c=>!kill.has(c.id)); db.codings=db.codings.filter(c=>!kill.has(c.code_id)); db.memos=db.memos.filter(m=>!(m.scope==='code'&&kill.has(m.target_id)) && !(m.scope==='coding'&&cids.has(m.target_id))); db.links=linksAfterCodingDelete(linksAfterNodeDelete(db.links,'code',[...kill]),cids); db.disagreements=(db.disagreements||[]).filter(d=>!kill.has(d.code_id)); await save(); },
     async listCodings(pid,docId){ return db.codings.filter(c=>c.document_id===docId); },
     /* P01: as telas agregadas leem o projeto de uma vez, em vez de dois acessos por
        documento. Aqui e memoria, entao nao ha ganho de rede -- o metodo existe para o
@@ -13068,6 +13131,11 @@ async function createFileStore(fileHandle, isNew){
     async listAllDocValues(pid){ return db.doc_values.slice(); },
     async addCoding(pid,co){ const c={id:uid(),author_name:name,created_at:new Date().toISOString(),...co}; db.codings.push(c); await save(); return c; },
     async deleteCoding(id){ db.codings=db.codings.filter(c=>c.id!==id); db.memos=db.memos.filter(m=>!(m.scope==='coding'&&m.target_id===id)); db.links=linksAfterCodingDelete(db.links,[id]); await save(); },
+    // DISCORDAR (v1.4.62): guardadas no proprio .qualilab (o db inteiro e o arquivo), presas ao material
+    async listDisagreements(pid,docId){ return (db.disagreements||[]).filter(d=>!docId||d.document_id===docId); },
+    async addDisagreement(pid,d){ const r={id:uid(),author_name:name,created_at:new Date().toISOString(),...d}; (db.disagreements=db.disagreements||[]).push(r); await save(); return r; },
+    async updateDisagreement(id,patch){ db.disagreements=(db.disagreements||[]).map(d=>d.id===id?{...d,...patch}:d); await save(); },
+    async deleteDisagreement(id){ db.disagreements=(db.disagreements||[]).filter(d=>d.id!==id); await save(); },
     async listMemos(){ return db.memos.slice(); },
     async setMemo(pid, scope, targetId, content, authorName, label){
       db.memos = db.memos.filter(m=>!(m.scope===scope && m.target_id===targetId));
@@ -13896,6 +13964,49 @@ function SupabaseStore(sb){
           effs:[{ kind:'coding', act:'del', key:['id'], match:{ id } },
                 { kind:'memo', act:'del', key:['scope','target_id'], match:{ scope:'coding', target_id:id } }] },
         async ()=>{ must(await sb.from('codings').delete().eq('id',id)); await sb.from('memos').delete().eq('scope','coding').eq('target_id',id); });
+    },
+    /* DISCORDAR DE UM CODIGO (v1.4.62): tabela propria (`coding_disagreements`, ver o schema.sql),
+       porque uma linha em `codings` quer dizer presenca em todo o app. Passa pela MESMA fila de
+       escrita que a concordancia (addCoding): e trabalho diario, e a Leitura sobrepoe o pendente
+       pela mesma `applyQueue` — sem isso, a discordancia na fila sumiria da tela ate o flush e o
+       grifo voltaria a parecer pendente. Com `docId`, so o documento aberto (a Leitura); sem, o
+       projeto inteiro, paginado por chave (a exportacao .qualilab e o espelho). */
+    async listDisagreements(pid, docId){
+      const rows = docId
+        ? await pageAll(c=> sb.from('coding_disagreements').select('*', conta(c)).eq('project_id',pid).eq('document_id',docId)
+            .order('id'), 'discordâncias do documento')
+        : await pageAllByKey(()=> sb.from('coding_disagreements').select('*').eq('project_id',pid), 'discordâncias do projeto');
+      return applyQueue(rows, qEffs('disagreement',pid), r=> r.project_id===pid && (!docId || r.document_id===docId));
+    },
+    async addDisagreement(pid, d){
+      const hasCB = Object.prototype.hasOwnProperty.call(d,'created_by');
+      const row = { id:uid(), project_id:pid, created_by:user.id, author_name:name, created_at:new Date().toISOString(), ...d };
+      if(hasCB && d.created_by===null) row.created_by = null;
+      return writeQ(
+        { pid, label:t('q.disagree'),
+          jobs:[{ t:'insert', table:'coding_disagreements', payload:row }],
+          effs:[{ kind:'disagreement', act:'put', key:['id'], match:{ id:row.id }, row }],
+          ret: row },
+        async ()=> must(await sb.from('coding_disagreements').insert(row).select().single()));
+    },
+    // import/merge (.qualilab, restaurar espelho): ids JA pre-gerados pelo chamador, como no addCodingsBulk
+    async addDisagreementsBulk(pid, items){
+      const rows = items.map(d=>{
+        const hasCB = Object.prototype.hasOwnProperty.call(d,'created_by');
+        const row = { project_id:pid, created_by:user.id, author_name:name, ...d };
+        if(hasCB && d.created_by===null) row.created_by = null;
+        return row;
+      });
+      return bulkWrite('coding_disagreements', rows);
+    },
+    // so o remap de edicao de texto (reancorar o trecho); a policy de UPDATE e de admin
+    async updateDisagreement(id, patch){ must(await sb.from('coding_disagreements').update(patch).eq('id',id)); },
+    async deleteDisagreement(id){
+      return writeQ(
+        { pid:null, label:t('q.disagreeDel'),
+          jobs:[{ t:'delete', table:'coding_disagreements', eq:{ id } }],
+          effs:[{ kind:'disagreement', act:'del', key:['id'], match:{ id } }] },
+        async ()=> must(await sb.from('coding_disagreements').delete().eq('id',id)));
     },
     // memos: nota unica compartilhada por alvo (projeto/documento/codigo); ultima edicao vale
     /* D02: sem `catch(e){ return [] }`. Falha de leitura tem de CHEGAR a quem chamou -- as
@@ -16409,6 +16520,11 @@ function App(){
         // guard, a tela seria repintada como se tudo tivesse dado certo (o loop serial de antes
         // lançava e caía no catch abaixo, que aborta o patch de estado).
         if(ok.some(x=>!x)) throw new Error(t('err.remap.partial'));
+        // DISCORDAR (v1.4.62): ancoradas no trecho, reancoram pela MESMA regra. Trecho que colapsou
+        // (caiu inteiro dentro do que foi apagado) sai: a tabela recusa trecho vazio, e nao ha mais o que julgar
+        const dis = (await store.listDisagreements?.(project.id, activeDoc.id)) || [];
+        const okd = await mapPool(remapSpans(oldC, newC, dis).updates, 8, async u=>{ if(u.span_end>u.span_start) await store.updateDisagreement(u.id, { span_start:u.span_start, span_end:u.span_end, quote:u.quote }); else await store.deleteDisagreement(u.id); return true; });
+        if(okd.some(x=>!x)) throw new Error(t('err.remap.partial'));
       }
     }catch(e){ setErr(t('err.edit.save',{e:e?.message||e})); return; }
     if(contentChanged){
@@ -16635,12 +16751,16 @@ function App(){
       target_kind:l.target_kind, target_id:l.target_id, comment:l.comment||'', color:l.color??null,
       evidence_coding_id:l.evidence_coding_id??null, created_by:l.created_by??null, author_name:l.author_name||'anonimo',
       created_at:l.created_at||new Date().toISOString() }));
+    // DISCORDAR (v1.4.62): campo a campo, pela mesma licao; so as dos documentos que viajam no arquivo
+    const docsNoArquivo = new Set(documents.map(d=>d.id));
+    const disagreements = ((await store.listDisagreements?.(project.id))||[]).filter(d=>docsNoArquivo.has(d.document_id)).map(d=>({ id:d.id, document_id:d.document_id, code_id:d.code_id,
+      span_start:d.span_start, span_end:d.span_end, quote:d.quote||'', created_by:d.created_by??null, author_name:d.author_name||'anonimo', created_at:d.created_at||new Date().toISOString() }));
     /* S7: a declaracao viaja no `_meta`, que e de onde o createFileStore le — entao ABRIR este
        arquivo ja honra a chave, sem codigo novo do lado de la. `ai_ever_enabled` vai junto porque
        e trava: um projeto exportado e reaberto nao pode "esquecer" que a IA esteve disponivel. */
     return { _meta:{ id:'file-project', name:project.name||'Projeto', code:'FILE', mode:projectMode||'individual', displayName:user?.name||'pesquisador',
         restrict_ai: restrictAi||'none', ai_ever_enabled: !!aiEverEnabled },
-      documents, categories, doc_values, codes:codesOut, codings, memos, ia_results, ia_memory, activity, links, link_relations };
+      documents, categories, doc_values, codes:codesOut, codings, memos, ia_results, ia_memory, activity, links, link_relations, disagreements };
   }
   // junta os bytes dos PDFs originais do store ativo, por docId (vazio se nenhum) — reusado pelo
   // saveQualilab (zip do arquivo) e pelo "Enviar para a nuvem" (upload OPCIONAL, com consentimento).
@@ -16787,13 +16907,13 @@ function App(){
         // conferidas no scripts/roundtrip/MANIFEST.md; faltava chegarem a quem clica. So
         // interrompe quando ha o que dizer: projeto de um codificador so, com uma resposta por
         // categoria e sem caixa de selecao, nao ve nada.
-        let nAct = 0; try{ nAct = ((await store.listActivity?.(project.id))||[]).length; }catch(e){}
+        let nAct = 0, nDis = 0; try{ nAct = ((await store.listActivity?.(project.id))||[]).length; nDis = ((await store.listDisagreements?.(project.id))||[]).length; }catch(e){}
         /* item R: as conexoes saem do STORE, e nao do estado, pelo mesmo motivo dos outros tres
            avisos — `allLinks` e [] na Codificacao (ela nao esta em AGG_VIEWS), e o menu exportar
            esta no cabecalho, disponivel ali. */
         let linksQdpx = [], relsQdpx = [];
         try{ linksQdpx = (await store.listLinks?.(project.id))||[]; relsQdpx = (await store.listLinkRelations?.(project.id))||[]; }catch(e){}
-        const perdas = qdpxDataLoss(cats, allV, allC, nAct, linksQdpx.filter(l=>l && l.evidence_coding_id).length);
+        const perdas = qdpxDataLoss(cats, allV, allC, nAct, linksQdpx.filter(l=>l && l.evidence_coding_id).length, nDis);
         if(perdas.length && !confirm(t('confirm.qdpx.loss',{list:perdas.join('\n\n• ')}))){
           setBusy(null); setProgress(null); return;
         }
@@ -18056,9 +18176,8 @@ function App(){
           <${VizDocReader} doc=${vizDoc} codings=${vizDocCodings} codeById=${codeById} codePath=${codePath}
             memos=${memos} prefs=${readerPrefs} showHl=${vizShowHl} darkMode=${darkMode}
             containerRef=${vizReaderRef} flash=${readerFlash}
-            agree=${projectMode==='collective' && can('code') && !blindLock ? { userId:user?.id, allCodings,
-              onAgree:async (codeId,start,end,quote)=>{ try{ await addAgreementCoding(vizDoc.id,codeId,start,end,quote); loadAll(); }catch(e){ setErr(t('err.coding.save',{e:String(e.message||e)})); } },
-              onUndo:async id=>{ try{ await delCoding(id); loadAll(); }catch(e){ setErr(t('err.coding.save',{e:String(e.message||e)})); } } } : null}
+            agree=${projectMode==='collective' && can('code') && !blindLock ? readingAgreeActions({ store, projectId:project.id, userId:user?.id, allCodings,
+              addAgreementCoding, delCoding, loadAll, onError:e=>setErr(t('err.coding.save',{e:String(e.message||e)})) }) : null}
             onJump=${(docId, span)=>{ setActiveId(docId); setMainView('codificar', { doc: docId }); if(span && span.start!=null) setPendingJump({ docId, start:span.start }); }} />
         </section>
       </div>`
@@ -21445,21 +21564,28 @@ function DocsNav({ docs, activeId, onPick, health, counts, pageCount, cats, allV
    codificar: mesmas classes (.reader-pane/.reader), mesmos runs (buildRuns), mesma cor
    (codeColor), mesmas regras visuais — censura com caixa fechada e prioridade no run,
    border-bottom só quando há mais de um código. O que NÃO tem, de propósito: seleção de
-   texto que vira codificação, edição, PDF. Aqui se LÊ — o único gesto de escrita é concordar
-   com um código que já está no texto (abaixo).
+   texto que vira codificação, edição, PDF. Aqui se LÊ — os únicos gestos de escrita são
+   concordar e discordar de um código que já está no texto (abaixo).
    Parentesco declarado: é o mesmo desenho do leitor de transparência (ATI), que também
    pré-renderiza runs e abre o detalhe do grifo num painel — a diferença é que lá o alvo é
    o avaliador externo e aqui é o pesquisador, então nada é mascarado (tela de trabalho).
    Clicar num grifo abre a faixa de detalhe embaixo; clicar fora dela fecha.
-   BOTAO DIREITO NUM GRIFO = "Concordo com este codigo" (set/2026, pedido do autor). E o UNICO gesto
-   de escrita desta tela, e ele so existe quando o App passa `agree` — projeto coletivo, quem tem a
-   capacidade de codificar, fora da codificacao cega (decisao do autor: so coletivo, e so aqui,
-   nao no menu da Codificacao). Sem `agree` o botao direito continua sendo o menu do navegador.
-   O gesto e o da Reconciliacao, com a mesma regra (agreementState/agreementTargetsAt) e o mesmo
-   botao (AgreeButton): concordar aqui e la tem de dar o mesmo span e o mesmo estado. */
+   BOTAO DIREITO NUM GRIFO = "Concordo com este codigo" / "Discordo" (set/2026, pedido do autor). Sao
+   os UNICOS gestos de escrita desta tela, e so existem quando o App passa `agree` — projeto
+   coletivo, quem tem a capacidade de codificar, fora da codificacao cega (decisao do autor: so
+   coletivo, e so aqui, nao no menu da Codificacao). Sem `agree` o botao direito continua sendo o
+   menu do navegador. O gesto e o da Reconciliacao, com a mesma regra (agreementState/
+   agreementTargetsAt) e o mesmo botao (AgreeButton): concordar aqui e la tem de dar o mesmo span e
+   o mesmo estado.
+   DISCORDAR (v1.4.62) existe porque, sem ele, a recusa era a AUSENCIA de concordancia — e ausencia
+   so e recusa se a pessoa olhou cada grifo. Com ~110 grifos de juiz por conversa, grifo esquecido
+   acontece e entraria na conta como recusa. Com o veredito explicito, o grifo sem veredito e "nao
+   visto", e a barra de progresso diz quantos faltam. SEM MOTIVO, por decisao do autor. */
 function VizDocReader({ doc, codings, codeById, codePath, memos, prefs, showHl, darkMode, onJump, containerRef, flash, agree }){
   const [pick, setPick] = useState(null);   // { start, codings:[...] } do grifo clicado
   const [menu, setMenu] = useState(null);   // { x, y, start, codings } do botao direito
+  // as discordancias do documento aberto: estado LOCAL (e nao da App), porque so esta tela as usa
+  const [disag, setDisag] = useState({ docId:null, rows:[], err:false });
   // O container e do App quando ele passa um ref (e o mesmo papel do readerRef da Codificacao:
   // e por dentro dele que o efeito do pendingJump acha o [data-start] para rolar e piscar).
   // O useRef local roda SEMPRE, mesmo sem uso — hook nao pode ficar atras de condicao.
@@ -21468,6 +21594,17 @@ function VizDocReader({ doc, codings, codeById, codePath, memos, prefs, showHl, 
   // trocar de documento volta ao TOPO e fecha o detalhe: o componente não remonta (mesma
   // posição na árvore), então sem isto o leitor abre o documento novo na rolagem do anterior
   useEffect(()=>{ setPick(null); setMenu(null); if(boxRef.current) boxRef.current.scrollTop = 0; }, [doc?.id]);
+  // relê as discordancias ao trocar de documento; depois, cada gesto proprio atualiza a lista local
+  // (nao entram no realtime: regra de ouro #11). `alive` impede resposta velha de pousar no doc novo.
+  const podeRever = !!(agree && agree.listDisagreements);
+  useEffect(()=>{
+    if(!podeRever || !doc?.id) return;
+    let alive = true;
+    agree.listDisagreements(doc.id).then(
+      rows=>{ if(alive) setDisag({ docId:doc.id, rows:rows||[], err:false }); },
+      ()=>{ if(alive) setDisag({ docId:doc.id, rows:[], err:true }); });
+    return ()=>{ alive = false; };
+  }, [doc?.id, podeRever, agree?.projectId]);
   // Escape fecha o menu; o overlay de tela cheia fecha no clique fora (mesmo desenho do menu da Codificacao)
   useEffect(()=>{
     if(!menu) return;
@@ -21482,6 +21619,28 @@ function VizDocReader({ doc, codings, codeById, codePath, memos, prefs, showHl, 
     const dc = (codings||[]).filter(c=>c.document_id===doc.id && c.span_start>=0 && c.span_end>c.span_start);
     return buildRuns(content, showHl ? dc : []);
   }, [doc, codings, showHl]);
+  const minhasDisc = disag.docId===doc?.id ? disag.rows : [];
+  // progresso: so sobre o que o leitor MOSTRA (o recorte do "Ver:" e do filtro de codigo)
+  const progresso = useMemo(()=>{
+    if(!agree || !doc) return null;
+    const docCodings = (agree.allCodings||[]).filter(c=>c.document_id===doc.id);
+    const visiveis = new Set((codings||[]).filter(c=>c.document_id===doc.id).map(c=>c.id));
+    return reviewProgress(docCodings, visiveis, agree.userId, minhasDisc);
+  }, [agree?.allCodings, agree?.userId, codings, doc, minhasDisc]);
+  // os grupos de um run: mesmo codigo e o run dentro do trecho do grupo
+  const gruposDoRun = (run)=> (progresso ? progresso.groups : [])
+    .filter(g=> g.start<=run.start && run.start<g.end && run.codings.some(c=> String(c.code_id)===String(g.codeId)));
+  const irProximoPendente = ()=>{
+    const box = boxRef.current; if(!box) return;
+    const pend = [...box.querySelectorAll('[data-rev="p"]')];
+    if(!pend.length) return;
+    const topo = box.getBoundingClientRect().top + 8;
+    // o primeiro ABAIXO do topo da janela; nao havendo, volta ao primeiro do documento
+    const alvo = pend.find(el=> el.getBoundingClientRect().top > topo + 4) || pend[0];
+    alvo.scrollIntoView({ block:'center' });
+    const run = runs.find(r=> String(r.start)===alvo.dataset.start);
+    if(run) setPick({ start:run.start, codings:run.codings });   // abre a nota do juiz, que e o que se le para decidir
+  };
 
   if(!doc) return html`<div class="empty">
     <div class="t">${t('reading.pickDoc')}</div>
@@ -21489,6 +21648,14 @@ function VizDocReader({ doc, codings, codeById, codePath, memos, prefs, showHl, 
   </div>`;
 
   return html`<div style="display:flex;flex-direction:column;height:100%;min-height:0">
+    ${podeRever && progresso && (progresso.total>0 || disag.err) && html`<div class="toolbar review-bar" style="flex:none;gap:10px;flex-wrap:wrap;align-items:center">
+      ${disag.err
+        ? html`<span class="meta" style="color:var(--danger)">${t('review.loadErr')}</span>`
+        : html`<span class="meta" style="font-variant-numeric:tabular-nums">${t('review.progress',{done:progresso.total-progresso.pending, total:progresso.total})}</span>
+          <span class="meta" style=${progresso.pending?'':'color:var(--teal-deep);font-weight:600'}>${progresso.pending ? t('review.pending',{n:progresso.pending}) : t('review.allDone')}</span>`}
+      <div class="grow"></div>
+      <button class="btn sm ghost" disabled=${!progresso.pending || disag.err} title=${t('review.next.tip')} onClick=${irProximoPendente}>${t('review.next')}</button>
+    </div>`}
     <div ref=${boxRef} class=${`pane-body scroll reader-pane theme-${prefs.theme} width-${prefs.width}`} style="flex:1;min-height:0">
       <div class="reader" style=${`font-size:${(17*prefs.scale).toFixed(1)}px`}>
         ${runs.map((run,i)=>{
@@ -21501,14 +21668,21 @@ function VizDocReader({ doc, codings, codeById, codePath, memos, prefs, showHl, 
           const top = run.codings.find(c=>codeById[c.code_id]?.is_redaction) || run.codings[run.codings.length-1];
           const code = codeById[top.code_id];
           const col = code ? codeColor(code.hue, code.depth, code.hue_deg, darkMode, code.sat) : codeColor(0,0,null,darkMode);
+          // REVISAO: `p` = ha grupo sem veredito meu aqui (e o que o "proximo pendente" procura);
+          // `j` = todos os grupos daqui tem veredito EXPLICITO meu (concordo/discordo), e o grifo
+          // esmaece. Codificacao PROPRIA nao esmaece: quem so le a tela nao ve diferenca nenhuma.
+          const gs = gruposDoRun(run);
+          const rev = !gs.length ? '' : gs.some(g=>g.state.kind==='none') ? 'p'
+            : gs.every(g=>g.state.kind==='agreed' || g.state.kind==='disagreed') ? 'j' : '';
+          const fundo = rev==='j' ? `color-mix(in srgb, ${col.tint} 35%, transparent)` : col.tint;
           // com o gesto disponivel, o tooltip diz que ele existe: botao direito e caminho invisivel
           const title = codingHoverTitle(run.codings, codePath, codingMemo) + (agree ? '\n\n' + t('reading.agree.hint') : '');
           const readerDark = prefs.theme==='dark' || darkMode;
           const border = code?.is_redaction ? `border:2px solid ${readerDark ? '#fff' : col.solid}`
             : run.codings.length>1 ? `border-bottom:2px solid ${col.solid}` : '';
           const isPick = pick && pick.start===run.start;
-          return html`<span key=${i} class=${fl} data-start=${run.start} data-c="1" title=${title}
-            style=${`cursor:pointer;background:${col.tint};${border}${isPick?';outline:2px solid var(--sky);outline-offset:-2px':''}`}
+          return html`<span key=${i} class=${fl} data-start=${run.start} data-c="1" data-rev=${rev||undefined} title=${title}
+            style=${`cursor:pointer;background:${fundo};${border}${isPick?';outline:2px solid var(--sky);outline-offset:-2px':''}`}
             onClick=${()=>{ if(window.getSelection && !window.getSelection().isCollapsed) return;
                             setPick(p=>p&&p.start===run.start?null:{ start:run.start, codings:run.codings }); }}
             onContextMenu=${agree ? (e=>{ e.preventDefault(); setPick(null);
@@ -21544,7 +21718,7 @@ function VizDocReader({ doc, codings, codeById, codePath, memos, prefs, showHl, 
       const W = 300, maxH = Math.round(window.innerHeight*0.6);
       const left = Math.max(8, Math.min(menu.x, window.innerWidth - W - 8));
       const top = Math.max(8, Math.min(menu.y, window.innerHeight - maxH - 8));
-      // fecha ANTES de gravar: e o que impede o duplo clique de criar duas concordancias
+      // fecha ANTES de gravar: e o que impede o duplo clique de criar dois vereditos
       const fazer = (fn)=>{ setMenu(null); fn(); };
       return html`<div>
         <div onClick=${()=>setMenu(null)} onContextMenu=${e=>{ e.preventDefault(); setMenu(null); }} style="position:fixed;inset:0;z-index:60"></div>
@@ -21554,6 +21728,7 @@ function VizDocReader({ doc, codings, codeById, codePath, memos, prefs, showHl, 
             const col = cc ? codeColor(cc.hue, cc.depth, cc.hue_deg, false, cc.sat) : codeColor(0,0);
             const path = codePath(g.codeId).join(' ▸ ');
             const n = new Set((g.items||[]).map(coderKey)).size;
+            const quote = doc.content.slice(g.start, g.end);
             return html`<div key=${g.codeId} class="agree-row" style="padding:8px 12px;border-bottom:1px solid var(--line-soft)">
               <div class="row" style="gap:6px;margin-bottom:6px;min-width:0">
                 <span class="swatch" style=${`background:${col.solid};flex:none`}></span>
@@ -21562,16 +21737,36 @@ function VizDocReader({ doc, codings, codeById, codePath, memos, prefs, showHl, 
               </div>
               ${/* o trecho do GRUPO, e nao o pedaco do run clicado: e exatamente o que o clique grava
                     (o run e cortado nas bordas de TODO grifo sobreposto e sai no meio da palavra) */''}
-              <div style="font-family:var(--mono);font-size:11px;color:var(--ink-soft);margin-bottom:7px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden" title=${doc.content.slice(g.start, g.end)}>"${doc.content.slice(g.start, g.end)}"</div>
-              <${AgreeButton} state=${agreementState(g, agree.userId)}
-                onAgree=${()=>fazer(()=>agree.onAgree(g.codeId, g.start, g.end, doc.content.slice(g.start, g.end)))}
-                onUndo=${id=>fazer(()=>agree.onUndo(id))} />
+              <div style="font-family:var(--mono);font-size:11px;color:var(--ink-soft);margin-bottom:7px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden" title=${quote}>"${quote}"</div>
+              <${AgreeButton} state=${agreementState(g, agree.userId, minhasDisc)}
+                onAgree=${()=>fazer(()=>agree.onAgree(doc.id, g.codeId, g.start, g.end, quote))}
+                onUndo=${id=>fazer(()=>agree.onUndo(id))}
+                onDisagree=${agree.onDisagree && (()=>fazer(async ()=>{
+                  const r = await agree.onDisagree(doc.id, g.codeId, g.start, g.end, quote);
+                  if(r) setDisag(s=> s.docId===doc.id ? { ...s, rows:[...s.rows, r] } : s); }))}
+                onUndoDisagree=${id=>fazer(async ()=>{
+                  if(await agree.onUndoDisagree(id)) setDisag(s=> ({ ...s, rows:s.rows.filter(x=>x.id!==id) })); })} />
             </div>`;
           })}
         </div>
       </div>`;
     })()}
   </div>`;
+}
+
+/* As acoes do `agree` a partir do que a App tem (v1.4.62). Mora AQUI e nao na App() para a fiacao
+   nao crescer a catraca a cada gesto novo: a App so decide QUANDO o gesto existe (coletivo, `code`,
+   fora do cego). Toda acao engole o erro e o entrega ao `onError` (o banner), devolvendo null —
+   e por null que o leitor sabe que nao deve mexer na lista local. */
+function readingAgreeActions({ store, projectId, userId, allCodings, addAgreementCoding, delCoding, loadAll, onError }){
+  const guard = fn=> async (...a)=>{ try{ return await fn(...a); }catch(e){ onError(e); return null; } };
+  return { userId, projectId, allCodings,
+    onAgree: guard(async (docId, codeId, start, end, quote)=>{ await addAgreementCoding(docId, codeId, start, end, quote); await loadAll(); return true; }),
+    onUndo: guard(async (id)=>{ await delCoding(id); await loadAll(); return true; }),
+    listDisagreements: (docId)=> store.listDisagreements ? store.listDisagreements(projectId, docId) : Promise.resolve([]),
+    onDisagree: guard((docId, codeId, start, end, quote)=> store.addDisagreement(projectId, { document_id:docId, code_id:codeId, span_start:start, span_end:end, quote })),
+    onUndoDisagree: guard(async (id)=>{ await store.deleteDisagreement(id); return true; }),
+  };
 }
 
 /* ============ VizNav — painel esquerdo da Leitura ============
@@ -23313,11 +23508,33 @@ function reparentPatch(node, base, adoptColor, markRedaction){
    proprio (o leitor), e nao pode ser efeito colateral de um botao de reconciliacao.
    created_by CRU, e nao coderKey: "eu" e sobre a SESSAO VIVA, igual ao "Consolidar tudo feito por
    mim" logo abaixo. Uma linha importada com o meu nome nao e minha (ver a nota do coderKey). */
-function agreementState(group, userId){
+/* O QUARTO ESTADO (v1.4.62): 'disagreed' — registrei que o codigo NAO se aplica a este trecho. A
+   discordancia mora em tabela propria (coding_disagreements, ver o schema.sql), casada com o grupo
+   por CODIGO + SOBREPOSICAO de trecho, como o gabarito se casa na Reconciliacao (finalFor). Sem
+   `disagreements` o estado nunca e 'disagreed' — e assim que a Reconciliacao continua igual.
+   PRECEDENCIA: own > agreed > disagreed. Codificacao propria e concordancia sao linhas em
+   `codings` e dizem mais que uma discordancia; os dois juntos so nascem de corrida, e a tela so
+   oferece desfazer num estado julgado, nunca o gesto oposto. */
+function agreementState(group, userId, disagreements){
   const meus = ((group && group.items) || []).filter(i=> i.created_by && i.created_by === userId);
-  if(!meus.length) return { kind:'none' };
-  const concordei = meus.find(i=> codingSource(i) === CODING_SOURCES.AGREEMENT);
-  return concordei ? { kind:'agreed', id:concordei.id } : { kind:'own' };
+  if(meus.length){
+    const concordei = meus.find(i=> codingSource(i) === CODING_SOURCES.AGREEMENT);
+    return concordei ? { kind:'agreed', id:concordei.id } : { kind:'own' };
+  }
+  const d = (group && userId) ? (disagreements||[]).find(x=> x.created_by && x.created_by === userId
+    && String(x.code_id) === String(group.codeId) && x.span_start < group.end && group.start < x.span_end) : null;
+  return d ? { kind:'disagreed', id:d.id } : { kind:'none' };
+}
+
+/* PROGRESSO DA REVISAO de um documento (v1.4.62): os grupos que tem trabalho de OUTRA pessoa (grupo
+   so meu nao e o que se revisa) e que o leitor esta mostrando (`visibleIds`: o recorte do "Ver:" e
+   do filtro de codigo). Pendente = estado 'none'. E o que torna a AUSENCIA de concordancia legivel
+   como recusa: com o "discordo" explicito, um grifo sem veredito e "nao visto", e nao "recusado". */
+function reviewProgress(docCodings, visibleIds, userId, disagreements){
+  const groups = reconcileGroups((docCodings||[]).filter(c=> c.layer!=='final'))
+    .filter(g=> g.items.some(i=> visibleIds.has(i.id)) && g.items.some(i=> !(i.created_by && i.created_by === userId)))
+    .map(g=> ({ ...g, state: agreementState(g, userId, disagreements) }));
+  return { groups, total: groups.length, pending: groups.filter(g=> g.state.kind==='none').length };
 }
 
 /* O MESMO GESTO NA LEITURA (set/2026): botao direito num grifo do leitor de documento inteiro.
@@ -23349,9 +23566,18 @@ function agreementTargetsAt(docCodings, shownHere, pos){
 /* Com `readOnly` os dois gestos de escrita desta tela somem (concordar e desfazer a
    concordancia). A TELA fica: e nela que se VE onde a equipe divergiu, que e o que um
    orientador abre para ler. */
-function AgreeButton({ state, onAgree, onUndo, readOnly }){
-  if(readOnly) return state.kind==='none' ? null : html`<span class="author">${state.kind==='own'?t('rec.own'):t('rec.agreed')}</span>`;
+/* `onDisagree`/`onUndoDisagree` sao opcionais: so a Leitura os passa (v1.4.62). Sem eles o botao e o
+   de sempre, e a Reconciliacao nao muda. Num estado JULGADO so se oferece desfazer — o gesto oposto
+   exige desfazer antes, de proposito: trocar de veredito em um clique esconderia que houve troca. */
+function AgreeButton({ state, onAgree, onUndo, onDisagree, onUndoDisagree, readOnly }){
+  if(readOnly) return state.kind==='none' ? null : html`<span class="author">${state.kind==='own'?t('rec.own'):state.kind==='disagreed'?t('rec.disagreed'):t('rec.agreed')}</span>`;
   if(state.kind === 'own') return html`<span class="author" title=${t('rec.own.tip')}>${t('rec.own')}</span>`;
+  if(state.kind === 'disagreed') return html`<span class="row" style="gap:6px">
+    <span class="author" style="background:color-mix(in srgb, var(--danger) 13%, transparent);color:var(--danger)" title=${t('rec.disagreed.tip')}>${t('rec.disagreed')}</span>
+    <button class="btn sm ghost" title=${t('rec.undoDisagree.tip')} onClick=${()=>onUndoDisagree && onUndoDisagree(state.id)}>${t('rec.undo')}</button></span>`;
+  if(state.kind === 'none' && onDisagree) return html`<span class="row" style="gap:6px;flex-wrap:wrap">
+    <button class="btn sm" title=${t('rec.agree.tip')} onClick=${onAgree}>${t('rec.agree')}</button>
+    <button class="btn sm" title=${t('rec.disagree.tip')} onClick=${onDisagree}>${t('rec.disagree')}</button></span>`;
   if(state.kind === 'agreed') return html`<span class="row" style="gap:6px">
     <span class="author" style="background:var(--teal-soft);color:var(--teal-deep)" title=${t('rec.agreed.tip')}>${t('rec.agreed')}</span>
     <button class="btn sm ghost" title=${t('rec.undo.tip')} onClick=${()=>onUndo(state.id)}>${t('rec.undo')}</button></span>`;

@@ -619,7 +619,7 @@ Coding creates **sets**: "these passages are about X". A link records what the c
 
 - **I agree with this code** ("Concordo com este código"): records that **you** would also apply that code to that passage. It creates a coding of yours in the **individual layer** and does not touch the reference layer — so it is the gesture of someone who **codes** (any member), while consolidating is the gesture of someone who **consolidates** (the admin). The tally rises immediately ("2 of 3" becomes "3 of 3 · consensus"), and the **undo** button next to it removes the agreement. If the passage already has a coding of yours, the card says **your coding** and offers no button: you are already in the group.
   - A coding created this way is **flagged as an agreement**, and is not confused with one you made on your own while reading the document. The distinction matters because agreeing here is deciding **while seeing the others' answers** — which serves to close the reconciliation, but is not the same evidence as two people reaching the same passage independently. It is also what makes **undo** erase only the agreement, never your original work.
-  - The same gesture is on the **right-click** over a highlight in [Reading ▸ Documents](#9-reading): agreeing while reading the whole document, without leaving the text. It records exactly the same thing (the group's passage), and this screen recognises the agreement as yours.
+  - The same gesture is on the **right-click** over a highlight in [Reading ▸ Documents](#9-reading): agreeing while reading the whole document, without leaving the text. It records exactly the same thing (the group's passage), and this screen recognises the agreement as yours. There you also have **I disagree**, which records that the code does not apply to the passage; this screen does not show disagreements yet.
 - **Bulk consolidation**: when there are pending groups, **Consolidate everything done by me (N)** and **Consolidate everything (N)** appear, for the open document or, under (All documents), for the whole project (respecting the code filter). It is irreversible; the app confirms first.
 - **Shortcut through the reader**: on the Coding tab, the admin can accept a highlight straight into the reference layer via **right-click → "Accept into the reference layer"** ("Aceitar no gabarito"), without passing through this screen.
 
@@ -662,12 +662,27 @@ research, available while you work — and where you answer "what have I already
   **code →** button ("codificar →") takes you back there.
 
 There is no coding here: selecting text applies no code. The exception, in a **collective project**,
-is **agreeing**: right-click a colleague's highlight and **I agree with this code** ("Concordo com
-este código") appears — the same gesture as in [Reconciliation](#8-reconciliation). It records a
-coding of yours, in the individual layer, on the group's passage, and **undo** removes only the
-agreement. If the passage already has a coding of yours, the menu says **your coding** and offers
-nothing. The gesture does not appear in individual projects, under blind coding, or for someone with
-the reader role. For anything else, use Coding.
+is **giving a verdict** on what someone else coded. Right-click a colleague's highlight and the menu
+offers, for each code at that point:
+
+- **I agree with this code** ("Concordo com este código"): the same gesture as in
+  [Reconciliation](#8-reconciliation). It records a coding of yours, in the individual layer, on the
+  group's passage.
+- **I disagree** ("Discordo"): records that the code does **not** apply to the passage. It deletes
+  nobody's coding and does not enter counts, charts or coding exports: it is a separate record, which
+  travels in the `.qualilab`.
+
+Once you give a verdict, the menu shows **you agree** or **you disagree**, with **undo**; to change
+your mind, undo first. If the passage already has a coding of yours, the menu says **your coding** and
+offers nothing. The gestures do not appear in individual projects, under blind coding, or for someone
+with the reader role.
+
+**To review a whole document**, the bar at the top of the reader counts the highlights by other people
+that still have no verdict of yours ("97 of 113 highlights with your verdict · 16 to go"), and the
+**next pending ↓** button takes you to the next one, with its note already open below. A highlight you
+agreed or disagreed with fades; pending ones keep their full colour. The count follows **Ver:** and the
+[code filter](#59-code-filter-only-one-codes-highlights): with the filter on, it counts only the
+ticked codes. For anything else, use Coding.
 
 ### ✎ Passages: reading the scheme
 

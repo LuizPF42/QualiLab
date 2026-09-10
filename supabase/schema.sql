@@ -1433,6 +1433,73 @@ create trigger trg_links_gc_categories after delete on public.categories
 -- schema.sql deixou de ser aplicavel de cima a baixo num banco NOVO (achado pelo pgTAP em
 -- 07/set/2026; nos dois Supabase no ar nao apareceu porque la a funcao ja existia de antes).
 
+-- ---------- DISCORDAR DE UM CODIGO (set/2026, v1.4.62) ----------
+-- O par do "Concordo com este codigo". Concordar coube em `codings` (source 'agreement') porque
+-- concordar E aplicar o codigo; DISCORDAR e julgar a codificacao de outra pessoa, e por isso nao
+-- pode ser uma linha de `codings`. Em todo o app uma linha de `codings` quer dizer "este codigo se
+-- aplica aqui": contagens, Graficos, Relatorio, QDPX, W3C, a Reconciliacao e a MASCARA DE CENSURA a
+-- contam como presenca. Uma linha negativa teria de ser filtrada em dezenas de lugares, e cada um
+-- esquecido contaria a discordancia como codificacao, calado — discordar de um codigo de censura
+-- chegaria a mascarar o texto. Tabela propria, entao, e nenhum leitor antigo a enxerga.
+-- ANCORA NO TRECHO, nao no id da codificacao discordada: e o mesmo trecho do GRUPO que a
+-- concordancia grava (reconcileGroups), sobrevive a import/merge (ids renascem) e a exclusao da
+-- codificacao alheia. SEM MOTIVO, por decisao do autor: o concordar tambem nao tem.
+create table if not exists public.coding_disagreements (
+  id           uuid primary key default gen_random_uuid(),
+  project_id   uuid not null references public.projects(id) on delete cascade,
+  document_id  uuid not null,
+  code_id      uuid not null references public.codes(id) on delete cascade,
+  span_start   int  not null,
+  span_end     int  not null,
+  quote        text not null default '',
+  created_by   uuid,
+  author_name  text not null default 'anonimo',
+  created_at   timestamptz not null default now(),
+  constraint coding_disagreements_span check (span_start >= 0 and span_end > span_start),
+  -- o documento TEM de ser do mesmo projeto (a licao do SEG-4, na forma de FK composta). E ELA quem
+  -- segura o caso, e nao a RLS: medido no pgTAP 007, com a distribuicao desligada o can_see_doc nao
+  -- confere o projeto do documento, e so a FK recusa (23503).
+  constraint coding_disagreements_doc_project_fkey foreign key (document_id, project_id)
+    references public.documents (id, project_id) on delete cascade
+);
+create index if not exists coding_disagreements_project_idx on public.coding_disagreements (project_id, id);
+create index if not exists coding_disagreements_doc_idx on public.coding_disagreements (document_id);
+
+alter table public.coding_disagreements enable row level security;
+revoke all on public.coding_disagreements from anon, authenticated;
+grant select, insert, update, delete on public.coding_disagreements to authenticated;
+
+-- LER = quem leria a codificacao do mesmo autor, no mesmo documento: o MESMO helper da
+-- codings_select (can_read_coding). Sob cego, cada um ve so as proprias discordancias; sob
+-- distribuicao, so as dos documentos atribuidos. A discordancia e juizo, e juizo alheio sob cego
+-- contamina tanto quanto codificacao alheia.
+drop policy if exists coding_disagreements_select on public.coding_disagreements;
+create policy coding_disagreements_select on public.coding_disagreements for select using (
+  public.can_read_coding(project_id, document_id, created_by)
+);
+-- ESCREVER exige a capacidade de CODIFICAR (e o mesmo gesto do "Concordo"), documento visivel e o
+-- codigo do mesmo projeto. created_by nulo ou alheio = ADMIN: e o import em coletivo, o contrato
+-- de `codings` e de `links`.
+drop policy if exists coding_disagreements_insert on public.coding_disagreements;
+create policy coding_disagreements_insert on public.coding_disagreements for insert with check (
+  public.role_can(project_id, 'code')
+  and public.can_see_doc(project_id, document_id)
+  and exists (select 1 from public.codes k where k.id = coding_disagreements.code_id and k.project_id = coding_disagreements.project_id)
+  and (created_by = auth.uid() or public.is_admin(project_id))
+);
+-- UPDATE so existe para o remap de edicao de texto (reancorar o trecho), que em projeto coletivo e
+-- ato de ADMIN. O WITH CHECK repete o USING (a linha nova e julgada tambem).
+drop policy if exists coding_disagreements_update on public.coding_disagreements;
+create policy coding_disagreements_update on public.coding_disagreements for update
+  using ( public.is_admin(project_id) ) with check ( public.is_admin(project_id) );
+-- DESFAZER: o dono da discordancia, ou o admin
+drop policy if exists coding_disagreements_delete on public.coding_disagreements;
+create policy coding_disagreements_delete on public.coding_disagreements for delete
+  using ( public.role_can(project_id, 'code') and (created_by = auth.uid() or public.is_admin(project_id)) );
+-- SEG-2 (o projeto de uma linha nao muda) entra no bloco UNICO do project_id_guard, mais abaixo.
+-- NAO entra na publicacao do realtime, de proposito: a Leitura relê as discordancias do documento
+-- aberto ao montar e depois de cada gesto proprio (regra de ouro #11: evento por linha e avalanche).
+
 -- ---------- cor personalizada de codigo (somente nivel 0 / familia) ----------
 alter table public.codes add column if not exists hue_deg int;
 -- saturacao personalizada da familia (eixo vivo<->apagado, 35-75; null = padrao 58). Propaga aos
@@ -1561,7 +1628,7 @@ revoke execute on function public.project_id_guard() from public, anon, authenti
 do $$
 declare tb text;
 begin
-  foreach tb in array array['documents','codes','codings','doc_values','memos','links','link_relations'] loop
+  foreach tb in array array['documents','codes','codings','doc_values','memos','links','link_relations','coding_disagreements'] loop
     execute format('drop trigger if exists trg_project_id_guard on public.%I;', tb);
     execute format('create trigger trg_project_id_guard before update on public.%I '
                    'for each row execute function public.project_id_guard();', tb);
