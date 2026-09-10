@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://luizpf42.github.io/QualiLab"><img src="images/logo.png" alt="QualiLab" width="160"></a>
+  <a href="https://luizpf42.github.io/QualiLab"><img src="../images/logo.png" alt="QualiLab" width="160"></a>
 </p>
 
 # QualiLab Manual
@@ -23,7 +23,7 @@ This manual teaches you to *use* QualiLab step by step. For the feature list and
 0. [The idea behind QualiLab](#0-the-idea-behind-qualilab): what it is for, which problems it attacks, how to plan your use
 1. [Core concepts](#1-core-concepts): the mental model before anything else
 2. [Getting started](#2-getting-started): accessing, choosing where to save, creating a project
-3. [The interface](#3-the-interface): header, resizing panels, keyboard and accessibility
+3. [The interface](#3-the-interface): header, status bar, command palette, panels, keyboard and accessibility
 4. [Documents](#4-documents): uploading, pasting, renaming, editing the text, viewing the original PDF and OCR
 5. [Coding passages](#5-coding-passages): the heart of the tool
 6. [Attributes (per-document fields)](#6-attributes-per-document-fields)
@@ -37,7 +37,7 @@ This manual teaches you to *use* QualiLab step by step. For the feature list and
 14. [My account](#14-my-account)
 15. [Import and export](#15-import-and-export)
 16. [Saving, backup and storage modes](#16-saving-backup-and-storage-modes)
-17. [Coding and Analyzing with AI](#17-coding-and-analyzing-with-ai): optional AI (BYOK), opt-in and transparent
+17. [Coding and Analyzing with AI](#17-coding-and-analyzing-with-ai): Auto-coding, Analyze and Explore with AI: optional (BYOK), opt-in and transparent
 18. [Troubleshooting](#18-troubleshooting)
 19. [Keyboard shortcuts](#19-keyboard-shortcuts)
 20. [Glossary](#20-glossary)
@@ -48,8 +48,8 @@ This manual teaches you to *use* QualiLab step by step. For the feature list and
 
 *Want to get a feel for the tool before diving into method? This is the shortest path to your first code — no account, no installation.*
 
-1. Open **[luizpf42.github.io/QualiLab](https://luizpf42.github.io/QualiLab)** and click **Just try it (draft)** ("Só testar (rascunho)"): a project opens right away, in this browser only.
-2. On the **Coding** tab ("Codificação"), click **paste text** ("colar texto") and paste a passage: an interview quote, a paragraph of a court ruling, a news story (or use **＋ upload** ("＋ enviar") for a `.txt`, `.pdf` or `.docx`).
+1. Open **[luizpf42.github.io/QualiLab](https://luizpf42.github.io/QualiLab)** and click **Just try it (draft)** ("Só testar (rascunho)"). QualiLab asks whether the project will have **AI features** ("recursos de IA"); to start, **Continue without AI** ("Continuar sem IA") is enough (you can turn it on later). The project opens right away, in this browser only.
+2. On the **Coding** tab ("Codificação"), click **paste text…** ("colar texto…") and paste a passage: an interview quote, a paragraph of a court ruling, a news story (or use **＋ add ▾** ("＋ enviar ▾") for a `.txt`, `.pdf` or `.docx`, or **try it with an example corpus** ("experimentar com um corpus de exemplo") to see ready-made highlights and charts).
 3. **Select** with the mouse a sentence that catches your attention, **right-click** it and choose **+ Create new code** ("+ Criar novo código"). Name the theme (e.g. *access to justice*) and click **Create and apply** ("Criar e aplicar"). Done — your first coded passage.
 4. Code a few more passages: **repeat the same code** where the theme returns, **create others** where new themes appear.
 5. Open the **Reading** tab ("Leitura"), go to **Passages** ("Trechos") and click your code: every passage you marked appears together, side by side. That is your analysis starting to take shape.
@@ -99,7 +99,7 @@ Think of these as **goals** that guide your use — not features, but what you a
 
 A word about transparency, because the term is loaded. Here it does **not** mean accountability, nor a promise of "replicating" an interpretive analysis: that would measure qualitative research with a yardstick that is not its own. The idea is simpler and more in your favor: **showing the evidence next to your reading of it strengthens what you argue.** When the reader can walk through the passages that support a finding, your argument gains credibility — without you giving up a comma of your interpretation.
 
-And always with the precautions qualitative research demands: meaning is situated and constructed, not everything can or should be exposed, and the confidentiality of sources comes before anything else. That is why, in QualiLab, transparency is **optional, gradual and yours**: you decide what to show, to whom and when, and passages marked as **redaction** come out masked by default. The tool provides the means; the judgment is yours.
+And always with the precautions qualitative research demands: meaning is situated and constructed, not everything can or should be exposed, and the confidentiality of sources comes before anything else. That is why, in QualiLab, transparency is **optional, gradual and yours**: you decide what to show, to whom and when, and passages marked as **redaction** come out masked in the transparency reports and in what goes to the AI (the working files, such as `.qualilab`, QDPX and CSV, carry the full text). The tool provides the means; the judgment is yours.
 
 ### Sensitive data and responsibility
 
@@ -111,7 +111,7 @@ Before loading any material, decide **how much of the tool you can use**, becaus
 
 ### How to plan your use (a minimal roadmap)
 
-1. **State the goal** of the research in a **project memo** ([section 11](#11-memos)). It guides the coding — and it also guides the AI.
+1. **State the goal** of the research in a **project memo** ([section 11](#11-memos)). It guides the coding. To guide the AI, write the **Memo for the AI** (or tick the project memo in ⚙ Configure Prompt).
 2. **Choose where the data lives** ([section 16](#16-saving-backup-and-storage-modes)) according to the sensitivity of the material and whether there is a team (re-read *Sensitive data and responsibility*, above).
 3. **Choose the project type**, individual or collective ([section 2](#2-getting-started)).
 4. **Bring in the documents** and fill in the **attributes** you will want to compare later ([sections 4](#4-documents) and [6](#6-attributes-per-document-fields)).
@@ -127,7 +127,7 @@ Two honest consequences follow: **bugs are to be expected** (it is young softwar
 
 ### A word about the AI inside QualiLab
 
-Consistent with the above, QualiLab incorporates AI as an **assistant, never as a substitute for the researcher's judgment**, under three non-negotiable rules. **Opt-in:** AI ships off by default; nothing is sent to a model without you asking, analysis by analysis. **Transparency:** you can see the exact prompt, the AI returns **proposals** you approve or reject one by one, and it is required to **cite the source** (passage and document) of every observation. **Control:** passages marked as redaction are masked before any sending, and you use the project's key/model or **your own**. The AI speeds up reading and organizing; interpretation and decision remain yours. Details in [section 17](#17-coding-and-analyzing-with-ai).
+Consistent with the above, QualiLab incorporates AI as an **assistant, never as a substitute for the researcher's judgment**, under three non-negotiable rules. **Opt-in:** AI ships off by default; nothing is sent to a model without you asking, analysis by analysis. **Transparency:** you can see the exact prompt, the AI returns **proposals** you approve or reject one by one, and it is required to **cite the source** (passage and document) of every observation. **Control:** passages marked as redaction are masked before any sending, and you use **your own** key and model (or a local model, via Ollama). The AI speeds up reading and organizing; interpretation and decision remain yours. Details in [section 17](#17-coding-and-analyzing-with-ai).
 
 ---
 
@@ -181,10 +181,12 @@ In an **individual project**, everything goes straight to the reference layer. I
 
 ### Roles (collective project)
 - **Admin**: defines the attribute scheme, edits the reference layer, manages members, sets family colors and **redaction**, edits document **text**, **imports** material and performs the **structural and destructive** operations: **deleting** documents or codes and **merging** codes (which affect the whole team's work).
-- **Member**: codes in their own layer, fills in their own attribute answers, **creates and renames** codes, and writes memos.
+- **Member**: codes in their own layer, fills in their own attribute answers, **adds documents**, **creates and renames** codes, edits their **definition**, writes memos and uses the AI panels (when the project has AI).
 - **Read-only**: reads the whole project — documents, codes, the team's codings, attributes, charts, Reconciliation and Report — and **writes memos**. They do not code, do not answer attributes, do not touch the scheme, do not upload documents and do not import; the AI screens do not appear for them. This is the role for a **supervisor**, a **reviewer**, or the colleague you ask for a second reading: their opinion comes back to the team through the memos, inside the project. **Blind coding** and **assignment** restrictions apply to them exactly as they apply to a member.
 
-> **How to assign it:** in **Project ▸ Members** ("Projeto ▸ Membros"), the admin clicks **make read-only** on that person's row (and **give coding back** to undo it). They join the project with the usual access code. A project is never left without an admin: the button refuses to demote the last one. And the **study's configuration** — the AI instructions, the stance, the saved prompts and the words ignored in the word cloud — is stored as memos but is **not** commentary: it stays with whoever coordinates the project.
+> These are the **default** values. In a collective project, whoever creates it decides item by item what members and read-only participants can do, and the study design (such as blind coding): see [What each role can do](#what-each-role-can-do-decided-at-creation).
+
+> **How to assign it:** in **Project ▸ Members & admins** ("Projeto ▸ Membros & administradores"), the admin clicks **make read-only** on that person's row (and **give coding back** to undo it). They join the project with the usual access code. A project is never left without an admin: the button refuses to demote the last one. And the **study's configuration** — the AI instructions, the stance, the saved prompts and the words ignored in the word cloud — is stored as memos but is **not** commentary: it stays with whoever coordinates the project.
 
 > These restrictions are enforced by the **server**, not merely hidden in the interface: a member cannot (not even by calling the API directly) write to the reference layer, delete documents/codes, edit shared text, remove a code's redaction or import. Those actions require the admin role.
 
@@ -204,9 +206,9 @@ In an **individual project**, everything goes straight to the reference layer. I
 | **Installed (offline)** | [Install it as an app](#install-as-an-app-and-open-without-internet) — on Windows, **through Edge** | Opens without internet, own window, double-click on `.qualilab` files |
 | **Single file** | [Download the `index.html`](https://github.com/LuizPF42/QualiLab/releases/download/alpha/index.html) and double-click it | No internet and nothing to install; sensitive data |
 
-Once the single file is downloaded, it opens straight in the browser (`file://`) with no server needed. It only fetches the external libraries from the internet **the first time**. (If your browser policy blocks it, serve it with `python -m http.server 8000` in the file's folder.)
+Once the single file is downloaded, it opens straight in the browser (`file://`) with no server needed, and it opens without internet. Only when you use PDF, DOCX, spreadsheets, OCR or semantic search does it download the corresponding library (the browser usually keeps it in cache). (If your browser policy blocks it, serve it with `python -m http.server 8000` in the file's folder.)
 
-> **Chrome or Edge** are recommended: only they support **local File mode** (saving a `.qualilab` visible on disk) and the **automatic folder backup**. Firefox and Safari work, but fall back to draft mode (`localStorage`).
+> **Chrome or Edge** are recommended: only they support **local File mode** (saving a `.qualilab` visible on disk) and the **automatic folder backup**. Firefox and Safari work in **cloud** or **draft** mode (`localStorage`); only file mode is unavailable in them.
 
 ### 2.2. The entry screen
 
@@ -220,21 +222,29 @@ The first screen offers three paths (with the logo at the top):
 
 **Created an account? The next step is a code.** On signup, QualiLab sends a **code by e-mail** and opens the **"Confirm your signup"** screen ("Confirme seu cadastro"): type **all the digits** of the code there and click **Confirm and sign in** ("Confirmar e entrar"). There is no link to click in the e-mail, and that is on purpose — corporate mailbox security filters tend to open links on their own and burn them before you do, which used to produce "invalid or expired link" for people who had never clicked. The code is **valid for one hour**. If it does not arrive, check **spam** and use **Resend code** ("Reenviar código"); once resent, only the code in the **most recent** e-mail counts (the previous one stops working). If your account was already confirmed, **"I already confirmed — let me sign in"** ("Já confirmei — quero entrar") goes back to login.
 
+When you create a project (draft, file or cloud), QualiLab asks whether it will have **AI features** ("recursos de IA"): **No AI** ("Sem IA"; the default, and the AI screens do not appear) or **Turn AI on** ("Ativar IA"). You can change it later ([17.7](#177-turning-ai-off-in-this-project)).
+
+When the browser allows installing, the entry screen also shows **Install QualiLab** ("Instalar o QualiLab") (on Windows with Chrome, **Install through Edge** ("Instalar pelo Edge") is highlighted): see [Install as an app](#install-as-an-app-and-open-without-internet).
+
+The interface opens in Portuguese if the browser is in Portuguese, and in English otherwise; switch it in **My account ▸ Language** ("Minha conta ▸ Idioma") ([section 14](#interface-language)).
+
 A violet button **"Connect to my Supabase"** ("Conectar ao meu Supabase") — on the entry screen and on the login — points the app at your **own Supabase server** before logging in: that is where your collective projects will live.
 
-> A file or session already opened **reopens on its own** next time. If the app has no cloud configured, "Sign in to the cloud" does not appear and you start straight in file/draft.
+> A cloud or file project already opened **reopens next time**; if the browser asks again for permission to the file, the entry screen shows **Reopen *name*.qualilab** ("Reabrir *nome*.qualilab"), and one click is enough. If the app has no cloud configured, "Sign in to the cloud" does not appear and you start straight in file/draft.
 
 ### 2.3. Choose or create a project
 
-After login (or directly, with no cloud) comes **"My projects"** ("Meus projetos"):
+After login comes **"My projects"** ("Meus projetos"):
 
 - **Open an existing project**: click it in the list, or click **open** ("abrir").
 - **Create a project** ("Criar projeto"):
   1. Confirm **your display name**.
   2. Type the **project name**.
   3. Choose the type: **Individual Project** (solo use, everything goes straight to the reference layer, no reconciliation) or **Collective Project** (several researchers, with reconciliation).
-  4. Click **Create** ("Criar").
-- **Join with a code** ("Entrar com código"): to join someone else's collective project, paste the **access code** (e.g. `9F2A1C`) and click **Join** ("Entrar").
+  4. Decide the **AI features** ("Recursos de IA"): the project is born with **No AI** (see [17.7](#177-turning-ai-off-in-this-project)).
+  5. *(Collective)* Choose the **study type** (open team, inter-coder reliability, split the corpus, panel of judges) and adjust the **What each role can do** matrix ("O que cada papel pode fazer"). Decide before inviting anyone ([section 13](#what-each-role-can-do-decided-at-creation)).
+  6. Click **Create** ("Criar"). In a collective project, the project hub opens right after, already on the invites.
+- **Join with a code** ("Entrar com código"): to join someone else's collective project, paste the **access code** or **invite** code (10 characters, e.g. `9F2A1C7B40`) and click **Join** ("Entrar").
 - **Local file** (Chrome/Edge): **New file…** ("Novo arquivo…") creates a `.qualilab` on disk; **Open file…** ("Abrir arquivo…") reopens an existing one. Ideal for sensitive data (no cloud, no network).
 
 > The project type can be changed later (admin). Converting **Collective → Individual is irreversible**: it collapses all codings into a single author and keeps only the attributes' reference layer.
@@ -257,37 +267,40 @@ Once a project is open, the **header** has two lines:
 | Tab | What for |
 |---|---|
 | **Coding** ("Codificação") | Read the document and apply codes/attributes |
-| **Reconciliation** ("Reconciliação") | *(collective project only)* consolidate the reference layer |
+| **Reconciliation** ("Reconciliação") | *(collective project only; hidden under blind coding and in focus mode)* consolidate the reference layer |
 | **Reading** ("Leitura") | Read the whole document, or every passage of one code |
-| **Charts** ("Gráficos") | Frequencies, word cloud, co-occurrence etc. |
 | **Memos** | Analytic notes |
-| **Scheme** ("Esquema") | Organize codes and attributes in bulk |
+| **Scheme** ("Esquema") | Organize codes and attributes in bulk *(hidden in focus mode)* |
+| **Charts** ("Gráficos") | Frequencies, word cloud, co-occurrence etc. |
 | **Auto-coding** ("Auto-codificação") | Repeat coding (no AI) and, *(optional, BYOK)*, AI proposing coding/attribute filling/organization and inducing a attribute's definition; you approve |
 | **Analyze with AI** ("Analisar com IA") | *(optional, BYOK)* analytic conversation about material you select |
 | **Explore with AI** ("Explorar com IA") | *(optional, BYOK; **experimental**)* a conversation where the AI **fetches** the material on its own, instead of receiving a pre-cut selection |
 | **Report** ("Relatório") | Export reports and transparency packages |
 
-> The three **AI** screens are **opt-in**. Details in [section 17](#17-coding-and-analyzing-with-ai).
+> The three **AI** screens are **opt-in**: with AI turned off in the project (the default), they do not appear, including Repeat Coding, which uses no AI. They also do not appear for anyone with the read-only role. Details in [section 17](#17-coding-and-analyzing-with-ai).
 
 **Second line**
-- The **project pill**, e.g. `rascunho · My Project · individual ▾`. The prefix shows the storage mode (`arquivo` = file / `nuvem` = cloud / `nuvem pessoal` = personal cloud / `rascunho` = draft) and the **color** reinforces where the data lives: neutral = draft (this browser), green = file on your disk, blue = cloud (default server), violet = cloud on your own Supabase, amber = cloud with no connection. Hover for the explanation (in draft mode it includes the % of browser storage used); clicking opens the **project management hub**.
-- The project's **AI badge**, right after the pill: **green** when the AI features are available here, **red** when they are turned off. Clicking it offers to switch, with confirmation (see [17.7](#177-turning-ai-off-in-this-project)).
+- The **project pill**, e.g. `rascunho · My Project · individual ▾`. The prefix shows the storage mode (`arquivo` = file / `nuvem` = cloud / `nuvem pessoal` = personal cloud / `rascunho` = draft) and the **color** reinforces where the data lives: neutral = draft (this browser), green = file on your disk, blue = cloud (default server), violet = cloud on your own Supabase, amber = cloud with no connection. Hover for the explanation (in draft mode it includes the % of browser storage used); clicking opens the **project management hub**. In the cloud, the pill also carries the access code.
+- The project's **AI badge**, right after the pill: a **green** ring when the AI features are turned on; **barred in red** when they are turned off or restricted to admins (hover to see which). Only admins switch it, with confirmation; for everyone else, clicking explains the state (see [17.7](#177-turning-ai-off-in-this-project)).
 - Your **name**, **clickable in every mode** (cloud, draft and file) → My account. In offline mode, it is also the door to configure your AI key/model, local Ollama included (see [section 17](#17-coding-and-analyzing-with-ai)).
+- *(Admin, collective project)* **admin / ● focus** ("admin / ● foco"): focus mode hides Reconciliation, the Scheme and the **View:** filter, so you code like any member (your permissions do not change, only your screen).
+- *(Member, with document assignment)* the **N document(s) of yours** pill ("N documento(s) seu(s)").
 - **switch project** ("trocar projeto") / **sign out** ("sair") (cloud mode).
-- **export ▾** ("exportar ▾") and **import ▾** ("importar ▾") (they appear when there are documents).
+- **export ▾** ("exportar ▾") (when there are documents) and **import ▾** ("importar ▾") (always, except for anyone with the read-only role).
 
 **Status bar (footer)**
 The system's state lives in a thin footer, always in the same place:
 - **✓ saved HH:MM** (file/draft) or the cloud state: `✓ nuvem em dia` (cloud up to date), `offline`, and —
   when the cloud fails — **`N alterações aguardando envio`** (N changes waiting to upload), clickable to retry right away
-  (see [section 16](#16-saving-backup-and-storage-modes)).
+  (see [section 16](#16-saving-backup-and-storage-modes)). If local saving
+  fails, **✕ not saved · download backup** ("✕ não salvo · baixar backup") appears, also clickable.
 - In draft mode, the **% of storage** used (turns amber near the limit).
 - The **commands** button (the Ctrl+K palette) and the **shortcuts** button (the ? key map).
 - On the right corner, the **version** in use (e.g. `v1.0.0`). **Quote this number when reporting a problem:** without it there is no way to know which version your browser loaded, since the app updates itself on reload. What changed in each version is in the [`CHANGELOG.md`](../CHANGELOG.md) *(in Portuguese)*.
 - When a **new version** of the app has already been downloaded, the notice `nova versão
   disponível · recarregar` (new version available · reload) appears here — one click applies it.
 
-Right below the header, **notice banners** may appear: errors (red), import in progress (with a progress bar) and the save-failure warning (see [section 16](#16-saving-backup-and-storage-modes)).
+Right below the header, **notice banners** may appear: in draft mode, the amber one reminding you that the data stays only in this browser (with **Save as a file** ("Salvar como arquivo") and **Connect to the cloud** ("Conectar à nuvem")); errors (red); the import summary; import in progress (with a progress bar); save failure; and changes the cloud rejected (see [section 16](#16-saving-backup-and-storage-modes)).
 
 **Command palette (Ctrl+K).** On any screen, **Ctrl+K** opens a search box that takes you
 straight to a **document** (type part of its name), to a **screen** or to an **action** (download
@@ -309,7 +322,7 @@ once per screen) and **survives reloading**, per browser. There are three groups
 |---|---|
 | Navigation and filters (left) | Reading, Charts, Memos, Reconciliation, Report |
 | Work panel (right) | Coding, Scheme |
-| AI configuration (left) | the four AI screens |
+| AI configuration (left) | the Auto-coding tabs and Analyze with AI |
 
 ### Keyboard and accessibility
 
@@ -319,22 +332,23 @@ once per screen) and **survives reloading**, per browser. There are three groups
 - **Dialog windows**: on opening, focus enters the window; **Tab** and **Shift+Tab** cycle **inside
   it**, without leaking to the page behind; **Esc** closes; and on closing, focus returns to the button that
   opened it.
-- **Narrow screens** (phones): a notice says you can **read and consult**, but not
-  code. It is not a layout limitation: applying a code depends on selecting text and opening the
-  **right-click menu**, which does not exist on touch. To work, use a computer.
+- **Narrow screens** (phones, below ~720 px): a small-screen notice appears. You can **read
+  and consult**, but not work comfortably: the reader and the panels do not fit side by side. On a
+  tablet, selecting a passage by touch opens the floating code bar. To really work,
+  use a computer.
 
 ---
 
 ## 4. Documents
 
 ### Uploading files
-On the **Coding** tab, at the top of the reader, click **＋ upload** ("＋ enviar") and choose one or more `.txt`, `.md`, `.docx` or `.pdf` files. The text is extracted and displayed for reading.
+On the **Coding** tab, at the top of the reader, click **＋ add ▾ → upload file(s)…** and choose one or more `.txt`, `.md`, `.docx` or `.pdf` files. The text is extracted and displayed for reading.
 
 - **PDF**: the text goes through a geometric *reflow* that **detects columns** (two-column articles stop coming out scrambled), **removes repeated headers, footers and page numbers**, reassembles paragraphs and fixes end-of-line hyphenation. Tables are **not** reconstructed, and a **scanned** PDF (image only, no text layer) needs **OCR** (see below).
 - **DOCX**: the structure becomes clean text (headings, paragraphs, lists with nesting by indentation, and tables as rows/columns), without dirtying the content with artificial markers. Rich formatting (bold, color) does not become style in the reader: the focus is the content to be coded.
 
 ### Paste text
-Use the **paste** button (next to ＋ upload) to create a document from copied text, no file needed.
+Under **＋ add ▾ → paste text…** you create a document from copied text, no file needed (in an empty project, the **paste text…** button appears in the middle of the reader).
 
 ### Switch documents, rename, and edit the text
 - The **button with the document's name**, at the top of the reader, opens the project's document list:
@@ -345,7 +359,7 @@ Use the **paste** button (next to ＋ upload) to create a document from copied t
   > The **import order** tends to look random: in a `.qdpx` it is the order of the entries inside
   > the package, not alphabetical. That is why the list comes **sorted by name** already.
 - Actions on the open document live in the **⋯** menu (to the right of the search): **OCR**, **edit title and text** and **delete document**.
-- **🗑 delete document** removes the open document and all its codings. There is no undo, so confirm carefully.
+- **🗑 delete document** removes the open document and all its codings. There is no Ctrl+Z; but, with the automatic mirror on, QualiLab saves the project before the deletion (see [Project mirrors](#project-mirrors-restore-point)). In a collective cloud project, deleting a document is for the administrator.
 - **✏ edit title and text** opens the open document's edit mode: there you fix the **title** and the **extracted text**, useful when a PDF comes in dirty (a glued-together passage, a leftover footer, a broken line). **Save** writes both; **Cancel** discards.
 - When you save a text edit, **the existing highlights are automatically re-anchored** to the new positions. If some coding falls exactly on the stretch you changed, the app warns before saving (those highlights may need checking).
 - Editing is for **local cleanup**; corruption of the whole document (for example, an old PDF that comes out entirely without spaces) is a case for OCR, not hand fixing.
@@ -355,7 +369,7 @@ Use the **paste** button (next to ＋ upload) to create a document from copied t
 When the document came from a **PDF**, the reader gains a **▤ original** button (toggling with **≡ texto**): it shows the **actual PDF page**, with zoom and page navigation. Over the page, your highlights are drawn in the code's color; selecting a passage on the PDF page codes just like the text reader (right-click → code menu).
 
 
-For a **scanned PDF** (image only), use **◫ OCR** (in the **⋯** menu): the app rebuilds the text page by page, reusing native text where it exists and reading by OCR (offline, in your browser) where it is an image, with a progress bar and a cancel option. You can also run **OCR on an area**: in original mode, the **▭ area OCR** button lets you drag a rectangle over a piece of the page; the recognized text opens in an **editable** box for you to fix before applying and coding. The first run downloads the OCR model (~15 MB) and the process is slow (a few seconds per page).
+For a **scanned PDF** (image only), use **◎ OCR: read scanned pages** (in the **⋯** menu): the app rebuilds the text page by page, reusing native text where it exists and reading by OCR (offline, in your browser) where it is an image, with a progress bar and a cancel option. You can also run **OCR on an area**: in original mode, the **▭ area OCR** button lets you drag a rectangle over a piece of the page; the recognized text opens in an **editable** box for you to fix before applying and coding. The first run downloads the OCR model (~15 MB) and the process is slow (a few seconds per page).
 
 
 > **Extraction quality signal.** Documents whose extraction probably went wrong (empty, a PDF with no spaces between words, broken glyphs `�■□`, or low-confidence OCR) get a **⚠︎** before their name in the document list (hover to read the reason) and an amber **⚠︎ extração** pill in the reader. It is a prompt to **check and clean** (via **✏ edit**) or run **OCR** before coding that document.
@@ -369,10 +383,10 @@ A spreadsheet (`.csv`/`.xlsx`) becomes **one document per row**, and a **Zotero 
 
 ## 5. Coding passages
 
-This is the **Coding** screen ("Codificação"): reader on the left, **Attributes** and **Codes** panels on the right.
+This is the **Coding** screen ("Codificação"): reader on the left and, on the right, a panel with three tabs: **⍞ Attributes**, **✎ Code** (the code tree) and **▤ Memos**.
 
 ### 5.1. Creating codes
-In the **Codes** panel (right) you create and organize the labels. A new code is born loose at the **top level** ("Hierarquia 0") and receives passages right away. You can create subcodes, rename and delete. You can also create a code **at the moment of applying** it (see below).
+On the **✎ Code** tab (right) you create and organize the labels. A new code is born loose at the **top level** ("Hierarquia 0") and receives passages right away. You can create subcodes, rename and delete. You can also create a code **at the moment of applying** it (see below).
 
 **When a code becomes a family.** The moment it gets its first subcode. If it had no passages yet, the change is silent — there is nothing to decide. If it **already had** them, QualiLab opens a notice asking where those passages should go, because a family does not receive them (the rule is in [Concepts](#code-and-family-one-rule-only)). You have two ways out:
 
@@ -383,8 +397,13 @@ The second exists so you are not forced to triage 80 passages in the middle of a
 
 **Right-clicking a code** (in the Coding panel) opens a menu with **✎ Edit code** ("Editar código": name,
 color, saturation, redaction) and **＋ Subcode here** ("Subcódigo aqui"). It is the way to work on a code **without leaving the
-coding**: with a passage selected, a left click *applies* the code, so this menu is the
-only way to reach the editor without first undoing the selection.
+coding**: with a passage selected, a left click *applies* the code, so this menu (or
+the ✎ and ＋ buttons next to each code in the apply menu) is the way to reach the editor without undoing the
+selection.
+
+**The code's entry.** When you select a code on the ✎ Code tab, its memo (the definition: what
+counts and what does not) appears right below, read-only; to edit it, use the ▤ Memos tab. With a
+passage already selected, clicking the code applies it, so check the entry before selecting.
 
 > **Research tip.** Let the codes *emerge* from the material (the **inductive** approach, where themes are born from reading) or apply a prior theoretical scheme (the **deductive** approach). Both are valid; what matters is being aware of which one you are using. Avoid creating a code for every sentence: if a label appears only once, ask whether it is really a theme or just a detail. And, when creating a code, note in a **[memo](#11-memos)** what it *includes and excludes*: that is, in practice, your **codebook**, which keeps the coding consistent over time and across people.
 
@@ -396,10 +415,12 @@ only way to reach the editor without first undoing the selection.
 2. On release, a **floating bar** appears glued to the selection: your **recent** codes,
    one click each, and the **apply code ▾** button ("aplicar código ▾"), which opens the full menu. Or **right-click**
    the selection — it is the same menu, by either path.
-3. In the menu, click the desired code; it is applied on the spot.
-   - Or click **+ Create new code** ("+ Criar novo código"): type the name, choose whether it is a **new family (level 0)** or a **subcode of "…"**, and click **Create and apply** ("Criar e aplicar").
-   - With a passage selected, the **1 to 9** keys apply one of the **recent** codes (the numbered
-     list is in the Codes panel, on the right).
+3. In the menu, click the desired code; it is applied on the spot. The **search code...** field filters
+   by the whole path; **↑ ↓** move and **Enter** applies. With the passage selected, clicking the code
+   on the **✎ Code** tab also applies it.
+   - Or click **+ Create new code** ("+ Criar novo código"): type the name, choose **(at the top)** or **inside "…"** and click **Create and apply** ("Criar e aplicar"). Creating inside a code that already has passages turns it into a family (see 5.1).
+   - With a passage selected, the **1 to 5** keys apply one of up to five **recent** codes
+     from the session (the numbered list is on the ✎ Code tab, on the right).
 
 > When applied, the highlight appears in the text in the code's color. **The line under the highlight only appears when more than one code overlaps the same passage.** It is the overlap signal. A passage with a single code is only tinted, no line, to avoid clutter.
 
@@ -415,10 +436,14 @@ You do **not** need to select again:
 1. **Right-click the existing highlight.**
 2. In the menu, under **Remove code** ("Remover código"; admins in a collective project see "Reject / remove code"), click the code you want to take off.
 
-> In a collective cloud project, you only remove **your own** codings. You cannot erase another researcher's highlight. (In an individual project, everything is yours.)
+In the same menu, **⇄ Change code** swaps the highlight's code without redoing the selection, and **Annotate passage
+(analytic note)** opens that passage's note. Shortcut: click the highlight and press **Delete**; a notice appears
+with **undo**.
+
+> In a collective cloud project, you only remove **your own** codings (the administrator can reject anyone's). You cannot erase another researcher's highlight. (In an individual project, everything is yours.)
 
 ### 5.4. Undo (Ctrl+Z)
-**Ctrl+Z** undoes the **last coding applied** in the current session (up to the last 50). It works only on the Coding tab and outside text fields. There is no undo for other actions (deleting a document, attribute, code etc.). Those are final.
+**Ctrl+Z** undoes the **last coding applied**, or the last one removed with **Delete**, in the current session (up to the last 50). It works only on the Coding tab and outside text fields. Deleting a document, attribute or code, merging and splitting have no Ctrl+Z; with the automatic mirror on, QualiLab saves the project before them and you can restore it (see [Project mirrors](#project-mirrors-restore-point)).
 
 ### 5.5. Redaction (masking sensitive passages)
 A code can be flagged as **redaction** (in the [Scheme](#7-scheme), by an admin). Passages with that code get a **closed box** in the reader (redaction's color is black, and the border is what distinguishes it from a common highlight) and come out masked as `[trecho censurado]` ("[redacted passage]") in the **transparency outputs** ([Report](#12-report)) and in what goes to the **AI** ([section 17](#17-coding-and-analyzing-with-ai)) — useful for publishing while keeping names/sensitive data hidden.
@@ -432,7 +457,7 @@ A code can be flagged as **redaction** (in the [Scheme](#7-scheme), by an admin)
 ### 5.6. Reading controls
 The bar at the top of the reader adjusts **reading only** (preference saved in the browser):
 - **A-** / **A+**: decreases/increases the font.
-- **⬍ / ⬌**: toggles the column width (default ↔ narrow reading column).
+- **⬌ / ⬍**: toggles between the narrow reading column (~65 characters, the default) and the full column.
 - **◔ / ◗ / ◕**: reader theme: light / sepia / dark (independent of the interface theme).
 
 ### 5.7. Searching (in the document and across the project)
@@ -449,7 +474,7 @@ The two searches share three options (the small buttons next to the field):
 
 #### Similar terms (≈ terms)
 
-The fourth button, **≈ termos**, solves the problem of *not knowing which words the material uses for the subject*. You type the idea you are looking for (one or two words are enough) and it shows **the words of your own corpus** that live in the same field of meaning, with how many times each one appears.
+In **search +** there is a fourth button, **≈ terms**, which solves the problem of *not knowing which words the material uses for the subject*. You type the idea you are looking for (one or two words are enough) and it shows **the words of your own corpus** that live in the same field of meaning, with how many times each one appears.
 
 Searching for *"fear of losing the job"*, it suggests **dread**, **dismissal**, **insecurity** — words the normal search would never find from what you typed, because they share no letters with your query.
 
@@ -463,19 +488,19 @@ The suggestions include **expressions of up to five words**, not just single wor
 
 > **Nothing leaves your computer.** Unlike the AI screens, this talks to no server: the model runs inside the browser and the vocabulary stays on your machine. It works offline after the first download and needs no API key.
 
-### 5.8. The "Ver:" filter (whose work is shown)
-The **Ver:** ("View:") selector controls **whose** highlights and attribute answers are displayed. It appears in collective projects and also when there is more than one coder (e.g. imported data with several authors). In a collective project, the options are:
-- **Individuais (todos)** — everyone's individual work: overlays every researcher's highlights. You keep working normally here: the highlights you apply are yours, and each attribute field shows and edits **your** answer, with your colleagues' answers and the reference layer right below, read-only.
-- **Minhas** — mine: your work only.
+### 5.8. The "View:" filter (whose work is shown)
+The **View:** ("Ver:") selector controls **whose** highlights and attribute answers are displayed. It appears in collective projects and also when there is more than one coder (e.g. imported data with several authors). In a collective project, the options are:
+- **Individuais (todos)** — everyone's individual work: overlays every researcher's highlights and the reference layer's. You keep working normally here: the highlights you apply are yours, and each attribute field shows and edits **your** answer, with your colleagues' answers and the reference layer right below, read-only.
+- **Minhas** — mine: your work only (in the attributes, the reference layer's value, if any, appears below the field, read-only).
 - **(each researcher's name)**: one colleague's work (read-only).
 - **Final / gabarito** — the reference layer: the consolidated layer (read-only here; it is edited in Reconciliation).
 
-In an individual project with more than one imported author, the selector shows **All coders** and each author's name.
+In an individual project with more than one imported author, the selector shows **All coders** and each author's name. Under **blind coding** the selector does not appear (in its place is the **blind coding** pill).
 
 > **Why are some views read-only?** When the screen shows *someone else's* answer — under **(a researcher's name)** or under **Final / gabarito** —, editing there would write under *your* identity: the field would show one value and change another. That is why those two are read-only, and the reference layer is edited in Reconciliation. Under **Individuais (todos)** and **Minhas** the field is always yours, so both are editable.
 
 ### 5.9. Code filter (only one code's highlights)
-**Ver:** chooses *whose* highlights are shown; the code filter chooses *which codes*. On the reader bar, click the **funnel** (next to **Ver:**), search by name and **tick one or more codes**: the document then shows **only their highlights** — with two ticked, one's *and* the other's, to compare where each appears. The list stays open while you tick; close it with **Done**, **Esc** or a click outside. Ticking a **family** includes all of its subcodes. The number next to each code is how many codings it has **in the open document**.
+**View:** chooses *whose* highlights are shown; the code filter chooses *which codes*. On the reader bar, click the **funnel** (next to **View:**), search by name and **tick one or more codes**: the document then shows **only their highlights** — with two ticked, one's *and* the other's, to compare where each appears. The list stays open while you tick; close it with **Done**, **Esc** or a click outside. Ticking a **family** includes all of its subcodes. The number next to each code is how many codings it has **in the open document**.
 
 - With the filter on, the funnel becomes a **chip** with the code's colour and name (or "2 codes", "3 codes"… when there are several). Click it to change the selection; **clear**, at the foot of the list, shows everything again. In Reading the chip also has an **✕** to clear directly; in Coding, where the bar is tighter, it does not.
 - There is **one** filter for Coding and for [Reading ▸ Documents](#9-reading): chosen in one, it applies in the other.
@@ -502,7 +527,9 @@ In the **Attributes** panel (right, on the Coding tab) you answer the attributes
 
 > **Why Number and Yes/No are types, and not text.** What you write in a text field the app cannot sort or sum, and on export it reaches MAXQDA or NVivo as text — unsortable there too. As a Number, the value leaves the `.qdpx` typed (Integer or Float, depending on the values) and comes back typed; as Yes/No, it leaves as Boolean. What is **not** a number is not accepted in the field (it turns red): that is what guarantees the whole column keeps working as numbers.
 
-Each attribute can have a **description/instruction** and enable two special options: **"Não informado"** (not informed) and **"Outros"** (others, with a free value).
+Each attribute can have a **description/instruction** and enable special options: **"Não informado"** (not informed; all types) and, in the types with a list of values, **"Outros"** (others, with a free value).
+
+Click an attribute's name to **collapse it**: the row keeps showing the value (or "—"). If you have not answered yet and there is a reference layer, the collapsed row shows the reference value **in italics**; the field stays empty on purpose, because it is **your** answer.
 
 > **The description is the coding instruction, and a full entry fits in it.** The field is multiline and line breaks are preserved wherever it appears, so it is worth writing there what actually governs the answers: the definition in one sentence, what counts as each value, the boundaries and tie-breakers, what to ignore. It pays off because it is **a single text for both evaluators**: it is what the human coder reads when answering and what goes into the AI screens' prompt. If you have already answered some documents and do not know how to write that entry, the [Define Attribute](#1723-define-attribute-write-the-instruction-from-what-you-already-answered) tab proposes one from your own answers.
 
@@ -510,8 +537,8 @@ Each attribute can have a **description/instruction** and enable two special opt
 
 ### Who defines them and who fills them in
 - **Defining the scheme** (creating attributes, types, options): admin, under **"Manage attribute scheme"** ("Gerenciar esquema de categorias", inside the Attributes panel) or on the **Scheme → Attributes** tab.
-- **Filling in**: any member answers **their own** version; the admin sets the **reference layer**.
-- The displayed answer follows the **Ver:** filter (viewing another researcher's is read-only).
+- **Filling in**: whoever can code (per the project's [rules matrix](#what-each-role-can-do-decided-at-creation)) answers **their own** version; the read-only role does not fill in; the admin sets the **reference layer**.
+- The displayed answer follows the **View:** filter (viewing another researcher's is read-only).
 
 ---
 
@@ -534,10 +561,10 @@ The description field is **resizable**: drag its bottom-right corner to write th
 ### 7.2. Codes (bulk reorganization)
 Designed for whoever finished an open coding with **hundreds of loose codes** and wants to organize them. It is a tree with **checkboxes**; the right panel changes with the selection:
 
-- **Single click on one code** (on the row, not the box) → edit name/color + **Promote to top level** ("Promover a Hierarquia 0", if it is a subcode) + **⑃ Split into subcodes** ("Dividir em subcódigos", if it has passages).
+- **Single click on one code** (on the row, not the box) → edit the name (and, if you are an admin, the color and redaction of the top-level family) + **Promote to top level** ("Promover a Hierarquia 0", if it is a subcode) + the **Links** section + **⑃ Split into subcodes** ("Dividir em subcódigos", if it has passages).
 - **Check 2 or more** (boxes) → two actions appear:
   - **Group** ("Agrupar"): the checked ones become **children** of a code (an existing one, chosen from the list, or a new one). They stay separate, they only gain a parent. They adopt the parent's color. If the chosen parent already has passages of its own, it becomes a family and QualiLab first asks where those passages should go.
-  - **Merge** ("Mesclar"): pick a **survivor** (suggestion = the most frequent); the others' codings are **reassigned** to it and the others are deleted. **Irreversible**: it confirms first. The merged codes' children are preserved (they pass to the survivor).
+  - **Merge** ("Mesclar"): pick a **survivor** (suggestion = the most frequent); the others' codings are **reassigned** to it and the others are deleted. **Administrators only** (it reassigns everyone's codings). There is no Ctrl+Z; the app confirms first and, with the automatic mirror on, mirrors the project beforehand. The merged codes' children are preserved (they pass to the survivor).
 - **Reorder among siblings**: drag by the **⠿** handle (it only reorders within the same parent; to change parents, use **Group**).
 
 #### Splitting a code into subcodes
@@ -578,7 +605,7 @@ When editing a code, the admin can:
 ### 7.5. Links: saying what one code has to do with another
 Coding creates **sets**: "these passages are about X". A link records what the code alone does not say — the structure **between** the sets: *Judicial activism* **contradicts** *Deference to the legislature*, *Collective moral damage* **is part of** *Civil liability*, *Economic reasoning* **is associated with** the attribute *Ruling outcome*.
 
-**Where it lives.** With a code selected, the **Links** section shows up in the right-hand panel, below the code editor. For an attribute, it sits inside its card, in **Scheme ▸ Attributes**, folded into a "Links" you open.
+**Where it lives.** With a code selected, the **Links** section shows up in the right-hand panel, below the code editor. For an attribute, it sits inside its card, in **Scheme ▸ Attributes**, folded into a "Links" you open (only the administrator, who is the one who edits the attribute scheme, sees attribute links there).
 
 **How to create one.** Click **+ connect** and answer: the **relation** (the type of arrow), the **other side** (a code or an attribute, in the same search box) and, if you want, a **comment** saying why you linked the two. Your name goes with it.
 
@@ -593,7 +620,7 @@ Coding creates **sets**: "these passages are about X". A link records what the c
 | `↔` | holds both ways |
 | `·` | no defined direction (association) |
 
-**Relations are your study's vocabulary.** The project already comes with six — *is associated with*, *is part of*, *is cause of*, *contradicts*, *is a*, *is property of* —, the same ones other qualitative analysis tools use. You create your own by picking **new relation…** in the selector: give it a name (*depends on*, *precedes*, *justifies*) and say whether it has a direction (from here to there), holds both ways, or has no direction at all. Renaming a relation applies to **every** link that uses it.
+**Relations are your study's vocabulary.** The project already comes with six — *is associated with*, *is part of*, *is cause of*, *contradicts*, *is a*, *is property of* —, the same ones other qualitative analysis tools use. You create your own by picking **new relation…** in the selector: give it a name (*depends on*, *precedes*, *justifies*) and say whether it has a direction (from here to there), holds both ways, or has no direction at all. A relation you create stays in the project's vocabulary; for now there is no way, on screen, to rename or delete it.
 
 > ⚠️ **A link is an annotation, not a measurement.** It records what **you** observe or suppose, under your name. It counts nothing in the corpus and proves no association. What measures association in your data is **Co-occurrence** and **Code × attribute**, in [Charts](#10-charts). Both readings coexist, and it is good that they do: the link says what you claim, the chart says what the material shows — and the gap between them is often the finding.
 
@@ -601,7 +628,7 @@ Coding creates **sets**: "these passages are about X". A link records what the c
 
 **When you change the scheme.** Deleting a code or an attribute takes along the links where it was one of the ends — the warning says how many before you confirm. When you **merge** codes, links move to the surviving code; those that would become duplicates (or a code linked to itself) are dropped, and QualiLab tells you how many.
 
-**Who can.** Reading is for any member. Creating and deleting follows the same permission as **creating and editing codes** in the project's rules matrix ([13](#13-collaboration)). Renaming or deleting a **relation** is for the administrator, because it changes the vocabulary of the whole project.
+**Who can.** Reading code links is for any member. Creating and deleting follows the same permission as **creating and editing codes** in the project's rules matrix ([13](#13-collaboration)).
 
 **In the files.** In the `.qualilab` links go out and come back whole. In the `.qdpx` (REFI-QDA) they leave as `<Link>`, which is the standard's own form, and QualiLab also **reads** the `<Link>` elements of projects coming from other tools. Two things stay out of the `.qdpx` and are named in the export warning: the passage marked as evidence for a link (the standard has nowhere to point at it) and, on import, links **between passages**, which QualiLab does not do yet.
 
@@ -611,16 +638,16 @@ Coding creates **sets**: "these passages are about X". A link records what the c
 
 ![Reconciliation, Codes tab, document ENT-01: each group gathers the codings that overlap on the same code (the code's path, who coded it and the passage). Here they are all already "in the final layer", with the option to remove them; when they are not yet, "Consolidate into final" appears.](manual-img/14-reconciliacao.png)
 
-*Collective projects only — if yours is individual, skip to [section 9](#9-reading).* This is where the team consolidates the **reference layer** from each researcher's individual work. The left column always has both sections, **Attributes** and **Codes**, each with two lists that open and close: **Documents** (reconcile everything in one document, or **(All documents)** for the whole project at once) and **Attributes** or **Codes** (reconcile one attribute, or one code, across all documents). The lists start collapsed, and a collapsed list shows next to its title what is selected in it. Clicking an item takes you to its section.
+*Collective projects only, and it does not appear for anyone under blind coding. If your project is individual, skip to [section 9](#9-reading).* This is where the team consolidates the **reference layer** from each researcher's individual work. The left column always has both sections, **Attributes** and **Codes**, each with two lists that open and close: **Documents** (reconcile everything in one document, or **(All documents)** for the whole project at once) and **Attributes** or **Codes** (reconcile one attribute, or one code, across all documents). The lists start collapsed, and a collapsed list shows next to its title what is selected in it. Clicking an item takes you to its section.
 
-**Attributes.** For each document and attribute, you see the **reference answer** (which the admin sets) and, below it, each researcher's answer with **✓** (same as the reference) or **✗** (different). In (All documents) mode, you pick one attribute and consolidate it document by document.
+**Attributes.** For each document and attribute, you see the **reference answer** (which the admin sets) and, below it, each researcher's answer with **✓** (same as the reference), **✗** (different) or **·** (no reference yet). With no reference, each attribute says whether the coders **agree** or **differ** among themselves (a blank answer does not count). Under **Your answer**, any coder records or changes their own, without touching the reference layer. In (All documents) mode, you pick one attribute and consolidate it document by document.
 
 **Codes.** Each **group** gathers the codings that **overlap** on the same code, with the passage and who coded it. The **"N of M · consensus"** badge shows how many coders marked that passage; when everyone agrees, the card is highlighted. You **consolidate** each group into the final layer (**Consolidar no final →**) or, if it is already there, you can **remove it from final**.
 
 - **I agree with this code** ("Concordo com este código"): records that **you** would also apply that code to that passage. It creates a coding of yours in the **individual layer** and does not touch the reference layer — so it is the gesture of someone who **codes** (any member), while consolidating is the gesture of someone who **consolidates** (the admin). The tally rises immediately ("2 of 3" becomes "3 of 3 · consensus"), and the **undo** button next to it removes the agreement. If the passage already has a coding of yours, the card says **your coding** and offers no button: you are already in the group.
   - A coding created this way is **flagged as an agreement**, and is not confused with one you made on your own while reading the document. The distinction matters because agreeing here is deciding **while seeing the others' answers** — which serves to close the reconciliation, but is not the same evidence as two people reaching the same passage independently. It is also what makes **undo** erase only the agreement, never your original work.
   - The same gesture is on the **right-click** over a highlight in [Reading ▸ Documents](#9-reading): agreeing while reading the whole document, without leaving the text. It records exactly the same thing (the group's passage), and this screen recognises the agreement as yours. There you also have **I disagree**, which records that the code does not apply to the passage; this screen does not show disagreements yet.
-- **Bulk consolidation**: when there are pending groups, **Consolidate everything done by me (N)** and **Consolidate everything (N)** appear, for the open document or, under (All documents), for the whole project (respecting the code filter). It is irreversible; the app confirms first.
+- **Bulk consolidation** (admin): when there are pending groups, **Consolidate everything I made (N)** and **Consolidate everything (N)** appear, for the open document or, under (All documents), for the whole project (only the code chosen in the **Codes** list, if there is one). It is irreversible; the app confirms first.
 - **Shortcut through the reader**: on the Coding tab, the admin can accept a highlight straight into the reference layer via **right-click → "Accept into the reference layer"** ("Aceitar no gabarito"), without passing through this screen.
 
 The result becomes the **Final** layer, used in reports and charts when you choose the reference layer.
@@ -632,7 +659,7 @@ The result becomes the **Final** layer, used in reports and charts when you choo
 This is the screen for **re-reading what was coded** — in the material or in the scheme — in two modes, under the
 sub-tabs **▤ Documents** ("Documentos") and **✎ Passages** ("Trechos"). On Coding you mark; here you read the result. The
 screen opens in **Documents**; coming from a click in [Charts](#10-charts), it opens straight in the
-**Passages** of the clicked code. The [**Ver:** filter](#58-the-ver-filter-whose-work-is-shown) sits on the
+**Passages** of the clicked code. The [**View:** filter](#58-the-view-filter-whose-work-is-shown) sits on the
 sub-tab bar and applies to both modes: it filters the document's highlights and the code's passages.
 
 > This tab was called **Visualização** (Visualization) until version 1.4.6. The name changed because "visualization" is what
@@ -647,7 +674,8 @@ Pick a document on the left and read **the whole document**, with the highlights
 they were made. It is the same reading the [Interactive Report](#12-report) delivers to whoever evaluates the
 research, available while you work — and where you answer "what have I already done here?".
 
-- **Hovering** a highlight shows the code and who applied it; **clicking** opens a strip below
+- **Hovering** a highlight shows the code, who applied it and the start of the analytic note, if
+  there is one; **clicking** opens a strip below
   with the code's path, the layer (individual or reference) and the passage's **analytic note**, plus
   a shortcut to open that passage in Coding.
 - The **highlights** checkbox ("grifos") turns them all off at once, to read the clean text.
@@ -658,8 +686,8 @@ research, available while you work — and where you answer "what have I already
 - The list on the left has the same filter/sort/group as the reader, plus each document's
   **passage count** — which also makes it a map of what has **not** yet been coded. Grouped by
   a attribute, it works as a first sketch of **folders**.
-- The document shown here is the same one you have open in Coding, and the
-  **code →** button ("codificar →") takes you back there.
+- On opening, Reading shows the document that is open in Coding; picking another one in the list does not
+  change Coding. The **code →** button ("codificar →") opens in Coding the document you are reading.
 
 There is no coding here: selecting text applies no code. The exception, in a **collective project**,
 is **giving a verdict** on what someone else coded. Right-click a colleague's highlight and the menu
@@ -675,12 +703,13 @@ offers, for each code at that point:
 Once you give a verdict, the menu shows **you agree** or **you disagree**, with **undo**; to change
 your mind, undo first. If the passage already has a coding of yours, the menu says **your coding** and
 offers nothing. The gestures do not appear in individual projects, under blind coding, or for someone
-with the reader role.
+who cannot code in this project (the read-only role, or a member without
+"code" in the [role matrix](#what-each-role-can-do-decided-at-creation)).
 
 **To review a whole document**, the bar at the top of the reader counts the highlights by other people
 that still have no verdict of yours ("97 of 113 highlights with your verdict · 16 to go"), and the
 **next pending ↓** button takes you to the next one, with its note already open below. A highlight you
-agreed or disagreed with fades; pending ones keep their full colour. The count follows **Ver:** and the
+agreed or disagreed with fades; pending ones keep their full colour. The count follows **View:** and the
 [code filter](#59-code-filter-only-one-codes-highlights): with the filter on, it counts only the
 ticked codes. For anything else, use Coding.
 
@@ -702,10 +731,10 @@ typography, grouped by document. This is where you answer "what did I call X?".
 
 Features:
 - **Identical passages, a single card**: when **more than one researcher** marks the **same passage with the same code**, it appears **once**, with a **name chip per researcher** below, instead of repeated cards. Each chip carries an **×** to remove that specific marking.
-- **Analytic note (●)**: a chip with **●** signals that the passage has an analytic note; click the **●** to **read the note right there**. (The note is written through the reader's context menu, under "Annotate passage".)
-- **Open in the reader**: click the **passage's text** to jump to it on the Coding tab, **at the exact spot of the highlight**: it flashes for a moment so you can find it.
+- **Analytic note (●)**: a chip with **●** signals that the passage has an analytic note; click the **●** to **read the note right there**. (The note is written by right-clicking in the **Coding** reader, under "Annotate passage (analytic note)", or on the Memos tab.)
+- **Open in the document**: click the **passage's text** (or the document's name) to open it in the **Documents** sub-tab, right here, scrolling to the highlight, which flashes so you can find it. To go to Coding, click the highlight and use **open it in Coding →**. With the **highlights** box unchecked, the document opens at the top.
 - **Attribute filter**: restricts to documents matching certain attributes.
-- **Co-occurrence**: shows passages where two codes appear together.
+- **Co-occurrence with:** shows only the passages where the selected code overlaps another one (or two more, with **and also…**).
 - **Accept into the reference layer** *(admin, collective project)*: consolidates an individual passage straight into the final layer, without going to Reconciliation.
 
 ---
@@ -734,7 +763,8 @@ The **Charts** tab ("Gráficos") is an explorer: filters on the left, one chart 
   for color blindness). It applies to the bar tabs and **is exported along in the SVG/PNG**.
 - **Cloud**: a tree with checkboxes selects which codes feed the vocabulary (checking a code checks its subtree); below it, the list of **ignored words** (see further down).
 - **Co-occurrence**: two selectors choose the **X** (columns) and **Y** (rows) axes; empty = the 12 most frequent.
-- **Ver:** and **Top:** (10/25/50/All) refine the cut.
+
+At the top, next to the tabs, are **View:** and **Top:** (10/25/50/All; in the Cloud, **Words:**), which refine the cut.
 
 > **From the chart to the passages.** Click a **bar** (Frequency, Coverage, Agreement) or a **cell** (Co-occurrence, Code × attribute) to open **Reading** right at that code: the attribute filter and the "Ver:" cut travel along, so the passages shown match the chart's number.
 
@@ -762,11 +792,11 @@ The **Memos** tab holds **analytic notes** — free text you attach to a project
 - **Project memo**: a general project note (free scratchpad; see the AI note below).
 - **Documents**: one note per document.
 - **Codes**: one note per code (its definition, application rule etc.).
-- **Annotated passages** ("Trechos anotados"): the note anchored to a specific **highlight** (the section appears when there is one). It is written via **right-click on the highlight → "Annotate passage (analytic note)"** ("Anotar trecho"), or here in Memos. In collective research it is **shared**: you can annotate any colleague's highlight you can see (the menu shows whose highlight it is), and the team reads and edits the same note. Under **blind coding** this does not apply, because you do not see others' highlights, nor their notes. *(For now the annotated highlight gets no mark in the coding reader; you find the note again in this section or in the [Interactive Report](#121-interactive-report-ati).)*
+- **Annotated passages** ("Trechos anotados"): the note anchored to a specific **highlight** (the section appears when there is one). It is written via **right-click on the highlight → "Annotate passage (analytic note)"** ("Anotar trecho"), or here in Memos. In collective research it is **shared**: you can annotate any colleague's highlight you can see (the menu shows whose highlight it is), and the team reads and edits the same note. Under **blind coding** this does not apply, because you do not see others' highlights, nor their notes. *(The annotated highlight gets no mark of its own in the reader, but the note appears when you hover over it and, in Reading ▸ Documents, when you click it; you can also find it again in this section or in the [Interactive Report](#121-interactive-report-ati).)*
 
 In the [Interactive Report (ATI)](#121-interactive-report-ati), the **passage note** is what appears when clicking a highlight, and the **code note** appears in the legend (as a tree): that is how the two feed active transparency.
 
-**AI sections** (they appear with AI on, below the previous ones):
+**AI sections** (below the previous ones). **Memo for the AI** and **Saved prompts** disappear when AI is turned off in the project; **Saved conversations** and **Project memory** always stay, because they are a record of what happened.
 
 - **Memo for the AI** ("Memo para a IA"): the project context written **for the AI**, injected into prompts by default. It is **different** from the ordinary *Project memo*, which is **no longer sent automatically** to the AI (it became a free scratchpad): if you want the AI to take the research goal into account, write it here.
 - **Saved prompts** ("Prompts salvos"): your **prompt library** (the ones you save on the [Analyze with AI](#173-analyze-with-ai-assisted-reading-of-the-material) screen): open, rename or delete each one.
@@ -775,7 +805,7 @@ In the [Interactive Report (ATI)](#121-interactive-report-ati), the **passage no
 
 ### 11.1. Project history (the audit trail)
 
-The last entry in the column, outside the AI sections, is the **Project history** ("Histórico do projeto"): the **audit trail of the process**. It is a list of sentences, newest first, with what **changed** the project, each with date and author: file imports and merges, code merges and splits, deletions (document, code, attribute, clear content), text edits with highlight re-anchoring, bulk applications (Repeat Coding and the AI screens), Reconciliation consolidations, changes of project type and settings, members joining and leaving (in the cloud) and exports. There is a **filter by operation** and a **text search**: type a code's name to see what has already happened to it. **Export CSV** downloads the whole list (readable sentence + detail as JSON).
+The last entry in the column, outside the AI sections, is the **Project history** ("Histórico do projeto"): the **audit trail of the process**. It is a list of sentences, newest first, with what **changed** the project, each with date and author: file imports and merges, code merges and splits, deletions (document, code, attribute, clear content), text edits with highlight re-anchoring, bulk applications (Repeat Coding and the AI screens), Reconciliation consolidations, changes of project type and settings, creating and restoring mirrors, renaming the project, members joining, leaving and changing role (in the cloud) and exports. There is a **filter by operation** and a **text search**: type a code's name to see what has already happened to it. **Export CSV** downloads the whole list (readable sentence + detail as JSON).
 
 What the history does **not** do, written at the top of the screen: it **does not undo** anything (it is a record, not a time machine; Ctrl+Z still undoes only the last coding), it **does not keep the content** of what was deleted (only names and counts: no passage of the corpus travels in it) and it **does not record** reading or navigation. Coding applied one by one does not enter either: it is already recorded in the coding itself, with author and date.
 
@@ -787,7 +817,7 @@ It **travels in the `.qualilab`** and **survives "Clear content"**; re-importing
 
 ![The Report tab: in the left column, the three outputs (Interactive Report/ATI, Standard Report and Web Annotation/W3C) and the authorship-hiding option; on the right, the live preview of the interactive report.](manual-img/08-relatorio.png)
 
-The **Report** tab ("Relatório") is the **publication hub**. In the left column you choose among three outputs. In a collective project, all of them respect the chosen **layer** (final reference or individual); in all of them, **redacted** passages come out masked. The transparency outputs (ATI and W3C) additionally offer **anonymize authorship**, which omits the coders' names — useful for publishing without exposing the team. *Careful: that does not anonymize the documents' content. See [Sensitive data and responsibility](#0-the-idea-behind-qualilab).*
+The **Report** tab ("Relatório") is the **publication hub**. In the left column you choose among three outputs. In a collective project, the Standard Report follows the **View:** cut chosen in the panel; the Interactive Report (ATI) and W3C use the reference layer when it exists and, without one, the individual layers. In all of them, **redacted** passages come out masked. The transparency outputs (ATI and W3C) additionally offer **Hide authorship (blind review)**, which omits the coders' names — useful for publishing without exposing the team. *Careful: that does not anonymize the documents' content. See [Sensitive data and responsibility](#sensitive-data-and-responsibility).*
 
 ### 12.1. Interactive Report (ATI)
 A **self-contained HTML page** (no server): each document appears with its highlighted passages clickable. Clicking a **highlight** opens, in a side panel, **that passage's note** (the *per-passage analytic note* of [section 11](#11-memos)); a passage without its own note shows "no note", and the code's definition sits in the legend. **Document titles** and the **legend's codes** open, in the same panel, the document memo and the code memo. The **code legend comes as a tree** (same hierarchy as the [Scheme](#7-scheme)), collapsible and filterable, to scale to large projects; documents come collapsed. It is the equivalent of the QDR's **Annotation for Transparent Inquiry (ATI)** *overlay*, but hostable by you (e.g. GitHub Pages, Dataverse as an attachment).
@@ -818,7 +848,7 @@ In a real test case, the document body came out with the firm's name masked whil
 1. the **laboratory**, where you work with the material as it is (real names in the titles, everything at hand so you can find your way);
 2. the **publication copy**, which is what goes out.
 
-To create the copy: **export ▾ → .qualilab**, then create a new project (**switch project → new**) and **import ▾ → .qualilab** into it. Now clean the copy:
+To create the copy: **export ▾ → .qualilab**, then create a new project (in the cloud: **switch project → Create a project**; in file mode: project pill → **Close this file** → **New in a file**) and **import ▾ → .qualilab** into it. Now clean the copy:
 
 - **rename the documents** to labels without identification (`ENT-01`, `GF-02`): the key linking label to person stays **outside** QualiLab, with you;
 - review the **attribute values**: swap "Such, Such & Associates" for "large firm", or whatever your research design requires;
@@ -835,7 +865,7 @@ Then export from the **Report** tab. The ATI and W3C previews are **live**: what
 
 ### 12.5. AI use statement
 
-In the left panel there is the **"include information about AI use"** checkbox, **on by default**, next to the blind-review one. With it checked, the three outputs — Standard Report, Interactive Report and Web Annotation — carry a short block with **what your project records**.
+In the left panel there is the **"Include information about AI use"** checkbox, **on by default** (it applies to all three outputs). With it checked, the three outputs — Standard Report, Interactive Report and Web Annotation — carry a short block with **what your project records**.
 
 It **reports, it does not promise**, and that is not wordsmithing: a sentence like "this project declares not using AI since such date" presupposes there was use before, which is false in the most common case — the project born without AI. The block says two things, and keeps them separate:
 
@@ -867,35 +897,38 @@ When the project declares that **attributes are study-design metadata** (see [bl
 *(Collective project, cloud mode.)*
 
 ### Inviting people
-Open the **project pill** (header) → there is the **access code**. Share it; whoever receives it joins via **"My projects" → Join with a code** ("Entrar com código"). In cloud mode, the code also shows in the pill itself (`nuvem · Project · CODE · coletivo ▾`). Whoever joins with the access code always joins as a **researcher**.
+Open the **project pill** (header) → there is the **access code**. Share it; whoever receives it joins via **"My projects" → Join with a code** ("Entrar com código"). In cloud mode, the code also shows in the pill itself (`nuvem · Project · CODE · coletivo ▾`). Whoever joins with the access code always joins as a **member**.
 
 #### Role-locked invite
 *(Admin only, cloud mode.)* When the person should join with a different role — a co-supervisor as **admin**, a reviewer as **read-only** — use the **Role-locked invite** card, just below the access code. Pick the role, click **Generate invite** and share the code that appears: whoever joins with it already gets that role, with nothing for you to adjust afterward.
 
 - **Email (optional)**: fill it in and the invite is **locked** to that person — only someone joining with that email address can use the code. Anyone else gets the usual "invalid code" message, which is deliberate: the app never reveals who an invite is meant for.
-- **QualiLab sends no email at all.** Delivery is yours: copy the code and send it through whatever channel you like, or click **open email** — that only composes the message (with the code and the role already written) and opens **your own** outbox, in your own mail program. Nothing goes through the server.
+- When you pick the role, the card shows what whoever joins with it will be able to do in this project: the same list that goes in the email, generated from the [role matrix](#what-each-role-can-do-decided-at-creation).
+- **QualiLab sends no email at all.** Delivery is yours: copy the code and send it through whatever channel you like, or, if the invite has an email, click **open email** — that only composes the message (with the code and the role already written) and opens **your own** outbox, in your own mail program. Nothing goes through the server.
 - Invites are **single-use** by default; tick **reusable** to let the same code serve several people (useful for a whole class joining with the same role).
 - Invites are listed in the card, with the role, the recipient and how many times they have been used. **Revoke** (🗑) invalidates the code for anyone who has not joined yet.
 
 ### Managing members and the project
-Still in the project pill, the admin can: see the **member list** and change roles (**admin/member**), **rename**, **clear content**, **delete** the project, change its **type** and adjust the **connection** (Supabase credentials).
+Still in the project pill, the admin can: see the **member list** and change roles (**admin**, **member** or **read-only**; the project is never left without an admin), **rename**, **clear content**, **delete** the project, change its **type** and adjust the **connection** (Supabase credentials).
 
 ### What each role can do (decided at creation)
 *(Collective project in the cloud.)* When creating a collective project, the form asks for the **study type** and shows a two-part **matrix**. **Roles**: what someone joining as **read-only** and as **member** can do (comment, code and answer attributes, add documents, create and edit codes, edit definitions, use the AI panels), ticked = can; admins do everything. **Study design**: the decisions with a name of their own, blind coding, restrictive assignment and attributes as study-design metadata, ticked = on. The four study types (**open team**, **inter-coder reliability**, **split the corpus**, **panel of judges**) only fill the matrix in one go; it stays editable and shows what the type did. What belongs to admins by construction (scheme, reference layer, deletions, imports, team, mirrors) is folded below, so you can see what is **not** at stake.
 
-Why at creation: what someone has already seen cannot be unseen. A project born open that only later turns blind coding on has already contaminated whoever joined before. With the matrix decided up front, the **invite** already carries the rules in force, and the invite e-mail lists what that role will be able to do, generated from the matrix itself. The **server** enforces every line (not the screen): a member without "code" gets a refusal from the database, not just a hidden button. It can be changed later, in the project hub (**Assign documents → What each role can do**); the change enters the project history. Left untouched, behaviour is as always: members do everything, read-only participants read and comment.
+Why at creation: what someone has already seen cannot be unseen. A project born open that only later turns blind coding on has already contaminated whoever joined before. With the matrix decided up front, the **invite** already carries the rules in force, and the invite e-mail lists what that role will be able to do, generated from the matrix itself. The **server** enforces every line (not the screen): a member without "code" gets a refusal from the database, not just a hidden button. It can be changed later, in the project hub (**Assignment and secrecy → Assign documents… → How this project controls access**); the change enters the project history. Left untouched, behaviour is as always: members do everything, read-only participants read and comment.
+
+Unticking **Edits code definitions** for both roles **locks the definitions**: only the administration edits the codes' definitions (reading stays open), the hub shows the **definitions locked** pill, and turning it on or off enters the history. The **Uses the AI panels** line is disabled when the project's AI is turned off or restricted to the administration.
 
 ### Assigning documents and blind coding
-*(Admin only, collective cloud project.)* In the project hub, the **Assignment and confidentiality → Assign documents…** card ("Distribuição e sigilo → Distribuir documentos…") opens a **documents × researchers matrix**, where you mark who codes what. A **C** badge shows who has **already coded** each document; the **automatic rotation** button assigns everything at once (1 or more people per document). On its own, the matrix is just a **work plan**: it becomes a rule when you flip one of the two switches (**independent** of each other):
+*(Admin only, collective cloud project.)* In the project hub, the **Assignment and secrecy → Assign documents…** card ("Distribuição e sigilo → Distribuir documentos…") opens a **documents × researchers matrix**, where you mark who codes what. A **C** badge shows who has **already coded** each document; the **automatic rotation** button assigns everything at once (1 or more people per document). On its own, the matrix is just a **work plan**: it becomes a rule when you tick, in the **Study design** part of the access matrix at the top of the same dialog, one of the two decisions (**independent** of each other):
 
 - **Restrictive assignment** ("Distribuição restritiva"): each researcher only **sees** the documents assigned to them. It serves to **divide the corpus** (each person minds their share, nobody codes in duplicate). A document assigned to no one stays with the administrators only; switched off, everyone sees the whole corpus.
 - **Blind coding (*true blind*)** ("Codificação cega"): each researcher only **sees their own** codings and answers. For **inter-coder reliability**, assign the **same** document to two people (it becomes double-blind). While it is on, the reference layer is also hidden from members (revealing it midway contaminates); turn it off to reconcile together. Administrators keep seeing everything.
-  - **Attributes as study-design metadata** (switch right below blind coding): turn it on when the attributes of your study describe the material (platform, sampled profile, topic, service line) and are not a coder's answer. With it on, the **attributes' reference values** stay visible to members even under blind coding; without it, a blind coder opens the document with every attribute blank and no way of knowing what material it is. **Only attributes change**: the reference layer of passage codings, and the analytical note of whoever coded, stay hidden under blind coding, always. Think before turning it on (knowing which platform a passage came from can bias the reading) and know that the [Report](#127-study-design) will declare this choice.
+  - **Attributes as study-design metadata** (third line of Study design; only available with blind coding on): turn it on when the attributes of your study describe the material (platform, sampled profile, topic, service line) and are not a coder's answer. With it on, the **attributes' reference values** stay visible to members even under blind coding; without it, a blind coder opens the document with every attribute blank and no way of knowing what material it is. **Only attributes change**: the reference layer of passage codings, and the analytical note of whoever coded, stay hidden under blind coding, always. Think before turning it on (knowing which platform a passage came from can bias the reading) and know that the [Report](#127-study-design) will declare this choice.
 
 > Both rules are enforced by the **server**, not merely hidden on screen: the member cannot reach through the API what is hidden (not the passage's text, not the PDF, not the **analytic note** written on a passage they cannot see). For a member in a blind project, the **"Ver:"** filter and the **Reconciliation** tab disappear. Assignment changes show up on **reload** (not in real time). It is a **collective-cloud-only** feature (it depends on multiple researcher accounts) and does **not** travel in the `.qualilab`.
 
 ### Send to the cloud
-If the active project is a **draft** or a **file**, the pill shows **"Send to the cloud"** ("Enviar para a nuvem"): it creates a new cloud project and copies everything (documents, attributes, codes, codings, memos) at once, with no manual `.qualilab` export/import.
+If the active project is a **draft** or a **file**, the pill shows **"Send to the cloud"** ("Enviar para a nuvem"): it creates a new cloud project and copies everything (documents, attributes, codes, codings, memos) at once, with no manual `.qualilab` export/import. The form asks for the project type and, if it is collective, shows the same role matrix. The **original PDFs** are only uploaded if you tick **Also upload the original PDFs**.
 
 ### Real time (and its limits)
 **Codings** and **attribute answers** sync live among collaborators. Changes to the **attribute scheme** or the **code tree**, though, only appear to others on a **page reload**.
@@ -911,14 +944,14 @@ Click **your name** in the header to open **My account** ("Minha conta"; it work
 - Change your **password** (accounts with e-mail only; hidden in draft/file modes).
 - See **all your projects** in one place, with direct actions: open, rename (admin), leave or delete (admin).
 - Configure your **AI key/model** (BYOK), including **local Ollama** (see [section 17](#17-coding-and-analyzing-with-ai)).
-- Choose the **interface language** (Portuguese or English) — see below.
+- Choose the **interface language**: automatic (from the browser), Portuguese or English (see below).
 - **Sign out** (cloud mode only).
 
 ### Interface language
 
 QualiLab exists in **Portuguese and English**, and the default comes from **your browser**: a
 browser set to Portuguese opens in Portuguese, any other language opens in English. You do not
-have to configure anything — the picker in **My account** is there for choosing otherwise.
+have to configure anything: the picker in **My account** is there for choosing otherwise, or going back to automatic.
 Switching **reloads the page**.
 
 Three things worth knowing:
@@ -946,13 +979,13 @@ if you work in English, you hand in an English appendix.
 
 ## 15. Import and export
 
-The **export ▾** ("exportar ▾") and **import ▾** ("importar ▾") menus sit in the header (they appear when there are documents).
+The menus sit in the header. **export ▾** ("exportar ▾") appears when there are documents; **import ▾** ("importar ▾") always appears (except for the read-only role), and the two spreadsheet items that work on existing documents only appear when there are already documents.
 
 ### Export (the "exportar ▾" menu)
 | Item | What it is |
 |---|---|
-| **.qualilab (full project, native)** | Everything (documents, attributes, values, codes, codings, memos, AI conversations and memories, and the project history) to reopen in QualiLab. It is the project's complete backup |
-| **JSON (project)** | The complete project with layers and authors |
+| **.qualilab (full project, native)** | Everything (documents and original PDFs, attributes, values, codes, codings, memos, links, disagreements, AI conversations and memories, and the project history) to reopen in QualiLab. It is the project's complete backup |
+| **JSON (project)** | Documents, attributes and values, codes and codings (with layer, author and page), in a script-readable JSON. It does not carry memos, AI, history or links: for backup, use the `.qualilab` |
 | **CSV (coded passages)** | One passage per row (document, code, layer, author) |
 | **CSV (attributes per document)** | One document per row, with the attribute values. **It has a way back**: fill it in the spreadsheet and re-import, see [below](#filling-attributes-in-a-spreadsheet-and-bringing-them-back-step-by-step) |
 | **QDPX (ATLAS.ti / MAXQDA / NVivo)** | The REFI-QDA standard; prefers the final layer when consolidated |
@@ -962,13 +995,15 @@ The **export ▾** ("exportar ▾") and **import ▾** ("importar ▾") menus si
 
 > **Passages with more than one code in QDPX.** When **you** apply two codes to the same passage, the QDPX carries **one quotation with both codes** — which is how the other tools represent it — and not two identical overlapping quotations. The passage's **analytic note** travels along and comes back whole on import. The grouping is conservative on purpose in two cases, and in both the quotation stays repeated: when the passage was coded by **different people** (the other tool reads the coder from the quotation, and merging would swap authorship) and when **two codes on the same passage each have their own note** (only one note fits per quotation).
 
+> **Before generating the QDPX**, QualiLab lists what does not fit the format, each item only when the project has it (individual codings when there is a reference layer, answers from more than one person, Checkbox attributes, the history, the links' evidence passages and the disagreements), and asks for confirmation. The **links** between codes and attributes travel as `<Link>`.
+
 > **All the items above leave complete, with nothing masked**, the passages flagged as **redaction** included. They are work and migration formats: whoever exports is taking their own material to another tool, and masking there would be irreversible loss. The **transparency** outputs (Interactive Report / W3C) live on the **Report** tab, not in this menu — and those do mask. Before sending anything outside the team, see [12.4](#124-before-publishing-work-in-the-lab-publish-from-a-copy).
 
 ### Import (the "importar ▾" menu)
 | Item | What it brings |
 |---|---|
 | **.qualilab** | Merges an exported project. Into a **collective** destination, it preserves each source researcher's answers; the reference layer becomes the reference layer. The project history that comes in the file enters without duplicates (re-importing does not repeat it) |
-| **QDPX** | A REFI-QDA project from other tools. The attribute type the source **declares** (number, Yes/No, date) is respected; what it declares only as text is **inferred** (review it in the scheme). Attribute values enter through **both forms** the standard admits (written on the document itself, or in a "case" pointing to it), and if some attribute arrives **with no value at all** the summary says which. Includes hardened import of ATLAS.ti `.qdpx` files with PDFs |
+| **QDPX** | A REFI-QDA project from other tools. The attribute type the source **declares** (number, Yes/No, date) is respected; what it declares only as text is **inferred** (review it in the scheme). Attribute values enter through **both forms** the standard admits (written on the document itself, or in a "case" pointing to it), and if some attribute arrives **with no value at all** the summary says which. Includes hardened import of ATLAS.ti `.qdpx` files with PDFs, and reads the links (`<Link>`) of ATLAS.ti projects |
 | **.sqlite3 (Taguette)** | Taguette's native project: documents, tags (hierarchy by `/` or `.`) and passages. No attributes and no per-passage author |
 | **.qdc (REFI-QDA codebook)** | The codebook only |
 | **spreadsheet (.csv / .xlsx → documents + attributes)** | **Each row becomes a document**, see below |
@@ -989,14 +1024,14 @@ The **export ▾** ("exportar ▾") and **import ▾** ("importar ▾") menus si
    - **whether the original PDF is kept** (it is what enables "view original", the page number on passages, and OCR).
 4. Before confirming, open **"What will not come in"** ("O que não vai entrar"): there, by name, are the references without a PDF, the ones whose attachment is a saved web page instead of a PDF, and the ones whose file is not in the folder.
 
-- The text comes out of the PDF the same way as in **＋ upload**, so everything that depends on the PDF works the same. **A PDF without a text layer (scanned) enters empty on purpose**: open the document and use **⋯ → read with OCR**.
+- The text comes out of the PDF the same way as in **＋ add ▾**, so everything that depends on the PDF works the same. **A PDF without a text layer (scanned) enters empty on purpose**: open the document and use **⋯ → OCR: read scanned pages** (available if you kept the original PDF).
 - The **full reference, the abstract and the notes you wrote in Zotero** go to the **document's memo** ([Memos](#11-memos) tab), not to a attribute: they are your text *about* the source, and an abstract in a attribute field is unreadable.
 - The **year** becomes a **Date** attribute, so the **Time** tab of the [Charts](#10-charts) starts working. When the reference's date is ambiguous (`11/13/2014` could be November 13 or December 11), QualiLab keeps **only the year** instead of guessing the day.
 - **No codes or coded passages come in**: a reference library has none, and the markings made in Zotero's PDF reader do not leave in its export.
 
 #### Importing a spreadsheet (step by step)
-1. **import ▾ → spreadsheet (.csv / .xlsx)** and pick the file.
-2. In the **mapping dialog**, choose each column's role: *Ignore*, **Text (content)**, **Document name**, **Document memo**, or **Attribute · <type>**.
+1. **import ▾ → spreadsheet (.csv / .xlsx → documents + attributes)** and pick the file.
+2. In the **mapping dialog**, choose each column's role: *(ignore)*, **Text (the document's content)**, **Document name**, **Document memo**, or **Attribute · <type>**.
 3. It is mandatory to mark **exactly one** column as **Text**.
 4. For closed attributes, the options are deduced from the observed values. Confirm with **Import**.
 - Rows with no text in the content column are skipped (the summary says how many). The `.csv` detects the separator (`,`/`;`/tab); Excel imports the **first sheet**.
@@ -1125,8 +1160,8 @@ among thirty.
 
 - **It opens without internet.** Installed, QualiLab opens even offline — including if you never
   visited the address again (the copy is stored at install time). With internet, it always fetches the current
-  version. The heavy libraries (PDF, OCR, spreadsheet) are also kept after each one's first
-  use.
+  version. The PDF, Word and OCR libraries are also kept after each one's first use. Reading
+  `.xlsx`/`.xls` spreadsheets still needs internet; `.csv` does not.
 - **Double-clicking a `.qualilab` opens it in QualiLab**: the file manager starts
   offering it as the program for the format, like a `.docx` opens in Word.
 - **Local data becomes better protected.** For local projects with content, the app asks the
@@ -1144,12 +1179,11 @@ browser's install dialog. (It only appears when installing is actually possible 
 Firefox and Safari, which do not install, and it goes away after you install.) The usual path still
 works: open the QualiLab address and look for
 **"Install QualiLab"** in the address bar (the install icon, at the right of the URL; in Edge,
-also under ⋯ → **Apps** → **Install this site as an app**). We **strongly** recommend
-installing through Edge on Windows, and the reason is concrete: Edge registers QualiLab
-with the system as a complete application — the `.qualilab` file gets **its own type name and
-icon** in Explorer, and the double-click integration comes whole. Installing through Chrome
-everything works, but the `.qualilab` keeps the **generic blank-sheet icon** (a limitation
-of Chrome on Windows, not of QualiLab). On macOS both browsers work equally well.
+also under ⋯ → **Apps** → **Install this site as an app**). The reason for Edge is concrete:
+it registers QualiLab with the system as a complete application, and the `.qualilab` file gets
+**its own type name and icon** in Explorer. Installing through Chrome everything works, but the
+`.qualilab` keeps the **generic blank-sheet icon** (a limitation of Chrome on Windows, not of
+QualiLab). On macOS this icon problem should not occur.
 If you use Chrome day to day: just open the same address in Edge once, install from
 there, and keep using Chrome for everything else — the installed app is independent of the browser
 you browse with.
@@ -1179,7 +1213,7 @@ Use the matrix to decide (the **safe-by-default** rule: when in doubt, treat it 
 **What redaction and anonymization do _not_ do.** QualiLab **does not detect or mask personal data in the content** of documents (names, ID numbers, health data). Two things look like "anonymization" but are **not**: **redaction** masks only the passages **you** marked (it does not sweep the text for what is sensitive); the **anonymize** option of the transparency exports merely **omits authorship**. In other words, trusting redaction is trusting that **you** marked, by hand, every identifiable detail **before every send** — and perfect discipline is not a security control. Anonymizing, obtaining consent and choosing the appropriate mode is **your responsibility**. Two concrete helps: the **Repeat Coding** tab ([5.5](#55-redaction-masking-sensitive-passages)) finds the other identical occurrences of a term you already redacted, and the **publication project** workflow ([12.4](#124-before-publishing-work-in-the-lab-publish-from-a-copy)) takes care of titles, attribute values and memos, which redaction does not reach.
 
 ### File mode (Chrome/Edge)
-The project is a `.qualilab` file **visible in the file system** (any folder, external drive, encrypted volume). Zero network, zero `localStorage`, 100% offline. Start at **"My projects" → New file… / Open file…**. The app reopens the last file on the next session (with the browser's permission).
+The project is a `.qualilab` file **visible in the file system** (any folder, external drive, encrypted volume). Zero network, zero `localStorage`, 100% offline. Start on the entry screen, under **New in a file** or **Open an existing file** (or, signed in to the cloud, under **My projects → New file… / Open a file…**). The app reopens the last file on the next session (with the browser's permission).
 
 ### Cloud mode (Supabase): what it is, and how the data is protected (or not)
 The **cloud** keeps your project in an online database so it **syncs** across people and devices. That database runs on **Supabase**, a third-party infrastructure service (database + login) widely used by applications. QualiLab has no server of its own; it merely talks to a Supabase project.
@@ -1187,29 +1221,29 @@ The **cloud** keeps your project in an online database so it **syncs** across pe
 The question that matters most is **whose Supabase it is**:
 
 - **QualiLab's default server** (what you use when clicking "Sign in to the cloud" without configuring anything): the data goes to the **author's Supabase**. He keeps the service running and, owning the database, **can technically** access the content. It is convenient, but it means trusting your data to a personal project, with no institutional guarantee (re-read the *Legal notice* in [section 0](#0-the-idea-behind-qualilab)). The author does **not want** to be in that position with sensitive data — hence the recommendation at the end of this section.
-- **Your own Supabase** (the project pill turns **violet**, "nuvem pessoal"): you point the app at a Supabase project **of yours** (creating one is free). The database becomes yours; only you and whoever you authorize hold the keys. It is still hosted by the Supabase company, but the data's owner is you. Configure it in the project hub, under **Connection (Supabase)** ("Conectar ao meu Supabase").
+- **Your own Supabase** (the project pill turns **violet**, "nuvem pessoal"): you point the app at a Supabase project **of yours** (creating one is free). The database becomes yours; only you and whoever you authorize hold the keys. It is still hosted by the Supabase company, but the data's owner is you. Configure it on the entry or login screen, under **Connect to my own Supabase**, or, outside cloud mode, in the project hub, under **Connection (Supabase)**.
 
 **What protects your data in the cloud:**
-- **Login** (e-mail and password, via Supabase Auth): only account holders get in.
+- **Login** (e-mail and password, or a Google account, via Supabase Auth): only account holders get in.
 - **Isolation between users** (the so-called *Row Level Security*): the database rules guarantee each person only sees the **projects they are a member of**. A colleague does not see your other projects, and whoever was not invited sees nothing.
 - **Encrypted transit** (HTTPS) and **encryption at rest** on Supabase's disk — the standard of any serious cloud service.
 
 **What the cloud does NOT do:**
 - **It is not end-to-end encryption.** The data stays **readable** by whoever administers the database: on the default server, that includes the **author**; on your Supabase, it includes **you**; and, in both cases, the **Supabase** company as host. The isolation above protects you from *other users*, not from the *database's owner*.
-- **It keeps no copy of what you delete** on the server: deleting a project or document is final (download a `.qualilab` first).
+- **Deleting the project is final** (download a `.qualilab` first). Before deleting a document, code or attribute, or clearing the content, QualiLab keeps an automatic [mirror](#project-mirrors-restore-point), if the switch is on.
 - **It does not replace offline mode.** Since v1.4.7, what you **write** without a connection is stored and uploads by itself (see the box below), but **reading** still requires a network: with no connection, opening a not-yet-loaded document or switching projects does not work. To truly work without internet, use **file mode**.
 
-> **If the cloud fails, you do not lose what you were doing.** When the server does not respond for a transient reason (connection dropped, server down), the change **stays stored in this browser and remains on screen**; it uploads by itself as soon as the cloud responds. The header shows **how many are waiting** — click there to retry right away. You can keep working, and **closing the tab does not lose the queue**: it comes back when you reopen the project. This covers day-to-day work (codings, attribute answers, notes, saved AI conversations and memories). **Structural** changes — creating/deleting documents, changing the code scheme, project management and imports — fail loudly right away, on purpose: in collective research, replaying them minutes later would produce a state nobody asked for. And if the cloud **definitively rejects** a change (your role in the project changed, or someone deleted the target), a notice shows what was rejected, with a shortcut to download a `.qualilab` before redoing it.
+> **If the cloud fails, you do not lose what you were doing.** When the server does not respond for a transient reason (connection dropped, server down), the change **stays stored in this browser and remains on screen**; it uploads by itself as soon as the cloud responds. The **status bar, in the footer**, shows **how many are waiting**: click there to retry right away. You can keep working, and **closing the tab does not lose the queue**: it comes back when you reopen the project **with the same account** (on a shared computer, each account has its own). This covers day-to-day work (codings, attribute answers, disagreements, notes, saved AI conversations, memories and the history). **Structural** changes — creating/deleting documents, changing the code scheme, project management and imports — fail loudly right away, on purpose: in collective research, replaying them minutes later would produce a state nobody asked for. And if the cloud **definitively rejects** a change (your role in the project changed, or someone deleted the target), a notice shows what was rejected, with a shortcut to download a `.qualilab` before redoing it.
 
 The same logic of trust as [section 17.5](#175-where-your-data-goes-providers-and-configuration) applies, then: the cloud is great for collaborating and syncing, but using it means **trusting the content to whoever administers the database**. For **sensitive** data, prefer **your own Supabase**, **file mode** or the **local draft**, where the content does not pass through someone else's server — and that holds **also when you use AI**, because with **your** key the browser talks straight to the provider, no middleman ([17.1](#171-how-the-ai-works-here)). What AI changes is the other end: the **provider you choose** sees the material sent ([17.5](#175-where-your-data-goes-providers-and-configuration)).
 
 > **Original PDFs in the cloud.** Storing the original PDF's *bytes* in the cloud (for "view original"/OCR on another device) is **optional** and asks for **explicit consent** on upload, because then whoever administers the database becomes able to open the **whole PDF**, not just the text you coded. Unchecked, only the text and the coding go up. For sensitive data, keep the PDF in **file mode**.
 
 ### Project mirrors (restore point)
-A **mirror** is the whole project at one instant (documents, attributes, codes, codings, memos, AI conversations and memories), kept next to the project to **restore** later. It lives in **project pill → Project mirrors**.
+A **mirror** is the whole project at one instant (documents, attributes, codes, codings, memos, links, disagreements, AI conversations and memories), kept next to the project to **restore** later. It lives in **project pill → Project mirrors**.
 
 - **Mirror now** (with an optional label) creates a manual mirror; manual ones stay until you delete them.
-- **Automatic**: before clearing the content, deleting a document, code or attribute, merging or splitting a code (in the Schema or through the AI), editing a document's text and before restoring, QualiLab mirrors on its own, at most once every 10 minutes. The 5 most recent automatic mirrors are kept.
+- **Automatic**: before clearing the content, deleting a document, code or attribute, merging or splitting a code (in the Schema or through the AI) and editing a document's text, QualiLab mirrors on its own, at most once every 10 minutes. Before **restoring**, it always mirrors, even with the automatic mirror turned off. The 5 most recent automatic mirrors are kept.
 - **The automatic mirror has a switch** in the same card, on by default: each mirror is a copy of the text and the analysis (without the PDFs) and, with the 5 automatic ones, the project can take about 1.5× the size; in file mode it is the `.qualilab` itself that grows. Turning it off is a project decision (administrator) and goes to the history; manual mirrors remain available.
 - **Restore** swaps the whole project for the snapshot. The current state is mirrored first (you can undo the restoration itself), and the [project history](#111-project-history-the-audit-trail) records the restoration: **it is never restored**, it is the record that the restoration happened. Restoring is an administrator's act.
 - **What a mirror does not keep**: the original PDFs (the PDF of a deleted document does not come back; the text and the analysis do) and the history. The AI use declaration, the team and the document distribution do not change on restore.
@@ -1226,7 +1260,7 @@ Keeps a `backup-automatico.qualilab` always up to date in a folder of yours, as 
 If the browser cannot write (`localStorage` full, folder permission revoked, disk removed), a **persistent red banner** appears warning that the latest changes were **not** saved, with a shortcut to **download a .qualilab** right away. It only disappears when saving works again. **Do not ignore this warning**: download the backup before continuing.
 
 ### Cloud mode offline
-The header shows `offline` (amber) when the connection drops and, next to it, **how many changes are waiting to upload**. **You can keep coding**: what you write is stored in this browser and uploads by itself when the cloud responds again (it is the queue described in the box above, and it survives closing the tab).
+The project pill turns amber when the connection drops, and the **status bar, in the footer**, shows `offline` or, when there are pending changes, **how many changes are waiting to upload** (click to retry right away). **You can keep coding**: what you write is stored in this browser and uploads by itself when the cloud responds again (it is the queue described in the box above, and it survives closing the tab).
 
 What does **not** work without a network is **reading** what was not yet loaded: opening a document you did not open this session, or switching projects. That is why cloud mode **does not replace file mode** for truly offline work — and, if you are going to spend a long time without a connection, download a `.qualilab` first, as insurance.
 
@@ -1256,9 +1290,9 @@ It is the longest chapter of the manual, so here is the map:
 
 - **Where the call goes.** With **your** key (the normal case, see the next item), the **browser talks straight to the provider** you chose: the material **passes through no QualiLab server**. Two exceptions, one at each end: **local Ollama** goes straight to **your machine** (nothing leaves it); and a **Custom**/**Azure** endpoint that does not allow browser calls (the CORS rule belongs to whoever serves the API) makes the call be **redone** by a function on this project's server (the Supabase Edge Function `ai-ask`) — which then sees the material of that one send. The AI card in **My account** says, for **your** configuration, which path it takes. For where **each provider** sends the data, and what that implies for sensitive material, see [17.5](#175-where-your-data-goes-providers-and-configuration).
 - **Whose key it is (BYOK).** The default is **you bringing your own key** and model, configured in **My account** (see 17.4). They live **only in this browser**: the key accompanies only the request to the provider, and is stored on no server. (An instance hosting its own copy can, optionally, configure a **server key**; its calls then go through the `ai-ask` function, which is what holds that key. The public version has none.)
-- **Seeing and configuring the prompt (⚙).** Every AI screen has, at the top, the **⚙ Configure Prompt** button ("Configurar Prompt"). It opens the **exact preview** of what will be sent, section by section (role, memos, memory, material, rules, task), with the active model, the counts, the **token and cost estimate (≈ R$, Brazilian reais)** and a **copy prompt** button. In the same panel you adjust what the AI receives: on the *Coding* screens, the **AI-specific instructions**, the **injected memos** and the **project memory**; in *Analyze*, all that **plus** the methodological **stance** (see [17.3](#173-analyze-with-ai-assisted-reading-of-the-material)). **Nothing leaves the browser without passing through here.** It is the concrete face of the transparency rule.
+- **Seeing and configuring the prompt (⚙).** The *Auto-coding* tabs (except Repeat Coding, which uses no AI) and *Analyze with AI* have, at the top, the **⚙ Configure Prompt** button ("Configurar Prompt"). It opens the **exact preview** of what will be sent, section by section (role, memos, memory, material, rules, task), with the active model, the counts, the **token and cost estimate (≈ R$, Brazilian reais)** and a **copy prompt** button. In the same panel you adjust what the AI receives: on the *Auto-coding* screens, the **AI-specific instructions**, the **injected memos** and the **project memory**; in *Analyze*, all that **plus** the methodological **stance** (see [17.3](#173-analyze-with-ai-assisted-reading-of-the-material)). **Nothing leaves these screens without passing through here.** It is the concrete face of the transparency rule. In *Explore with AI* there is no preview: what goes out are the reading calls, which the screen lists one by one (see [17.6](#176-explore-with-ai-the-ai-asks-for-the-material-instead-of-receiving-it)).
 - **Supported providers** (with your own key): **Gemini**, **OpenAI**, **Anthropic**, **Azure OpenAI**, **Custom** ("Personalizado": any API compatible with the OpenAI `/chat/completions` format — DeepSeek, Mistral, hosted Qwen, or your own Ollama/vLLM server exposed at a public URL) and **local Ollama** (a model on your own machine, called **directly by the browser**, no server in between, see [17.5](#175-where-your-data-goes-providers-and-configuration)).
-- **Redaction always before sending.** Passages of codes flagged as **redaction** ([5.5](#55-redaction-masking-sensitive-passages)) are replaced by `[trecho censurado]` ("[redacted passage]") **before** the material leaves the browser. In *Analyze with AI*, you can opt to include a specific redaction code in that one analysis (explicit opt-in, per code).
+- **Redaction always before sending.** Passages of codes flagged as **redaction** ([5.5](#55-redaction-masking-sensitive-passages)) are replaced by `[trecho censurado]` ("[redacted passage]") (in *Explore with AI*, by `█` blocks of the same length, so positions stay valid) **before** the material leaves the browser. In *Analyze with AI*, you can opt to include a specific redaction code in that one analysis (explicit opt-in, per code).
 - **Response tuning.** The AI comes calibrated for focused, consistent answers (not "creative" ones), suited to analysis. You do not need to configure anything.
 - **Size limits (and the notice when material is cut).** There is a cap per send: about **400,000 characters (~133 pages) per document** and **600,000 in total (~200 pages)**. A generous selection fits (several interviews, a whole ruling, all the passages of one code), but not the whole corpus at once. What goes beyond is **cut to fit**, and the cut comes in two kinds, with very different effects:
   - **the whole selection went over the total**: the **last items on the list are left out entirely** (in a coding assistant, the documents left out get no suggestion at all). In *Organize Codes* the cut is different: the **code list always goes whole** and what shrinks is the passage sample;
@@ -1279,7 +1313,7 @@ The **Auto-coding** screen ("Auto-codificação") gathers **five assistants** in
 
 The **⚙ Configure Prompt** button (at the top of each assistant) opens the window below. On top are the **controls**: **AI-specific instructions** ("Instruções próprias à IA", guidance that enters every prompt, shared with Analyze with AI), **Injected memos** ("Memos injetados", by default the *Memo for the AI*; you can include others) and the **Project memory** ("Memória do projeto", toggling which insights enter the context). Below, the **exact preview of what will be sent**: the active model, the material count (in **pages**), **how many redaction codes were masked**, the **token and cost estimate (≈ R$)** and the prompt **section by section** (role and principles, memos, project memory, material), with the cut point marked in the text when the material did not fit. A **copy prompt** button takes it all to the clipboard. **Nothing leaves the browser without passing through here**: it is the concrete face of the transparency rule.
 
-![Configure Prompt, opened on the Code with AI screen: on top, the controls (AI-specific instructions, injected memos and the project memory, now inside the modal); below, the preview of what will be sent (model, material in pages, masked redaction and the token and cost estimate (≈ R$)) and the prompt section by section, with "Role and principles" showing the AI's inviolable rules (the AI proposes, does not invent, cites the source).](manual-img/15-ia-configurar-prompt.png)
+![Configure Prompt, opened in Auto-coding: on top, the controls (AI-specific instructions, injected memos and the project memory, now inside the modal); below, the preview of what will be sent (model, material in pages, masked redaction and the token and cost estimate (≈ R$)) and the prompt section by section, with "Role and principles" showing the AI's inviolable rules (the AI proposes, does not invent, cites the source).](manual-img/15-ia-configurar-prompt.png)
 
 #### 17.2.1 Suggest Coding: the second coder
 
@@ -1373,16 +1407,16 @@ The screen is a **chat**. In the **top bar** are the **⚙ Configure Prompt** bu
 
 To avoid starting from zero (or for inspiration), the **prompt library ▾** button ("biblioteca de prompts ▾") offers two things: QualiLab's **example prompts** and the **prompts you yourself saved**. Any item **inserts** into the field as an **editable starting point**: adjust it before sending. When you put together a request that works well, click **✦ save** ("salvar") to keep it (it then appears here and on the **Memos → "Saved prompts"** tab, where you can rename or delete it): that is how you build **your own library**, which is the goal. The **example prompts** (a starting point, not a closed menu) vary with the scope:
 
-- **Documents** (the full text of the chosen documents): *Emerging themes* · *Analytic synthesis* · *The unexpected* · *Differences between cases*.
-- **Passages + Code** (each code's passages, treated as an analytic attribute): *What is in the code* · *Coherence & saturation* · *Code vs. definition* · *Differences between cases*.
-- **Documents + Passages + Code** (the coding read in context, a "second reading"): *What escaped* · *Validation in context* · *Passage in context* · *Contextualized synthesis*.
+- **Documents** (the full text of the chosen documents): *Candidate themes* · *Latent layer* · *Analytic synthesis* · *The unexpected* · *Differences between cases* · *Variation by attribute*.
+- **Passages + Code** (each code's passages, treated as an analytic attribute): *What is in the code* · *Coherence and saturation* · *Code vs. definition* · *Differences between cases* · *Analytic memo*.
+- **Documents + Passages + Code** (the coding read in context, a "second reading"): *Which codes would complement the analysis* · *Which codes challenge the analysis* · *Validation in context* · *Passage in context* · *Contextualised synthesis* · *Variation by attribute*.
 
 **Configuring the prompt (⚙).** The **⚙ Configure Prompt** button (at the top) opens the panel where you adjust the AI's **voice** and check **exactly** what will be sent:
 
 ![Configure Prompt on the Analyze with AI screen: at the top, the Stance (Role and principles) with the Default, Inductive, Deductive, Abductive and Custom buttons; below, the AI-specific instructions, the injected memos, the project memory and the attributes toggle, and the section-by-section preview of what will be sent.](manual-img/16-ia-analisar-prompt.png)
 
 - **Stance** ("Postura", Role and principles): the analysis's **methodological lens**, in a single click. *Default* (privileging no approach), *Inductive* (builds attributes from the material itself), *Deductive* (evaluates the material in light of the existing code scheme), *Abductive* (seeks the explanation that best accounts for the data, the unexpected included) or *Custom* (opens a field for you to describe the stance in your own words). Each stance's text appears right below the buttons, and enters the prompt as part of the AI's role.
-- **AI-specific instructions**: guidance that enters **every** prompt (e.g. "prioritize the interviewees' language"). *(Shared with the coding screens.)*
+- **AI-specific instructions**: guidance that enters **every** prompt (e.g. "prioritize the interviewees' language"). *(Shared with Auto-coding.)*
 - **Injected memos**: which memos the AI receives. By default, the **Memo for the AI** ([section 11](#11-memos)); you can include others (project, document, code or passage).
 - **Project memory**: toggles which entries of the **insights journal** ([section 11](#11-memos)) enter this analysis's context.
 - **Attributes as metadata**: optionally, attaches each document's filled-in attributes (the case's attributes), so the AI can situate each voice. Off by default.
@@ -1401,14 +1435,14 @@ The AI receives, along, each code's **memo** and (if you flip the *Attributes as
 
 ### 17.4 Setting up your key (optional)
 
-Under **My account → AI (your key and model)**:
+Under **My account → AI: your key and model**:
 1. Choose the **provider**.
 2. For *Azure*, *Custom* or *local Ollama*, provide the **base URL** (Ollama's comes pre-filled with `http://localhost:11434/v1`).
-3. Paste **your API key** (required — the app uses **your** key; local Ollama usually needs none). When **switching providers**, the fields come cleared: key, model and base URL belong to one provider. Returning to the saved provider **restores** its configuration, and the card warns if a pasted key looks like another provider's.
+3. Paste **your API key** (required for the catalog providers and Azure; with *Custom*, only if the server asks for one; local Ollama needs none). When **switching providers**, the fields come cleared: key, model and base URL belong to one provider. Returning to the saved provider **restores** its configuration, and the card warns if a pasted key looks like another provider's.
 4. Choose the **model** (or the *deployment* name, on Azure; on Ollama, type the name of the downloaded model, e.g. `qwen2.5:14b`). In general, bigger models are more capable, but slower and pricier.
 5. **save** ("salvar"), or **clear** ("limpar") to remove your key.
 
-The same card also holds the **US$→R$ exchange rate** and, for providers without a price table (*Custom*/*Azure*), **your own rate** per million tokens, used in the cost estimate ([17.1](#171-how-the-ai-works-here)).
+The same card also holds, folded under **Estimated cost (calculator)**, the **US$→R$ exchange rate** and, for providers without a price table (*Custom*/*Azure*), **your own rate** per million tokens, used in the cost estimate ([17.1](#171-how-the-ai-works-here)).
 
 > Your key stays **only in this browser** (it is stored on no server); it only accompanies the request the browser itself makes to the provider.
 
@@ -1468,7 +1502,7 @@ Not every research project wants AI around, and there are two quite different re
 
 ![The question every new project asks: the "New draft" window, with the "AI features" block, the two buttons (No AI, which comes pre-selected, and Enable AI) and, in the footer, "Continue without AI" next to "Continue".](manual-img/18-ativar-ia.png)
 
-**The question comes at creation.** Every new project — in the cloud, in a file or a draft — asks whether the AI features should be available. The option that **comes pre-selected is "No AI"** ("Sem IA"): enabling requires changing the choice, and leaving the window without answering **keeps it off**. In the header, **between the project pill and your name**, a badge always shows this project's AI state — red when it is off, green when it is on. Clicking it offers to switch, with confirmation. You can also change it under **Project → AI features** ("Recursos de IA", clicking the project pill):
+**The question comes at creation.** Every new project — in the cloud, in a file or a draft — asks whether the AI features should be available. The option that **comes pre-selected is "No AI"** ("Sem IA"): enabling requires changing the choice, and leaving the window without answering **keeps it off**. In the header, **between the project pill and your name**, an **AI** badge (it reads *IA*) always shows this project's AI state: a green ring when it is on; a red ring with a bar when it is off or restricted to administrators. Administrators click it to switch, with confirmation. You can also change it under **Project → AI features** ("Recursos de IA", clicking the project pill):
 
 | choice | who keeps the AI screens |
 |---|---|
@@ -1477,6 +1511,8 @@ Not every research project wants AI around, and there are two quite different re
 | **Disabled** ("Desativados") | nobody, you included |
 
 *Disabled* includes you on purpose: it is what lets you tell the team "nobody here uses it, me included", and it is what keeps the door from being reopened in the rush of a deadline.
+
+Beyond this switch, the AI screens never appear for someone with the **read-only** role, and the [role matrix](#what-each-role-can-do-decided-at-creation) (*Uses the AI panels*) can take them away from members even with AI on.
 
 **What disappears, and what stays.** The AI screens leave the header, along with the configuration that only serves them (the **Memo for the AI** and the **Saved prompts**, on the Memos screen). ⚠️ **The [Repeat Coding](#1725-repeat-coding-no-ai) tab goes with them, even though it uses no AI at all** — it lives inside the *Auto-coding* screen, and the screen leaves whole. Worth knowing because it is the tool [section 5.5](#55-redaction-masking-sensitive-passages) recommends for closing the redaction (finding the other identical occurrences of an already-redacted term). With AI off, that work goes back to [search +](#57-searching-in-the-document-and-across-the-project), case by case. What **stays** is the record of what already happened: the **saved conversations** and the **project memory** remain where they were. Hiding the record would be the opposite of the transparency the statement promises — and it is what the report counts.
 
@@ -1491,13 +1527,22 @@ Not every research project wants AI around, and there are two quite different re
 ## 18. Troubleshooting
 
 **The app does not load / blank screen when opening the downloaded file.**
-It needs internet the **first time** (to download the libraries). If your browser policy blocks `file://`, serve it from a local server: `python -m http.server 8000` in the `index.html` folder.
+The app opens without internet; only the heavy features (reading PDF, DOCX or spreadsheets, OCR, semantic search) and the cloud need a network on first use. A blank screen is usually the browser blocking `file://`: serve it from a local server, with `python -m http.server 8000` in the `index.html` folder.
+
+**With the app installed, switching screens opens a browser window.**
+Uninstall and reinstall the app, or, in Edge, under `edge://apps` → QualiLab → Details, turn off *link handling*.
+
+**Importing an `.xlsx` spreadsheet says it could not load.**
+The spreadsheet library comes from its maker's site and needs internet; try again later, or save the spreadsheet as `.csv`, which does not depend on it.
+
+**A whole-project screen (Reading, Charts, Report) is slow or times out in a large project.**
+Try again; if it persists, the limit is the project's size for that screen, not something you did.
 
 **I do not see "New file…" or the folder backup.**
 Those features use the File System Access API, which only exists in **Chrome/Edge**. On Firefox/Safari, use cloud or draft mode.
 
 **Red banner "the latest changes were NOT saved."**
-Storage filled up or became unavailable. Click **download .qualilab** immediately; then free up space (draft mode is capped at ~5–10 MB) or migrate to **file**/**cloud** mode.
+Storage filled up or became unavailable. Click **download .qualilab** immediately; then free up space (the draft is capped at ~5 MB) or migrate to **file**/**cloud** mode.
 
 **A colleague does not see my new codes / attributes.**
 The attribute scheme and the code tree do not sync live — ask them to **reload the page**. (Codings and attribute answers do sync.)
@@ -1509,7 +1554,7 @@ Types are inferred when the file comes from another tool. Adjust them under **Sc
 A REFI-QDA format limitation: it stores no attribute authorship (only passage authorship). To preserve per-researcher authorship, use the native `.qualilab`.
 
 **I deleted a code/attribute/document by accident.**
-There is no undo for that (Ctrl+Z only covers the last *passage coding*). Restore from a `.qualilab` backup, if you have one.
+Open **project pill → Project mirrors**: if the automatic mirror was on, there is a snapshot from before the deletion, and **Restore** brings the project back to that instant (the original PDFs do not come back). Without a mirror, recover from an exported `.qualilab`. Ctrl+Z only undoes the last *passage coding*.
 
 **I created the account and cannot sign in / the code is not accepted.**
 Signup confirmation is by **typed code**, not by link: the e-mail brings a number, and you type it on the **"Confirm your signup"** screen ("Confirme seu cadastro"). Type **all** its digits. If refused, the most common reason is that it **expired** (it lasts one hour) or that you are reading an old e-mail after asking to **Resend code** — in that case only the **most recent** e-mail's code counts. Check **spam**. If the account is already confirmed, use **"I already confirmed — let me sign in"** and log in normally.
@@ -1535,12 +1580,14 @@ Very visual PDFs (columns, tables, scans) can extract poorly. Tables are not rec
 | Shortcut | Where | Action |
 |---|---|---|
 | **Right-click** on a selection | Coding | Menu to apply/create a code (the floating bar over the selection opens the same menu) |
-| **Right-click** on a highlight | Coding | Remove code / Annotate passage |
+| **Right-click** on a highlight | Coding | Remove / change code, annotate passage |
+| **Right-click** on a colleague's highlight | Reading ▸ Documents (collective project) | *I agree with this code* / *I disagree* (or undo) |
+| **↑ ↓** / **Enter** | Right-click menu | Choose / apply the code |
 | **Ctrl+K** | Any screen | Command palette: go to a document, screen or action |
 | **?** | Any screen (outside a text field) | Shortcut map |
-| **1 … 9** | Coding, with a passage selected | Apply one of the recent codes |
+| **1 … 5** | Coding, with a passage selected | Apply one of the session's 5 recent codes (the numbered list in the panel) |
 | **Ctrl+Z** | Coding | Undo the last coding (applied or removed) |
-| **Enter** / **Shift+Enter** | Search (🔎) | Next / previous occurrence |
+| **Enter** / **Shift+Enter** | Search (**search**) | Next / previous occurrence |
 | **Enter** / **Esc** | Renaming a document | Confirm / cancel |
 | **Delete** / **Backspace** | Coding | Delete the focused highlight (click a highlight to focus it) |
 | **↑ ↓** | Code tree | Walk through the codes |
@@ -1548,7 +1595,8 @@ Very visual PDFs (columns, tables, scans) can extract poorly. Tables are not rec
 | **Home** / **End** | Code tree | First / last visible code |
 | **Enter** / **Space** | Code tree | Select the code (or apply it, if a passage is selected) |
 | **Tab** / **Shift+Tab** | Dialog window | Cycle through the controls, without leaving the window |
-| **Esc** | Dialog window | Close (focus returns to the button that opened it) |
+| **Esc** | Any screen | Close whatever is on top: menu, search, palette, filter, dialog (in a dialog, focus returns to the button that opened it) |
+| **← →** | Screen bar | Go to the previous / next screen |
 | **← →** | Panel divider | Adjust the width (16 px per press) |
 | **Double-click** | Panel divider | Return to the default width |
 
@@ -1566,9 +1614,12 @@ Very visual PDFs (columns, tables, scans) can extract poorly. Tables are not rec
 - **Redaction** ("censura"): a code that masks sensitive passages in the transparency outputs and in what goes to the AI. The work formats (`.qualilab`, QDPX, QDC, CSV, JSON) leave complete — see [5.5](#55-redaction-masking-sensitive-passages).
 - **Project history** ("Histórico do projeto"): the audit trail of the process, in the Memos tab: the list of operations that changed the project (imports, merges, deletions, bulk applications, consolidations, exports), with date and author. It undoes nothing and keeps no deleted content — see [11.1](#111-project-history-the-audit-trail).
 - **Co-occurrence**: two codes applied to the same passage (or overlapping).
+- **Link**: a named relation between two codes, or between a code and an attribute, such as *contradicts* or *is part of*; it is an annotation, not a measurement, see [7.5](#75-links-saying-what-one-code-has-to-do-with-another).
+- **Disagreement**: the *I disagree* verdict on a colleague's code, in Reading; it deletes nothing and does not enter counts, see [9](#9-reading).
+- **Mirror**: a snapshot of the whole project at one instant, to restore later, see [16](#project-mirrors-restore-point).
 - **Mode (storage)**: where the data lives (file, draft or cloud).
 - **Project type**: individual (no reconciliation) or collective.
-- **Role**: admin (sets scheme/reference layer/members) or member.
+- **Role**: administrator (scheme, reference layer, members, mirrors), member (codes) or read-only (reads and comments in memos). What each role can do is adjusted item by item in the project's matrix, see [13](#what-each-role-can-do-decided-at-creation).
 - **REFI-QDA / QDPX / QDC**: the open interchange standard between QDA tools.
 - **ATI**: *Annotation for Transparent Inquiry*, the QDR's transparency method.
 - **W3C Web Annotation**: the open annotation data standard (the base of ATI, hypothes.is etc.).
