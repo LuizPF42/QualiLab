@@ -933,7 +933,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.62';
+const QUALILAB_VERSION = '1.4.63';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -3066,9 +3066,7 @@ const MSG_PT = {
   // -- navegacao lateral (Reconciliacao) --
   'tab.categories': 'Categorias',
   'tab.codes': 'Códigos',
-  'nav.category': 'Categoria',
   'nav.documents': 'Documentos',
-  'nav.code': 'Código',
   'nav.allDocuments': '(Todos os documentos)',
   'nav.allCodes': '(Todos os códigos)',
   'nav.noCategory': 'Nenhuma categoria.',
@@ -5450,9 +5448,7 @@ const MSG_EN = {
   // -- side navigation (Reconciliation) --
   'tab.categories': 'Attributes',
   'tab.codes': 'Codes',
-  'nav.category': 'Attribute',
   'nav.documents': 'Documents',
-  'nav.code': 'Code',
   'nav.allDocuments': '(All documents)',
   'nav.allCodes': '(All codes)',
   'nav.noCategory': 'No attributes.',
@@ -14492,12 +14488,16 @@ function CtxSection({ title, count, children }){
 
 /* Seção colapsável (aberta por padrão) de barra lateral — cabeçalho com caret + conteúdo.
    Usada na navegação da Reconciliação (Documentos / Categoria / Código). */
-function NavGroup({ title, children, defaultOpen=true }){
+/* `summary` (v1.4.63): o que esta escolhido na lista, mostrado ao lado do titulo SO com ela recolhida
+   — lista recolhida que esconde a propria escolha deixa a pessoa sem saber onde esta. */
+function NavGroup({ title, children, defaultOpen=true, summary, indent=0 }){
   const [open, setOpen] = useState(defaultOpen);
   return html`<div style="border-bottom:1px solid var(--line-soft)">
-    <div class="node-row" style="padding:6px 12px;cursor:pointer;border-radius:0" onClick=${()=>setOpen(o=>!o)}>
+    <div class="node-row" style=${`padding:6px 12px 6px ${12+indent*14}px;cursor:pointer;border-radius:0;gap:6px`} onClick=${()=>setOpen(o=>!o)}
+      aria-expanded=${open ? 'true' : 'false'}>
       <span class="caret">${open?'▾':'▸'}</span>
-      <span class="node-name" style="font-weight:600;text-transform:uppercase;font-size:11px;letter-spacing:.04em;color:var(--ink-soft)">${title}</span>
+      <span class="node-name" style="flex:none;font-weight:600;text-transform:uppercase;font-size:11px;letter-spacing:.04em;color:var(--ink-soft)">${title}</span>
+      ${!open && summary && html`<span class="meta" style="flex:1;min-width:0;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title=${summary}>${summary}</span>`}
     </div>
     ${open && html`<div style="padding-bottom:6px">${children}</div>`}
   </div>`;
@@ -17944,11 +17944,6 @@ function App(){
       </aside>
     </div>`
     : mainView==='reconciliar' ? (()=>{
-        // item de navegação no padrão .node-row (mesma linguagem visual da Leitura)
-        const navRow = (active, label, onClick, indent=0)=> html`<div class="node-row ${active?'sel':''}" onClick=${onClick}
-          style=${`cursor:pointer;border-radius:0;padding:7px ${12+indent*14}px`} title=${label}>
-          <span class="node-name" style=${active?'font-weight:600':''}>${label}</span>
-        </div>`;
         const catsAllMode = recon.aba==='categorias' && recon.doc==='all';
         const codesAllMode = recon.aba==='codigos' && recon.doc==='all';
         const ctx = recon.doc==='all' ? t('recon.allDocs') : (activeDoc?` · ${activeDoc.name}`:'');
@@ -17958,33 +17953,11 @@ function App(){
         return html`<div class="split">
       <!-- RECONCILIACAO: barra lateral (Categorias / Códigos + navegação) + detalhe à direita -->
       <section class="pane" style="flex:0 0 var(--pane-side);min-width:0">
-        <div class="pane-head"><span class="h" style="margin:0">Reconciliar</span></div>
+        <div class="pane-head"><span class="h" style="margin:0">${t('nav.reconcile')}</span></div>
         <div class="pane-body scroll" style="padding:0">
           <div style="background:var(--surface);min-height:100%;padding-bottom:8px">
-            ${navRow(recon.aba==='categorias', '⍞ ' + t('tab.categories'), ()=>mudaRecon({aba:'categorias'}))}
-            ${recon.aba==='categorias' && html`<div>
-              <${NavGroup} title=${t('nav.documents')}>
-                ${navRow(recon.doc==='all', t('nav.allDocuments'), ()=>mudaRecon({doc:'all'}), 1)}
-                ${docs.map(d=>navRow(recon.doc===d.id, d.name, ()=>{ mudaRecon({doc:d.id}); setActiveId(d.id); }, 1))}
-              </${NavGroup}>
-              ${catsAllMode && html`<${NavGroup} title=${t('nav.category')}>
-                ${cats.length===0 ? html`<div class="meta" style="padding:2px 26px">${t('nav.noCategory')}</div>`
-                  : cats.map(c=>navRow(recon.cat===c.id, c.name, ()=>mudaRecon({cat:c.id}), 1))}
-              </${NavGroup}>`}
-            </div>`}
-            ${navRow(recon.aba==='codigos', '✎ ' + t('tab.codes'), ()=>mudaRecon({aba:'codigos'}))}
-            ${recon.aba==='codigos' && html`<div>
-              <${NavGroup} title=${t('nav.documents')}>
-                ${navRow(recon.doc==='all', t('nav.allDocuments'), ()=>mudaRecon({doc:'all'}), 1)}
-                ${docs.length===0 ? html`<div class="meta" style="padding:2px 26px">${t('nav.noDocument')}</div>`
-                  : docs.map(d=>navRow(recon.doc===d.id, d.name, ()=>{ mudaRecon({doc:d.id}); setActiveId(d.id); }, 1))}
-              </${NavGroup}>
-              ${codesAllMode && html`<${NavGroup} title=${t('nav.code')}>
-                ${navRow(recon.code==='all', t('nav.allCodes'), ()=>mudaRecon({code:'all'}), 1)}
-                ${reconCodes.length===0 ? html`<div class="meta" style="padding:2px 26px">${t('nav.noCodedCode')}</div>`
-                  : reconCodes.map(c=>navRow(recon.code===c.id, codePath(c.id).join(' ▸ '), ()=>mudaRecon({code:c.id}), 1))}
-              </${NavGroup}>`}
-            </div>`}
+            <${ReconcileNav} recon=${recon} onRecon=${mudaRecon} docs=${docs} cats=${cats} codes=${reconCodes}
+              codePath=${codePath} onPickDoc=${setActiveId} />
           </div>
         </div>
       </section>
@@ -23725,6 +23698,55 @@ function Reconcile({ activeDoc, codings, coders, codeById, codePath, cats, value
       </div>`;
     })}
     </div>`}
+  </div>`;
+}
+
+/* NAVEGACAO DA RECONCILIACAO (v1.4.63, pedido do autor: "do jeito que esta, muito confuso").
+   Antes, so as listas da aba ATIVA apareciam, e a lista de categorias (ou de codigos) so existia no
+   modo "(Todos os documentos)" — a coluna mudava de forma a cada clique, e o caminho para reconciliar
+   UMA categoria em todos os documentos ficava escondido atras de outro clique. Agora as DUAS secoes
+   ficam sempre, cada uma com as DUAS listas, todas RECOLHIDAS de inicio (o `summary` diz ao lado do
+   titulo o que esta escolhido nela). Clicar num item escolhe a secao junto: um DOCUMENTO abre a
+   reconciliacao daquele documento; uma CATEGORIA (ou um CODIGO) abre ela em TODOS os documentos.
+   A selecao so acende na secao ativa: `recon.doc` e um estado so para as duas, e acender o mesmo
+   documento nas duas listas diria que as duas estao abertas. */
+function ReconcileNav({ recon, onRecon, docs, cats, codes, codePath, onPickDoc }){
+  const row = (active, label, onClick)=> html`<div class=${'node-row ' + (active ? 'sel' : '')} onClick=${onClick}
+    style="cursor:pointer;border-radius:0;padding:7px 40px" title=${label}>
+    <span class="node-name" style=${active ? 'font-weight:600' : ''}>${label}</span>
+  </div>`;
+  const head = (active, label, onClick)=> html`<div class=${'node-row ' + (active ? 'sel' : '')} onClick=${onClick}
+    style="cursor:pointer;border-radius:0;padding:7px 12px" title=${label}>
+    <span class="node-name" style=${active ? 'font-weight:600' : ''}>${label}</span>
+  </div>`;
+  const nomeDoc = (id)=> (docs.find(d=>d.id===id) || {}).name || '';
+  const listaDocs = (aba)=> {
+    const ativa = recon.aba === aba;
+    return html`<${NavGroup} title=${t('nav.documents')} defaultOpen=${false} indent=${1}
+        summary=${ativa ? (recon.doc === 'all' ? t('nav.allDocuments') : nomeDoc(recon.doc)) : ''}>
+      ${row(ativa && recon.doc === 'all', t('nav.allDocuments'), ()=>onRecon({ aba, doc:'all' }))}
+      ${docs.length === 0 ? html`<div class="meta" style="padding:2px 40px">${t('nav.noDocument')}</div>`
+        : docs.map(d=>row(ativa && recon.doc === d.id, d.name, ()=>{ onRecon({ aba, doc:d.id }); onPickDoc(d.id); }))}
+    </${NavGroup}>`;
+  };
+  const emTodosCat = recon.aba === 'categorias' && recon.doc === 'all';
+  const emTodosCod = recon.aba === 'codigos' && recon.doc === 'all';
+  const nomeCat = (cats.find(c=>c.id === recon.cat) || {}).name || '';
+  return html`<div>
+    ${head(recon.aba === 'categorias', '⍞ ' + t('tab.categories'), ()=>onRecon({ aba:'categorias' }))}
+    ${listaDocs('categorias')}
+    <${NavGroup} title=${t('tab.categories')} defaultOpen=${false} indent=${1} summary=${emTodosCat ? nomeCat : ''}>
+      ${cats.length === 0 ? html`<div class="meta" style="padding:2px 40px">${t('nav.noCategory')}</div>`
+        : cats.map(c=>row(emTodosCat && recon.cat === c.id, c.name, ()=>onRecon({ aba:'categorias', doc:'all', cat:c.id })))}
+    </${NavGroup}>
+    ${head(recon.aba === 'codigos', '✎ ' + t('tab.codes'), ()=>onRecon({ aba:'codigos' }))}
+    ${listaDocs('codigos')}
+    <${NavGroup} title=${t('tab.codes')} defaultOpen=${false} indent=${1}
+        summary=${emTodosCod ? (recon.code === 'all' ? t('nav.allCodes') : codePath(recon.code).join(' ▸ ')) : ''}>
+      ${row(emTodosCod && recon.code === 'all', t('nav.allCodes'), ()=>onRecon({ aba:'codigos', doc:'all', code:'all' }))}
+      ${codes.length === 0 ? html`<div class="meta" style="padding:2px 40px">${t('nav.noCodedCode')}</div>`
+        : codes.map(c=>row(emTodosCod && recon.code === c.id, codePath(c.id).join(' ▸ '), ()=>onRecon({ aba:'codigos', doc:'all', code:c.id })))}
+    </${NavGroup}>
   </div>`;
 }
 

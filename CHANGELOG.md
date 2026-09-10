@@ -14,6 +14,20 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.63 (10/09/2026)
+
+### A coluna da Reconciliação sempre com as duas seções
+
+A coluna esquerda da **Reconciliação** mudava de forma a cada clique: só mostrava as listas da aba
+aberta, e a lista de categorias (ou de códigos) só aparecia depois de escolher "(Todos os
+documentos)". Agora ela tem sempre as duas seções, **Categorias** e **Códigos**, cada uma com as
+suas duas listas — **Documentos** e **Categorias**, **Documentos** e **Códigos** —, todas
+recolhidas de início. Recolhida, a lista mostra ao lado do título o que está escolhido nela. Clicar
+num documento abre a reconciliação daquele documento; clicar numa categoria ou num código abre a
+reconciliação dele em todos os documentos.
+
+- Na interface em inglês, o título dessa coluna aparecia em português ("Reconciliar").
+
 ## 1.4.62 (10/09/2026)
 
 ### "Discordo": o outro lado do "Concordo com este código"

@@ -611,7 +611,7 @@ Coding creates **sets**: "these passages are about X". A link records what the c
 
 ![Reconciliation, Codes tab, document ENT-01: each group gathers the codings that overlap on the same code (the code's path, who coded it and the passage). Here they are all already "in the final layer", with the option to remove them; when they are not yet, "Consolidate into final" appears.](manual-img/14-reconciliacao.png)
 
-*Collective projects only — if yours is individual, skip to [section 9](#9-reading).* This is where the team consolidates the **reference layer** from each researcher's individual work. The left column chooses between **Attributes** and **Codes**, and navigates by document, including the **(All documents)** option, which reconciles the whole project at once.
+*Collective projects only — if yours is individual, skip to [section 9](#9-reading).* This is where the team consolidates the **reference layer** from each researcher's individual work. The left column always has both sections, **Attributes** and **Codes**, each with two lists that open and close: **Documents** (reconcile everything in one document, or **(All documents)** for the whole project at once) and **Attributes** or **Codes** (reconcile one attribute, or one code, across all documents). The lists start collapsed, and a collapsed list shows next to its title what is selected in it. Clicking an item takes you to its section.
 
 **Attributes.** For each document and attribute, you see the **reference answer** (which the admin sets) and, below it, each researcher's answer with **✓** (same as the reference) or **✗** (different). In (All documents) mode, you pick one attribute and consolidate it document by document.
 

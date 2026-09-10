@@ -609,7 +609,7 @@ Codificar cria **conjuntos**: "estes trechos falam de X". A conexão registra o 
 
 ![Reconciliação, aba Códigos, documento ENT-01: cada grupo reúne as codificações que se sobrepõem num mesmo código (o caminho do código, quem codificou e o trecho). Aqui já estão todas "na camada final", com a opção de removê-las; quando ainda não estão, aparece "Consolidar no final".](manual-img/14-reconciliacao.png)
 
-*Só em projeto coletivo — se o seu é individual, pule para a [seção 9](#9-leitura).* É onde a equipe consolida o **gabarito** a partir do trabalho individual de cada pesquisador. A coluna da esquerda escolhe entre **Categorias** e **Códigos**, e navega por documento, incluindo a opção **(Todos os documentos)**, que reconcilia o projeto inteiro de uma vez.
+*Só em projeto coletivo — se o seu é individual, pule para a [seção 9](#9-leitura).* É onde a equipe consolida o **gabarito** a partir do trabalho individual de cada pesquisador. A coluna da esquerda tem sempre as duas seções, **Categorias** e **Códigos**, cada uma com duas listas que abrem e fecham: **Documentos** (reconciliar tudo de um documento, ou **(Todos os documentos)** para o projeto inteiro de uma vez) e **Categorias** ou **Códigos** (reconciliar uma categoria, ou um código, em todos os documentos). As listas começam recolhidas, e a recolhida mostra ao lado do título o que está escolhido nela. Clicar num item já leva à seção dele.
 
 **Categorias.** Para cada documento e categoria, você vê o **Gabarito** (que o admin define) e, abaixo, a resposta de cada pesquisador com **✓** (igual ao gabarito) ou **✗** (diferente). No modo (Todos os documentos), escolhe-se uma categoria e ela é consolidada documento a documento.
 
