@@ -473,9 +473,9 @@ Em projeto individual com mais de um autor importado, o seletor mostra **Todos o
 > **Por que algumas visualizações são só leitura?** Quando a tela mostra a resposta de *outra* pessoa — em **(nome de um pesquisador)** ou em **Final / gabarito** —, editar ali gravaria sob a *sua* identidade: o campo mostraria um valor e mudaria outro. Por isso essas duas são só leitura, e o gabarito se edita na Reconciliação. Em **Individuais (todos)** e em **Minhas** o campo é sempre o seu, então os dois são editáveis.
 
 ### 5.9. Filtro de código (só os grifos de um código)
-O **Ver:** escolhe *de quem* são os grifos; o filtro de código escolhe *de qual código*. Na barra do leitor, clique no **funil** (ao lado do **Ver:**), procure o código pelo nome e clique nele: o documento passa a mostrar **só os grifos daquele código**. Escolher uma **família** inclui todos os subcódigos dela. O número ao lado de cada código na lista é quantas codificações ele tem **no documento aberto**.
+O **Ver:** escolhe *de quem* são os grifos; o filtro de código escolhe *de quais códigos*. Na barra do leitor, clique no **funil** (ao lado do **Ver:**), procure pelo nome e **marque um ou mais códigos**: o documento passa a mostrar **só os grifos deles** — com dois marcados, os de um *e* os do outro, para comparar onde cada um aparece. A lista fica aberta enquanto você marca; feche com **Concluir**, **Esc** ou um clique fora. Marcar uma **família** inclui todos os subcódigos dela. O número ao lado de cada código é quantas codificações ele tem **no documento aberto**.
 
-- Com o filtro ligado, o funil vira um **chip com a cor e o nome do código**; clique nele para trocar e no **✕** para voltar a ver tudo.
+- Com o filtro ligado, o funil vira um **chip** com a cor e o nome do código (ou "2 códigos", "3 códigos"… quando há vários). Clique nele para mudar a seleção; **limpar**, no rodapé da lista, volta a mostrar tudo. Na Leitura o chip tem também um **✕** para limpar direto; na Codificação, onde a barra é mais apertada, não.
 - O filtro é **um só** para a Codificação e para a [Leitura ▸ Documentos](#9-leitura): escolhido numa, vale na outra.
 - Ele recorta também o **minimapa** na borda do leitor (onde aquele código aparece no documento) e o que o **botão direito** oferece: grifo escondido pelo filtro não aparece para trocar nem remover.
 - **Aplicar um código fora do filtro funciona normalmente**, mas o grifo novo nasce escondido; o app avisa ("oculto pelo filtro de código"), com a opção de desfazer.
@@ -649,10 +649,10 @@ pesquisa, disponível enquanto você trabalha — e onde você responde "o que e
   com o caminho do código, a camada (individual ou gabarito) e a **nota analítica** do trecho, mais
   um atalho para abrir aquele trecho na Codificação.
 - A caixa **grifos** desliga todos de uma vez, para ler o texto limpo.
-- O botão **código** (o funil) mostra **só os grifos de um código** — o mesmo [filtro de
+- O botão **código** (o funil) mostra **só os grifos de um ou mais códigos** — o mesmo [filtro de
   código](#59-filtro-de-código-só-os-grifos-de-um-código) da Codificação, e é um só para as duas
-  telas. Com ele ligado, o número de cada documento na lista à esquerda passa a contar só aquele
-  código, o que responde "em que documentos este código aparece?".
+  telas. Com ele ligado, o número de cada documento na lista à esquerda passa a contar só os
+  códigos marcados, o que responde "em que documentos estes códigos aparecem?".
 - A lista à esquerda tem o mesmo filtrar/ordenar/agrupar do leitor, mais o **número de trechos** de
   cada documento — o que a torna também um mapa do que ainda **não** foi codificado. Agrupada por
   uma categoria, ela funciona como um primeiro esboço de **pastas**.

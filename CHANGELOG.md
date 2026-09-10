@@ -14,6 +14,24 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.61 (10/09/2026)
+
+### O filtro de código aceita mais de um código
+
+No funil do leitor (Leitura ▸ Documentos e Codificação), a lista de códigos agora é de **marcar**:
+clique em quantos códigos quiser e o documento mostra os grifos de **todos eles** — por exemplo, os
+de *Custo* e os de *Prazo* juntos, para ver onde um e outro aparecem no mesmo texto. A lista fica
+aberta enquanto você escolhe; feche com **Concluir**, com o Escape ou clicando fora. O chip mostra o
+nome do código quando há um só, e "2 códigos", "3 códigos"… quando há vários (o nome de cada um fica
+na dica). **limpar**, no rodapé da lista, volta a mostrar tudo.
+
+### Corrigido
+
+- Com a janela estreita, o chip do filtro na Codificação se desenhava por cima dos botões **A-**,
+  **A+** e de largura da barra do leitor, que ficavam impossíveis de clicar. Agora quem encolhe é o
+  nome do código; o funil e a cor ficam sempre à vista.
+- Depois de escolher o primeiro código, o **Escape** não fechava a lista do filtro.
+
 ## 1.4.60 (10/09/2026)
 
 ### Filtrar os grifos por código, na Leitura e na Codificação

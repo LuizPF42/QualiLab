@@ -475,9 +475,9 @@ In an individual project with more than one imported author, the selector shows 
 > **Why are some views read-only?** When the screen shows *someone else's* answer — under **(a researcher's name)** or under **Final / gabarito** —, editing there would write under *your* identity: the field would show one value and change another. That is why those two are read-only, and the reference layer is edited in Reconciliation. Under **Individuais (todos)** and **Minhas** the field is always yours, so both are editable.
 
 ### 5.9. Code filter (only one code's highlights)
-**Ver:** chooses *whose* highlights are shown; the code filter chooses *which code*. On the reader bar, click the **funnel** (next to **Ver:**), search for the code by name and click it: the document then shows **only that code's highlights**. Choosing a **family** includes all of its subcodes. The number next to each code in the list is how many codings it has **in the open document**.
+**Ver:** chooses *whose* highlights are shown; the code filter chooses *which codes*. On the reader bar, click the **funnel** (next to **Ver:**), search by name and **tick one or more codes**: the document then shows **only their highlights** — with two ticked, one's *and* the other's, to compare where each appears. The list stays open while you tick; close it with **Done**, **Esc** or a click outside. Ticking a **family** includes all of its subcodes. The number next to each code is how many codings it has **in the open document**.
 
-- With the filter on, the funnel becomes a **chip with the code's colour and name**; click it to change the code, and click **✕** to see everything again.
+- With the filter on, the funnel becomes a **chip** with the code's colour and name (or "2 codes", "3 codes"… when there are several). Click it to change the selection; **clear**, at the foot of the list, shows everything again. In Reading the chip also has an **✕** to clear directly; in Coding, where the bar is tighter, it does not.
 - There is **one** filter for Coding and for [Reading ▸ Documents](#9-reading): chosen in one, it applies in the other.
 - It also filters the **minimap** at the edge of the reader (where that code appears in the document) and what the **right-click** menu offers: a highlight hidden by the filter is not offered for changing or removing.
 - **Applying a code outside the filter works normally**, but the new highlight starts out hidden; the app says so ("hidden by the code filter"), with an undo option.
@@ -651,10 +651,10 @@ research, available while you work — and where you answer "what have I already
   with the code's path, the layer (individual or reference) and the passage's **analytic note**, plus
   a shortcut to open that passage in Coding.
 - The **highlights** checkbox ("grifos") turns them all off at once, to read the clean text.
-- The **code** button ("código", the funnel) shows **only one code's highlights** — the same [code
+- The **code** button ("código", the funnel) shows **only the highlights of one or more codes** — the same [code
   filter](#59-code-filter-only-one-codes-highlights) as in Coding, and it is one filter for both
-  screens. With it on, each document's number in the list on the left counts only that code, which
-  answers "in which documents does this code appear?".
+  screens. With it on, each document's number in the list on the left counts only the ticked codes,
+  which answers "in which documents do these codes appear?".
 - The list on the left has the same filter/sort/group as the reader, plus each document's
   **passage count** — which also makes it a map of what has **not** yet been coded. Grouped by
   a attribute, it works as a first sketch of **folders**.

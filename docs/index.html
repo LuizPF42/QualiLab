@@ -933,7 +933,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.60';
+const QUALILAB_VERSION = '1.4.61';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -2920,12 +2920,15 @@ const MSG_PT = {
   'reading.agree.hint': 'Botão direito: concordar com este código',
   'cf.btn': 'código',
   'cf.aria': 'Filtrar grifos por código',
-  'cf.tip': 'Mostrar só os grifos de um código (a família inclui os subcódigos). O filtro vale aqui e no outro leitor.',
-  'cf.on.tip': 'Filtro de código ligado: {path}. Só os grifos deste código e dos subcódigos aparecem. Clique para trocar.',
+  'cf.tip': 'Mostrar só os grifos de um ou mais códigos (a família inclui os subcódigos). O filtro vale aqui e no outro leitor.',
+  'cf.on.tip': 'Filtro de código ligado. Aparecem só os grifos de:\n{path}\n(cada família com os subcódigos). Clique para mudar.',
+  'cf.nCodes': '{n} códigos',
+  'cf.nSelected': '{n} marcado(s)',
+  'cf.done': 'Concluir',
   'cf.clear': 'Remover o filtro de código',
   'cf.search': 'Buscar código…',
-  'cf.hint': 'A família inclui os subcódigos · número = codificações neste documento',
-  'cf.all': 'Mostrar todos os códigos',
+  'cf.hint': 'Marque um ou mais · a família inclui os subcódigos · número = codificações neste documento',
+  'cf.all': 'limpar',
   'cf.none': 'Nenhum código com esse nome.',
   'cf.count.tip': 'Codificações neste documento (a família soma os subcódigos)',
   'cf.hiddenApplied': 'Código aplicado, mas oculto pelo filtro de código.',
@@ -5287,12 +5290,15 @@ const MSG_EN = {
   'reading.agree.hint': 'Right-click: agree with this code',
   'cf.btn': 'code',
   'cf.aria': 'Filter highlights by code',
-  'cf.tip': 'Show only the highlights of one code (a family includes its subcodes). The filter applies here and in the other reader.',
-  'cf.on.tip': 'Code filter on: {path}. Only the highlights of this code and its subcodes are shown. Click to change.',
+  'cf.tip': 'Show only the highlights of one or more codes (a family includes its subcodes). The filter applies here and in the other reader.',
+  'cf.on.tip': 'Code filter on. Only the highlights of these are shown:\n{path}\n(each family with its subcodes). Click to change.',
+  'cf.nCodes': '{n} codes',
+  'cf.nSelected': '{n} selected',
+  'cf.done': 'Done',
   'cf.clear': 'Clear the code filter',
   'cf.search': 'Search codes…',
-  'cf.hint': 'A family includes its subcodes · number = codings in this document',
-  'cf.all': 'Show all codes',
+  'cf.hint': 'Tick one or more · a family includes its subcodes · number = codings in this document',
+  'cf.all': 'clear',
   'cf.none': 'No code matches that name.',
   'cf.count.tip': 'Codings in this document (a family adds up its subcodes)',
   'cf.hiddenApplied': 'Code applied, but hidden by the code filter.',
@@ -14234,14 +14240,18 @@ function ViewSelect({ value, onChange, coders, userId, projectMode, mode, label=
    O "Ver:" recorta por QUEM codificou; este recorta por O QUE foi codificado. Vale para os DOIS
    leitores de documento inteiro (Codificacao e Leitura > Documentos) e e UM estado so, compartilhado
    como o "Ver:" (decisao do autor): filtrar na Leitura e seguir pelo "codificar ->" mantem o recorte.
+   VARIOS CODIGOS DE UMA VEZ (v1.4.61, pedido do autor): o recorte e a UNIAO — "mostre onde aparece
+   A ou B" —, que e a pergunta de quem compara dois codigos no mesmo texto. Intersecao ("so onde A e B
+   se sobrepoem") e outra pergunta, e ja tem casa: a Co-ocorrencia dos Graficos.
    FAMILIA INCLUI OS SUBCODIGOS, como na sub-aba Trechos: familia nao recebe trecho por construcao,
    entao filtrar so pelo id dela mostraria sempre um documento sem grifo nenhum.
    O que ele recorta: os grifos do leitor, o minimapa, o que os menus de botao direito enxergam (o
    que nao se ve nao se remove por engano) e, na Leitura, a contagem por documento da lista, que
-   passa a dizer ONDE o codigo aparece. O que NAO recorta: o painel de codigos da Codificacao, a
+   passa a dizer ONDE os codigos aparecem. O que NAO recorta: o painel de codigos da Codificacao, a
    sub-aba Trechos (que tem o seu proprio seletor) e o PDF original. */
-function codeSubtreeIds(codeId, codes){
-  const ids = new Set([codeId]);
+// `codeIds`: um id OU uma lista deles; devolve o conjunto com toda a descendencia de cada um
+function codeSubtreeIds(codeIds, codes){
+  const ids = new Set(Array.isArray(codeIds) ? codeIds : [codeIds]);
   let added = true;
   // ponto fixo, e nao recursao: o `!ids.has` e o que impede um ciclo de .qualilab alheio de nao
   // terminar (a mesma defesa do ancestorsOf, pelo outro lado da arvore)
@@ -14253,16 +14263,27 @@ function codeSubtreeIds(codeId, codes){
 }
 function codingsForCode(codings, ids){ return ids ? (codings||[]).filter(c=>ids.has(c.code_id)) : (codings||[]); }
 
-/* O controle. Sem filtro e um botao discreto; com filtro vira um chip com a cor do codigo e um ✕,
-   porque filtro esquecido e o modo de falha dele: o codigo recem-aplicado "some" do leitor e o
-   documento parece sem grifos. As contagens sao DO DOCUMENTO aberto (o `pool` ja vem recortado pelo
-   "Ver:"), e so sao calculadas com a lista aberta. Largura FIXA (regra de ouro #6). */
-function CodeFilter({ value, onChange, codes, codePath, pool, docId, compact }){
+/* O controle. Sem filtro e um botao discreto; com filtro vira um chip (a cor e o nome do codigo, ou
+   "N codigos") e um ✕, porque filtro esquecido e o modo de falha dele: o codigo recem-aplicado
+   "some" do leitor e o documento parece sem grifos. A lista e de MARCAR: clicar alterna o codigo e a
+   lista fica aberta, para escolher varios de uma vez; fecha no clique fora ou no Escape. As contagens
+   sao DO DOCUMENTO aberto (o `pool` ja vem recortado pelo "Ver:"), e so sao calculadas com a lista
+   aberta. Largura FIXA (regra de ouro #6). */
+function CodeFilter({ selected, onChange, codes, codePath, pool, docId, compact }){
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
   const inRef = useRef(null);
   // autoFocus em elemento inserido dinamicamente nao e confiavel no Chrome (licao do DocsNav)
   useEffect(()=>{ if(open && inRef.current) inRef.current.focus(); }, [open]);
+  // Escape na JANELA, e nao no contenedor: marcar o 1o codigo troca o botao pelo chip e o foco se
+  // perde (vai para o body) — com o Escape preso ao contenedor, a lista ficava aberta com o overlay
+  // cobrindo a tela. Medido: um clique + Escape deixava todos os botoes da barra inalcancaveis.
+  useEffect(()=>{
+    if(!open) return;
+    const k = e=>{ if(e.key==='Escape'){ e.stopPropagation(); setOpen(false); } };
+    window.addEventListener('keydown', k, true);
+    return ()=>window.removeEventListener('keydown', k, true);
+  }, [open]);
   const byId = useMemo(()=> Object.fromEntries((codes||[]).map(c=>[c.id,c])), [codes]);
   const parents = useMemo(()=> new Set((codes||[]).map(c=>c.parent_id).filter(Boolean)), [codes]);
   const ordered = useMemo(()=>{
@@ -14272,53 +14293,74 @@ function CodeFilter({ value, onChange, codes, codePath, pool, docId, compact }){
     return out;
   }, [codes]);
   const counts = useMemo(()=> open ? aggCounts((pool||[]).filter(c=>c.document_id===docId), codes||[]) : {}, [open, pool, docId, codes]);
-  const cur = value ? byId[value] : null;
+  const sel = (selected||[]).filter(id=>byId[id]);
+  const on = new Set(sel);
+  const first = sel.length ? byId[sel[0]] : null;
   const qf = foldText(q.trim());
   const list = qf ? ordered.filter(c=>foldText(codePath(c.id).join(' ')).includes(qf)) : ordered;
-  const pick = (id)=>{ onChange(id); setOpen(false); };
+  const toggle = (id)=> onChange(on.has(id) ? sel.filter(x=>x!==id) : [...sel, id]);
   const cor = (c)=> codeColor(c.hue, c.depth, c.hue_deg, false, c.sat);
-  // O CHIP ENCOLHE (flex 0 1 + reticencias), COM PISO: a barra do leitor da Codificacao e de UMA
-  // linha por decisao do autor, e medido a 1000px o chip com nome inteiro a empurrava 41px para
-  // fora. Sem piso ele encolhia ate sumir o nome, e chip que nao diz o codigo derrota o proprio
-  // proposito (lembrar que ha filtro); 96px mostra o comeco do nome, e o nome inteiro fica no title.
+  const caminhos = sel.map(id=>codePath(id).join(' ▸ ')).join('\n');
+  // O CHIP ENCOLHE, MAS SO O NOME: a barra do leitor da Codificacao e de UMA linha por decisao do
+  // autor, e medido a 1000px o chip com nome inteiro a empurrava 41px para fora. A 1.4.60 resolveu
+  // com um PISO de 96px no botao e `min-width:0` no contenedor — e a 920px o contenedor encolhia
+  // ABAIXO do piso e o chip se desenhava POR CIMA do A-/A+/⬌, sem a barra acusar nada (o
+  // `scrollWidth` da linha nao ve transbordamento de dentro de um filho). Hoje o piso e o CONTEUDO:
+  // funil, cor e ✕ nunca encolhem; o nome vira reticencias e, no aperto, some — o chip colorido ja
+  // diz que ha filtro, e o nome inteiro fica no title. O piso tem de ser EXPLICITO (`piso`): o
+  // tamanho minimo automatico de um item flex e o texto INTEIRO, e com ele o nome nunca encolhia e
+  // empurrava o A-/A+ para fora do leitor. Na barra `compact` o ✕ sai do chip (limpar fica no
+  // rodape da lista, a um clique) e so vai UMA cor: a 920px nao cabia mais.
   // E ele encolhe MENOS que o resto (flex-shrink .25): sem isso, ao lado de um nome de documento
   // longo, o chip ficava no piso ate a 1100px. `compact` (a barra da Codificacao) tira o texto do
   // botao SEM filtro: a 920px, a largura mais apertada antes de os paineis empilharem, a palavra
   // empurrava a barra 31px para fora — o funil fica, com o nome acessivel e a dica.
-  return html`<div style=${`position:relative;min-width:0;flex:${cur?'0 .25 auto':'none'}`} onKeyDown=${e=>{ if(e.key==='Escape' && open){ e.stopPropagation(); setOpen(false); } }}>
-    ${cur
-      ? html`<div class="btn-join" style="display:flex;min-width:0;max-width:100%">
-          <button class="btn sm" style="min-width:96px;max-width:220px;display:inline-flex;align-items:center;gap:6px;background:var(--teal-soft);color:var(--teal-deep);border-color:var(--teal)"
-            title=${t('cf.on.tip',{path:codePath(cur.id).join(' ▸ ')})} onClick=${()=>{ setQ(''); setOpen(o=>!o); }}>
-            <span style="display:inline-flex;flex:none">${icon('filter',12)}</span><span style=${`display:inline-block;flex:none;width:9px;height:9px;border-radius:2px;${swatchStyle(cor(cur), parents.has(cur.id))}`}></span>
-            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${cur.name}</span>
+  const nCores = compact ? 1 : Math.min(sel.length, 3);
+  const piso = 49 + 15*(nCores-1) + (compact ? 0 : 30);
+  return html`<div style=${`position:relative;flex:${first?'0 .25 auto':'none'};min-width:${first?piso+'px':'auto'}`}>
+    ${first
+      ? html`<div class="btn-join" style="display:flex;min-width:0;width:100%">
+          <button class="btn sm" style="flex:1 1 auto;min-width:0;overflow:hidden;max-width:220px;display:inline-flex;align-items:center;gap:6px;background:var(--teal-soft);color:var(--teal-deep);border-color:var(--teal)"
+            title=${t('cf.on.tip',{path:caminhos})} onClick=${()=>{ setQ(''); setOpen(o=>!o); }}>
+            <span style="display:inline-flex;flex:none">${icon('filter',12)}</span>
+            ${sel.slice(0,nCores).map(id=>html`<span key=${id} style=${`display:inline-block;flex:none;width:9px;height:9px;border-radius:2px;${swatchStyle(cor(byId[id]), parents.has(id))}`}></span>`)}
+            <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${sel.length===1 ? first.name : t('cf.nCodes',{n:sel.length})}</span>
           </button>
-          <button class="btn sm" style="flex:none;border-color:var(--teal)" title=${t('cf.clear')} aria-label=${t('cf.clear')} onClick=${()=>onChange(null)}>✕</button>
+          ${!compact && html`<button class="btn sm" style="flex:none;border-color:var(--teal)" title=${t('cf.clear')} aria-label=${t('cf.clear')} onClick=${()=>onChange([])}>✕</button>`}
         </div>`
       : html`<button class="btn sm ghost" title=${t('cf.tip')} aria-label=${compact ? t('cf.aria') : undefined} disabled=${!(codes||[]).length}
           onClick=${()=>{ setQ(''); setOpen(o=>!o); }}>${icon('filter',13)}${compact ? '' : ' ' + t('cf.btn')}</button>`}
     ${open && html`<div>
       <div onClick=${()=>setOpen(false)} style="position:fixed;inset:0;z-index:40"></div>
-      <div class="exmenu" style="width:300px;max-width:calc(100vw - 24px);max-height:min(60vh,480px);display:flex;flex-direction:column">
+      <div class="exmenu" role="menu" style="width:300px;max-width:calc(100vw - 24px);max-height:min(60vh,480px);display:flex;flex-direction:column">
         <div style="padding:6px 8px;border-bottom:1px solid var(--line-soft)">
           <input ref=${inRef} class="txtin" value=${q} placeholder=${t('cf.search')} style="width:100%;box-sizing:border-box;font-size:12.5px"
             onInput=${e=>setQ(e.target.value)}
-            onKeyDown=${e=>{ if(e.key==='Enter' && list[0]){ e.preventDefault(); pick(list[0].id); } }} />
+            onKeyDown=${e=>{ if(e.key==='Enter' && list[0]){ e.preventDefault(); toggle(list[0].id); setQ(''); } }} />
           <div style="font-size:10.5px;color:var(--ink-faint);padding:4px 2px 0">${t('cf.hint')}</div>
         </div>
         <div style="overflow:auto;flex:1;min-height:0">
-          ${cur && html`<button onClick=${()=>pick(null)} style="color:var(--teal);font-weight:600;border-bottom:1px solid var(--line-soft)">✕ ${t('cf.all')}</button>`}
           ${list.length===0 && html`<div style="padding:9px 12px;color:var(--ink-faint);font-size:12.5px">${t('cf.none')}</div>`}
           ${list.map(c=>{
             const n = counts[c.id]||0;
-            return html`<button key=${c.id} data-code=${c.id} onClick=${()=>pick(c.id)} title=${codePath(c.id).join(' ▸ ')}
-              style=${`display:flex;align-items:center;gap:7px;padding-left:${qf?12:12+c.depth*14}px;${c.id===value?'font-weight:700;':''}${n?'':'color:var(--ink-faint);'}`}>
+            const marcado = on.has(c.id);
+            return html`<button key=${c.id} data-code=${c.id} role="menuitemcheckbox" aria-checked=${marcado ? 'true' : 'false'}
+              onClick=${()=>toggle(c.id)} title=${codePath(c.id).join(' ▸ ')}
+              style=${`display:flex;align-items:center;gap:7px;padding-left:${qf?10:10+c.depth*14}px;${marcado?'font-weight:700;background:var(--teal-soft);':''}${n||marcado?'':'color:var(--ink-faint);'}`}>
+              <span style="display:inline-block;flex:none;width:11px;color:var(--teal);font-weight:700">${marcado?'✓':''}</span>
               <span style=${`display:inline-block;flex:none;width:10px;height:10px;border-radius:2px;${swatchStyle(cor(c), parents.has(c.id))}`}></span>
               <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.is_redaction?'⦸ ':''}${qf ? codePath(c.id).join(' ▸ ') : c.name}</span>
               <span class="count" title=${t('cf.count.tip')}>${n}</span>
             </button>`;
           })}
         </div>
+        ${sel.length>0 && html`<div class="row" style="gap:6px;justify-content:space-between;align-items:center;padding:6px 8px;border-top:1px solid var(--line-soft)">
+          <span class="meta">${t('cf.nSelected',{n:sel.length})}</span>
+          <span class="row" style="gap:6px">
+            <button class="btn sm ghost" onClick=${()=>onChange([])}>${t('cf.all')}</button>
+            <button class="btn sm primary" onClick=${()=>setOpen(false)}>${t('cf.done')}</button>
+          </span>
+        </div>`}
       </div>
     </div>`}
   </div>`;
@@ -14468,7 +14510,7 @@ const CTXNEW_INITIAL = { criando: false, nome: '', pai: null, query: '', hi: 0, 
    desfazer e o "carregando" das telas agregadas. Area em vez de quatro useState pela mesma
    razao das outras — e porque a catraca do check_structure conta useState, e estado de
    conveniencia nao deve consumi-la.
-   `codeFilter` (set/2026) e o filtro de codigo dos dois leitores, {pid, id}: o `pid` e o que o faz
+   `codeFilter` (set/2026) e o filtro de codigo dos dois leitores, {pid, ids}: o `pid` e o que o faz
    valer so no projeto em que foi escolhido, sem um efeito de "zerar ao trocar de projeto". */
 const UI_INITIAL = { paleta: false, atalhos: false, toast: null, aggBusy: false, codeFilter: null };
 
@@ -15478,11 +15520,11 @@ function App(){
 
   // codificações visíveis no leitor conforme o recorte "Ver:" — mesma fonte (codingsForView)
   // usada por Leitura, Gráficos e Relatório, pra o comportamento ser idêntico em todas as telas.
-  // + o FILTRO DE CODIGO (irmao do "Ver:", compartilhado com a Leitura; ver codeSubtreeIds).
-  // Id de codigo que nao existe mais (excluido, ou de outro projeto) vale como "sem filtro".
-  const codeFilterId = (ui.codeFilter && ui.codeFilter.pid===project?.id && codes.some(c=>c.id===ui.codeFilter.id)) ? ui.codeFilter.id : null;
-  const codeFilterIds = useMemo(()=> codeFilterId ? codeSubtreeIds(codeFilterId, codes) : null, [codeFilterId, codes]);
-  const setCodeFilter = (id)=> mudaUi({ codeFilter: id ? { pid:project?.id, id } : null });
+  // + o FILTRO DE CODIGO (irmao do "Ver:", compartilhado com a Leitura; UNIAO das subarvores dos
+  // codigos escolhidos, ver codeSubtreeIds). Id que nao existe mais (excluido, outro projeto) cai fora.
+  const codeFilterSel = useMemo(()=> (ui.codeFilter && ui.codeFilter.pid===project?.id) ? ui.codeFilter.ids.filter(id=>codes.some(c=>c.id===id)) : [], [ui.codeFilter, project?.id, codes]);
+  const codeFilterIds = useMemo(()=> codeFilterSel.length ? codeSubtreeIds(codeFilterSel, codes) : null, [codeFilterSel, codes]);
+  const setCodeFilter = (ids)=> mudaUi({ codeFilter: ids && ids.length ? { pid:project?.id, ids } : null });
   const viewCodings = useMemo(()=> codingsForView(codings, viewCoder, user?.id, projectMode), [codings, viewCoder, user, projectMode]);
   const visibleCodings = useMemo(()=> codingsForCode(viewCodings, codeFilterIds), [viewCodings, codeFilterIds]);
 
@@ -17663,7 +17705,7 @@ function App(){
           ${activeHealth && !activeHealth.ok && !edicao.ativa && html`<span class="pill mode-offline" style="cursor:help;flex:none"
             title=${t('health.tip',{list:activeHealth.flags.join('\n• ')})}>⚠︎ ${t('health.pill')}</span>`}
           <div class="grow"></div>
-          ${activeDoc && !edicao.ativa && html`<${CodeFilter} value=${codeFilterId} onChange=${setCodeFilter} codes=${codes} codePath=${codePath} pool=${viewCodings} docId=${activeId} compact=${true} />`}
+          ${activeDoc && !edicao.ativa && html`<${CodeFilter} selected=${codeFilterSel} onChange=${setCodeFilter} codes=${codes} codePath=${codePath} pool=${viewCodings} docId=${activeId} compact=${true} />`}
           ${!focusMode && !blindLock && html`<${ViewSelect} value=${viewCoder} onChange=${setViewCoder} coders=${coders} userId=${user?.id} projectMode=${projectMode} mode=${mode} />`}
           ${blindLock && html`<span class="pill" style="background:var(--amber-soft);border-color:var(--amber);color:var(--amber);flex:none"
             title=${t('blind.tip')}>${t('blind.pill')}</span>`}
@@ -17988,7 +18030,7 @@ function App(){
             <label class="meta" style="display:flex;gap:5px;align-items:center;cursor:pointer" title=${t('reading.plain.tip')}>
               <input type="checkbox" checked=${vizShowHl} onChange=${e=>setVizShowHl(e.target.checked)} /> ${t('reading.hl')}
             </label>
-            <${CodeFilter} value=${codeFilterId} onChange=${setCodeFilter} codes=${codes} codePath=${codePath} pool=${vizViewCodings} docId=${vizDoc?.id} />`}
+            <${CodeFilter} selected=${codeFilterSel} onChange=${setCodeFilter} codes=${codes} codePath=${codePath} pool=${vizViewCodings} docId=${vizDoc?.id} />`}
           ${/* o "Ver:" vale para os DOIS modos e mora aqui nos dois: ele recorta os grifos do
                 leitor e os trechos da outra sub-aba — é a mesma decisão, não pode trocar de
                 lugar (nem sumir) quando se troca de modo de leitura */''}
