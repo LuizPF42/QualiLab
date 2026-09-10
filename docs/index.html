@@ -887,6 +887,8 @@ const ICONS = {
   pencil: ()=>html`<path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>`,
   file:   ()=>html`<path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/>`,
   lines:  ()=>html`<path d="M4 6h16M4 12h16M4 18h10"/>`,
+  /* filter: o funil — o filtro de codigo dos leitores */
+  filter: ()=>html`<path d="M3 5h18l-7 8.5V19l-4 2v-7.5z"/>`,
   /* install: arrow into a tray — the canonical "install/download" drawing */
   install:()=>html`<path d="M12 3v11"/><path d="M8 11l4 4 4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>`,
   command:()=>html`<path d="M9 9h6v6H9z"/><path d="M9 9H7a2 2 0 1 1 2-2v2zM15 9h2a2 2 0 1 0-2-2v2zM15 15h2a2 2 0 1 1-2 2v-2zM9 15H7a2 2 0 1 0 2 2v-2z"/>`,
@@ -931,7 +933,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.59';
+const QUALILAB_VERSION = '1.4.60';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -2914,6 +2916,19 @@ const MSG_PT = {
   'search.count': '{i} de {n}',
   'recon.allDocs': ' · todos os documentos',
   'reading.plain.tip': 'Ler o documento sem os grifos, como o texto limpo',
+  'reading.hl': 'grifos',
+  'reading.agree.hint': 'Botão direito: concordar com este código',
+  'cf.btn': 'código',
+  'cf.aria': 'Filtrar grifos por código',
+  'cf.tip': 'Mostrar só os grifos de um código (a família inclui os subcódigos). O filtro vale aqui e no outro leitor.',
+  'cf.on.tip': 'Filtro de código ligado: {path}. Só os grifos deste código e dos subcódigos aparecem. Clique para trocar.',
+  'cf.clear': 'Remover o filtro de código',
+  'cf.search': 'Buscar código…',
+  'cf.hint': 'A família inclui os subcódigos · número = codificações neste documento',
+  'cf.all': 'Mostrar todos os códigos',
+  'cf.none': 'Nenhum código com esse nome.',
+  'cf.count.tip': 'Codificações neste documento (a família soma os subcódigos)',
+  'cf.hiddenApplied': 'Código aplicado, mas oculto pelo filtro de código.',
   'ctx.reject.admin': 'Rejeitar (admin): ',
 
   // -- planilha de atributos e de trechos --
@@ -5268,6 +5283,19 @@ const MSG_EN = {
   'search.count': '{i} of {n}',
   'recon.allDocs': ' · all documents',
   'reading.plain.tip': 'Read the document without highlights, as plain text',
+  'reading.hl': 'highlights',
+  'reading.agree.hint': 'Right-click: agree with this code',
+  'cf.btn': 'code',
+  'cf.aria': 'Filter highlights by code',
+  'cf.tip': 'Show only the highlights of one code (a family includes its subcodes). The filter applies here and in the other reader.',
+  'cf.on.tip': 'Code filter on: {path}. Only the highlights of this code and its subcodes are shown. Click to change.',
+  'cf.clear': 'Clear the code filter',
+  'cf.search': 'Search codes…',
+  'cf.hint': 'A family includes its subcodes · number = codings in this document',
+  'cf.all': 'Show all codes',
+  'cf.none': 'No code matches that name.',
+  'cf.count.tip': 'Codings in this document (a family adds up its subcodes)',
+  'cf.hiddenApplied': 'Code applied, but hidden by the code filter.',
   'ctx.reject.admin': 'Reject (admin): ',
 
   // -- attribute and passage spreadsheets --
@@ -14202,6 +14230,100 @@ function ViewSelect({ value, onChange, coders, userId, projectMode, mode, label=
     </select></label>`;
 }
 
+/* ===== Filtro de CODIGO dos leitores (set/2026) — o irmao do "Ver:" =====
+   O "Ver:" recorta por QUEM codificou; este recorta por O QUE foi codificado. Vale para os DOIS
+   leitores de documento inteiro (Codificacao e Leitura > Documentos) e e UM estado so, compartilhado
+   como o "Ver:" (decisao do autor): filtrar na Leitura e seguir pelo "codificar ->" mantem o recorte.
+   FAMILIA INCLUI OS SUBCODIGOS, como na sub-aba Trechos: familia nao recebe trecho por construcao,
+   entao filtrar so pelo id dela mostraria sempre um documento sem grifo nenhum.
+   O que ele recorta: os grifos do leitor, o minimapa, o que os menus de botao direito enxergam (o
+   que nao se ve nao se remove por engano) e, na Leitura, a contagem por documento da lista, que
+   passa a dizer ONDE o codigo aparece. O que NAO recorta: o painel de codigos da Codificacao, a
+   sub-aba Trechos (que tem o seu proprio seletor) e o PDF original. */
+function codeSubtreeIds(codeId, codes){
+  const ids = new Set([codeId]);
+  let added = true;
+  // ponto fixo, e nao recursao: o `!ids.has` e o que impede um ciclo de .qualilab alheio de nao
+  // terminar (a mesma defesa do ancestorsOf, pelo outro lado da arvore)
+  while(added){
+    added = false;
+    (codes||[]).forEach(c=>{ if(c.parent_id && ids.has(c.parent_id) && !ids.has(c.id)){ ids.add(c.id); added = true; } });
+  }
+  return ids;
+}
+function codingsForCode(codings, ids){ return ids ? (codings||[]).filter(c=>ids.has(c.code_id)) : (codings||[]); }
+
+/* O controle. Sem filtro e um botao discreto; com filtro vira um chip com a cor do codigo e um ✕,
+   porque filtro esquecido e o modo de falha dele: o codigo recem-aplicado "some" do leitor e o
+   documento parece sem grifos. As contagens sao DO DOCUMENTO aberto (o `pool` ja vem recortado pelo
+   "Ver:"), e so sao calculadas com a lista aberta. Largura FIXA (regra de ouro #6). */
+function CodeFilter({ value, onChange, codes, codePath, pool, docId, compact }){
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+  const inRef = useRef(null);
+  // autoFocus em elemento inserido dinamicamente nao e confiavel no Chrome (licao do DocsNav)
+  useEffect(()=>{ if(open && inRef.current) inRef.current.focus(); }, [open]);
+  const byId = useMemo(()=> Object.fromEntries((codes||[]).map(c=>[c.id,c])), [codes]);
+  const parents = useMemo(()=> new Set((codes||[]).map(c=>c.parent_id).filter(Boolean)), [codes]);
+  const ordered = useMemo(()=>{
+    const out = [], seen = new Set();
+    const walk = (pid)=> (codes||[]).filter(c=>(c.parent_id||null)===pid).forEach(c=>{ if(seen.has(c.id)) return; seen.add(c.id); out.push(c); walk(c.id); });
+    walk(null);
+    return out;
+  }, [codes]);
+  const counts = useMemo(()=> open ? aggCounts((pool||[]).filter(c=>c.document_id===docId), codes||[]) : {}, [open, pool, docId, codes]);
+  const cur = value ? byId[value] : null;
+  const qf = foldText(q.trim());
+  const list = qf ? ordered.filter(c=>foldText(codePath(c.id).join(' ')).includes(qf)) : ordered;
+  const pick = (id)=>{ onChange(id); setOpen(false); };
+  const cor = (c)=> codeColor(c.hue, c.depth, c.hue_deg, false, c.sat);
+  // O CHIP ENCOLHE (flex 0 1 + reticencias), COM PISO: a barra do leitor da Codificacao e de UMA
+  // linha por decisao do autor, e medido a 1000px o chip com nome inteiro a empurrava 41px para
+  // fora. Sem piso ele encolhia ate sumir o nome, e chip que nao diz o codigo derrota o proprio
+  // proposito (lembrar que ha filtro); 96px mostra o comeco do nome, e o nome inteiro fica no title.
+  // E ele encolhe MENOS que o resto (flex-shrink .25): sem isso, ao lado de um nome de documento
+  // longo, o chip ficava no piso ate a 1100px. `compact` (a barra da Codificacao) tira o texto do
+  // botao SEM filtro: a 920px, a largura mais apertada antes de os paineis empilharem, a palavra
+  // empurrava a barra 31px para fora — o funil fica, com o nome acessivel e a dica.
+  return html`<div style=${`position:relative;min-width:0;flex:${cur?'0 .25 auto':'none'}`} onKeyDown=${e=>{ if(e.key==='Escape' && open){ e.stopPropagation(); setOpen(false); } }}>
+    ${cur
+      ? html`<div class="btn-join" style="display:flex;min-width:0;max-width:100%">
+          <button class="btn sm" style="min-width:96px;max-width:220px;display:inline-flex;align-items:center;gap:6px;background:var(--teal-soft);color:var(--teal-deep);border-color:var(--teal)"
+            title=${t('cf.on.tip',{path:codePath(cur.id).join(' ▸ ')})} onClick=${()=>{ setQ(''); setOpen(o=>!o); }}>
+            <span style="display:inline-flex;flex:none">${icon('filter',12)}</span><span style=${`display:inline-block;flex:none;width:9px;height:9px;border-radius:2px;${swatchStyle(cor(cur), parents.has(cur.id))}`}></span>
+            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${cur.name}</span>
+          </button>
+          <button class="btn sm" style="flex:none;border-color:var(--teal)" title=${t('cf.clear')} aria-label=${t('cf.clear')} onClick=${()=>onChange(null)}>✕</button>
+        </div>`
+      : html`<button class="btn sm ghost" title=${t('cf.tip')} aria-label=${compact ? t('cf.aria') : undefined} disabled=${!(codes||[]).length}
+          onClick=${()=>{ setQ(''); setOpen(o=>!o); }}>${icon('filter',13)}${compact ? '' : ' ' + t('cf.btn')}</button>`}
+    ${open && html`<div>
+      <div onClick=${()=>setOpen(false)} style="position:fixed;inset:0;z-index:40"></div>
+      <div class="exmenu" style="width:300px;max-width:calc(100vw - 24px);max-height:min(60vh,480px);display:flex;flex-direction:column">
+        <div style="padding:6px 8px;border-bottom:1px solid var(--line-soft)">
+          <input ref=${inRef} class="txtin" value=${q} placeholder=${t('cf.search')} style="width:100%;box-sizing:border-box;font-size:12.5px"
+            onInput=${e=>setQ(e.target.value)}
+            onKeyDown=${e=>{ if(e.key==='Enter' && list[0]){ e.preventDefault(); pick(list[0].id); } }} />
+          <div style="font-size:10.5px;color:var(--ink-faint);padding:4px 2px 0">${t('cf.hint')}</div>
+        </div>
+        <div style="overflow:auto;flex:1;min-height:0">
+          ${cur && html`<button onClick=${()=>pick(null)} style="color:var(--teal);font-weight:600;border-bottom:1px solid var(--line-soft)">✕ ${t('cf.all')}</button>`}
+          ${list.length===0 && html`<div style="padding:9px 12px;color:var(--ink-faint);font-size:12.5px">${t('cf.none')}</div>`}
+          ${list.map(c=>{
+            const n = counts[c.id]||0;
+            return html`<button key=${c.id} data-code=${c.id} onClick=${()=>pick(c.id)} title=${codePath(c.id).join(' ▸ ')}
+              style=${`display:flex;align-items:center;gap:7px;padding-left:${qf?12:12+c.depth*14}px;${c.id===value?'font-weight:700;':''}${n?'':'color:var(--ink-faint);'}`}>
+              <span style=${`display:inline-block;flex:none;width:10px;height:10px;border-radius:2px;${swatchStyle(cor(c), parents.has(c.id))}`}></span>
+              <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.is_redaction?'⦸ ':''}${qf ? codePath(c.id).join(' ▸ ') : c.name}</span>
+              <span class="count" title=${t('cf.count.tip')}>${n}</span>
+            </button>`;
+          })}
+        </div>
+      </div>
+    </div>`}
+  </div>`;
+}
+
 /* Seção colapsável (fechada por padrão) do menu de contexto do leitor — usada por
    "Aceitar no gabarito" e "Rejeitar / remover", pra não despejar listas longas abertas. */
 function CtxSection({ title, count, children }){
@@ -14345,8 +14467,10 @@ const CTXNEW_INITIAL = { criando: false, nome: '', pai: null, query: '', hi: 0, 
 /* CROMO DE UI transversal (ago/2026): paleta de comandos, mapa de atalhos, o toast com
    desfazer e o "carregando" das telas agregadas. Area em vez de quatro useState pela mesma
    razao das outras — e porque a catraca do check_structure conta useState, e estado de
-   conveniencia nao deve consumi-la. */
-const UI_INITIAL = { paleta: false, atalhos: false, toast: null, aggBusy: false };
+   conveniencia nao deve consumi-la.
+   `codeFilter` (set/2026) e o filtro de codigo dos dois leitores, {pid, id}: o `pid` e o que o faz
+   valer so no projeto em que foi escolhido, sem um efeito de "zerar ao trocar de projeto". */
+const UI_INITIAL = { paleta: false, atalhos: false, toast: null, aggBusy: false, codeFilter: null };
 
 /* DUAS AREAS QUE NAO VIRARAM REDUCER, e o motivo e o mesmo nas duas: elas nao AGRUPAM campos,
    elas ESCOLHEM entre alternativas. Um `useState` com um discriminante ja torna o estado
@@ -15354,9 +15478,13 @@ function App(){
 
   // codificações visíveis no leitor conforme o recorte "Ver:" — mesma fonte (codingsForView)
   // usada por Leitura, Gráficos e Relatório, pra o comportamento ser idêntico em todas as telas.
-  const visibleCodings = useMemo(()=>
-    codingsForView(codings, viewCoder, user?.id, projectMode)
-  , [codings, viewCoder, user, projectMode]);
+  // + o FILTRO DE CODIGO (irmao do "Ver:", compartilhado com a Leitura; ver codeSubtreeIds).
+  // Id de codigo que nao existe mais (excluido, ou de outro projeto) vale como "sem filtro".
+  const codeFilterId = (ui.codeFilter && ui.codeFilter.pid===project?.id && codes.some(c=>c.id===ui.codeFilter.id)) ? ui.codeFilter.id : null;
+  const codeFilterIds = useMemo(()=> codeFilterId ? codeSubtreeIds(codeFilterId, codes) : null, [codeFilterId, codes]);
+  const setCodeFilter = (id)=> mudaUi({ codeFilter: id ? { pid:project?.id, id } : null });
+  const viewCodings = useMemo(()=> codingsForView(codings, viewCoder, user?.id, projectMode), [codings, viewCoder, user, projectMode]);
+  const visibleCodings = useMemo(()=> codingsForCode(viewCodings, codeFilterIds), [viewCodings, codeFilterIds]);
 
 
   // runs do leitor MEMOIZADOS (antes o buildRuns rodava inline no JSX a cada render do App —
@@ -15392,8 +15520,9 @@ function App(){
   const vizDoc = useMemo(()=> docs.find(d=>d.id===vizSelDoc) || docs.find(d=>d.id===activeId) || docs[0] || null,
     [docs, vizSelDoc, activeId]);
   // codificações do recorte "Ver:" — as MESMAS que o resto da tela usa
-  const vizLayerCodings = useMemo(()=> codingsForView(allCodings, viewCoder, user?.id, projectMode),
+  const vizViewCodings = useMemo(()=> codingsForView(allCodings, viewCoder, user?.id, projectMode),
     [allCodings, viewCoder, user?.id, projectMode]);
+  const vizLayerCodings = useMemo(()=> codingsForCode(vizViewCodings, codeFilterIds), [vizViewCodings, codeFilterIds]);
   const vizDocCodings = useMemo(()=> vizDoc ? vizLayerCodings.filter(c=>c.document_id===vizDoc.id) : [],
     [vizLayerCodings, vizDoc]);
   // veio de um clique num trecho: quando o leitor do doc certo estiver montado, rola ate o run
@@ -15712,11 +15841,15 @@ function App(){
      escrever -- este efeito so precisa garantir que HA dado ao entrar na primeira delas.
      O REF GUARDA O PROJETO, e nao um booleano: trocar de projeto tem de recarregar, e comparar o
      id e o que distingue "ja carreguei" de "ja carreguei OUTRA COISA". */
+  /* SO MARCA QUANDO HAVIA DOCUMENTOS (set/2026). O loadAll reagrupa POR `docs`, e num link direto
+     ou F5 numa tela agregada (a URL guarda a tela) ele rodava antes de os documentos chegarem:
+     saia vazio, o ref marcava o projeto, e quando `docs` chegava o efeito pulava. Sintoma: Leitura,
+     Graficos e Relatorio sem nenhum grifo, contagens 0 — e no rascunho/arquivo, para sempre. */
   const aggCarregadoRef = useRef(null);
   useEffect(()=>{
     if(phase!=='work' || !AGG_VIEWS.includes(mainView)) return;
     if(aggCarregadoRef.current === project?.id) return;
-    aggCarregadoRef.current = project?.id || null;
+    if(docs.length) aggCarregadoRef.current = project?.id || null;
     loadAll();
   }, [phase, mainView, loadAll, project]);
   // categoria padrão no modo "(Todos os documentos)" da Reconciliação
@@ -16171,12 +16304,18 @@ function App(){
       // "recentes": o código recém-aplicado vai pro topo da lista, sem repetir, capado em 5
       recentCodesRef.current = [codeId, ...recentCodesRef.current.filter(id=>id!==codeId)].slice(0,5);
       setCodings(x=>[...x,c]); setSel(null); closeCtxMenu(); window.getSelection()?.removeAllRanges();
+      // o grifo novo nasce OCULTO pelo filtro de codigo: sem aviso, a codificacao parece nao ter pegado
+      if(codeFilterIds && !codeFilterIds.has(codeId)) mudaUi({toast:{ msg:t('cf.hiddenApplied'), action:t('toast.undo') }});
     }catch(e){ setErr(t('err.coding.save',{e:String(e.message||e)})); }
   }
+  // `codings` e o estado do documento ATIVO, e o buildRuns nao filtra por documento: gravar aqui uma
+  // linha de OUTRO documento (Reconciliacao em todos os documentos, Leitura > Documentos) a desenharia
+  // nos offsets errados do leitor ate o proximo loadDoc. Quem mostra os outros documentos e o loadAll.
+  const pushCoding = (c)=>{ if(c && String(c.document_id)===String(activeId)) setCodings(x=>[...x,c]); };
   // consolidacao: cria uma codificacao na camada "final" (reconciliacao manual)
   async function addFinalCoding(docId, codeId, start, end, quote){
     const c = await store.addCoding(project.id,{ document_id:docId, code_id:codeId, span_start:start, span_end:end, quote, layer:'final' });
-    setCodings(x=>[...x,c]);
+    pushCoding(c);
   }
   /* CONCORDANCIA (Reconciliacao): grava uma codificacao INDIVIDUAL do usuario atual no mesmo
      trecho e com o mesmo codigo do grupo. E o gesto do CODIFICADOR, e nao o do consolidador —
@@ -16190,7 +16329,7 @@ function App(){
      impede o gesto de inflar em silencio a concordancia medida na aba Codificadores. */
   async function addAgreementCoding(docId, codeId, start, end, quote){
     const c = await store.addCoding(project.id,{ document_id:docId, code_id:codeId, span_start:start, span_end:end, quote, layer:'individual', source:CODING_SOURCES.AGREEMENT });
-    setCodings(x=>[...x,c]);
+    pushCoding(c);
   }
   async function delCoding(id){ await store.deleteCoding(id); setCodings(x=>x.filter(c=>c.id!==id)); }   // PDF-BLOCK: o retângulo some sozinho (deriva de codings)
   // Salva a edicao do texto do documento e REANCORA os grifos (remapSpans reancora por prefixo/sufixo;
@@ -17524,6 +17663,7 @@ function App(){
           ${activeHealth && !activeHealth.ok && !edicao.ativa && html`<span class="pill mode-offline" style="cursor:help;flex:none"
             title=${t('health.tip',{list:activeHealth.flags.join('\n• ')})}>⚠︎ ${t('health.pill')}</span>`}
           <div class="grow"></div>
+          ${activeDoc && !edicao.ativa && html`<${CodeFilter} value=${codeFilterId} onChange=${setCodeFilter} codes=${codes} codePath=${codePath} pool=${viewCodings} docId=${activeId} compact=${true} />`}
           ${!focusMode && !blindLock && html`<${ViewSelect} value=${viewCoder} onChange=${setViewCoder} coders=${coders} userId=${user?.id} projectMode=${projectMode} mode=${mode} />`}
           ${blindLock && html`<span class="pill" style="background:var(--amber-soft);border-color:var(--amber);color:var(--amber);flex:none"
             title=${t('blind.tip')}>${t('blind.pill')}</span>`}
@@ -17846,8 +17986,9 @@ function App(){
           ${vizSub==='documentos' && html`
             ${vizDoc && html`<span class="meta" style="max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title=${vizDoc.name}>${vizDoc.name}</span>`}
             <label class="meta" style="display:flex;gap:5px;align-items:center;cursor:pointer" title=${t('reading.plain.tip')}>
-              <input type="checkbox" checked=${vizShowHl} onChange=${e=>setVizShowHl(e.target.checked)} /> grifos
-            </label>`}
+              <input type="checkbox" checked=${vizShowHl} onChange=${e=>setVizShowHl(e.target.checked)} /> ${t('reading.hl')}
+            </label>
+            <${CodeFilter} value=${codeFilterId} onChange=${setCodeFilter} codes=${codes} codePath=${codePath} pool=${vizViewCodings} docId=${vizDoc?.id} />`}
           ${/* o "Ver:" vale para os DOIS modos e mora aqui nos dois: ele recorta os grifos do
                 leitor e os trechos da outra sub-aba — é a mesma decisão, não pode trocar de
                 lugar (nem sumir) quando se troca de modo de leitura */''}
@@ -17873,6 +18014,9 @@ function App(){
           <${VizDocReader} doc=${vizDoc} codings=${vizDocCodings} codeById=${codeById} codePath=${codePath}
             memos=${memos} prefs=${readerPrefs} showHl=${vizShowHl} darkMode=${darkMode}
             containerRef=${vizReaderRef} flash=${readerFlash}
+            agree=${projectMode==='collective' && can('code') && !blindLock ? { userId:user?.id, allCodings,
+              onAgree:async (codeId,start,end,quote)=>{ try{ await addAgreementCoding(vizDoc.id,codeId,start,end,quote); loadAll(); }catch(e){ setErr(t('err.coding.save',{e:String(e.message||e)})); } },
+              onUndo:async id=>{ try{ await delCoding(id); loadAll(); }catch(e){ setErr(t('err.coding.save',{e:String(e.message||e)})); } } } : null}
             onJump=${(docId, span)=>{ setActiveId(docId); setMainView('codificar', { doc: docId }); if(span && span.start!=null) setPendingJump({ docId, start:span.start }); }} />
         </section>
       </div>`
@@ -21259,13 +21403,21 @@ function DocsNav({ docs, activeId, onPick, health, counts, pageCount, cats, allV
    codificar: mesmas classes (.reader-pane/.reader), mesmos runs (buildRuns), mesma cor
    (codeColor), mesmas regras visuais — censura com caixa fechada e prioridade no run,
    border-bottom só quando há mais de um código. O que NÃO tem, de propósito: seleção de
-   texto que vira codificação, menu de contexto, edição, PDF. Aqui se LÊ.
+   texto que vira codificação, edição, PDF. Aqui se LÊ — o único gesto de escrita é concordar
+   com um código que já está no texto (abaixo).
    Parentesco declarado: é o mesmo desenho do leitor de transparência (ATI), que também
    pré-renderiza runs e abre o detalhe do grifo num painel — a diferença é que lá o alvo é
    o avaliador externo e aqui é o pesquisador, então nada é mascarado (tela de trabalho).
-   Clicar num grifo abre a faixa de detalhe embaixo; clicar fora dela fecha. */
-function VizDocReader({ doc, codings, codeById, codePath, memos, prefs, showHl, darkMode, onJump, containerRef, flash }){
+   Clicar num grifo abre a faixa de detalhe embaixo; clicar fora dela fecha.
+   BOTAO DIREITO NUM GRIFO = "Concordo com este codigo" (set/2026, pedido do autor). E o UNICO gesto
+   de escrita desta tela, e ele so existe quando o App passa `agree` — projeto coletivo, quem tem a
+   capacidade de codificar, fora da codificacao cega (decisao do autor: so coletivo, e so aqui,
+   nao no menu da Codificacao). Sem `agree` o botao direito continua sendo o menu do navegador.
+   O gesto e o da Reconciliacao, com a mesma regra (agreementState/agreementTargetsAt) e o mesmo
+   botao (AgreeButton): concordar aqui e la tem de dar o mesmo span e o mesmo estado. */
+function VizDocReader({ doc, codings, codeById, codePath, memos, prefs, showHl, darkMode, onJump, containerRef, flash, agree }){
   const [pick, setPick] = useState(null);   // { start, codings:[...] } do grifo clicado
+  const [menu, setMenu] = useState(null);   // { x, y, start, codings } do botao direito
   // O container e do App quando ele passa um ref (e o mesmo papel do readerRef da Codificacao:
   // e por dentro dele que o efeito do pendingJump acha o [data-start] para rolar e piscar).
   // O useRef local roda SEMPRE, mesmo sem uso — hook nao pode ficar atras de condicao.
@@ -21273,7 +21425,14 @@ function VizDocReader({ doc, codings, codeById, codePath, memos, prefs, showHl, 
   const boxRef = containerRef || localRef;
   // trocar de documento volta ao TOPO e fecha o detalhe: o componente não remonta (mesma
   // posição na árvore), então sem isto o leitor abre o documento novo na rolagem do anterior
-  useEffect(()=>{ setPick(null); if(boxRef.current) boxRef.current.scrollTop = 0; }, [doc?.id]);
+  useEffect(()=>{ setPick(null); setMenu(null); if(boxRef.current) boxRef.current.scrollTop = 0; }, [doc?.id]);
+  // Escape fecha o menu; o overlay de tela cheia fecha no clique fora (mesmo desenho do menu da Codificacao)
+  useEffect(()=>{
+    if(!menu) return;
+    const k = e=>{ if(e.key==='Escape') setMenu(null); };
+    window.addEventListener('keydown', k);
+    return ()=>window.removeEventListener('keydown', k);
+  }, [menu]);
   const codingMemo = useMemo(()=> indexMemos(memos||[]).codingMemo, [memos]);
   const runs = useMemo(()=>{
     const content = doc?.content || '';
@@ -21300,7 +21459,8 @@ function VizDocReader({ doc, codings, codeById, codePath, memos, prefs, showHl, 
           const top = run.codings.find(c=>codeById[c.code_id]?.is_redaction) || run.codings[run.codings.length-1];
           const code = codeById[top.code_id];
           const col = code ? codeColor(code.hue, code.depth, code.hue_deg, darkMode, code.sat) : codeColor(0,0,null,darkMode);
-          const title = codingHoverTitle(run.codings, codePath, codingMemo);
+          // com o gesto disponivel, o tooltip diz que ele existe: botao direito e caminho invisivel
+          const title = codingHoverTitle(run.codings, codePath, codingMemo) + (agree ? '\n\n' + t('reading.agree.hint') : '');
           const readerDark = prefs.theme==='dark' || darkMode;
           const border = code?.is_redaction ? `border:2px solid ${readerDark ? '#fff' : col.solid}`
             : run.codings.length>1 ? `border-bottom:2px solid ${col.solid}` : '';
@@ -21308,7 +21468,9 @@ function VizDocReader({ doc, codings, codeById, codePath, memos, prefs, showHl, 
           return html`<span key=${i} class=${fl} data-start=${run.start} data-c="1" title=${title}
             style=${`cursor:pointer;background:${col.tint};${border}${isPick?';outline:2px solid var(--sky);outline-offset:-2px':''}`}
             onClick=${()=>{ if(window.getSelection && !window.getSelection().isCollapsed) return;
-                            setPick(p=>p&&p.start===run.start?null:{ start:run.start, codings:run.codings }); }}>${run.text}</span>`;
+                            setPick(p=>p&&p.start===run.start?null:{ start:run.start, codings:run.codings }); }}
+            onContextMenu=${agree ? (e=>{ e.preventDefault(); setPick(null);
+                            setMenu({ x:e.clientX, y:e.clientY, start:run.start, codings:run.codings }); }) : undefined}>${run.text}</span>`;
         })}
       </div>
     </div>
@@ -21331,6 +21493,42 @@ function VizDocReader({ doc, codings, codeById, codePath, memos, prefs, showHl, 
       <button class="btn sm ghost" title=${t('reading.openSpan.tip')} onClick=${()=>onJump&&onJump(doc.id, { start:pick.start })}>${t('reading.openSpan')}</button>
       <button class="icon-btn" title=${t('common.close')} onClick=${()=>setPick(null)}>✕</button>
     </div>`}
+    ${menu && agree && (()=>{
+      // um card por codigo visivel no ponto; o placar "N de M" e o da Reconciliacao (coderKey, e
+      // nao created_by cru: em projeto importado o created_by e nulo e daria sempre "1 de 1")
+      const docCodings = (agree.allCodings||[]).filter(c=>c.document_id===doc.id);
+      const totalCoders = new Set(docCodings.filter(c=>c.layer!=='final').map(coderKey)).size || 1;
+      const targets = agreementTargetsAt(docCodings, menu.codings, menu.start);
+      const W = 300, maxH = Math.round(window.innerHeight*0.6);
+      const left = Math.max(8, Math.min(menu.x, window.innerWidth - W - 8));
+      const top = Math.max(8, Math.min(menu.y, window.innerHeight - maxH - 8));
+      // fecha ANTES de gravar: e o que impede o duplo clique de criar duas concordancias
+      const fazer = (fn)=>{ setMenu(null); fn(); };
+      return html`<div>
+        <div onClick=${()=>setMenu(null)} onContextMenu=${e=>{ e.preventDefault(); setMenu(null); }} style="position:fixed;inset:0;z-index:60"></div>
+        <div class="exmenu agree-menu" role="menu" style=${`position:fixed;left:${left}px;top:${top}px;z-index:61;width:${W}px;max-height:${maxH}px;overflow:auto`}>
+          ${targets.map(g=>{
+            const cc = codeById[g.codeId];
+            const col = cc ? codeColor(cc.hue, cc.depth, cc.hue_deg, false, cc.sat) : codeColor(0,0);
+            const path = codePath(g.codeId).join(' ▸ ');
+            const n = new Set((g.items||[]).map(coderKey)).size;
+            return html`<div key=${g.codeId} class="agree-row" style="padding:8px 12px;border-bottom:1px solid var(--line-soft)">
+              <div class="row" style="gap:6px;margin-bottom:6px;min-width:0">
+                <span class="swatch" style=${`background:${col.solid};flex:none`}></span>
+                <span style="flex:1;min-width:0;font-weight:600;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title=${path}>${cc?.is_redaction?'⦸ ':''}${path}</span>
+                ${n>0 && html`<span class="meta" style="flex:none">${t('rec.ofCoders',{n, total:totalCoders})}</span>`}
+              </div>
+              ${/* o trecho do GRUPO, e nao o pedaco do run clicado: e exatamente o que o clique grava
+                    (o run e cortado nas bordas de TODO grifo sobreposto e sai no meio da palavra) */''}
+              <div style="font-family:var(--mono);font-size:11px;color:var(--ink-soft);margin-bottom:7px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden" title=${doc.content.slice(g.start, g.end)}>"${doc.content.slice(g.start, g.end)}"</div>
+              <${AgreeButton} state=${agreementState(g, agree.userId)}
+                onAgree=${()=>fazer(()=>agree.onAgree(g.codeId, g.start, g.end, doc.content.slice(g.start, g.end)))}
+                onUndo=${id=>fazer(()=>agree.onUndo(id))} />
+            </div>`;
+          })}
+        </div>
+      </div>`;
+    })()}
   </div>`;
 }
 
@@ -21490,17 +21688,9 @@ function VizExcerpts({ docs, codes, codeById, codePath, allCodings, allValues, m
     return s;
   }, [docs, allValues, catFilter]);
 
-  // codigo selecionado + todos os seus descendentes (familia agrega os subcodigos)
-  const selWithDescendants = useMemo(()=>{
-    if(!selCode) return new Set();
-    const ids = new Set([selCode]);
-    let added = true;
-    while(added){
-      added = false;
-      codes.forEach(c=>{ if(c.parent_id && ids.has(c.parent_id) && !ids.has(c.id)){ ids.add(c.id); added = true; } });
-    }
-    return ids;
-  }, [selCode, codes]);
+  // codigo selecionado + todos os seus descendentes (familia agrega os subcodigos) — a MESMA regra
+  // do filtro de codigo dos leitores, por isso a mesma funcao
+  const selWithDescendants = useMemo(()=> selCode ? codeSubtreeIds(selCode, codes) : new Set(), [selCode, codes]);
 
   const excerpts = useMemo(()=>{
     if(!selCode) return [];
@@ -23086,6 +23276,30 @@ function agreementState(group, userId){
   if(!meus.length) return { kind:'none' };
   const concordei = meus.find(i=> codingSource(i) === CODING_SOURCES.AGREEMENT);
   return concordei ? { kind:'agreed', id:concordei.id } : { kind:'own' };
+}
+
+/* O MESMO GESTO NA LEITURA (set/2026): botao direito num grifo do leitor de documento inteiro.
+   Um grupo por CODIGO visivel naquele ponto, e o grupo e o MESMO da Reconciliacao — reconcileGroups
+   sobre as codificacoes individuais do documento —, entao concordar aqui e concordar la gravam o
+   mesmo span e a tela de reconciliacao reconhece a concordancia como sua ('agreed').
+   `docCodings` e o documento INTEIRO, sem o recorte do "Ver:" nem o do filtro de codigo, e de
+   proposito: com "Ver: Ana" so os grifos dela aparecem, mas o estado precisa enxergar a MINHA
+   codificacao do mesmo trecho — senao ofereceria "Concordo" a quem ja codificou ali, e o clique
+   criaria uma segunda linha sobre o proprio trabalho.
+   `shownHere` e o que o leitor desenhou naquele ponto (run.codings, ja recortado): e ele que decide
+   QUAIS codigos entram — concordar com um codigo que a pessoa nao esta vendo seria assinar no escuro.
+   Grifo que so existe no gabarito (camada final, nenhum individual sobreposto) vira um grupo sem
+   itens com o span dele: concordar com o gabarito tambem e um voto legitimo, e o estado sai 'none'. */
+function agreementTargetsAt(docCodings, shownHere, pos){
+  const groups = reconcileGroups((docCodings||[]).filter(c=>c.layer!=='final'));
+  const out = [], seen = new Set();
+  for(const c of (shownHere||[])){
+    if(seen.has(c.code_id)) continue;
+    seen.add(c.code_id);
+    const g = groups.find(x=> String(x.codeId)===String(c.code_id) && x.start<=pos && pos<x.end);
+    out.push(g ? { ...g, codeId:c.code_id } : { codeId:c.code_id, start:c.span_start, end:c.span_end, items:[] });
+  }
+  return out;
 }
 
 /* Os tres estados acima em botao. Componente proprio porque os DOIS cards da aba Codigos (o de um

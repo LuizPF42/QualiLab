@@ -472,6 +472,15 @@ Em projeto individual com mais de um autor importado, o seletor mostra **Todos o
 
 > **Por que algumas visualizações são só leitura?** Quando a tela mostra a resposta de *outra* pessoa — em **(nome de um pesquisador)** ou em **Final / gabarito** —, editar ali gravaria sob a *sua* identidade: o campo mostraria um valor e mudaria outro. Por isso essas duas são só leitura, e o gabarito se edita na Reconciliação. Em **Individuais (todos)** e em **Minhas** o campo é sempre o seu, então os dois são editáveis.
 
+### 5.9. Filtro de código (só os grifos de um código)
+O **Ver:** escolhe *de quem* são os grifos; o filtro de código escolhe *de qual código*. Na barra do leitor, clique no **funil** (ao lado do **Ver:**), procure o código pelo nome e clique nele: o documento passa a mostrar **só os grifos daquele código**. Escolher uma **família** inclui todos os subcódigos dela. O número ao lado de cada código na lista é quantas codificações ele tem **no documento aberto**.
+
+- Com o filtro ligado, o funil vira um **chip com a cor e o nome do código**; clique nele para trocar e no **✕** para voltar a ver tudo.
+- O filtro é **um só** para a Codificação e para a [Leitura ▸ Documentos](#9-leitura): escolhido numa, vale na outra.
+- Ele recorta também o **minimapa** na borda do leitor (onde aquele código aparece no documento) e o que o **botão direito** oferece: grifo escondido pelo filtro não aparece para trocar nem remover.
+- **Aplicar um código fora do filtro funciona normalmente**, mas o grifo novo nasce escondido; o app avisa ("oculto pelo filtro de código"), com a opção de desfazer.
+- O filtro não mexe no painel de códigos, na visualização do PDF original nem na sub-aba **Trechos** da Leitura, que tem o seu próprio seletor de código.
+
 ---
 
 ## 6. Categorias (atributos do documento)
@@ -608,6 +617,7 @@ Codificar cria **conjuntos**: "estes trechos falam de X". A conexão registra o 
 
 - **Concordo com este código**: registra que **você** também aplicaria aquele código àquele trecho. Cria uma codificação sua na **camada individual** e não encosta no gabarito, então é o gesto de quem **codifica** (qualquer membro), enquanto consolidar é o gesto de quem **consolida** (o admin). O placar sobe na hora ("2 de 3" vira "3 de 3 · consenso"), e o botão **desfazer** ao lado remove a concordância. Se o trecho já tiver uma codificação sua, o card diz **codificação sua** e não oferece o botão: você já está no grupo.
   - A codificação criada assim fica **marcada como concordância**, e não se confunde com a que você fez sozinho lendo o documento. A distinção importa porque concordar aqui é decidir **vendo a resposta dos outros** — o que serve para fechar a reconciliação, mas não é a mesma evidência que duas pessoas chegando ao mesmo trecho de forma independente. É também o que faz o **desfazer** apagar só a concordância, nunca o seu trabalho original.
+  - O mesmo gesto está no **botão direito** sobre um grifo, na [Leitura ▸ Documentos](#9-leitura): concordar lendo o documento inteiro, sem sair do texto. Grava exatamente o mesmo (o trecho do grupo), e esta tela reconhece a concordância como sua.
 - **Consolidar em massa**: havendo grupos pendentes, aparecem **Consolidar tudo feito por mim (N)** e **Consolidar tudo (N)**, do documento aberto ou, em (Todos os documentos), do projeto inteiro (respeitando o filtro de código). É irreversível; o app confirma antes.
 - **Atalho pelo leitor**: na aba Codificação, o admin pode aceitar um grifo direto no gabarito pelo **botão direito → "Aceitar no gabarito"**, sem passar por esta tela.
 
@@ -639,14 +649,23 @@ pesquisa, disponível enquanto você trabalha — e onde você responde "o que e
   com o caminho do código, a camada (individual ou gabarito) e a **nota analítica** do trecho, mais
   um atalho para abrir aquele trecho na Codificação.
 - A caixa **grifos** desliga todos de uma vez, para ler o texto limpo.
+- O botão **código** (o funil) mostra **só os grifos de um código** — o mesmo [filtro de
+  código](#59-filtro-de-código-só-os-grifos-de-um-código) da Codificação, e é um só para as duas
+  telas. Com ele ligado, o número de cada documento na lista à esquerda passa a contar só aquele
+  código, o que responde "em que documentos este código aparece?".
 - A lista à esquerda tem o mesmo filtrar/ordenar/agrupar do leitor, mais o **número de trechos** de
   cada documento — o que a torna também um mapa do que ainda **não** foi codificado. Agrupada por
   uma categoria, ela funciona como um primeiro esboço de **pastas**.
 - O documento que aparece aqui é o mesmo que você tem aberto na Codificação, e o botão
   **codificar →** leva você de volta para lá.
 
-Aqui não se codifica: selecionar texto não aplica código e não há menu de contexto. Para trabalhar
-no documento, use a Codificação.
+Aqui não se codifica: selecionar texto não aplica código. A exceção, em **projeto coletivo**, é
+**concordar**: clique com o **botão direito** num grifo de um colega e aparece **Concordo com este
+código**, o mesmo gesto da [Reconciliação](#8-reconciliação) — grava uma codificação sua, na camada
+individual, no trecho do grupo, e o **desfazer** remove só a concordância. Se o trecho já tem uma
+codificação sua, o menu diz **codificação sua** e não oferece nada. O gesto não aparece em projeto
+individual, na codificação cega, nem para quem tem papel de leitor. Para qualquer outra coisa, use a
+Codificação.
 
 ### ✎ Trechos — a leitura do esquema
 

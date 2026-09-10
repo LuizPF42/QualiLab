@@ -474,6 +474,15 @@ In an individual project with more than one imported author, the selector shows 
 
 > **Why are some views read-only?** When the screen shows *someone else's* answer — under **(a researcher's name)** or under **Final / gabarito** —, editing there would write under *your* identity: the field would show one value and change another. That is why those two are read-only, and the reference layer is edited in Reconciliation. Under **Individuais (todos)** and **Minhas** the field is always yours, so both are editable.
 
+### 5.9. Code filter (only one code's highlights)
+**Ver:** chooses *whose* highlights are shown; the code filter chooses *which code*. On the reader bar, click the **funnel** (next to **Ver:**), search for the code by name and click it: the document then shows **only that code's highlights**. Choosing a **family** includes all of its subcodes. The number next to each code in the list is how many codings it has **in the open document**.
+
+- With the filter on, the funnel becomes a **chip with the code's colour and name**; click it to change the code, and click **✕** to see everything again.
+- There is **one** filter for Coding and for [Reading ▸ Documents](#9-reading): chosen in one, it applies in the other.
+- It also filters the **minimap** at the edge of the reader (where that code appears in the document) and what the **right-click** menu offers: a highlight hidden by the filter is not offered for changing or removing.
+- **Applying a code outside the filter works normally**, but the new highlight starts out hidden; the app says so ("hidden by the code filter"), with an undo option.
+- The filter does not touch the codes panel, the original PDF view, or the **Passages** sub-tab of Reading, which has its own code selector.
+
 ---
 
 ## 6. Attributes (per-document fields)
@@ -610,6 +619,7 @@ Coding creates **sets**: "these passages are about X". A link records what the c
 
 - **I agree with this code** ("Concordo com este código"): records that **you** would also apply that code to that passage. It creates a coding of yours in the **individual layer** and does not touch the reference layer — so it is the gesture of someone who **codes** (any member), while consolidating is the gesture of someone who **consolidates** (the admin). The tally rises immediately ("2 of 3" becomes "3 of 3 · consensus"), and the **undo** button next to it removes the agreement. If the passage already has a coding of yours, the card says **your coding** and offers no button: you are already in the group.
   - A coding created this way is **flagged as an agreement**, and is not confused with one you made on your own while reading the document. The distinction matters because agreeing here is deciding **while seeing the others' answers** — which serves to close the reconciliation, but is not the same evidence as two people reaching the same passage independently. It is also what makes **undo** erase only the agreement, never your original work.
+  - The same gesture is on the **right-click** over a highlight in [Reading ▸ Documents](#9-reading): agreeing while reading the whole document, without leaving the text. It records exactly the same thing (the group's passage), and this screen recognises the agreement as yours.
 - **Bulk consolidation**: when there are pending groups, **Consolidate everything done by me (N)** and **Consolidate everything (N)** appear, for the open document or, under (All documents), for the whole project (respecting the code filter). It is irreversible; the app confirms first.
 - **Shortcut through the reader**: on the Coding tab, the admin can accept a highlight straight into the reference layer via **right-click → "Accept into the reference layer"** ("Aceitar no gabarito"), without passing through this screen.
 
@@ -641,14 +651,23 @@ research, available while you work — and where you answer "what have I already
   with the code's path, the layer (individual or reference) and the passage's **analytic note**, plus
   a shortcut to open that passage in Coding.
 - The **highlights** checkbox ("grifos") turns them all off at once, to read the clean text.
+- The **code** button ("código", the funnel) shows **only one code's highlights** — the same [code
+  filter](#59-code-filter-only-one-codes-highlights) as in Coding, and it is one filter for both
+  screens. With it on, each document's number in the list on the left counts only that code, which
+  answers "in which documents does this code appear?".
 - The list on the left has the same filter/sort/group as the reader, plus each document's
   **passage count** — which also makes it a map of what has **not** yet been coded. Grouped by
   a attribute, it works as a first sketch of **folders**.
 - The document shown here is the same one you have open in Coding, and the
   **code →** button ("codificar →") takes you back there.
 
-There is no coding here: selecting text applies no code and there is no context menu. To work
-on the document, use Coding.
+There is no coding here: selecting text applies no code. The exception, in a **collective project**,
+is **agreeing**: right-click a colleague's highlight and **I agree with this code** ("Concordo com
+este código") appears — the same gesture as in [Reconciliation](#8-reconciliation). It records a
+coding of yours, in the individual layer, on the group's passage, and **undo** removes only the
+agreement. If the passage already has a coding of yours, the menu says **your coding** and offers
+nothing. The gesture does not appear in individual projects, under blind coding, or for someone with
+the reader role. For anything else, use Coding.
 
 ### ✎ Passages: reading the scheme
 

@@ -14,6 +14,41 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.60 (10/09/2026)
+
+### Filtrar os grifos por código, na Leitura e na Codificação
+
+A barra do leitor ganhou um **funil**, ao lado do **Ver:**. Clique nele, procure o código pelo nome
+e o documento passa a mostrar **só os grifos daquele código** — escolher uma família inclui os
+subcódigos. É útil para responder "onde este código aparece neste documento?" sem se perder nos
+outros grifos: o minimapa na borda do leitor passa a mostrar só aquele código, e, na **Leitura ▸
+Documentos**, o número de cada documento na lista à esquerda passa a contar só ele.
+
+O filtro é **um só** para as duas telas: escolhido na Leitura, continua valendo quando você vai
+para a Codificação pelo **codificar →**, e vice-versa. Com ele ligado, o funil vira um chip com a
+cor e o nome do código; o **✕** volta a mostrar tudo. Se você aplicar um código que está fora do
+filtro, a codificação é gravada normalmente, mas o grifo nasce escondido — e o app avisa, com a
+opção de desfazer.
+
+### "Concordo com este código" direto na Leitura
+
+Em projeto coletivo, clique com o **botão direito** num grifo de um colega na **Leitura ▸
+Documentos** e aparece **Concordo com este código**: o mesmo gesto da Reconciliação, sem sair do
+texto. Grava uma codificação sua, na camada individual, no mesmo trecho que a Reconciliação usaria,
+e a Reconciliação a reconhece como concordância sua. Se você já concordou, o menu oferece
+**desfazer**; se o trecho já tem uma codificação sua, ele diz isso e não oferece nada. O gesto não
+aparece em projeto individual, na codificação cega, nem para quem tem papel de leitor.
+
+### Corrigido
+
+- **Abrir o app direto na Leitura, nos Gráficos ou no Relatório** — por um link, ou recarregando a
+  página estando numa delas — mostrava a tela sem nenhum grifo e com todas as contagens em zero. No
+  rascunho e no modo arquivo ficava assim até reabrir o projeto; na nuvem, até a próxima
+  atualização automática. Agora os dados chegam junto com a tela.
+- Concordar ou consolidar em **(Todos os documentos)** na Reconciliação podia desenhar, por alguns
+  segundos, um grifo fora do lugar no documento aberto na Codificação.
+- Na interface em inglês, a caixa **grifos** da Leitura aparecia em português.
+
 ## 1.4.59 (06/09/2026)
 
 ### Conexões: dizer o que um código tem a ver com outro
