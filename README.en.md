@@ -414,7 +414,9 @@ The [Sustainability](#the-qualilab-is-not-a-magic-format) section says there is 
 | `scripts/sri.py` + `sri_selftest.py` | the CDN dependencies match the hash declared in the import map |
 | credentials check | the published app points at the **public** Supabase project, and no other |
 
-The rest of the battery runs in the development repository, on every push, over the modular source: pure-function tests (redaction, passage anchors, offsets, format parsing), **23 browser suites** verifying that every screen renders and that the rules which fail **silently** still hold (blind mode not leaking the reference layer, induction not seeing the held-out documents, the confirmation code not dropping digits, **zero external requests at boot**), **pgTAP** over the RLS policies (roles, blind coding, assignment, AI access) and the round-trip harness that validates the generated `.qdpx` against the official `Project.xsd`.
+The rest of the battery runs in the development repository, on every push, over the modular source: pure-function tests (redaction, passage anchors, offsets, format parsing), **40 browser suites** verifying that every screen renders and that the rules which fail **silently** still hold (blind mode not leaking the reference layer, induction not seeing the held-out documents, the confirmation code not dropping digits, **zero external requests at boot**), and **pgTAP** over the RLS policies (roles, blind coding, assignment, AI access). The round-trip harness that validates the generated `.qdpx` against the official `Project.xsd` also lives there, but is run by hand, outside CI.
+
+In addition, the code is periodically put through **adversarial review by language models that take no part in its development**, looking for security flaws and bugs; what is confirmed gets fixed, or is recorded as a pending item in the changelog. The reviewers are currently ChatGPT 5.6 Astra and Google Gemini 3.1 Pro. This does not replace an independent security audit, which the project has not had yet (see [Sustainability, frankly](#limits-and-responsibility)).
 
 ---
 

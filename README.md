@@ -409,7 +409,9 @@ A seção [Sustentabilidade](#o-qualilab-não-é-um-formato-mágico) diz que há
 | `scripts/sri.py` + `sri_selftest.py` | as dependências de CDN conferem com o hash declarado no import map |
 | checagem de credenciais | o app publicado aponta o projeto Supabase **público**, e nenhum outro |
 
-O restante da bateria roda no repositório de desenvolvimento, a cada push, sobre a fonte modular: testes de funções puras (censura, âncoras de trecho, offsets, parsing dos formatos), **23 suítes de navegador** que verificam que cada tela renderiza e que as regras que falham **mudas** continuam valendo (o modo cego não vazar o gabarito, a indução não ver os documentos guardados, o código de confirmação não perder dígito, **zero requisição externa no boot**), **pgTAP** sobre as políticas de RLS (papéis, codificação cega, distribuição, acesso à IA) e o harness de round-trip que valida o `.qdpx` gerado contra o `Project.xsd` oficial.
+O restante da bateria roda no repositório de desenvolvimento, a cada push, sobre a fonte modular: testes de funções puras (censura, âncoras de trecho, offsets, parsing dos formatos), **40 suítes de navegador** que verificam que cada tela renderiza e que as regras que falham **mudas** continuam valendo (o modo cego não vazar o gabarito, a indução não ver os documentos guardados, o código de confirmação não perder dígito, **zero requisição externa no boot**), e **pgTAP** sobre as políticas de RLS (papéis, codificação cega, distribuição, acesso à IA). O harness de round-trip, que valida o `.qdpx` gerado contra o `Project.xsd` oficial, também mora lá, mas roda à mão, fora do CI.
+
+Além disso, o código passa periodicamente por **revisão adversarial de modelos de linguagem que não participam do desenvolvimento**, à procura de falhas de segurança e de bugs; o que se confirma é corrigido, ou fica registrado como pendência no changelog. Atualmente, os revisores são o ChatGPT 5.6 Astra e o Google Gemini 3.1 Pro. Isso não substitui uma auditoria de segurança independente, que o projeto ainda não teve (veja [Sustentabilidade, com franqueza](#limites-e-responsabilidade)).
 
 ---
 
