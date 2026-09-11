@@ -2,7 +2,19 @@ name: Sincronizar asset do release
 
 # Mantem o asset "index.html" do release `alpha` sempre igual ao docs/index.html
 # servido pelo GitHub Pages. Dispara quando o docs/index.html muda no main.
-# Assim o link "Baixe a ferramenta" do README nunca fica desatualizado.
+# Assim o link "Baixe o index.html" do manual (secao 2.1) nunca fica desatualizado.
+#
+# O segundo passo reescreve o TITULO e o TEXTO do release a cada envio, com a
+# versao que esta no arquivo. Sem ele o release ficou meses se chamando "v06"
+# com o arquivo ja em dia, porque so o asset era trocado.
+#
+# A DATA do release (15/07/2026) NAO muda, e isso e de proposito: ela so muda
+# republicando o release (apagar e recriar, ou passar por rascunho), e o Zenodo
+# escuta os eventos de release deste repositorio -- republicar arquivaria uma
+# versao "alpha" com DOI permanente. Editar titulo e texto e um evento que o
+# Zenodo ignora. Por isso o texto diz a data do arquivo, e o titulo nao
+# carrega numero de versao (um numero novo ao lado de uma data de julho se
+# leria como contradicao).
 
 on:
   push:
@@ -24,3 +36,27 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release upload alpha docs/index.html --clobber --repo "$GITHUB_REPOSITORY"
+
+      - name: Atualizar titulo e texto do release alpha com a versao do arquivo
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSAO=$(grep -m1 -oE "QUALILAB_VERSION = '[^']+'" docs/index.html | cut -d"'" -f2 || true)
+          if [ -z "$VERSAO" ]; then
+            echo "::error::QUALILAB_VERSION nao encontrado em docs/index.html"
+            exit 1
+          fi
+          DATA_BR=$(date -u +%d/%m/%Y)
+          DATA_ISO=$(date -u +%Y-%m-%d)
+          cat > notas.md <<EOF
+          O index.html do QualiLab, para baixar e abrir com duplo clique, sem instalar nada.
+
+          **Versão atual: $VERSAO**, atualizada em $DATA_BR. O arquivo é substituído automaticamente sempre que uma versão nova é publicada no site. A data no topo desta página é a de quando este link foi criado, não a do arquivo.
+
+          Para citar o QualiLab, use as versões numeradas desta página, arquivadas no Zenodo com DOI: https://doi.org/10.5281/zenodo.21935682
+
+          ---
+
+          QualiLab's index.html, to download and open with a double click, with nothing to install. **Current version: $VERSAO**, updated on $DATA_ISO. The file is replaced automatically whenever a new version is published on the site; the date at the top of this page is when this link was created, not the file's date. To cite QualiLab, use the numbered releases on this page, archived on Zenodo with a DOI.
+          EOF
+          gh release edit alpha --title "QualiLab: arquivo único (sempre a versão atual)" --notes-file notas.md --latest=false --repo "$GITHUB_REPOSITORY"
