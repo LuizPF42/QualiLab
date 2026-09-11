@@ -61,7 +61,7 @@ Só a **versão publicada mais recente**. O QualiLab é um único arquivo HTML s
 
 Não é auditoria, e é melhor do que nada:
 
-- **Regras de acesso do banco testadas como contrato** — as políticas de RLS, os papéis, a distribuição de documentos e a codificação cega são exercitados por testes pgTAP versionados em [`supabase/tests/database/`](supabase/tests/database/), incluindo o caso em que a nota analítica de um trecho alheio não pode ser servida sob codificação cega.
+- **Regras de acesso do banco testadas como contrato** — as políticas de RLS, os papéis, a distribuição de documentos e a codificação cega são exercitados por testes pgTAP que rodam a cada push no repositório de desenvolvimento, sobre o mesmo [`supabase/schema.sql`](supabase/schema.sql) publicado aqui, incluindo o caso em que a nota analítica de um trecho alheio não pode ser servida sob codificação cega.
 - **Censura coberta por testes de propriedade e de âncora**, e falhando para o lado seguro: quando a âncora de um trecho não confere com o documento, a saída mascara o documento inteiro em vez de arriscar mascarar o lugar errado.
 - **Dependências de CDN fixadas por hash** (Subresource Integrity, via import map), com verificação automatizada. Duas ressalvas honestas: o hash cobre o módulo de topo, e o *worker* do PDF e o WebAssembly do SQLite não são alcançados por esse mecanismo.
 - **Integração contínua** a cada mudança: verificação de sintaxe, testes de unidade e suítes que dirigem a interface real em navegador.
