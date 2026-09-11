@@ -98,7 +98,7 @@ Uma linha por recurso: aqui é o inventário. O **passo a passo** de cada um est
 | **Esquema em lote** | agrupar, mesclar, promover a Hierarquia 0, **dividir** um código em subcódigos, e um **mapa espacial** dos códigos |
 | **Conexões** | relação nomeada entre dois códigos, duas categorias ou um de cada (*contradiz*, *é parte de*, *é causa de*), com direção, comentário e, opcionalmente, um trecho como evidência |
 | **Busca** | literal (expressão regular, maiúsculas, palavra inteira) e global em todo o corpus |
-| **Censura** | um código marcado 🚫 mascara os trechos dele nas saídas de transparência e no que vai para a IA |
+| **Censura** | um código marcado ⦸ mascara os trechos dele nas saídas do Relatório e no que vai para a IA; a sua tela e os arquivos de trabalho seguem com o texto inteiro |
 
 **Conexões: o que um código tem a ver com outro, e por que isso não é uma medida.** Codificar cria conjuntos ("estes trechos falam de X"); a conexão registra a estrutura **entre** eles: *Ativismo judicial* **contradiz** *Deferência ao legislador*. São duas peças, de propósito — a **relação** é o vocabulário do estudo (o tipo da seta, com direção) e a conexão é a instância, e é por isso que renomear uma relação vale para todas as ligações que a usam. Seis vêm prontas, as mesmas de outras ferramentas do campo, e você cria as suas. **Ela é uma anotação, não uma métrica**: quem mede associação nos seus dados continua sendo a Co-ocorrência e o Código × atributo, nos Gráficos — a conexão diz o que você sustenta, o gráfico diz o que o corpus mostra, e a divergência entre os dois costuma ser o achado. O app impõe três invariantes: um código não se conecta a si mesmo, a mesma conexão não entra duas vezes (numa relação sem sentido, A→B e B→A são a mesma afirmação) e **código de censura fica fora**, porque marca o que é ocultado e não é categoria de análise. No `.qualilab` as conexões vão e voltam inteiras; no `.qdpx` saem como `<Link>`, a forma normativa do REFI-QDA, e o QualiLab também **lê** os `<Link>` de projetos de outras ferramentas, dizendo no resumo da importação o que descartou e por quê. O que não cabe no padrão é o trecho marcado como evidência, e a exportação **avisa** isso em vez de inventar uma convenção própria. Passo a passo em [Esquema](docs/MANUAL.md#7-esquema), no manual.
 
@@ -190,7 +190,7 @@ Você aponta uma **pasta**, não um arquivo: o assistente lista os projetos que 
 
 - **Arquivo / Rascunho**: ficam **no seu dispositivo** e não saem dele.
 - **Nuvem**: são enviados a um **servidor de terceiros** (Supabase), ficam sujeitos aos termos desse provedor e saem do seu controle direto.
-- **IA**: **vem desligada** — todo projeto nasce sem ela, e ativar é um ato ([abaixo](#ia-desligada-por-padrão-e-com-a-sua-chave)). Depois de ativada, os trechos que você **pedir** para analisar são enviados ao **provedor de IA** que você usar (Gemini/OpenAI/Anthropic/Azure…), sob a política dele; o **Ollama local** é a exceção (roda na sua máquina, nada sai dela). A censura é mascarada antes do envio.
+- **IA**: **vem desligada** — todo projeto nasce sem ela, e ativar é um ato ([abaixo](#ia-desligada-por-padrão-e-com-a-sua-chave)). Depois de ativada, os trechos que você **pedir** para analisar são enviados ao **provedor de IA** que você usar (Gemini/OpenAI/Anthropic/Azure…), sob a política dele; o **Ollama local** é a exceção (roda na sua máquina, nada sai dela). A censura é mascarada antes do envio; só no Analisar com IA você pode incluir, código a código, um trecho censurado como contexto.
 - **Publicação** (Relatório Interativo / Web Annotation): o que você divulgar fica **público**.
 
 O QualiLab opera em três modos, escolhidos na **tela de entrada** (ou reabertos automaticamente):
@@ -226,7 +226,7 @@ No modo rascunho (`localStorage`, limite de 5-10MB), você pode ativar um **back
 - Mudanças **estruturais** ficam de fora da fila de propósito e avisam na hora se falharem: criar/excluir documento, mexer no esquema de códigos, gestão do projeto e importações. Numa pesquisa coletiva, reaplicar esse tipo de mudança minutos depois produziria um estado que ninguém pediu.
 - Se a nuvem **recusar** de vez uma alteração (seu papel no projeto mudou, ou outra pessoa excluiu o alvo), ela não some calada: aparece um aviso do que foi recusado, com atalho para baixar um `.qualilab` antes de refazer.
 
-**O QualiLab NÃO anonimiza nem identifica dados pessoais** (nomes, CPF, dados de saúde) no conteúdo dos documentos. A **censura** mascara apenas os trechos que **você** marcou à mão, **não** detecta sozinha o que é sensível e **não** cobre as exportações (QDPX/CSV/JSON saem com o texto cru). **Não há rede de segurança automática.**
+**O QualiLab NÃO anonimiza nem identifica dados pessoais** (nomes, CPF, dados de saúde) no conteúdo dos documentos. A **censura** mascara apenas os trechos que **você** marcou à mão, **não** detecta sozinha o que é sensível e **não** cobre as exportações de trabalho (`.qualilab`, QDPX, QDC, CSV e JSON saem com o texto cru). **Não há rede de segurança automática.**
 
 ---
 
@@ -354,7 +354,7 @@ assert all(t["quote"] == texto[t["document_id"]][t["span_start"]:t["span_end"]]
 
 Nos exemplos do repositório isso vale para todos os trechos. É a mesma invariante que o servidor MCP e os testes de censura verificam, e é ela que permite reprocessar o corpus fora do app sem depender de nada nosso.
 
-Duas coisas que **não** estão no arquivo, e é bom saber: a **distribuição de documentos** (ela depende de identificadores de usuário que só existem na nuvem) e os **caches derivados**, como o índice da busca semântica, que é refeito quando o corpus muda. E uma que **está**: o `.qualilab` é formato de **trabalho**, então carrega o texto **cru, censura inclusive** — mascarar aqui destruiria dado de forma irreversível. Quem mascara são as saídas de transparência (ATI, W3C) e o prompt da IA.
+Duas coisas que **não** estão no arquivo, e é bom saber: a **distribuição de documentos** (ela depende de identificadores de usuário que só existem na nuvem) e os **caches derivados**, como o índice da busca semântica, que é refeito quando o corpus muda. E uma que **está**: o `.qualilab` é formato de **trabalho**, então carrega o texto **cru, censura inclusive** — mascarar aqui destruiria dado de forma irreversível. Quem mascara são as saídas do Relatório (Padrão, ATI e W3C) e o que vai para a IA.
 
 ### Formato de intercâmbio
 
@@ -423,13 +423,13 @@ Projeto em desenvolvimento ativo. Vale conhecer os limites antes de adotar num t
 - **Nem tudo sincroniza ao vivo.** Só codificações e respostas de categoria. Mudar o esquema de códigos, as categorias ou a distribuição de documentos exige recarregar a página.
 - **A fila de escrita não é modo offline.** Ela guarda e reenvia o que você *escreve* quando a nuvem falha, mas **ler** continua exigindo rede: sem conexão, abrir um documento ainda não carregado ou trocar de projeto não funciona. Para trabalhar sem rede, use o modo Arquivo.
 - **Capacidade do plano gratuito do Supabase** (ordem de 500 MB de banco, sujeita a mudança — confira em [supabase.com/pricing](https://supabase.com/pricing)). Projetos muito grandes podem exigir plano pago ou o modo Arquivo, que não tem esse teto.
-- **O QualiLab NÃO anonimiza.** A censura mascara **só os trechos que você marcou à mão**, e só nas saídas de transparência e no prompt da IA: não detecta o que é sensível, não cobre as exportações de trabalho (QDPX/CSV/JSON saem crus) e não alcança **título do documento, valor de categoria nem memo**. O manual traz o [fluxo de publicação](docs/MANUAL.md) que cuida desses três.
+- **O QualiLab NÃO anonimiza.** A censura mascara **só os trechos que você marcou à mão**, e só no que sai de perto de você: as saídas do Relatório e o que vai para a IA, inclusive o assistente externo (salvo quando você mesmo inclui um código de censura numa análise, e com a ressalva dos clientes agênticos, acima). Ela não detecta o que é sensível, não esconde nada na sua própria tela, não cobre as exportações de trabalho (`.qualilab`, QDPX, QDC, CSV e JSON saem crus) e não alcança **título do documento, valor de categoria nem memo**. O manual traz o [fluxo de publicação](docs/MANUAL.md) que cuida desses três.
 - **A trilha de auditoria registra operações, não linhas, e não desfaz.** O histórico do projeto (Memos ▸ Histórico) lista importações, mesclagens e divisões de código, exclusões, edições de texto, aplicações em lote, consolidações e exportações, com autor e data, mas não guarda o conteúdo do que foi apagado: o **Ctrl+Z** segue desfazendo só a última codificação da sessão. O que devolve o conteúdo é o **espelho** (desde a 1.4.52): um retrato do projeto inteiro, criado à mão ou sozinho antes de limpar, excluir, mesclar, dividir, editar texto ou restaurar, que se restaura a partir da pílula do projeto — sem os PDFs originais e sem o histórico, que registra a restauração em vez de voltar atrás. Ele começa no primeiro evento depois da 1.4.51 (nada é reconstruído para trás), e na nuvem é só-acréscimo pela API, não prova forense: quem opera o servidor, ou o dono do arquivo, sempre pode alterá-lo.
 - **QDPX perde o que o formato não modela**: camadas individuais e autoria de atributo por pesquisador (limite do REFI-QDA, não nosso). E o tipo das categorias vindas de outra ferramenta é **inferido** quando ela não o declara — o resumo do import diz quantas foram, e vale revisar no esquema.
 - **A fidelidade do round-trip é medida, não presumida** (harness mantido no repositório de desenvolvimento, com corpus adversarial e matriz de sobrevive/degrada/se perde). Ainda assim, **validade de schema não substitui testar na ferramenta de destino real**, que pode ler o padrão de outro jeito.
 - **PDF original na nuvem é opt-in**, com consentimento explícito no envio: quem administra o banco passa a poder abrir o arquivo inteiro, e não só o texto codificado. Para dado sensível, mantenha o PDF no modo Arquivo.
 - **Distribuição e codificação cega só existem na nuvem coletiva** (dependem de contas de vários pesquisadores) e **não** viajam no `.qualilab`.
-- **Livro de códigos sem etapa de aprovação**: qualquer membro cria e renomeia códigos (necessário para codificar em equipe); excluir, mesclar e mexer na censura são de admin. Não há um estado intermediário antes de um código novo ficar visível a todos.
+- **Livro de códigos sem etapa de aprovação**: por padrão, qualquer membro cria e renomeia códigos (necessário para codificar em equipe), e o administrador pode tirar isso dos membros nas regras do projeto; excluir, mesclar e mexer na censura são de admin. Não há um estado intermediário antes de um código novo ficar visível a todos.
 - **E-mail da conta não pode ser trocado** no app; nome de exibição e senha, sim.
 - **Áudio, vídeo, imagem e planilha não são material codificável** — é escopo declarado, não pendência (veja acima).
 
@@ -446,8 +446,9 @@ O risco de abandono é mitigado pelo desenho, não por uma promessa: licença MI
 O backlog completo é mantido no repositório de desenvolvimento, com o raciocínio de cada item e também o que foi **avaliado e descartado**, com o porquê. As prioridades declaradas hoje:
 
 - **Backend sem credencial enterrada**: catálogo de nuvens nomeado na configuração, "usar minha própria nuvem" como caminho de primeira classe e link-convite com tela de confirmação.
-- **Relações nomeadas** entre códigos e entre trechos ("X contradiz Y", "X é causa de Y"), criadas pelo menu de contexto.
-- **Rastro e auditoria**: log de operações do projeto (imports, merges, exclusões, aplicações em lote) e desfazer em lote — o critério em que estamos abaixo da mediana do campo.
+- **Conexões entre trechos**, criadas no leitor: ligar um trecho a outro ("esta afirmação contradiz aquela"). As conexões de hoje ligam códigos e categorias, e são criadas no Esquema.
+- **Desfazer em lote**: reverter uma única operação (uma importação, uma aplicação de sugestões) sem restaurar o projeto inteiro. O histórico de operações e os espelhos já existem ([Trilha de auditoria e espelhos](#trilha-de-auditoria-e-espelhos)), mas o espelho volta o projeto todo a um instante.
+- **Escrita com aprovação pelo assistente externo**: ele propõe codificações numa caixa que você revisa dentro do app; nada é aplicado sozinho.
 - **Criptografia ponta a ponta** com passkey, para colaboração ao vivo sem que o operador do servidor possa ler o corpus: desenho pronto, nada decidido.
 
 ---

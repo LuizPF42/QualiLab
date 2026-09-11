@@ -100,7 +100,7 @@ One line per feature: this is the inventory. The **step by step** for each one i
 | **Bulk scheme edits** | group, merge, promote to top level, **split** a code into subcodes, and a spatial **map** of the codes |
 | **Links** | named relation between two codes, two attributes or one of each (*contradicts*, *is part of*, *is cause of*), with direction, a comment and, optionally, a passage as evidence |
 | **Search** | literal (regular expression, case, whole word) and global across the whole corpus |
-| **Redaction** | a code flagged 🚫 masks its passages in the transparency outputs and in what goes to the AI |
+| **Redaction** | a code flagged ⦸ masks its passages in the Report outputs and in what goes to the AI; your own screen and the work files keep the full text |
 
 **Links: what one code has to do with another, and why that is not a measurement.** Coding creates sets ("these passages are about X"); a link records the structure **between** them: *Judicial activism* **contradicts** *Deference to the legislature*. There are two pieces, deliberately — the **relation** is the study's vocabulary (the kind of arrow, with direction) and the link is the instance, which is why renaming a relation applies to every link that uses it. Six come ready, the same ones other tools in the field use, and you create your own. **A link is an annotation, not a metric**: what measures association in your data is still Co-occurrence and Code × attribute, under Charts — the link says what you claim, the chart says what the corpus shows, and the disagreement between the two is often the finding. The app enforces three invariants: a code cannot link to itself, the same link cannot be entered twice (in a relation with no direction, A→B and B→A are the same claim), and **redaction codes stay out**, because they mark what is hidden and are not an analytical category. Links round-trip intact in the `.qualilab` file; in `.qdpx` they are written as `<Link>`, the REFI-QDA standard form, and QualiLab also **reads** the `<Link>` elements of projects from other tools, stating in the import summary what it discarded and why. What does not fit the standard is the passage marked as evidence, and the export **says so** instead of inventing a convention of its own. Step by step under [Scheme](docs/MANUAL.en.md#7-scheme), in the manual.
 
@@ -192,7 +192,7 @@ This is the question that decides how much of the tool you can use, and the answ
 
 - **File / Draft**: they stay **on your device** and do not leave it.
 - **Cloud**: they are sent to a **third-party server** (Supabase), become subject to that provider's terms and leave your direct control.
-- **AI**: it **ships off** — every project is born without it, and enabling it is a deliberate act ([above](#ai-off-by-default-and-with-your-own-key)). Once enabled, the passages you **ask** to have analyzed are sent to the **AI provider** you use (Gemini/OpenAI/Anthropic/Azure…), under its policy; **local Ollama** is the exception (it runs on your machine, nothing leaves it). Redaction is masked before sending.
+- **AI**: it **ships off** — every project is born without it, and enabling it is a deliberate act ([above](#ai-off-by-default-and-with-your-own-key)). Once enabled, the passages you **ask** to have analyzed are sent to the **AI provider** you use (Gemini/OpenAI/Anthropic/Azure…), under its policy; **local Ollama** is the exception (it runs on your machine, nothing leaves it). Redaction is masked before sending; only in Analyze with AI can you include, code by code, a redacted passage as context.
 - **Publication** (Interactive Report / Web Annotation): whatever you publish becomes **public**.
 
 QualiLab operates in three modes, chosen on the **entry screen** (or reopened automatically):
@@ -228,7 +228,7 @@ In draft mode (`localStorage`, a 5–10 MB limit), you can enable an **automatic
 - **Structural** changes stay out of the queue on purpose and fail loudly right away: creating/deleting documents, changing the code scheme, project management and imports. In collective research, replaying that kind of change minutes later would produce a state nobody asked for.
 - If the cloud **definitively rejects** a change (your role in the project changed, or someone deleted the target), it does not disappear silently: a notice shows what was rejected, with a shortcut to download a `.qualilab` before redoing it.
 
-**QualiLab does NOT anonymize or detect personal data** (names, ID numbers, health data) in document content. **Redaction** masks only the passages **you** marked by hand, does **not** detect on its own what is sensitive, and does **not** cover the exports (QDPX/CSV/JSON come out with the raw text). **There is no automatic safety net.**
+**QualiLab does NOT anonymize or detect personal data** (names, ID numbers, health data) in document content. **Redaction** masks only the passages **you** marked by hand, does **not** detect on its own what is sensitive, and does **not** cover the work exports (`.qualilab`, QDPX, QDC, CSV and JSON come out with the raw text). **There is no automatic safety net.**
 
 ---
 
@@ -356,7 +356,7 @@ assert all(t["quote"] == text[t["document_id"]][t["span_start"]:t["span_end"]]
 
 In the repository's examples this holds for every passage. It is the same invariant the MCP server and the redaction tests verify, and it is what lets you reprocess the corpus outside the app without depending on anything of ours.
 
-Two things that are **not** in the file, and it is good to know: the **document assignment** (it depends on user identifiers that only exist in the cloud) and the **derived caches**, such as the semantic search index, which is rebuilt when the corpus changes. And one that **is**: the `.qualilab` is a **work** format, so it carries the text **raw, redaction included** — masking here would destroy data irreversibly. The masking happens in the transparency outputs (ATI, W3C) and in the AI prompt.
+Two things that are **not** in the file, and it is good to know: the **document assignment** (it depends on user identifiers that only exist in the cloud) and the **derived caches**, such as the semantic search index, which is rebuilt when the corpus changes. And one that **is**: the `.qualilab` is a **work** format, so it carries the text **raw, redaction included** — masking here would destroy data irreversibly. The masking happens in the Report outputs (Standard, ATI and W3C) and in what goes to the AI.
 
 ### Interchange format
 
@@ -428,13 +428,13 @@ A project under active development. Know the limits before adopting it for impor
 - **Not everything syncs live.** Only codings and attribute answers. Changing the code scheme, the attributes or the document assignment requires reloading the page.
 - **The write queue is not an offline mode.** It stores and resends what you *write* when the cloud fails, but **reading** still requires a network: with no connection, opening a not-yet-loaded document or switching projects does not work. To work without a network, use File mode.
 - **Supabase free-tier capacity** (on the order of 500 MB of database, subject to change — check [supabase.com/pricing](https://supabase.com/pricing)). Very large projects may require a paid plan or File mode, which has no such ceiling.
-- **QualiLab does NOT anonymize.** Redaction masks **only the passages you marked by hand**, and only in the transparency outputs and the AI prompt: it does not detect what is sensitive, does not cover the work exports (QDPX/CSV/JSON come out raw) and does not reach **document titles, attribute values or memos**. The manual carries the [publication workflow](docs/MANUAL.en.md) that takes care of those three.
+- **QualiLab does NOT anonymize.** Redaction masks **only the passages you marked by hand**, and only in what leaves your hands: the Report outputs and what goes to the AI, the external assistant included (except when you yourself include a redaction code in an analysis, and with the caveat about agentic clients, above). It does not detect what is sensitive, hides nothing on your own screen, does not cover the work exports (`.qualilab`, QDPX, QDC, CSV and JSON come out raw) and does not reach **document titles, attribute values or memos**. The manual carries the [publication workflow](docs/MANUAL.en.md) that takes care of those three.
 - **The audit trail records operations, not rows, and does not undo.** The project history (Memos ▸ History) lists imports, code merges and splits, deletions, text edits, bulk applications, consolidations and exports, with author and date, but keeps no content of what was deleted: **Ctrl+Z** still undoes only the session's last coding. What brings content back is the **mirror** (since 1.4.52): a snapshot of the whole project, taken by hand or on its own before clearing, deleting, merging, splitting, editing text or restoring, restored from the project pill — without the original PDFs and without the history, which records the restoration instead of going back. It starts at the first event after 1.4.51 (nothing is rebuilt backwards), and in the cloud it is append-only through the API, not forensic proof: whoever operates the server, or owns the file, can always alter it.
 - **QDPX loses what the format does not model**: individual layers and per-researcher attribute authorship (a REFI-QDA limit, not ours). And the type of attributes coming from another tool is **inferred** when that tool does not declare it — the import summary says how many, and it is worth reviewing them in the scheme.
 - **Round-trip fidelity is measured, not presumed** (a harness kept in the development repository, with an adversarial corpus and a survives/degrades/is-lost matrix). Even so, **schema validity is no substitute for testing in the actual destination tool**, which may read the standard differently.
 - **Original PDFs in the cloud are opt-in**, with explicit consent on upload: whoever administers the database becomes able to open the whole file, not just the coded text. For sensitive data, keep PDFs in File mode.
 - **Assignment and blind coding only exist in the collective cloud** (they depend on multiple researcher accounts) and do **not** travel in the `.qualilab`.
-- **No approval stage for the codebook**: any member creates and renames codes (necessary for team coding); deleting, merging and touching redaction are admin-only. There is no intermediate state before a new code becomes visible to everyone.
+- **No approval stage for the codebook**: by default, any member creates and renames codes (necessary for team coding), and the admin can take that away from members in the project's rules; deleting, merging and touching redaction are admin-only. There is no intermediate state before a new code becomes visible to everyone.
 - **The account e-mail cannot be changed** in the app; display name and password can.
 - **Audio, video, image and spreadsheets are not codable material** — declared scope, not a pending item (see above).
 
@@ -451,8 +451,9 @@ The risk of abandonment is mitigated by design, not by a promise: an MIT license
 The full backlog is kept in the development repository, with the reasoning behind each item and also what was **considered and discarded**, with the why. Today's declared priorities:
 
 - **Backend without a buried credential**: a named cloud catalog in the configuration, "use my own cloud" as a first-class path, and invitation links with a confirmation screen.
-- **Named relations** between codes and between passages ("X contradicts Y", "X causes Y"), created from the context menu.
-- **Trail and audit**: a log of project operations (imports, merges, deletions, bulk applications) and bulk undo — the criterion where we sit below the field's median.
+- **Links between passages**, created in the reader: connecting one passage to another ("this claim contradicts that one"). Today's links connect codes and attributes, and are created in the Scheme.
+- **Bulk undo**: reverting a single operation (an import, an application of suggestions) without restoring the whole project. The operation history and the mirrors already exist ([Audit trail and mirrors](#audit-trail-and-mirrors)), but a mirror takes the whole project back to a moment.
+- **Assistant-proposed writing with approval**: the external assistant proposes codings into a box you review inside the app; nothing is applied on its own.
 - **End-to-end encryption** with passkeys, for live collaboration without the server operator being able to read the corpus: design ready, nothing decided.
 
 ---
