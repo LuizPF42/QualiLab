@@ -4,7 +4,15 @@ name: Sincronizar asset do release
 # servido pelo GitHub Pages. Dispara quando o docs/index.html muda no main.
 # Assim o link "Baixe o index.html" do manual (secao 2.1) nunca fica desatualizado.
 #
-# O segundo passo reescreve o TITULO e o TEXTO do release a cada envio, com a
+# O segundo passo MOVE A TAG `alpha` para o commit cujo docs/index.html acabou de
+# subir. Sem ele os pacotes "Source code" do release eram de junho (a tag parou no
+# commit que a criou), enquanto o asset ja era a versao do dia. A tag e ATUALIZADA
+# pela API (PATCH no ref, com force), NUNCA apagada e recriada: quando a tag de um
+# release some, o GitHub rebaixa o release a rascunho, e republica-lo e exatamente
+# o evento que o Zenodo arquiva (ver abaixo). Mover o ref e um evento de push, que
+# o webhook do Zenodo -- inscrito so em `release` -- nao escuta.
+#
+# O terceiro passo reescreve o TITULO e o TEXTO do release a cada envio, com a
 # versao que esta no arquivo. Sem ele o release ficou meses se chamando "v06"
 # com o arquivo ja em dia, porque so o asset era trocado.
 #
@@ -37,6 +45,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release upload alpha docs/index.html --clobber --repo "$GITHUB_REPOSITORY"
 
+      - name: Mover a tag alpha para o commit do arquivo
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh api -X PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/alpha" -f sha="$GITHUB_SHA" -F force=true --silent
+
       - name: Atualizar titulo e texto do release alpha com a versao do arquivo
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -48,15 +61,17 @@ jobs:
           fi
           DATA_BR=$(date -u +%d/%m/%Y)
           DATA_ISO=$(date -u +%Y-%m-%d)
+          SHA_CURTO=$(printf '%s' "$GITHUB_SHA" | cut -c1-7)
+          COMMIT_URL="https://github.com/$GITHUB_REPOSITORY/commit/$GITHUB_SHA"
           cat > notas.md <<EOF
           O index.html do QualiLab, para baixar e abrir com duplo clique, sem instalar nada.
 
-          **Versão atual: $VERSAO**, atualizada em $DATA_BR. O arquivo é substituído automaticamente sempre que uma versão nova é publicada no site. A data no topo desta página é a de quando este link foi criado, não a do arquivo.
+          **Versão atual: $VERSAO**, atualizada em $DATA_BR. O arquivo é substituído automaticamente sempre que uma versão nova é publicada no site. A data no topo desta página é a de quando este link foi criado, não a do arquivo. Os pacotes de código-fonte desta página (*Source code*) são do mesmo commit do arquivo: [$SHA_CURTO]($COMMIT_URL).
 
           Para citar o QualiLab, use as versões numeradas desta página, arquivadas no Zenodo com DOI: https://doi.org/10.5281/zenodo.21935682
 
           ---
 
-          QualiLab's index.html, to download and open with a double click, with nothing to install. **Current version: $VERSAO**, updated on $DATA_ISO. The file is replaced automatically whenever a new version is published on the site; the date at the top of this page is when this link was created, not the file's date. To cite QualiLab, use the numbered releases on this page, archived on Zenodo with a DOI.
+          QualiLab's index.html, to download and open with a double click, with nothing to install. **Current version: $VERSAO**, updated on $DATA_ISO. The file is replaced automatically whenever a new version is published on the site; the date at the top of this page is when this link was created, not the file's date. The source code packages on this page are from the same commit as the file ([$SHA_CURTO]($COMMIT_URL)). To cite QualiLab, use the numbered releases on this page, archived on Zenodo with a DOI.
           EOF
           gh release edit alpha --title "QualiLab: arquivo único (sempre a versão atual)" --notes-file notas.md --latest=false --repo "$GITHUB_REPOSITORY"
