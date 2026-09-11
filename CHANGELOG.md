@@ -14,6 +14,37 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.64 (11/09/2026)
+
+### Renomear e excluir as relações das Conexões
+
+As relações que você cria ao conectar códigos e categorias (*depende de*, *precede*…) ficavam no
+projeto para sempre: não havia como corrigir um erro de digitação nem tirar uma relação que ninguém
+usa. Agora o administrador tem, na seção **Conexões** do Esquema, o botão **gerenciar relações…**,
+que lista as relações do projeto, quantas conexões usam cada uma e deixa **renomear** (vale para
+todas as conexões que a usam; um nome que já existe é recusado) e **excluir** (só quando nenhuma
+conexão a usa).
+
+### "Concordo" e "Discordo", uma palavra cada
+
+O botão de concordar dizia **Concordo com este código** ao lado de um **Discordo** de uma palavra
+só. Os dois agora são **Concordo** e **Discordo**, na Leitura e na Reconciliação.
+
+### Correções
+
+- A dica da lista de códigos recentes e o mapa de atalhos prometiam as teclas **1 a 9**, mas a
+  lista tem cinco códigos: agora dizem **1 a 5**.
+- O exemplo no campo do código de acesso tinha 6 caracteres; os códigos têm 10.
+- O aviso de tela pequena dizia que não dá para codificar por toque. Num tablet dá, pela barra que
+  aparece sobre a seleção; o aviso agora diz que a tela serve para ler e consultar, e que para
+  trabalhar com conforto é melhor um computador.
+- O aviso da importação do Zotero indicava um item de menu com o nome antigo; agora aponta
+  **⋯ → OCR: ler páginas escaneadas**.
+- Na interface em inglês, três avisos da exportação QDPX apareciam em português, e o selo de IA do
+  cabeçalho mostrava "IA"; agora os dois estão em inglês.
+- Com o aplicativo instalado, importar planilha `.xlsx` sem internet falhava mesmo depois de já ter
+  sido usado; a biblioteca de planilhas agora fica guardada como as de PDF e OCR.
+
 ## 1.4.63 (10/09/2026)
 
 ### A coluna da Reconciliação sempre com as duas seções

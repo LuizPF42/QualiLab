@@ -933,7 +933,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.63';
+const QUALILAB_VERSION = '1.4.64';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -1132,6 +1132,7 @@ const MSG_PT = {
   'ai.off.aria': 'IA desativada neste projeto',
   'ai.members.aria': 'IA restrita aos administradores',
   'ai.on.aria': 'IA ativada neste projeto',
+  'ai.badge': 'IA',
   'ai.off.tip': 'Os recursos de IA estão desativados neste projeto, para todos. Clique para ativar. Isto não é um bloqueio técnico: o que muda é que o trabalho em massa deixa de caber dentro do QualiLab.',
   'ai.members.tip': 'Os recursos de IA estão disponíveis apenas para os administradores deste projeto.',
   'ai.on.tip': 'Os recursos de IA estão ativados neste projeto. Clique para desativar.',
@@ -1235,7 +1236,7 @@ const MSG_PT = {
   'confirm.doc.removeN': 'Remover o documento "{name}"? As {n} codificações, respostas de categoria e notas dele serão apagadas. Não pode ser desfeito.',
   'confirm.cat.delete': 'Excluir a categoria "{name}"? As respostas dela em TODOS os documentos (de todos os pesquisadores, inclusive o gabarito) serão apagadas. Não pode ser desfeito.',
   'confirm.edit.affects': 'Sua edição toca {n} codificação(ões): os grifos afetados serão reajustados às bordas do trecho editado e podem precisar de conferência. Continuar?',
-  'confirm.qdpx.loss': 'O QDPX não carrega tudo o que o QualiLab guarda:\n\n• {list}\n\nO formato .qualilab preserva os três casos. Exportar o QDPX mesmo assim?',
+  'confirm.qdpx.loss': 'O QDPX não carrega tudo o que o QualiLab guarda:\n\n• {list}\n\nO formato .qualilab preserva tudo isso. Exportar o QDPX mesmo assim?',
 
   // -- resumo da importacao. Cada pedaco e uma SENTENCA COMPLETA concatenada, e nao um fragmento
   //    costurado no meio de outra: e isso que permite traduzir um a um sem prender a ordem das
@@ -1511,7 +1512,7 @@ const MSG_PT = {
   'rec.agreed.tip': 'Você registrou concordância com este código neste trecho.',
   'rec.undo': 'desfazer',
   'rec.undo.tip': 'Remove a codificação criada pela sua concordância.',
-  'rec.agree': 'Concordo com este código',
+  'rec.agree': 'Concordo',
   'rec.agree.tip': 'Registra uma codificação sua neste trecho, na camada individual. Não mexe no gabarito.',
   'rec.own.answer': 'Sua resposta',
   'rec.diverge': '{n} respostas · divergem ({d} valores)',
@@ -1528,7 +1529,7 @@ const MSG_PT = {
   'rec.notConsolidated': '(não consolidado)',
   'rec.nCoders': '{n} codificadores neste documento.',
   'rec.codes.title': 'Códigos: reconciliação',
-  'rec.codes.hint': 'Cada grupo reúne as codificações que se sobrepõem com o mesmo código. Consolide os que devem entrar na camada **final** do projeto. **Concordo com este código** registra uma codificação sua no trecho, na camada individual, marcada como concordância.',
+  'rec.codes.hint': 'Cada grupo reúne as codificações que se sobrepõem com o mesmo código. Consolide os que devem entrar na camada **final** do projeto. **Concordo** registra uma codificação sua no trecho, na camada individual, marcada como concordância.',
   'rec.mine.tip': 'Consolida no gabarito final todas as suas codificações ainda não consolidadas deste documento',
   'rec.mine.ask': 'Consolidar no gabarito final as {n} codificação(ões) feitas por você neste documento?\n\nIsso NÃO pode ser desfeito.',
   'rec.mine': 'Consolidar tudo feito por mim ({n})',
@@ -1548,7 +1549,7 @@ const MSG_PT = {
   'rec.pending': '{n} pendente',
   'rec.pendingN': '{n} pendentes',
   'rec.codes.all': 'Códigos: todos os documentos{filter}',
-  'rec.codes.all.hint': 'Cada grupo reúne as codificações que se sobrepõem com o mesmo código. Consolide na camada **final** do projeto. **Concordo com este código** registra uma codificação sua no trecho, na camada individual, marcada como concordância.',
+  'rec.codes.all.hint': 'Cada grupo reúne as codificações que se sobrepõem com o mesmo código. Consolide na camada **final** do projeto. **Concordo** registra uma codificação sua no trecho, na camada individual, marcada como concordância.',
   'rec.allMine.tip': 'Consolida no gabarito final todas as suas codificações ainda não consolidadas (respeitando o filtro de código)',
   'rec.allMine.ask': 'Consolidar no gabarito final as {n} codificação(ões) feitas por você?\n\nIsso NÃO pode ser desfeito.',
   'rec.allAll.tip': 'Consolida no gabarito final todas as codificações ainda não consolidadas (respeitando o filtro de código)',
@@ -1671,7 +1672,7 @@ const MSG_PT = {
   'gate.col.hint': 'Múltiplos pesquisadores codificam independentemente; admin consolida o gabarito na Reconciliação.',
   'gate.createBtn': 'Criar',
   'gate.join': 'Entrar com código',
-  'gate.code.ph': 'ex: 9F2A1C',
+  'gate.code.ph': 'ex: 9F2A1C7B40',
   'gate.joinBtn': 'Entrar',
   'gate.localFile': 'Arquivo local',
   'gate.private': 'privado',
@@ -2495,7 +2496,7 @@ const MSG_PT = {
   'codes.top.tip': 'Código de topo que recebe trechos',
   'codes.selected': 'Trecho selecionado. Clique em um código abaixo para aplicar.',
   'codes.recent': 'recentes:',
-  'codes.recent.tip': 'Últimos códigos aplicados nesta sessão. Com um trecho selecionado, as teclas 1 a 9 aplicam direto.',
+  'codes.recent.tip': 'Últimos códigos aplicados nesta sessão. Com um trecho selecionado, as teclas 1 a 5 aplicam direto.',
   'codes.apply.tip': 'Aplicar "{name}" ao trecho selecionado (tecla {n})',
   'codes.apply.noSel': '"{name}": selecione um trecho no texto para aplicar',
   'codes.aria': 'Códigos hierárquicos',
@@ -2971,7 +2972,7 @@ const MSG_PT = {
   'zot.noFile': '{n} item(ns) sem PDF na pasta',
   'zot.badPdf': '{n} PDF(s) que não puderam ser lidos',
   'zot.looseNotes': '{n} nota(s) avulsa(s) do Zotero',
-  'zot.noTextLayer': ' {n} PDF(s) sem camada de texto entraram vazios: abra o documento e use "⋯ → ler com OCR".',
+  'zot.noTextLayer': ' {n} PDF(s) sem camada de texto entraram vazios: abra o documento e use "⋯ → OCR: ler páginas escaneadas" (disponível se o PDF original foi guardado).',
   'zot.notes': ' {n} nota(s) do Zotero foram para o memo do documento.',
   'zot.pdfFail': ' Atenção: {n} PDF(s) originais não puderam ser guardados (o texto entrou, mas "ver original"/OCR podem não aparecer neles).',
   'zot.untitled': '(sem título)',
@@ -2981,7 +2982,7 @@ const MSG_PT = {
 
   // -- faixas de aviso. As tres primeiras tem ENFASE no meio da frase, entao passam pelo mdLite
   //    (mesmo caminho das notas do menu exportar). --
-  'warn.smallScreen': '**Tela pequena.** Dá para **ler e consultar** aqui, mas **codificar não**: aplicar um código depende de selecionar o texto e abrir o menu do botão direito, que não existe no toque. Abra num computador para trabalhar de verdade.',
+  'warn.smallScreen': '**Tela pequena.** Dá para **ler e consultar** aqui, mas não para trabalhar com conforto: o leitor e os painéis não cabem lado a lado. Num tablet, selecionar um trecho por toque abre a barra de códigos. Para trabalhar de verdade, use um computador.',
   'warn.draft': 'Você está num **rascunho**. Os dados ficam só neste navegador e podem sumir se você limpar os dados do site. Salve como arquivo ou conecte à nuvem para não perder.',
   'warn.hide': 'ocultar até recarregar',
   'draft.saveAsFile': 'Salvar como arquivo',
@@ -3392,6 +3393,9 @@ const MSG_PT = {
   'snap.err.restore': 'Não foi possível restaurar: {e}',
   'snap.err.list': 'Não foi possível carregar os espelhos: {e}',
   'snap.warn.autoFailed': 'A operação seguiu, mas o espelho automático falhou: {e}',
+  'qdpx.loss.indiv': 'As codificações individuais ({n}) ficam de fora: havendo gabarito no projeto, o QDPX leva só a camada final.',
+  'qdpx.loss.multi': 'Respostas de categoria preenchidas por mais de uma pessoa ({n} no total) saem com um valor só, o gabarito quando existe: o formato guarda um valor por documento e categoria.',
+  'qdpx.loss.checkbox': 'Categoria de caixa de seleção ({names}) sai como texto único juntado por "{sep}": o REFI-QDA não tem múltipla escolha, e na volta o tipo é re-inferido.',
   'qdpx.loss.trail': 'O histórico do projeto ({n} evento(s)) fica de fora: o REFI-QDA não tem onde guardá-lo. Ele viaja só no .qualilab.',
   'imp.activity': ' Histórico: {n} evento(s) novo(s){rep}.',
   'imp.qualilab.collapsed': ' {n} codificação(ões) do arquivo não foram gravadas em separado: eram o gabarito de trechos que já tinham codificação individual (em projeto individual as duas camadas se fundem).',
@@ -3461,6 +3465,19 @@ const MSG_PT = {
   'link.evidence.none': 'sem trecho anexado',
   'link.evidence.hint': 'Um trecho deste código que sustenta a afirmação. Só os primeiros aparecem aqui; para outro, cite-o no comentário.',
   'link.hasEvidence': 'com evidência',
+  'link.manage': 'gerenciar relações…',
+  'link.manage.title': 'Relações do projeto',
+  'link.manage.hint': 'As relações são o vocabulário das conexões deste projeto. Renomear vale para todas as conexões que usam a relação; só dá para excluir uma relação que nenhuma conexão usa. As seis relações padrão aparecem sempre na hora de conectar, mesmo quando não estão nesta lista: cada uma só entra aqui no primeiro uso.',
+  'link.manage.empty': 'O projeto ainda não guardou nenhuma relação: cada uma entra aqui no primeiro uso.',
+  'link.manage.uses': 'em {n} conexão(ões)',
+  'link.manage.unused': 'sem uso',
+  'link.manage.rename': 'renomear',
+  'link.manage.del': 'excluir',
+  'link.manage.inUse.tip': 'Em uso por {n} conexão(ões): remova-as antes de excluir a relação.',
+  'link.manage.confirmDel': 'Excluir a relação "{name}"? Nenhuma conexão a usa.',
+  'link.manage.err.dup': 'Já existe uma relação com esse nome.',
+  'link.manage.err.save': 'Não foi possível renomear: {e}',
+  'link.manage.err.del': 'Não foi possível excluir: {e}',
   'link.hasEvidence.tip': 'Esta conexão aponta um trecho que a sustenta. A âncora viaja no .qualilab; o REFI-QDA não tem onde guardá-la.',
 };
 /* ============ CATALOGO EN ============
@@ -3513,6 +3530,7 @@ const MSG_EN = {
   'ai.off.aria': 'AI turned off in this project',
   'ai.members.aria': 'AI restricted to administrators',
   'ai.on.aria': 'AI turned on in this project',
+  'ai.badge': 'AI',
   'ai.off.tip': 'The AI features are turned off in this project, for everyone. Click to turn them on. This is not a technical block: what changes is that bulk work no longer fits inside QualiLab.',
   'ai.members.tip': 'The AI features are available only to this project’s administrators.',
   'ai.on.tip': 'The AI features are turned on in this project. Click to turn them off.',
@@ -3616,7 +3634,7 @@ const MSG_EN = {
   'confirm.doc.removeN': 'Remove the document "{name}"? Its {n} codings, attribute answers and notes will be deleted. This cannot be undone.',
   'confirm.cat.delete': 'Delete the attribute "{name}"? Its answers in ALL documents (from every researcher, the reference layer included) will be deleted. This cannot be undone.',
   'confirm.edit.affects': 'Your edit touches {n} coding(s): the highlights affected will be readjusted to the edges of the edited passage and may need checking. Continue?',
-  'confirm.qdpx.loss': 'QDPX does not carry everything QualiLab keeps:\n\n• {list}\n\nThe .qualilab format preserves all three cases. Export the QDPX anyway?',
+  'confirm.qdpx.loss': 'QDPX does not carry everything QualiLab keeps:\n\n• {list}\n\nThe .qualilab format preserves all of it. Export the QDPX anyway?',
 
   // -- import summary. Each piece is a COMPLETE SENTENCE that gets concatenated, not a fragment
   //    stitched into the middle of another one: that is what lets them be translated one by one
@@ -3893,7 +3911,7 @@ const MSG_EN = {
   'rec.agreed.tip': 'You recorded agreement with this code on this passage.',
   'rec.undo': 'undo',
   'rec.undo.tip': 'Removes the coding created by your agreement.',
-  'rec.agree': 'I agree with this code',
+  'rec.agree': 'I agree',
   'rec.agree.tip': 'Records a coding of your own on this passage, on the individual layer. It does not touch the reference layer.',
   'rec.own.answer': 'Your answer',
   'rec.diverge': '{n} answers · they differ ({d} values)',
@@ -3910,7 +3928,7 @@ const MSG_EN = {
   'rec.notConsolidated': '(not consolidated)',
   'rec.nCoders': '{n} coders on this document.',
   'rec.codes.title': 'Codes: reconciliation',
-  'rec.codes.hint': 'Each group gathers the codings that overlap with the same code. Consolidate the ones that should enter the project’s **final** layer. **I agree with this code** records a coding of your own on the passage, on the individual layer, marked as agreement.',
+  'rec.codes.hint': 'Each group gathers the codings that overlap with the same code. Consolidate the ones that should enter the project’s **final** layer. **I agree** records a coding of your own on the passage, on the individual layer, marked as agreement.',
   'rec.mine.tip': 'Consolidates into the final reference layer all of your codings from this document that are not consolidated yet',
   'rec.mine.ask': 'Consolidate into the final reference layer the {n} coding(s) you made on this document?\n\nThis CANNOT be undone.',
   'rec.mine': 'Consolidate everything I made ({n})',
@@ -3930,7 +3948,7 @@ const MSG_EN = {
   'rec.pending': '{n} pending',
   'rec.pendingN': '{n} pending',
   'rec.codes.all': 'Codes: all documents{filter}',
-  'rec.codes.all.hint': 'Each group gathers the codings that overlap with the same code. Consolidate them into the project’s **final** layer. **I agree with this code** records a coding of your own on the passage, on the individual layer, marked as agreement.',
+  'rec.codes.all.hint': 'Each group gathers the codings that overlap with the same code. Consolidate them into the project’s **final** layer. **I agree** records a coding of your own on the passage, on the individual layer, marked as agreement.',
   'rec.allMine.tip': 'Consolidates into the final reference layer all of your codings that are not consolidated yet (honouring the code filter)',
   'rec.allMine.ask': 'Consolidate into the final reference layer the {n} coding(s) you made?\n\nThis CANNOT be undone.',
   'rec.allAll.tip': 'Consolidates into the final reference layer every coding that is not consolidated yet (honouring the code filter)',
@@ -4053,7 +4071,7 @@ const MSG_EN = {
   'gate.col.hint': 'Several researchers code independently; an admin consolidates the reference layer under Reconciliation.',
   'gate.createBtn': 'Create',
   'gate.join': 'Join with a code',
-  'gate.code.ph': 'e.g. 9F2A1C',
+  'gate.code.ph': 'e.g. 9F2A1C7B40',
   'gate.joinBtn': 'Join',
   'gate.localFile': 'Local file',
   'gate.private': 'private',
@@ -4877,7 +4895,7 @@ const MSG_EN = {
   'codes.top.tip': 'A top-level code that takes passages',
   'codes.selected': 'Passage selected. Click a code below to apply it.',
   'codes.recent': 'recent:',
-  'codes.recent.tip': 'The codes applied most recently in this session. With a passage selected, keys 1 to 9 apply them directly.',
+  'codes.recent.tip': 'The codes applied most recently in this session. With a passage selected, keys 1 to 5 apply them directly.',
   'codes.apply.tip': 'Apply “{name}” to the selected passage (key {n})',
   'codes.apply.noSel': '“{name}”: select a passage in the text to apply it',
   'codes.aria': 'Hierarchical codes',
@@ -5353,7 +5371,7 @@ const MSG_EN = {
   'zot.noFile': '{n} item(s) with no PDF in the folder',
   'zot.badPdf': '{n} PDF(s) that could not be read',
   'zot.looseNotes': '{n} standalone Zotero note(s)',
-  'zot.noTextLayer': ' {n} PDF(s) with no text layer came in empty: open the document and use "⋯ → read with OCR".',
+  'zot.noTextLayer': ' {n} PDF(s) with no text layer came in empty: open the document and use "⋯ → OCR: read scanned pages" (available if the original PDF was kept).',
   'zot.notes': ' {n} Zotero note(s) went into the document memo.',
   'zot.pdfFail': ' Warning: {n} original PDF(s) could not be stored (the text came in, but "view original" and OCR may not show up on them).',
   'zot.untitled': '(untitled)',
@@ -5363,7 +5381,7 @@ const MSG_EN = {
 
   // -- warning strips. The first three have EMPHASIS mid-sentence, so they go through mdLite
   //    (the same path as the export-menu notes). --
-  'warn.smallScreen': '**Small screen.** You can **read and consult** here, but **not code**: applying a code depends on selecting the text and opening the right-click menu, which does not exist on touch. Open it on a computer to really work.',
+  'warn.smallScreen': '**Small screen.** You can **read and consult** here, but not work comfortably: the reader and the panels do not fit side by side. On a tablet, selecting a passage by touch opens the code bar. To really work, use a computer.',
   'warn.draft': 'You are in a **draft**. The data stays in this browser only and can disappear if you clear the site data. Save it as a file, or connect to the cloud, so as not to lose it.',
   'warn.hide': 'hide until reload',
   'draft.saveAsFile': 'Save as a file',
@@ -5774,6 +5792,9 @@ const MSG_EN = {
   'snap.err.restore': 'Could not restore: {e}',
   'snap.err.list': 'Could not load the mirrors: {e}',
   'snap.warn.autoFailed': 'The operation went ahead, but the automatic mirror failed: {e}',
+  'qdpx.loss.indiv': 'The individual codings ({n}) stay behind: when the project has a reference layer, QDPX carries only the final layer.',
+  'qdpx.loss.multi': 'Attribute answers filled in by more than one person ({n} in total) go out with a single value, the reference layer when there is one: the format keeps one value per document and attribute.',
+  'qdpx.loss.checkbox': 'Checkbox attribute ({names}) goes out as a single text joined by "{sep}": REFI-QDA has no multiple choice, and on the way back the type is re-inferred.',
   'qdpx.loss.trail': 'The project history ({n} event(s)) stays behind: REFI-QDA has nowhere to keep it. It travels only in the .qualilab.',
   'imp.activity': ' History: {n} new event(s){rep}.',
   'imp.qualilab.collapsed': ' {n} coding(s) from the file were not saved separately: they were the reference layer of passages that already had an individual coding (individual projects merge the two layers).',
@@ -5843,6 +5864,19 @@ const MSG_EN = {
   'link.evidence.none': 'no passage attached',
   'link.evidence.hint': 'A passage of this code that backs the claim. Only the first ones show up here; for another one, cite it in the comment.',
   'link.hasEvidence': 'with evidence',
+  'link.manage': 'manage relations…',
+  'link.manage.title': 'Project relations',
+  'link.manage.hint': 'Relations are the vocabulary of this project’s links. Renaming applies to every link that uses the relation; only a relation no link uses can be deleted. The six default relations always appear when you connect, even when they are not on this list: each one only enters it on first use.',
+  'link.manage.empty': 'The project has not stored any relation yet: each one enters this list on first use.',
+  'link.manage.uses': 'in {n} link(s)',
+  'link.manage.unused': 'unused',
+  'link.manage.rename': 'rename',
+  'link.manage.del': 'delete',
+  'link.manage.inUse.tip': 'Used by {n} link(s): remove them before deleting the relation.',
+  'link.manage.confirmDel': 'Delete the relation "{name}"? No link uses it.',
+  'link.manage.err.dup': 'A relation with that name already exists.',
+  'link.manage.err.save': 'Could not rename: {e}',
+  'link.manage.err.del': 'Could not delete: {e}',
   'link.hasEvidence.tip': 'This link points at a passage that backs it. The anchor travels in the .qualilab; REFI-QDA has nowhere to keep it.',
 };
 const HUES = [210, 28, 150, 350, 268, 184, 322, 70, 48, 96, 122, 238, 295, 8];
@@ -7979,14 +8013,16 @@ function qdpxDataLoss(cats, allV, allC, nActivity, nLinkEvidence, nDisagreements
   const cods = allC || [], vals = allV || [];
   const finais = cods.filter(c => c.layer === 'final').length;
   const indiv = cods.length - finais;
-  if(finais && indiv) perdas.push(`As codificações individuais (${indiv}) ficam de fora: havendo gabarito no projeto, o QDPX leva só a camada final.`);
+  // as tres primeiras eram literais em portugues e apareciam assim na interface em ingles (achado
+  // da revisao do manual, set/2026): o texto e da UI, e passa pelo catalogo como as outras tres
+  if(finais && indiv) perdas.push(t('qdpx.loss.indiv', { n:indiv }));
   const porPar = {};
   vals.forEach(v => { const k = v.document_id + ':' + v.category_id; porPar[k] = (porPar[k] || 0) + 1; });
   const multi = Object.values(porPar).filter(n => n > 1).length;
-  if(multi) perdas.push(`Respostas de categoria preenchidas por mais de uma pessoa (${multi} no total) saem com um valor só, o gabarito quando existe: o formato guarda um valor por documento e categoria.`);
+  if(multi) perdas.push(t('qdpx.loss.multi', { n:multi }));
   const comValor = new Set(vals.filter(v => String(v.value || '').trim()).map(v => v.category_id));
   const cx = (cats || []).filter(c => c.kind === 'checkbox' && comValor.has(c.id)).map(c => c.name);
-  if(cx.length) perdas.push(`Categoria de caixa de seleção (${cx.join(', ')}) sai como texto único juntado por "${CAT_MULTI_SEP}": o REFI-QDA não tem múltipla escolha, e na volta o tipo é re-inferido.`);
+  if(cx.length) perdas.push(t('qdpx.loss.checkbox', { names:cx.join(', '), sep:CAT_MULTI_SEP }));
   // TRILHA (S4): o padrao nao tem casa para log de eventos (medido no Project.xsd, spec §1) — e nao
   // se inventa uma. Condicionada a haver eventos, como as tres acima.
   const nAct = Number(nActivity) || 0;
@@ -12528,6 +12564,28 @@ function linkRelationsMerged(saved) {
   });
   return out;
 }
+/* RENOMEAR UMA RELACAO (1.4.64): o nome novo passa pelo MESMO canonicalizador da criacao, entao
+   digitar "contradiz" grava "contradicts" — dois caminhos de escrita com regras diferentes
+   deixariam o vocabulario duplicado em silencio, que e o que o canonico existe para impedir. A
+   colisao se mede pela CHAVE (sem acento, caixa nem espaco extra), contra as OUTRAS relacoes
+   guardadas: o unique do banco e so sobre o texto exato, e "Depende de" ao lado de "depende de"
+   passaria por ele. Semente ainda nao guardada NAO colide: renomear para "contradicts" quando
+   ninguem o usou so faz a linha assumir aquele nome. Devolve { name } ou { problem }. */
+function linkRelationRename(relations, id, newName) {
+  const name = linkRelationCanonical(newName);
+  if (!name) return { problem: 'vazio' };
+  const k = linkRelationKey(name);
+  const outra = (relations || []).find(r => r && r.id !== id && linkRelationKey(linkRelationCanonical(r.name)) === k);
+  if (outra) return { problem: 'repetida' };
+  return { name };
+}
+// quantas conexoes usam cada relacao guardada: e o que decide se ela pode sair (a FK `no action`
+// da nuvem e o `relation in use` do Local/Arquivo recusam; a tela desabilita antes de tentar)
+function linkRelationUsage(links) {
+  const n = {};
+  (links || []).forEach(l => { if (l && l.relation_id) n[l.relation_id] = (n[l.relation_id] || 0) + 1; });
+  return n;
+}
 function findLinkRelation(list, name) {
   const k = linkRelationKey(linkRelationCanonical(name));
   if (!k) return null;
@@ -14094,10 +14152,20 @@ function SupabaseStore(sb){
         throw e;
       }
     },
-    async updateLinkRelation(id, patch){ must(await sb.from('link_relations').update(patch).eq('id',id)); },
-    // quem recusa de verdade e a FK `on delete no action` (23503, checada no fim da instrucao);
-    // aqui so o erro sobe. Nao ha UI para isto no V1 — o store e a RLS e que ficam prontos.
-    async deleteLinkRelation(id){ must(await sb.from('link_relations').delete().eq('id',id)); },
+    /* renomear e excluir sao do admin pela RLS, e a RLS FILTRA em vez de recusar: update/delete de
+       quem nao pode volta 200 com zero linhas, e a tela diria "renomeado" sem nada ter mudado.
+       O `.select()` devolve as linhas que o banco de fato alterou, e zero vira erro. A tela das
+       relacoes (1.4.64) so aparece para admin, entao isto e defesa, nao o caminho normal.
+       A relacao EM USO quem recusa e a FK `on delete no action` (23503, checada no fim da
+       instrucao); ai o erro sobe do must(). */
+    async updateLinkRelation(id, patch){
+      const r = must(await sb.from('link_relations').update(patch).eq('id',id).select('id'));
+      if(!r || !r.length) throw new Error('relation not updated (admin only)');
+    },
+    async deleteLinkRelation(id){
+      const r = must(await sb.from('link_relations').delete().eq('id',id).select('id'));
+      if(!r || !r.length) throw new Error('relation not deleted (admin only)');
+    },
     // PERF: conexoes em lote (import). O chamador ja deduplicou; chunk menor que o padrao porque
     // a linha e curta e o que pesa e a avaliacao de RLS por linha.
     async addLinksBulk(pid, rows){
@@ -17642,7 +17710,7 @@ function App(){
           ${/* os DOIS estados mostram "IA"; o que muda é o anel (verde/vermelho) e a barra, que só
                 o desativado tem — ver a nota longa no estilo.html sobre por que um check por cima
                 das letras não sobrevive a 20px. */''}
-          <span class=${restrictAi==='none' ? 'ia-on' : 'ia-off'} aria-hidden="true"><span>IA</span></span></button>`}
+          <span class=${restrictAi==='none' ? 'ia-on' : 'ia-off'} aria-hidden="true"><span>${t('ai.badge')}</span></span></button>`}
         ${user && html`<button class="btn sm ghost" title=${t('account.mine')+(user.email?' · '+user.email:'')} onClick=${()=>setAccount(true)}>${user.name}</button>`}
         ${projRestrict && !isAdmin && html`<span class="pill" style="background:var(--violet-soft);border-color:var(--violet);color:var(--violet)"
           title=${t('assign.mine.tip',{n:docs.length})}>
@@ -18062,7 +18130,7 @@ function App(){
             ${isAdmin
               ? html`<div>
                   <${DraggableCategoryList} cats=${cats} onUpd=${updCategory} onDel=${delCategory}
-                    linksCtx=${{ store, project, codes, cats, canEdit:can('edit_codes') }}
+                    linksCtx=${{ store, project, codes, cats, canEdit:can('edit_codes'), canManage:isAdmin }}
                     dragCatId=${dragCatId} setDragCatId=${setDragCatId} onReorder=${reorderCategories} />
                   <button class="btn sm" onClick=${addCategory} style="margin-top:6px">${t('cat.add')}</button>
                 </div>`
@@ -20104,7 +20172,9 @@ function ShortcutsOverlay({ onClose }){
   const rows = [
     ['Ctrl+K', t('keys.palette')],
     ['?', t('keys.map')],
-    ['1 … 9', t('keys.recent')],
+    // 1 a 5: a lista de recentes e cortada em 5 (recentCodesRef, app.js). Dizia 1 a 9, e 6 a 9 nao
+    // faziam nada — o mapa prometia o que o app nao tem (achado da revisao do manual, set/2026)
+    ['1 … 5', t('keys.recent')],
     ['Ctrl+Z', t('keys.undo')],
     ['Delete', t('keys.delete')],
     ['Enter / Shift+Enter', t('keys.search')],
@@ -20562,7 +20632,7 @@ function CategoryEditor({ cat, onUpd, onDel, linksCtx }){
     ${linksCtx && html`<details style="margin-top:8px">
       <summary class="hint" style="cursor:pointer">${t('link.title')}</summary>
       <${LinksSection} store=${linksCtx.store} project=${linksCtx.project} kind="category" id=${cat.id}
-        codes=${linksCtx.codes} cats=${linksCtx.cats} canEdit=${linksCtx.canEdit} compact=${true} />
+        codes=${linksCtx.codes} cats=${linksCtx.cats} canEdit=${linksCtx.canEdit} canManage=${linksCtx.canManage} compact=${true} />
     </details>`}
   </div>`;
 }
@@ -22663,7 +22733,7 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
                 ${codeById[selCode].parent_id && html`<button class="btn sm ghost" style="margin-top:10px;width:100%"
                   onClick=${()=>promoteToRoot(codeById[selCode])}>${t('sch.promote')}</button>`}
                 <${LinksSection} store=${store} project=${project} kind="code" id=${selCode}
-                  codes=${codes} cats=${cats} canEdit=${canEditCodes !== false} compact=${true} />
+                  codes=${codes} cats=${cats} canEdit=${canEditCodes !== false} canManage=${isAdmin} compact=${true} />
                 ${(()=>{ const proprios = allCodings.filter(c=>c.code_id===selCode);
                   if(!proprios.length) return null;
                   return html`<button class="btn sm ghost" style="margin-top:8px;width:100%" disabled=${!isAdmin}
@@ -23110,10 +23180,11 @@ function linkProblemLabel(p){
   return t('link.problem.incompleto');
 }
 
-function LinksSection({ store, project, kind, id, codes, cats, canEdit, compact }){
+function LinksSection({ store, project, kind, id, codes, cats, canEdit, canManage, compact }){
   const [rec, setRec] = useState(null);
   const [erro, setErro] = useState(null);
   const [abrindo, setAbrindo] = useState(false);
+  const [gerindo, setGerindo] = useState(false);
   const pid = project?.id;
   const recarrega = async (force)=>{
     if(force) linksInvalidate(pid);
@@ -23165,9 +23236,85 @@ function LinksSection({ store, project, kind, id, codes, cats, canEdit, compact 
             </li>`; })}
         </ul>`}
     ${canEdit && html`<button class="btn sm ghost" style="width:100%" onClick=${()=>setAbrindo(true)}>${t('link.add')}</button>`}
+    ${canManage && rec && html`<button class="btn sm ghost" style="width:100%;margin-top:4px" onClick=${()=>setGerindo(true)}>${t('link.manage')}</button>`}
     ${abrindo && html`<${LinkAddModal} store=${store} project=${project} kind=${kind} id=${id}
       codes=${codes} cats=${cats} rec=${rec}
       onClose=${()=>setAbrindo(false)} onSaved=${()=>{ setAbrindo(false); recarrega(true); }} />`}
+    ${gerindo && html`<${LinkRelationsModal} store=${store} project=${project} rec=${rec}
+      onClose=${()=>setGerindo(false)} onChanged=${()=>recarrega(true)} />`}
+  </div>`;
+}
+
+/* RELACOES DO PROJETO (1.4.64): renomear e excluir o vocabulario. Os metodos existiam nos tres
+   stores e a RLS os reservava ao admin desde a 1.4.59, mas nenhuma tela os chamava: uma relacao
+   criada com erro de digitacao ficava no projeto para sempre, e o manual prometia um gesto que
+   nao existia (achado da revisao do manual, set/2026). SO ADMIN (quem abre e o LinksSection com
+   canManage), e so o que esta GUARDADO: as seis sementes ainda nao usadas nao tem linha, e
+   aparecem sempre no seletor de qualquer jeito — a dica diz isso, porque renomear uma semente
+   ja guardada faz a semente original voltar ao seletor, e isso surpreende quem nao sabe.
+   EXCLUIR SO SEM USO, desabilitado antes de tentar: quem recusa de verdade e a FK `no action` na
+   nuvem e o `relation in use` no Local/Arquivo, e apagar as conexoes junto destruiria o
+   julgamento de outras pessoas por causa de uma limpeza de vocabulario. DIRECAO NAO SE EDITA
+   aqui, de proposito: trocar `oneway` por `associative` mudaria o sentido de conexoes que ja
+   existem, e faria pares A→B/B→A virarem duplicata sem nada acusar (o linkExists). */
+function LinkRelationsModal({ store, project, rec, onClose, onChanged }){
+  const [editando, setEditando] = useState(null);   // { id, nome }
+  const [erro, setErro] = useState(null);
+  const [ocupado, setOcupado] = useState(false);
+  const relacoes = (rec?.relations||[]).filter(r=>r && r.id);
+  const usos = useMemo(()=>linkRelationUsage(rec?.links||[]), [rec]);
+  const dirLabel = (d)=> d==='oneway' ? t('link.dir.oneway') : d==='bidirectional' ? t('link.dir.bidirectional') : t('link.dir.associative');
+
+  const salvar = async ()=>{
+    if(!editando) return;
+    setErro(null);
+    const r = linkRelationRename(relacoes, editando.id, editando.nome);
+    if(r.problem==='vazio') return setErro(t('link.err.noRelation'));
+    if(r.problem==='repetida') return setErro(t('link.manage.err.dup'));
+    setOcupado(true);
+    try{ await store.updateLinkRelation(editando.id, { name:r.name }); setEditando(null); await onChanged(); }
+    catch(e){ setErro(t('link.manage.err.save',{e:e.message||e})); }
+    setOcupado(false);
+  };
+  const excluir = async (rel)=>{
+    if(usos[rel.id]) return;
+    if(!confirm(t('link.manage.confirmDel',{name:linkRelationLabel(rel.name)}))) return;
+    setErro(null); setOcupado(true);
+    try{ await store.deleteLinkRelation(rel.id); await onChanged(); }
+    catch(e){ setErro(t('link.manage.err.del',{e:e.message||e})); }
+    setOcupado(false);
+  };
+
+  return html`<div class="modal-bg" onClick=${onClose}>
+    <div class="modal" style="max-width:560px" onClick=${e=>e.stopPropagation()}
+         onKeyDown=${e=>{ if(e.key==='Escape'){ if(editando) setEditando(null); else onClose(); } }}>
+      <h3 style="margin:0 0 2px">${t('link.manage.title')}</h3>
+      <p class="hint" style="margin:0 0 10px">${t('link.manage.hint')}</p>
+      ${relacoes.length===0 ? html`<p class="hint">${t('link.manage.empty')}</p>`
+        : html`<ul class="rel-list" style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px">
+          ${relacoes.map(rel=>{ const n = usos[rel.id]||0; const ed = editando && editando.id===rel.id;
+            return html`<li key=${rel.id} data-rel=${rel.name} style="border:1px solid var(--line);border-radius:var(--r-sm);padding:6px 8px">
+              ${ed ? html`<div class="row" style="gap:6px;flex-wrap:wrap">
+                  <input class="txtin" style="flex:1 1 180px" value=${editando.nome} autofocus
+                    onInput=${e=>setEditando({ ...editando, nome:e.target.value })}
+                    onKeyDown=${e=>{ if(e.key==='Enter'){ e.preventDefault(); salvar(); } }} />
+                  <button class="btn sm primary" disabled=${ocupado} onClick=${salvar}>${t('common.save')}</button>
+                  <button class="btn sm ghost" disabled=${ocupado} onClick=${()=>{ setEditando(null); setErro(null); }}>${t('common.cancel')}</button>
+                </div>`
+              : html`<div class="row" style="gap:6px;align-items:center;flex-wrap:wrap">
+                  <span style="flex:1 1 auto;min-width:0"><i>${linkRelationLabel(rel.name)}</i>
+                    <span class="hint" style="display:block">${dirLabel(normLinkDirection(rel.direction))} · ${n ? t('link.manage.uses',{n}) : t('link.manage.unused')}</span></span>
+                  <button class="btn sm ghost" disabled=${ocupado} onClick=${()=>{ setErro(null); setEditando({ id:rel.id, nome:rel.name }); }}>${t('link.manage.rename')}</button>
+                  <span title=${n ? t('link.manage.inUse.tip',{n}) : ''}>
+                    <button class="btn sm ghost" disabled=${ocupado || n>0} onClick=${()=>excluir(rel)}>${t('link.manage.del')}</button></span>
+                </div>`}
+            </li>`; })}
+        </ul>`}
+      ${erro && html`<p class="hint" style="color:var(--danger);margin-top:8px">${erro}</p>`}
+      <div class="row" style="gap:8px;justify-content:flex-end;margin-top:12px">
+        <button class="btn ghost" onClick=${onClose}>${t('common.close')}</button>
+      </div>
+    </div>
   </div>`;
 }
 

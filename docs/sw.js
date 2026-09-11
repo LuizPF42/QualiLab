@@ -15,7 +15,10 @@
    Sem isso, SW e a maquina de mascarar deploy que o resto do repo existe para evitar. */
 const SHELL_CACHE = 'ql-shell-v1';
 const DEPS_CACHE = 'ql-deps-v1';
-const CDN_HOSTS = ['cdn.jsdelivr.net', 'esm.sh'];
+// cdn.sheetjs.com entrou na 1.4.64: o SheetJS passou a vir do fabricante na 1.4.57 (S04) e esta
+// lista ficou para tras, entao o app instalado nao importava .xlsx sem rede. A URL de la tambem e
+// pinada em versao (xlsx-0.20.3), a mesma condicao que torna o cache-first seguro nos outros dois.
+const CDN_HOSTS = ['cdn.jsdelivr.net', 'esm.sh', 'cdn.sheetjs.com'];
 
 self.addEventListener('install', (e) => {
   /* O worker novo fica em waiting ate o SKIP_WAITING (toast) — mas o PRE-CACHE do shell roda

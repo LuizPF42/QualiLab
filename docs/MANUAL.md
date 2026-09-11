@@ -618,7 +618,7 @@ Codificar cria **conjuntos**: "estes trechos falam de X". A conexão registra o 
 | `↔` | vale nos dois sentidos |
 | `·` | sem sentido definido (associação) |
 
-**As relações são o vocabulário do seu estudo.** O projeto já vem com seis prontas — *está associado a*, *é parte de*, *é causa de*, *contradiz*, *é um(a)*, *é propriedade de* —, as mesmas de outras ferramentas de análise qualitativa. Você cria as suas escolhendo **nova relação…** no seletor: dê o nome (*depende de*, *precede*, *justifica*) e diga se ela tem sentido (daqui para lá), vale nos dois ou não tem sentido nenhum. Uma relação criada fica no vocabulário do projeto; por ora não há, na tela, como renomeá-la ou excluí-la.
+**As relações são o vocabulário do seu estudo.** O projeto já vem com seis prontas — *está associado a*, *é parte de*, *é causa de*, *contradiz*, *é um(a)*, *é propriedade de* —, as mesmas de outras ferramentas de análise qualitativa. Você cria as suas escolhendo **nova relação…** no seletor: dê o nome (*depende de*, *precede*, *justifica*) e diga se ela tem sentido (daqui para lá), vale nos dois ou não tem sentido nenhum. O administrador renomeia ou exclui as relações guardadas no projeto em **gerenciar relações…**, logo abaixo de **+ conectar**: renomear vale para todas as conexões que usam a relação (e recusa um nome que já existe), e excluir só é possível quando nenhuma conexão a usa. As seis prontas aparecem sempre no seletor, mesmo quando não estão nessa lista, porque só entram nela no primeiro uso.
 
 > ⚠️ **Uma conexão é uma anotação, não uma medida.** Ela registra o que **você** observa ou supõe, com o seu nome. Ela não conta nada no corpus e não prova associação nenhuma. Quem mede associação nos seus dados é a **Co-ocorrência** e o **Código × atributo**, em [Gráficos](#10-gráficos). As duas leituras convivem, e é bom que convivam: a conexão diz o que você sustenta, o gráfico diz o que o material mostra — e a divergência entre as duas costuma ser o achado.
 
@@ -626,7 +626,7 @@ Codificar cria **conjuntos**: "estes trechos falam de X". A conexão registra o 
 
 **Ao mexer no esquema.** Excluir um código ou uma categoria leva as conexões em que ele era ponta — o aviso diz quantas antes de você confirmar. Ao **mesclar** códigos, as conexões passam para o código que fica; as que virariam repetidas (ou uma ligação do código com ele mesmo) são descartadas, e o QualiLab avisa quantas.
 
-**Quem pode.** Ler as conexões de código é de qualquer integrante. Criar e apagar segue a mesma permissão de **criar e editar códigos** na matriz de regras do projeto ([13](#13-colaboração)).
+**Quem pode.** Ler as conexões de código é de qualquer integrante. Criar e apagar segue a mesma permissão de **criar e editar códigos** na matriz de regras do projeto ([13](#13-colaboração)). Renomear ou excluir uma **relação** é do administrador, porque muda o vocabulário do projeto inteiro.
 
 **Nos arquivos.** No `.qualilab` as conexões vão e voltam inteiras. No `.qdpx` (REFI-QDA) elas saem como `<Link>`, que é a forma do padrão, e o QualiLab também **lê** os `<Link>` de projetos vindos de outras ferramentas. Duas coisas ficam de fora do `.qdpx` e são ditas no aviso da exportação: o trecho marcado como evidência de uma conexão (o padrão não tem onde apontá-lo) e, na importação, conexões **entre trechos**, que o QualiLab ainda não faz.
 
@@ -642,7 +642,7 @@ Codificar cria **conjuntos**: "estes trechos falam de X". A conexão registra o 
 
 **Códigos.** Cada **grupo** reúne as codificações que se **sobrepõem** no mesmo código, com o trecho e quem codificou. O selo **"N de M · consenso"** mostra quantos codificadores marcaram aquele trecho; quando todos concordam, o card ganha destaque. Você **consolida** cada grupo na camada final (**Consolidar no final →**) ou, se já estiver lá, pode **remover do final**.
 
-- **Concordo com este código**: registra que **você** também aplicaria aquele código àquele trecho. Cria uma codificação sua na **camada individual** e não encosta no gabarito, então é o gesto de quem **codifica** (qualquer membro), enquanto consolidar é o gesto de quem **consolida** (o admin). O placar sobe na hora ("2 de 3" vira "3 de 3 · consenso"), e o botão **desfazer** ao lado remove a concordância. Se o trecho já tiver uma codificação sua, o card diz **codificação sua** e não oferece o botão: você já está no grupo.
+- **Concordo**: registra que **você** também aplicaria aquele código àquele trecho. Cria uma codificação sua na **camada individual** e não encosta no gabarito, então é o gesto de quem **codifica** (qualquer membro), enquanto consolidar é o gesto de quem **consolida** (o admin). O placar sobe na hora ("2 de 3" vira "3 de 3 · consenso"), e o botão **desfazer** ao lado remove a concordância. Se o trecho já tiver uma codificação sua, o card diz **codificação sua** e não oferece o botão: você já está no grupo.
   - A codificação criada assim fica **marcada como concordância**, e não se confunde com a que você fez sozinho lendo o documento. A distinção importa porque concordar aqui é decidir **vendo a resposta dos outros** — o que serve para fechar a reconciliação, mas não é a mesma evidência que duas pessoas chegando ao mesmo trecho de forma independente. É também o que faz o **desfazer** apagar só a concordância, nunca o seu trabalho original.
   - O mesmo gesto está no **botão direito** sobre um grifo, na [Leitura ▸ Documentos](#9-leitura): concordar lendo o documento inteiro, sem sair do texto. Grava exatamente o mesmo (o trecho do grupo), e esta tela reconhece a concordância como sua. Lá existe também o **Discordo**, que registra que o código não se aplica ao trecho; esta tela ainda não mostra as discordâncias.
 - **Consolidar em massa** (admin): havendo grupos pendentes, aparecem **Consolidar tudo feito por mim (N)** e **Consolidar tudo (N)**, do documento aberto ou, em (Todos os documentos), do projeto inteiro (só o código escolhido na lista **Códigos**, se houver um). É irreversível; o app confirma antes.
@@ -691,7 +691,7 @@ Aqui não se codifica: selecionar texto não aplica código. A exceção, em **p
 **dar um veredito** sobre o que outra pessoa codificou. Clique com o **botão direito** num grifo de
 um colega e o menu oferece, para cada código daquele ponto:
 
-- **Concordo com este código**: o mesmo gesto da [Reconciliação](#8-reconciliação). Grava uma
+- **Concordo**: o mesmo gesto da [Reconciliação](#8-reconciliação). Grava uma
   codificação sua, na camada individual, no trecho do grupo.
 - **Discordo**: registra que aquele código **não** se aplica ao trecho. Não apaga a codificação de
   ninguém e não entra nas contagens, nos gráficos nem nas exportações de codificação: é um registro à
@@ -1158,8 +1158,8 @@ entre trinta.
 
 - **Abre sem internet.** Instalado, o QualiLab abre mesmo offline — inclusive se você nunca mais
   visitou o endereço (a cópia é guardada na instalação). Com internet, ele sempre busca a versão
-  atual. As bibliotecas de PDF, Word e OCR também ficam guardadas depois do primeiro uso de cada
-  uma. A leitura de planilhas `.xlsx`/`.xls` ainda precisa de internet; `.csv` não.
+  atual. As bibliotecas de PDF, Word, planilha e OCR também ficam guardadas depois do primeiro uso
+  de cada uma.
 - **Duplo clique num `.qualilab` abre no QualiLab**: o gerenciador de arquivos passa a
   oferecê-lo como programa para o formato, como um `.docx` abre no Word.
 - **Os dados locais ficam mais protegidos.** Para projetos locais com conteúdo, o app pede ao
@@ -1533,7 +1533,7 @@ O app abre sem internet; só os recursos pesados (ler PDF, DOCX ou planilha, OCR
 Desinstale e reinstale o aplicativo, ou, no Edge, em `edge://apps` → QualiLab → Detalhes, desligue o *tratamento de links*.
 
 **A importação de planilha `.xlsx` diz que não conseguiu carregar.**
-A biblioteca de planilhas vem do site do fabricante e precisa de internet; tente de novo depois, ou salve a planilha como `.csv`, que não depende dela.
+A biblioteca de planilhas é baixada do site do fabricante no primeiro uso (depois, no app instalado, fica guardada); sem internet nesse primeiro uso, tente de novo depois, ou salve a planilha como `.csv`, que não depende dela.
 
 **Uma tela de conjunto (Leitura, Gráficos, Relatório) demora ou dá tempo esgotado num projeto grande.**
 Tente de novo; se persistir, o limite é o tamanho do projeto para aquela tela, não algo que você fez.
@@ -1581,7 +1581,7 @@ PDFs muito visuais (colunas, tabelas, digitalizações) podem extrair mal. Tabel
 |---|---|---|
 | **Botão direito** sobre uma seleção | Codificação | Menu para aplicar/criar código (a barra flutuante sobre a seleção abre o mesmo menu) |
 | **Botão direito** sobre um grifo | Codificação | Remover / alterar código, anotar trecho |
-| **Botão direito** sobre o grifo de um colega | Leitura ▸ Documentos (projeto coletivo) | *Concordo com este código* / *Discordo* (ou desfazer) |
+| **Botão direito** sobre o grifo de um colega | Leitura ▸ Documentos (projeto coletivo) | *Concordo* / *Discordo* (ou desfazer) |
 | **↑ ↓** / **Enter** | Menu do botão direito | Escolher / aplicar o código |
 | **Ctrl+K** | Em qualquer tela | Paleta de comandos: ir a um documento, tela ou ação |
 | **?** | Em qualquer tela (fora de campo de texto) | Mapa de atalhos |

@@ -620,7 +620,7 @@ Coding creates **sets**: "these passages are about X". A link records what the c
 | `↔` | holds both ways |
 | `·` | no defined direction (association) |
 
-**Relations are your study's vocabulary.** The project already comes with six — *is associated with*, *is part of*, *is cause of*, *contradicts*, *is a*, *is property of* —, the same ones other qualitative analysis tools use. You create your own by picking **new relation…** in the selector: give it a name (*depends on*, *precedes*, *justifies*) and say whether it has a direction (from here to there), holds both ways, or has no direction at all. A relation you create stays in the project's vocabulary; for now there is no way, on screen, to rename or delete it.
+**Relations are your study's vocabulary.** The project already comes with six — *is associated with*, *is part of*, *is cause of*, *contradicts*, *is a*, *is property of* —, the same ones other qualitative analysis tools use. You create your own by picking **new relation…** in the selector: give it a name (*depends on*, *precedes*, *justifies*) and say whether it has a direction (from here to there), holds both ways, or has no direction at all. The admin renames or deletes the relations stored in the project under **manage relations…** ("gerenciar relações…"), right below **+ connect**: renaming applies to every link that uses the relation (and refuses a name that already exists), and deleting is only possible when no link uses it. The six built-in ones always appear in the selector, even when they are not on that list, because they only enter it on first use.
 
 > ⚠️ **A link is an annotation, not a measurement.** It records what **you** observe or suppose, under your name. It counts nothing in the corpus and proves no association. What measures association in your data is **Co-occurrence** and **Code × attribute**, in [Charts](#10-charts). Both readings coexist, and it is good that they do: the link says what you claim, the chart says what the material shows — and the gap between them is often the finding.
 
@@ -628,7 +628,7 @@ Coding creates **sets**: "these passages are about X". A link records what the c
 
 **When you change the scheme.** Deleting a code or an attribute takes along the links where it was one of the ends — the warning says how many before you confirm. When you **merge** codes, links move to the surviving code; those that would become duplicates (or a code linked to itself) are dropped, and QualiLab tells you how many.
 
-**Who can.** Reading code links is for any member. Creating and deleting follows the same permission as **creating and editing codes** in the project's rules matrix ([13](#13-collaboration)).
+**Who can.** Reading code links is for any member. Creating and deleting follows the same permission as **creating and editing codes** in the project's rules matrix ([13](#13-collaboration)). Renaming or deleting a **relation** is for the admin, because it changes the whole project's vocabulary.
 
 **In the files.** In the `.qualilab` links go out and come back whole. In the `.qdpx` (REFI-QDA) they leave as `<Link>`, which is the standard's own form, and QualiLab also **reads** the `<Link>` elements of projects coming from other tools. Two things stay out of the `.qdpx` and are named in the export warning: the passage marked as evidence for a link (the standard has nowhere to point at it) and, on import, links **between passages**, which QualiLab does not do yet.
 
@@ -644,7 +644,7 @@ Coding creates **sets**: "these passages are about X". A link records what the c
 
 **Codes.** Each **group** gathers the codings that **overlap** on the same code, with the passage and who coded it. The **"N of M · consensus"** badge shows how many coders marked that passage; when everyone agrees, the card is highlighted. You **consolidate** each group into the final layer (**Consolidar no final →**) or, if it is already there, you can **remove it from final**.
 
-- **I agree with this code** ("Concordo com este código"): records that **you** would also apply that code to that passage. It creates a coding of yours in the **individual layer** and does not touch the reference layer — so it is the gesture of someone who **codes** (any member), while consolidating is the gesture of someone who **consolidates** (the admin). The tally rises immediately ("2 of 3" becomes "3 of 3 · consensus"), and the **undo** button next to it removes the agreement. If the passage already has a coding of yours, the card says **your coding** and offers no button: you are already in the group.
+- **I agree** ("Concordo"): records that **you** would also apply that code to that passage. It creates a coding of yours in the **individual layer** and does not touch the reference layer — so it is the gesture of someone who **codes** (any member), while consolidating is the gesture of someone who **consolidates** (the admin). The tally rises immediately ("2 of 3" becomes "3 of 3 · consensus"), and the **undo** button next to it removes the agreement. If the passage already has a coding of yours, the card says **your coding** and offers no button: you are already in the group.
   - A coding created this way is **flagged as an agreement**, and is not confused with one you made on your own while reading the document. The distinction matters because agreeing here is deciding **while seeing the others' answers** — which serves to close the reconciliation, but is not the same evidence as two people reaching the same passage independently. It is also what makes **undo** erase only the agreement, never your original work.
   - The same gesture is on the **right-click** over a highlight in [Reading ▸ Documents](#9-reading): agreeing while reading the whole document, without leaving the text. It records exactly the same thing (the group's passage), and this screen recognises the agreement as yours. There you also have **I disagree**, which records that the code does not apply to the passage; this screen does not show disagreements yet.
 - **Bulk consolidation** (admin): when there are pending groups, **Consolidate everything I made (N)** and **Consolidate everything (N)** appear, for the open document or, under (All documents), for the whole project (only the code chosen in the **Codes** list, if there is one). It is irreversible; the app confirms first.
@@ -693,7 +693,7 @@ There is no coding here: selecting text applies no code. The exception, in a **c
 is **giving a verdict** on what someone else coded. Right-click a colleague's highlight and the menu
 offers, for each code at that point:
 
-- **I agree with this code** ("Concordo com este código"): the same gesture as in
+- **I agree** ("Concordo"): the same gesture as in
   [Reconciliation](#8-reconciliation). It records a coding of yours, in the individual layer, on the
   group's passage.
 - **I disagree** ("Discordo"): records that the code does **not** apply to the passage. It deletes
@@ -1160,8 +1160,8 @@ among thirty.
 
 - **It opens without internet.** Installed, QualiLab opens even offline — including if you never
   visited the address again (the copy is stored at install time). With internet, it always fetches the current
-  version. The PDF, Word and OCR libraries are also kept after each one's first use. Reading
-  `.xlsx`/`.xls` spreadsheets still needs internet; `.csv` does not.
+  version. The PDF, Word, spreadsheet and OCR libraries are also kept after each one's first
+  use.
 - **Double-clicking a `.qualilab` opens it in QualiLab**: the file manager starts
   offering it as the program for the format, like a `.docx` opens in Word.
 - **Local data becomes better protected.** For local projects with content, the app asks the
@@ -1502,7 +1502,7 @@ Not every research project wants AI around, and there are two quite different re
 
 ![The question every new project asks: the "New draft" window, with the "AI features" block, the two buttons (No AI, which comes pre-selected, and Enable AI) and, in the footer, "Continue without AI" next to "Continue".](manual-img/18-ativar-ia.png)
 
-**The question comes at creation.** Every new project — in the cloud, in a file or a draft — asks whether the AI features should be available. The option that **comes pre-selected is "No AI"** ("Sem IA"): enabling requires changing the choice, and leaving the window without answering **keeps it off**. In the header, **between the project pill and your name**, an **AI** badge (it reads *IA*) always shows this project's AI state: a green ring when it is on; a red ring with a bar when it is off or restricted to administrators. Administrators click it to switch, with confirmation. You can also change it under **Project → AI features** ("Recursos de IA", clicking the project pill):
+**The question comes at creation.** Every new project — in the cloud, in a file or a draft — asks whether the AI features should be available. The option that **comes pre-selected is "No AI"** ("Sem IA"): enabling requires changing the choice, and leaving the window without answering **keeps it off**. In the header, **between the project pill and your name**, an **AI** badge always shows this project's AI state: a green ring when it is on; a red ring with a bar when it is off or restricted to administrators. Administrators click it to switch, with confirmation. You can also change it under **Project → AI features** ("Recursos de IA", clicking the project pill):
 
 | choice | who keeps the AI screens |
 |---|---|
@@ -1533,7 +1533,7 @@ The app opens without internet; only the heavy features (reading PDF, DOCX or sp
 Uninstall and reinstall the app, or, in Edge, under `edge://apps` → QualiLab → Details, turn off *link handling*.
 
 **Importing an `.xlsx` spreadsheet says it could not load.**
-The spreadsheet library comes from its maker's site and needs internet; try again later, or save the spreadsheet as `.csv`, which does not depend on it.
+The spreadsheet library is downloaded from its maker's site on first use (after that, in the installed app, it is kept); without internet on that first use, try again later, or save the spreadsheet as `.csv`, which does not depend on it.
 
 **A whole-project screen (Reading, Charts, Report) is slow or times out in a large project.**
 Try again; if it persists, the limit is the project's size for that screen, not something you did.
@@ -1581,7 +1581,7 @@ Very visual PDFs (columns, tables, scans) can extract poorly. Tables are not rec
 |---|---|---|
 | **Right-click** on a selection | Coding | Menu to apply/create a code (the floating bar over the selection opens the same menu) |
 | **Right-click** on a highlight | Coding | Remove / change code, annotate passage |
-| **Right-click** on a colleague's highlight | Reading ▸ Documents (collective project) | *I agree with this code* / *I disagree* (or undo) |
+| **Right-click** on a colleague's highlight | Reading ▸ Documents (collective project) | *I agree* / *I disagree* (or undo) |
 | **↑ ↓** / **Enter** | Right-click menu | Choose / apply the code |
 | **Ctrl+K** | Any screen | Command palette: go to a document, screen or action |
 | **?** | Any screen (outside a text field) | Shortcut map |
