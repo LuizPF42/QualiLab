@@ -20,7 +20,7 @@ Use the tool **[here](https://luizpf42.github.io/QualiLab)** / Install it as an 
 
 📖 **New here?** Start with the **[user manual](https://luizpf42.github.io/QualiLab/manual.html)** *(Portuguese)*, or the [English manual](docs/MANUAL.en.md): a complete, step-by-step guide to every screen. · 📝 **What changed in each version:** [`CHANGELOG.md`](CHANGELOG.md) *(Portuguese)*
 
-*The **version in use** is shown in the app's own header and footer. Quote that number when reporting a problem: without it there is no way to know which build your browser loaded.*
+*The **version in use** is shown in the status bar, at the bottom of the app itself, and on the entry screen. Quote that number when reporting a problem: without it there is no way to know which build your browser loaded.*
 
 > ⚠️ **Read this before using it with real data.** QualiLab is a **personal, experimental** project, under the **MIT license, WITHOUT ANY WARRANTY**, which **has not undergone a security audit**; **bugs are to be expected**. And it does **not anonymize** your material: redaction masks only what **you** marked by hand, and only in some outputs. Where each mode of use sends your data is covered in **[Where your data lives](#where-your-data-lives)**; what the tool does not do for you, in **[Limits and responsibility](#limits-and-responsibility)**.
 >
@@ -36,7 +36,7 @@ To those findings QualiLab adds a complaint from practice that the survey does n
 
 QualiLab tries to be as intuitive as possible: you load a document, select a passage, and you are already coding — no prior configuration. At the same time, it offers a native attribute scheme (closed text, open text, number, date, yes/no, multiple choice, checkbox) that coexists with passage coding in an integrated way, in the same environment. Whoever needs to reconcile thematic analysis with structured attribute collection no longer has to switch between tools.
 
-The tools available, paid or free, also do not have collaboration and collective research as their primary goals. QualiLab aims for a good middle ground, being developed for individual and collective needs alike: per-researcher coding layers, reconciliation, admin and member roles, all native, with no parallel spreadsheet or third-party tool needed to coordinate the team.
+The tools available, paid or free, also do not have collaboration and collective research as their primary goals. QualiLab aims for a good middle ground, being developed for individual and collective needs alike: per-researcher coding layers, reconciliation, admin, member and read-only roles, all native, with no parallel spreadsheet or third-party tool needed to coordinate the team.
 
 > Küster, J.; Wolf, K. D. **The Current State of CAQDAS is Insufficient for Open Science Qualitative Research.** *Electronic Communications of the EASST*, v. 85 (deRSE25), 2025. DOI [10.14279/eceasst.v85.2709](https://doi.org/10.14279/eceasst.v85.2709), CC-BY 4.0 license. The authors develop [OpenQDA](https://openqda.org/), which is part of the examined sample. The numbers above describe the 28 tools **they** examined (QualiLab was not among them) and hold for the 2025 survey.
 
@@ -126,7 +126,7 @@ One line per feature: this is the inventory. The **step by step** for each one i
 | **Roles** | admin, member and read-only, **enforced by the server** (RLS), not hidden in the interface: deleting a document or code, editing shared text, merging codes and importing require admin. What a member and a read-only participant may do (comment, code, add documents, create codes, edit definitions, use AI) is decided **item by item, when the project is created**, in a matrix the server enforces; left untouched, members do everything and read-only participants read and **comment** |
 | **Document assignment** | a documents × researchers matrix, with rotation: each person only **sees** what was assigned to them |
 | **Blind coding** | each person only sees their **own** work (the reference layer disappears too). With the same document given to two people, the study becomes double-blind. When attributes are study-design metadata (platform, sampled profile), the project can declare it and **their** reference values stay visible; the codings' reference layer never does |
-| **Locked definitions** | only admins edit what each code means, so the instrument does not change mid-round in a calibration study. Reading stays open |
+| **Locked definitions** | optional: when on, only admins edit what each code means, so the instrument does not change mid-round in a calibration study. Reading stays open |
 | **Project types** | individual (everything goes straight to the reference layer) or collective |
 | **Real time** | codings and attribute answers sync live; the code scheme and attributes require a reload |
 | **Where the data lives** | a file on disk, a draft in the browser, or the cloud — switching between them is one click in the project hub, no manual export/import |
@@ -136,13 +136,13 @@ One line per feature: this is the inventory. The **step by step** for each one i
 
 **It ships off, and turning it on is a deliberate act.** Every new project — in the cloud, in a file or in the draft — asks whether the AI features should be available, and the option **pre-selected is "No AI"**: enabling requires changing the choice, and closing without answering keeps it off. The choice has three scopes (**nobody** · **admins only** · **everyone**), is **enforced in the database** rather than merely hidden in the interface, and **travels inside the `.qualilab`** file.
 
-A badge in the header shows the state at all times — **✔︎** enabled, **~~IA~~** off — and it is also how you change it. With AI off the screens disappear; with it on, **nothing is sent to any model unless you ask**: every call is a click of yours.
+An **AI** badge in the header shows the state at all times — a **green** ring when enabled, **struck through in red** when off or restricted to admins — and it is also how you change it. With AI off the AI screens disappear (Auto-coding stays, with only Repeat Coding, which uses no AI); with it on, **nothing is sent to any model unless you ask**: every call is a click of yours.
 
 **The default is the browser calling the provider directly**: with your key (stored only in the browser), **no QualiLab server sees the material** under analysis. The `ai-ask` Edge Function covers only two cases: a *Custom*/*Azure* endpoint that does not allow browser calls (CORS) and an eventual server key — which the public instance does not have.
 
 | Feature | What it is |
 |---|---|
-| **Auto-coding** ("Auto-codificação") | five assistants: **Suggest Coding** (a second coder, recall) · **Suggest Attributes** (fills existing attributes) · **Define Attribute** (writes the instruction from the answers you already gave) · **Organize Codes** · **Repeat Coding** (this one **without AI**: finds exact occurrences). In all of them: the AI **proposes**, you approve or reject **item by item**, nothing is saved without confirmation |
+| **Auto-coding** ("Auto-codificação") | five assistants: **Suggest Coding** (a second coder, recall) · **Suggest Attributes** (fills existing attributes) · **Define Attribute** (writes the instruction from the answers you already gave) · **Organize Codes** · **Repeat Coding** (this one **without AI**: finds exact occurrences). In all of them you approve or reject **item by item** and nothing is saved without confirmation; in the four AI ones, the model is what **proposes**. With AI off, the screen keeps only Repeat Coding |
 | **Analyze with AI** ("Analisar com IA") | a conversation about the material you select (documents, passages by code, or both), citing sources, with a selectable methodological stance and saved prompts |
 | **Explore with AI** ("Explorar com IA") *(experimental)* | the AI **asks for** the material instead of receiving a pre-cut selection, through read-only tools; **each call is shown on screen**, read from the data and not from the model's narration |
 | **Visible, editable prompt** | **⚙ Configure Prompt** ("Configurar Prompt") shows what will be sent, section by section, with the active model, the token estimate and the **cost** — before sending |
@@ -207,28 +207,28 @@ File and cloud are the real working options; the **draft** is the frictionless e
 
 ### File mode: for sensitive data
 
-In file mode, the project is saved as a `.qualilab` file (JSON) **visible in the file system**: in any folder, external drive, encrypted volume or institutional server. Zero network traffic. Zero localStorage. Works fully offline.
+In file mode, the project is saved as a `.qualilab` file (JSON) **visible in the file system**: in any folder, external drive, encrypted volume or institutional server. Nothing from the project goes over the network (except what you send to the AI, if it is enabled), and nothing is kept in `localStorage`. It works offline; the PDF, Word, OCR and spreadsheet libraries only need a network on the first use of each, and in the installed app they are kept afterwards.
 
-- Available in **Chrome and Edge** (File System Access API). Firefox and Safari fall back to local mode.
+- Available in **Chrome and Edge** (File System Access API). Firefox and Safari fall back to the draft.
 - On the entry screen, click **"New file…"** ("Novo arquivo…") or **"Open file…"** ("Abrir arquivo…") to get started.
 - The app automatically reopens the last file in the next session (with the browser's permission).
 - Ideal for clinical interviews, judicial data, research under ethics-board approval that requires an air-gapped environment.
 
 ### Draft mode: automatic folder backup
 
-In draft mode (`localStorage`, a 5–10 MB limit), you can enable an **automatic backup**: the app keeps a `backup-automatico.qualilab` file always up to date in a folder on your computer — for example the same folder as the `index.html`. It is a redundant mirror, **not** the same as file mode (which writes straight to disk as primary storage): it keeps saving to the browser normally, and also writes that file in the background on every change (with a small pause before writing, larger in big projects, so as not to freeze the tab). To become true file mode (green pill), use **"Save as file"** ("Salvar como arquivo") in the project hub.
+In draft mode (`localStorage`, a ~5 MB limit), you can enable an **automatic backup**: the app keeps a `backup-automatico.qualilab` file always up to date in a folder on your computer — for example the same folder as the `index.html`. It is a redundant mirror, **not** the same as file mode (which writes straight to disk as primary storage): it keeps saving to the browser normally, and also writes that file in the background on every change (with a small pause before writing, larger in big projects, so as not to freeze the tab). To become true file mode (green pill), use **"Save as file"** ("Salvar como arquivo") in the project hub.
 
 - Enable it via **project pill → Automatic folder backup → Choose folder…** (available in Chrome and Edge).
 - If the app fails to actually save (`localStorage` full, unsupported browser), a red warning appears on screen with a shortcut to download the project right away; this does not depend on the automatic backup being on.
 
 ### Cloud mode: connection status
 
-- The header shows an amber `offline` indicator when the connection drops.
-- **A write that fails for a transient reason enters a queue and is retried on its own** (since v1.4.7). This covers day-to-day work: codings, attribute answers, notes, saved AI conversations and memories. The change stays visible on screen while it waits, the header shows how many are pending (click to retry immediately) and **closing the tab does not lose the queue** — it comes back when the project is reopened.
+- The status bar, at the bottom, shows an amber `offline` indicator when the connection drops.
+- **A write that fails for a transient reason enters a queue and is retried on its own** (since v1.4.7). This covers day-to-day work: codings, attribute answers, notes, saved AI conversations and memories. The change stays visible on screen while it waits, the status bar shows how many are pending (click to retry immediately) and **closing the tab does not lose the queue** — it comes back when the project is reopened.
 - **Structural** changes stay out of the queue on purpose and fail loudly right away: creating/deleting documents, changing the code scheme, project management and imports. In collective research, replaying that kind of change minutes later would produce a state nobody asked for.
 - If the cloud **definitively rejects** a change (your role in the project changed, or someone deleted the target), it does not disappear silently: a notice shows what was rejected, with a shortcut to download a `.qualilab` before redoing it.
 
-**QualiLab does NOT anonymize or detect personal data** (names, ID numbers, health data) in document content. **Redaction** masks only the passages **you** marked by hand, does **not** detect on its own what is sensitive, and does **not** cover the work exports (`.qualilab`, QDPX, QDC, CSV and JSON come out with the raw text). **There is no automatic safety net.**
+**QualiLab does NOT anonymize or detect personal data** (names, ID numbers, health data) in document content. **Redaction** masks only the passages **you** marked by hand, does **not** detect on its own what is sensitive, and does **not** cover the work exports (`.qualilab`, QDPX, QDC, CSV and JSON come out with the raw text). What exists is help for after you mark something: the **Repeat Coding** tab finds the other **identical** occurrences of an already redacted passage and proposes the same code, for you to approve one by one. Variants ("the firm" instead of "Example Firm") it does not find. Since it uses no AI, it stays available with AI off. **There is no automatic safety net.**
 
 ---
 
@@ -291,7 +291,7 @@ The **default is BYOK**: each researcher brings their own key and the **browser 
 
 With no key configured, the AI screens return a clear error; the rest of the app works normally.
 
-**Personal key (BYOK)**: under **My Account** ("Minha Conta"), each researcher can enter their own key (for any of the three providers) and choose the model. It is saved only in their browser (never on the server) and applies to their analyses — which go **directly** from the browser to the provider. The **Azure** and **Custom** providers are pure BYOK (they never use a server key) and are the only ones that may fall back to the Edge Function, when the endpoint does not allow the browser. **Local Ollama** requires none of this server setup (see "AI analysis" above).
+**Personal key (BYOK)**: under **My Account** ("Minha Conta"), each researcher can enter their own key (for any provider on the list above) and choose the model. It is saved only in their browser (never on the server) and applies to their analyses — which go **directly** from the browser to the provider. The **Azure** and **Custom** providers are pure BYOK (they never use a server key) and are the only ones that may fall back to the Edge Function, when the endpoint does not allow the browser. **Local Ollama** requires none of this server setup (see [AI: off by default, and with your own key](#ai-off-by-default-and-with-your-own-key), above).
 
 ---
 
@@ -303,14 +303,14 @@ Nothing you produce here is locked in here. This section gathers what goes in, w
 
 | Format | Imports | Exports | Notes |
 |---|:---:|:---:|---|
-| **`.qualilab`** (native) | ✅ | ✅ | The whole project, lossless, in any mode. When importing into a collective project, it **preserves each source researcher's answers**. An open, documented format ([below](#the-qualilab-is-not-a-magic-format)) |
+| **`.qualilab`** (native) | ✅ | ✅ | The whole project, with no loss of analysis, in any mode. When importing into a collective project, it **preserves each source researcher's answers**. An open, documented format ([below](#the-qualilab-is-not-a-magic-format)) |
 | **QDPX** (REFI-QDA) | ✅ | ✅ | Interchange with ATLAS.ti, MAXQDA, NVivo, Quirkos, QualCoder. The generated package is **validated against the official `Project.xsd` (v1.0)** by a round-trip harness kept in the development repository — which is an **attempt at intercompatibility, not a guarantee**. Imports ATLAS.ti `.qdpx` files with their PDFs |
 | **QDC** (REFI-QDA codebook) | ✅ | ✅ | Only the codebook (which is all the format holds). Compatible with Taguette's codebook |
 | **`.sqlite3`** (Taguette) | ✅ | ✕ | Taguette's native project read straight in the browser, via [sql.js](https://github.com/sql-js/sql.js): documents, tags with hierarchy, and passages |
 | **Zotero RDF** (folder) | ✅ | ✕ | A collection exported with files. You choose which metadata become attributes and what gets listed, by name, before anything enters |
 | **Spreadsheet** (`.csv`/`.xlsx`) | ✅ | ✅ | One row per document on the way in; and the **attributes CSV has a way back** — fill it in the spreadsheet and re-import, with a preview of what changes before saving |
 | **Web Annotation (W3C)** · **ATI reader** | ✕ | ✅ | On the Report tab. Redaction masked |
-| **Passages CSV** · **JSON** | ✕ | ✅ | One passage per row (document, code, layer, author); or the complete project with layers and authors |
+| **Passages CSV** · **JSON** | ✕ | ✅ | One passage per row (document, code, layer, author); or, in the JSON, documents, attributes, codes and codings with layer, author and page, without memos, AI, history or links (for those, the `.qualilab`) |
 
 > The **work and migration** formats come out **raw, redaction included**: they are how you take your material to another tool and bring it back, and masking there would be irreversible loss. The **transparency** outputs are the ones that mask. The export menu says so at the moment of export.
 
@@ -323,7 +323,7 @@ There are two shapes, chosen by content:
 - **No PDFs: pure JSON.** A text-only project opens in any text editor. The files in [`examples/`](examples/) are like this.
 - **With PDFs: a zip** with `project.json`, `pdfs/<docId>.pdf` (stored without recompression) and `pdfindex/<docId>.json` (the passage ↔ page ↔ rectangle correspondence, which is what makes "view original", the page number and OCR survive the round-trip).
 
-Reading decides by the **first byte** (`PK` = zip), so old files, from before the container, still open. The `project.json` has nine top-level keys: `_meta`, `documents`, `attributes`, `doc_values`, `codes`, `codings`, `memos`, `ia_results` and `ia_memory`.
+Reading decides by the **first byte** (`PK` = zip), so old files, from before the container, still open. The `project.json` has these top-level keys: `_meta`, `documents`, `categories` (the attributes), `doc_values`, `codes`, `codings`, `memos`, `ia_results`, `ia_memory`, `activity` (the history), `link_relations` and `links` (the links) and `disagreements` (the disagreements); the last four may be missing from files older than them.
 
 Reading it is this, with no dependency beyond the standard library:
 
@@ -384,7 +384,7 @@ No build, no bundler, no heavyweight framework.
 - **Semantic search**: [transformers.js](https://github.com/huggingface/transformers.js) + the [`paraphrase-multilingual-MiniLM-L12-v2`](https://huggingface.co/Xenova/paraphrase-multilingual-MiniLM-L12-v2) *embeddings* model (ONNX, downloaded on demand and executed **in the browser**; no key, no call to any AI server)
 - **Local storage**: File System Access API + IndexedDB (native to the browser)
 - **Cloud** (optional): [Supabase](https://supabase.com/)
-- **Dependency delivery**: an import map with **SRI** (`integrity` per URL), served from **jsdelivr** with `esm.sh` as the reserve. The hash covers the top-level module; pdf.js's *worker* and sql.js's `.wasm` are not *module scripts* and are declaredly out. It is defense in depth, not a guarantee.
+- **Dependency delivery**: an import map with **SRI** (`integrity` per URL), served from **jsdelivr** with `esm.sh` as the reserve (the spreadsheet library comes from its maker's site, with no reserve). The hash covers the top-level module; pdf.js's *worker* and sql.js's `.wasm` are not *module scripts* and are declaredly out. It is defense in depth, not a guarantee.
 
 ```
 QualiLab/
@@ -406,7 +406,7 @@ bundler, no npm and no compile step on your side. It is **generated** from a mod
 (dozens of fragments concatenated byte-for-byte, with no transformation at all) kept in the
 development repository.
 
-The [Sustainability](#the-qualilab-is-not-a-magic-format) section says there is verification on every change. **In this repository** it runs on every push, and you can inspect the `ci.yml`:
+The [Sustainability](#limits-and-responsibility) section says there is verification on every change. **In this repository** it runs on every push, and you can inspect the `ci.yml`:
 
 | Check | What it proves |
 |---|---|
@@ -428,7 +428,7 @@ A project under active development. Know the limits before adopting it for impor
 - **Not everything syncs live.** Only codings and attribute answers. Changing the code scheme, the attributes or the document assignment requires reloading the page.
 - **The write queue is not an offline mode.** It stores and resends what you *write* when the cloud fails, but **reading** still requires a network: with no connection, opening a not-yet-loaded document or switching projects does not work. To work without a network, use File mode.
 - **Supabase free-tier capacity** (on the order of 500 MB of database, subject to change — check [supabase.com/pricing](https://supabase.com/pricing)). Very large projects may require a paid plan or File mode, which has no such ceiling.
-- **QualiLab does NOT anonymize.** Redaction masks **only the passages you marked by hand**, and only in what leaves your hands: the Report outputs and what goes to the AI, the external assistant included (except when you yourself include a redaction code in an analysis, and with the caveat about agentic clients, above). It does not detect what is sensitive, hides nothing on your own screen, does not cover the work exports (`.qualilab`, QDPX, QDC, CSV and JSON come out raw) and does not reach **document titles, attribute values or memos**. The manual carries the [publication workflow](docs/MANUAL.en.md) that takes care of those three.
+- **QualiLab does NOT anonymize.** Redaction masks **only the passages you marked by hand**, and only in what leaves your hands: the Report outputs and what goes to the AI, the external assistant included (except when you yourself include a redaction code in an analysis, and with the caveat about agentic clients, above). It does not detect what is sensitive (Repeat Coding only finds **identical** repetitions of what you already marked, see above), hides nothing on your own screen, does not cover the work exports (`.qualilab`, QDPX, QDC, CSV and JSON come out raw) and does not reach **document titles, attribute values or memos**. The manual carries the [publication workflow](docs/MANUAL.en.md) that takes care of those three.
 - **The audit trail records operations, not rows, and does not undo.** The project history (Memos ▸ History) lists imports, code merges and splits, deletions, text edits, bulk applications, consolidations and exports, with author and date, but keeps no content of what was deleted: **Ctrl+Z** still undoes only the session's last coding. What brings content back is the **mirror** (since 1.4.52): a snapshot of the whole project, taken by hand or on its own before clearing, deleting, merging, splitting, editing text or restoring, restored from the project pill — without the original PDFs and without the history, which records the restoration instead of going back. It starts at the first event after 1.4.51 (nothing is rebuilt backwards), and in the cloud it is append-only through the API, not forensic proof: whoever operates the server, or owns the file, can always alter it.
 - **QDPX loses what the format does not model**: individual layers and per-researcher attribute authorship (a REFI-QDA limit, not ours). And the type of attributes coming from another tool is **inferred** when that tool does not declare it — the import summary says how many, and it is worth reviewing them in the scheme.
 - **Round-trip fidelity is measured, not presumed** (a harness kept in the development repository, with an adversarial corpus and a survives/degrades/is-lost matrix). Even so, **schema validity is no substitute for testing in the actual destination tool**, which may read the standard differently.
@@ -462,7 +462,7 @@ The full backlog is kept in the development repository, with the reasoning behin
 
 QualiLab was developed by **[Luiz Pimenta Filho](https://orcid.org/0000-0002-5165-6232)** within **[LabDados / FGV Direito SP](https://direitosp.fgv.br/nucleos-de-pesquisa/laboratorio-dados-pesquisa-empirica-direito-labdados)** as a personal project. It does not represent FGV's institutional position, and FGV bears no responsibility for the software.
 
-Most of this project's code was written with the assistance of [Claude Code](https://claude.com/claude-code) (Anthropic).
+Most of this project's code was written by a language model ([Claude Code](https://claude.com/claude-code), by Anthropic), under the author's direction and review.
 
 The main inspirations were:
 

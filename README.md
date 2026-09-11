@@ -18,7 +18,7 @@ Acesse a ferramenta **[aqui](https://luizpf42.github.io/QualiLab)** / Instale co
 
 📖 **Novo por aqui?** Comece pelo **[Manual de uso](https://luizpf42.github.io/QualiLab/manual.html)**: guia completo, passo a passo, de todas as telas. · 📝 **O que mudou em cada versão:** [`CHANGELOG.md`](CHANGELOG.md)
 
-*A **versão em uso** aparece no cabeçalho e no rodapé do próprio app. Cite esse número ao relatar um problema: sem ele não há como saber qual build o seu navegador carregou.*
+*A **versão em uso** aparece na barra de status, no rodapé do próprio app, e na tela de entrada. Cite esse número ao relatar um problema: sem ele não há como saber qual build o seu navegador carregou.*
 
 > ⚠️ **Leia antes de usar com dados reais.** O QualiLab é um projeto **pessoal e experimental**, sob licença **MIT, SEM QUALQUER GARANTIA**, que **não passou por auditoria de segurança**; **bugs são esperados**. E ele **não anonimiza** o seu material: a censura mascara só o que **você** marcou à mão, e só em algumas saídas. Para onde cada modo de uso leva os seus dados está em **[Onde os seus dados ficam](#onde-os-seus-dados-ficam)**; o que a ferramenta não faz por você, em **[Limites e responsabilidade](#limites-e-responsabilidade)**.
 >
@@ -34,7 +34,7 @@ A esses achados o QualiLab acrescenta uma queixa de prática que o levantamento 
 
 O QualiLab busca ser o mais intuitivo possível: você carrega um documento, seleciona um trecho e já codifica, sem configuração prévia. Ao mesmo tempo, oferece um esquema de categorias nativo (texto fechado, texto aberto, número, data, sim/não, múltipla escolha, caixa de seleção) que convive com a codificação de trechos de forma integrada, no mesmo ambiente. Quem precisa conciliar análise temática com coleta estruturada de atributos não precisa mais alternar entre ferramentas.
 
-As ferramentas disponíveis, pagas ou gratuitas, também não têm colaboração e pesquisa coletiva como seus objetivos primários. O QualiLab busca encontrar um bom meio termo, sendo desenvolvido para necessidades individuais e coletivas: camadas de codificação por pesquisador, reconciliação, papéis de administrador e membro, tudo nativo, sem precisar de planilha paralela ou ferramenta de terceiros para coordenar a equipe.
+As ferramentas disponíveis, pagas ou gratuitas, também não têm colaboração e pesquisa coletiva como seus objetivos primários. O QualiLab busca encontrar um bom meio termo, sendo desenvolvido para necessidades individuais e coletivas: camadas de codificação por pesquisador, reconciliação, papéis de administrador, membro e somente-leitura, tudo nativo, sem precisar de planilha paralela ou ferramenta de terceiros para coordenar a equipe.
 
 > Küster, J.; Wolf, K. D. **The Current State of CAQDAS is Insufficient for Open Science Qualitative Research.** *Electronic Communications of the EASST*, v. 85 (deRSE25), 2025. DOI [10.14279/eceasst.v85.2709](https://doi.org/10.14279/eceasst.v85.2709), licença CC-BY 4.0. Os autores desenvolvem o [OpenQDA](https://openqda.org/), que integra a amostra examinada. Os números acima descrevem as 28 ferramentas que **eles** examinaram (o QualiLab não estava entre elas) e valem para o levantamento de 2025.
 
@@ -124,7 +124,7 @@ Uma linha por recurso: aqui é o inventário. O **passo a passo** de cada um est
 | **Papéis** | admin, membro e somente-leitura, **impostos pelo servidor** (RLS), não escondidos na interface: excluir documento ou código, editar texto compartilhado, mesclar códigos e importar exigem admin. O que membro e somente-leitura podem fazer (comentar, codificar, adicionar documentos, criar códigos, editar o verbete, usar IA) é decidido **item a item, na criação do projeto**, numa matriz que o servidor aplica; sem mexer, membro faz tudo e somente-leitura lê e **comenta** |
 | **Distribuição de documentos** | matriz documentos × pesquisadores, com rodízio: cada um só **enxerga** o que lhe foi atribuído |
 | **Codificação cega** | cada um só enxerga o **próprio** trabalho (o gabarito também some). Com o mesmo documento para duas pessoas, o estudo fica duplo-cego. Se as categorias são metadado do desenho (plataforma, perfil sorteado), o projeto pode declará-lo e o gabarito **delas** fica visível; o das codificações, nunca |
-| **Verbete travado** | só a administração edita a definição dos códigos, para o instrumento não mudar no meio de uma rodada de calibração. Ler continua livre |
+| **Verbete travado** | opcional: ligado, só a administração edita a definição dos códigos, para o instrumento não mudar no meio de uma rodada de calibração. Ler continua livre |
 | **Tipos de projeto** | individual (tudo vai direto ao gabarito) ou coletivo |
 | **Tempo real** | codificações e respostas de categoria sincronizam ao vivo; esquema de códigos e categorias exigem recarregar |
 | **Onde os dados ficam** | arquivo no disco, rascunho no navegador ou nuvem — trocar entre eles é um clique no hub do projeto, sem exportar e importar à mão |
@@ -134,13 +134,13 @@ Uma linha por recurso: aqui é o inventário. O **passo a passo** de cada um est
 
 **Ela vem desligada, e ligar é um ato.** Todo projeto novo — na nuvem, em arquivo ou no rascunho — pergunta se os recursos de IA ficam disponíveis, e a opção que **já vem marcada é "Sem IA"**: ativar exige trocar a escolha, e fechar sem responder mantém desligado. A escolha tem três alcances (**ninguém** · **só administradores** · **todos**), é **imposta no banco** e não só escondida na interface, e **viaja dentro do `.qualilab`**.
 
-Um selo no cabeçalho mostra o estado o tempo todo — **✔︎** ativada, **~~IA~~** desligada — e é por ele que se troca. Com a IA desligada as telas somem; com ela ligada, **nada é enviado a modelo nenhum sem você pedir**: toda chamada é um clique seu.
+Um selo **IA** no cabeçalho mostra o estado o tempo todo — anel **verde** quando ativada, **barrado em vermelho** quando desligada ou restrita aos administradores — e é por ele que se troca. Com a IA desligada as telas de IA somem (a Auto-codificação fica, só com a Repetir Codificação, que não usa IA); com ela ligada, **nada é enviado a modelo nenhum sem você pedir**: toda chamada é um clique seu.
 
 **O padrão é o navegador chamar o provedor direto**: com a sua chave (guardada só no navegador), **nenhum servidor do QualiLab vê o material** da análise. A Edge Function `ai-ask` cobre só dois casos: um endpoint *Personalizado*/*Azure* que não libere chamadas de navegador (CORS) e uma eventual chave de servidor — que a instância pública não tem.
 
 | Recurso | O que é |
 |---|---|
-| **Auto-codificação** | cinco assistentes: **Sugerir Codificação** (segunda codificadora, recall) · **Sugerir Categorização** (preenche categorias existentes) · **Definir Categoria** (escreve a instrução a partir do gabarito que você já deu) · **Organizar Códigos** · **Repetir Codificação** (esta **sem IA**: acha ocorrências exatas). Em todos: a IA **propõe**, você aprova ou recusa **item a item**, nada é gravado sem confirmação |
+| **Auto-codificação** | cinco assistentes: **Sugerir Codificação** (segunda codificadora, recall) · **Sugerir Categorização** (preenche categorias existentes) · **Definir Categoria** (escreve a instrução a partir do gabarito que você já deu) · **Organizar Códigos** · **Repetir Codificação** (esta **sem IA**: acha ocorrências exatas). Em todos, você aprova ou recusa **item a item** e nada é gravado sem confirmação; nos quatro de IA, quem **propõe** é o modelo. Com a IA desligada, a tela fica só com a Repetir Codificação |
 | **Analisar com IA** | conversa sobre o material que você recorta (documentos, trechos por código, ou os dois), citando as fontes, com postura metodológica escolhível e prompts salvos |
 | **Explorar com IA** *(experimental)* | a IA **pede** o material em vez de receber um recorte pronto, por ferramentas de só-leitura; **cada chamada aparece na tela**, lida do dado e não da narração do modelo |
 | **Prompt visível e editável** | o **⚙ Configurar Prompt** mostra o que será enviado, seção por seção, com o modelo ativo, a estimativa de tokens e o **custo em R$** — antes de enviar |
@@ -205,28 +205,28 @@ Arquivo e nuvem são as opções de trabalho de verdade; o **rascunho** é a ent
 
 ### Modo arquivo: para dados sensíveis
 
-No modo arquivo, o projeto é salvo como um arquivo `.qualilab` (JSON) **visível no sistema de arquivos**: em qualquer pasta, HD externo, volume criptografado ou servidor institucional. Zero tráfego de rede. Zero localStorage. Funciona completamente offline.
+No modo arquivo, o projeto é salvo como um arquivo `.qualilab` (JSON) **visível no sistema de arquivos**: em qualquer pasta, HD externo, volume criptografado ou servidor institucional. Nada do projeto sai pela rede (a não ser o que você mandar à IA, se ela estiver ativada), e nada fica no `localStorage`. Funciona offline; as bibliotecas de PDF, Word, OCR e planilha só precisam de rede no primeiro uso de cada uma, e no aplicativo instalado ficam guardadas depois.
 
-- Disponível em **Chrome e Edge** (File System Access API). Firefox e Safari usam o modo local.
+- Disponível em **Chrome e Edge** (File System Access API). Firefox e Safari usam o rascunho.
 - Na tela inicial, clique em **"Novo arquivo…"** ou **"Abrir arquivo…"** para começar.
 - O app reabre automaticamente o último arquivo na próxima sessão (com permissão do navegador).
 - Ideal para entrevistas clínicas, dados judiciais, pesquisas com aprovação de CEP que exijam ambiente air-gapped.
 
 ### Modo rascunho: backup automático em pasta
 
-No modo rascunho (`localStorage`, limite de 5-10MB), você pode ativar um **backup automático**: o app passa a manter um arquivo `backup-automatico.qualilab` sempre atualizado numa pasta do seu computador, por exemplo a mesma pasta onde está o `index.html`. É um espelho redundante, **não** o mesmo que o modo arquivo (que grava direto no disco como armazenamento principal): continua salvando no navegador normalmente, e também escreve esse arquivo em segundo plano a cada mudança (com uma pequena pausa antes de gravar, maior em projetos grandes, pra não travar a aba). Para virar modo arquivo de verdade (pílula verde), use **"Salvar como arquivo"** no hub do projeto.
+No modo rascunho (`localStorage`, limite de ~5 MB), você pode ativar um **backup automático**: o app passa a manter um arquivo `backup-automatico.qualilab` sempre atualizado numa pasta do seu computador, por exemplo a mesma pasta onde está o `index.html`. É um espelho redundante, **não** o mesmo que o modo arquivo (que grava direto no disco como armazenamento principal): continua salvando no navegador normalmente, e também escreve esse arquivo em segundo plano a cada mudança (com uma pequena pausa antes de gravar, maior em projetos grandes, pra não travar a aba). Para virar modo arquivo de verdade (pílula verde), use **"Salvar como arquivo"** no hub do projeto.
 
 - Ative em **pílula do projeto → Backup automático em pasta → Escolher pasta…** (disponível em Chrome e Edge).
 - Se o app não conseguir salvar de verdade (`localStorage` cheio, navegador sem suporte), um aviso vermelho aparece na tela com um atalho pra baixar o projeto na hora; isso não depende do backup automático estar ativado.
 
 ### Modo nuvem: status de conexão
 
-- O cabeçalho mostra um indicador `offline` em âmbar quando a conexão cai.
-- **Escrita que falha por motivo passageiro entra numa fila e sobe sozinha** (desde a v1.4.7). Vale para o trabalho do dia a dia: codificações, respostas de categoria, notas, conversas salvas da IA e memórias. A alteração continua aparecendo na tela enquanto espera, o cabeçalho mostra quantas estão pendentes (clique para tentar na hora) e **fechar a aba não perde a fila** — ela volta ao reabrir o projeto.
+- A barra de status, no rodapé, mostra um indicador `offline` em âmbar quando a conexão cai.
+- **Escrita que falha por motivo passageiro entra numa fila e sobe sozinha** (desde a v1.4.7). Vale para o trabalho do dia a dia: codificações, respostas de categoria, notas, conversas salvas da IA e memórias. A alteração continua aparecendo na tela enquanto espera, a barra de status mostra quantas estão pendentes (clique para tentar na hora) e **fechar a aba não perde a fila** — ela volta ao reabrir o projeto.
 - Mudanças **estruturais** ficam de fora da fila de propósito e avisam na hora se falharem: criar/excluir documento, mexer no esquema de códigos, gestão do projeto e importações. Numa pesquisa coletiva, reaplicar esse tipo de mudança minutos depois produziria um estado que ninguém pediu.
 - Se a nuvem **recusar** de vez uma alteração (seu papel no projeto mudou, ou outra pessoa excluiu o alvo), ela não some calada: aparece um aviso do que foi recusado, com atalho para baixar um `.qualilab` antes de refazer.
 
-**O QualiLab NÃO anonimiza nem identifica dados pessoais** (nomes, CPF, dados de saúde) no conteúdo dos documentos. A **censura** mascara apenas os trechos que **você** marcou à mão, **não** detecta sozinha o que é sensível e **não** cobre as exportações de trabalho (`.qualilab`, QDPX, QDC, CSV e JSON saem com o texto cru). **Não há rede de segurança automática.**
+**O QualiLab NÃO anonimiza nem identifica dados pessoais** (nomes, CPF, dados de saúde) no conteúdo dos documentos. A **censura** mascara apenas os trechos que **você** marcou à mão, **não** detecta sozinha o que é sensível e **não** cobre as exportações de trabalho (`.qualilab`, QDPX, QDC, CSV e JSON saem com o texto cru). O que existe é uma ajuda para depois de marcar: a aba **Repetir Codificação** acha as outras ocorrências **idênticas** de um trecho já censurado e propõe o mesmo código, para você aprovar uma a uma. Variantes ("a banca" em vez de "Banca Exemplo") ela não acha. Como não usa IA, ela continua disponível com a IA desligada. **Não há rede de segurança automática.**
 
 ---
 
@@ -289,7 +289,7 @@ O **padrão é BYOK**: cada pesquisador traz a sua chave e o **navegador chama o
 
 Sem nenhuma chave configurada, as telas de IA retornam um erro claro; o restante do app funciona normalmente.
 
-**Chave pessoal (BYOK)**: em **Minha Conta**, cada pesquisador pode informar a própria chave (de qualquer um dos três provedores) e escolher o modelo. Ela fica salva só no navegador dele (nunca no servidor) e passa a valer pras análises dele — que vão **direto** do navegador ao provedor. Os provedores **Azure** e **Personalizado** são BYOK puro (nunca usam chave de servidor) e são os únicos que podem recair na Edge Function, quando o endpoint não libera o navegador. O **Ollama local** dispensa toda esta configuração de servidor (ver "Análise com IA" acima).
+**Chave pessoal (BYOK)**: em **Minha Conta**, cada pesquisador pode informar a própria chave (de qualquer provedor da lista acima) e escolher o modelo. Ela fica salva só no navegador dele (nunca no servidor) e passa a valer pras análises dele — que vão **direto** do navegador ao provedor. Os provedores **Azure** e **Personalizado** são BYOK puro (nunca usam chave de servidor) e são os únicos que podem recair na Edge Function, quando o endpoint não libera o navegador. O **Ollama local** dispensa toda esta configuração de servidor (veja [IA: desligada por padrão, e com a sua chave](#ia-desligada-por-padrão-e-com-a-sua-chave), acima).
 
 ---
 
@@ -301,14 +301,14 @@ Nada do que você produz aqui fica preso aqui. Esta seção reúne o que entra, 
 
 | Formato | Importa | Exporta | Notas |
 |---|:---:|:---:|---|
-| **`.qualilab`** (nativo) | ✅ | ✅ | O projeto inteiro, sem perda, em qualquer modo. Ao importar num projeto coletivo, **preserva a resposta de cada pesquisador** de origem. Formato aberto e documentado ([abaixo](#o-qualilab-não-é-um-formato-mágico)) |
+| **`.qualilab`** (nativo) | ✅ | ✅ | O projeto inteiro, sem perda de análise, em qualquer modo. Ao importar num projeto coletivo, **preserva a resposta de cada pesquisador** de origem. Formato aberto e documentado ([abaixo](#o-qualilab-não-é-um-formato-mágico)) |
 | **QDPX** (REFI-QDA) | ✅ | ✅ | Intercâmbio com ATLAS.ti, MAXQDA, NVivo, Quirkos, QualCoder. O pacote gerado é **validado contra o `Project.xsd` oficial (v1.0)** por um harness de round-trip mantido no repositório de desenvolvimento — o que é **tentativa de intercompatibilidade, não garantia**. Importa `.qdpx` do ATLAS.ti com os PDFs |
 | **QDC** (codebook REFI-QDA) | ✅ | ✅ | Só o livro de códigos (é o que o formato tem). Compatível com o codebook do Taguette |
 | **`.sqlite3`** (Taguette) | ✅ | ✕ | O projeto nativo do Taguette lido direto no navegador, via [sql.js](https://github.com/sql-js/sql.js): documentos, tags com hierarquia e trechos |
 | **Zotero RDF** (pasta) | ✅ | ✕ | Coleção exportada com arquivos. Você escolhe quais metadados viram categorias e o que é listado, pelo nome, antes de entrar |
 | **Planilha** (`.csv`/`.xlsx`) | ✅ | ✅ | Uma linha por documento na ida; e o **CSV de atributos tem caminho de volta** — preencha na planilha e reimporte, com prévia do que muda antes de gravar |
 | **Web Annotation (W3C)** · **Leitor ATI** | ✕ | ✅ | Na aba Relatório. Censura mascarada |
-| **CSV de trechos** · **JSON** | ✕ | ✅ | Um trecho por linha (documento, código, camada, autor); ou o projeto completo com camadas e autores |
+| **CSV de trechos** · **JSON** | ✕ | ✅ | Um trecho por linha (documento, código, camada, autor); ou, no JSON, documentos, categorias, códigos e codificações com camada, autor e página, sem memos, IA, histórico nem conexões (para isso, o `.qualilab`) |
 
 > Os formatos de **trabalho e migração** saem **crus, censura inclusive**: é por eles que você leva o seu material para outra ferramenta e o traz de volta, e mascarar ali seria perda irreversível. Quem mascara são as saídas de **transparência**. O menu de exportação avisa isso na hora.
 
@@ -321,7 +321,7 @@ São duas formas, escolhidas pelo conteúdo:
 - **Sem PDF: JSON puro.** Um projeto só-texto abre em qualquer editor de texto. Os arquivos em [`examples/`](examples/) são assim.
 - **Com PDF: um zip** com `project.json`, `pdfs/<docId>.pdf` (guardados sem recompressão) e `pdfindex/<docId>.json` (a correspondência trecho ↔ página ↔ retângulo, que é o que faz "ver original", o número de página e o OCR sobreviverem à ida e volta).
 
-A leitura decide pelo **primeiro byte** (`PK` = zip), então arquivos antigos, anteriores ao contêiner, continuam abrindo. O `project.json` tem nove chaves de topo: `_meta`, `documents`, `categories`, `doc_values`, `codes`, `codings`, `memos`, `ia_results` e `ia_memory`.
+A leitura decide pelo **primeiro byte** (`PK` = zip), então arquivos antigos, anteriores ao contêiner, continuam abrindo. O `project.json` tem estas chaves de topo: `_meta`, `documents`, `categories`, `doc_values`, `codes`, `codings`, `memos`, `ia_results`, `ia_memory`, `activity` (o histórico), `link_relations` e `links` (as conexões) e `disagreements` (as discordâncias); as quatro últimas podem faltar em arquivos anteriores a elas.
 
 Ler é isto, sem dependência nenhuma além da biblioteca padrão:
 
@@ -382,7 +382,7 @@ Sem build, sem bundler, sem framework pesado.
 - **Busca semântica**: [transformers.js](https://github.com/huggingface/transformers.js) + o modelo de *embeddings* [`paraphrase-multilingual-MiniLM-L12-v2`](https://huggingface.co/Xenova/paraphrase-multilingual-MiniLM-L12-v2) (ONNX, baixado sob demanda e executado **no navegador**; nenhuma chave, nenhuma chamada a servidor de IA)
 - **Armazenamento local**: File System Access API + IndexedDB (nativos do navegador)
 - **Nuvem** (opcional): [Supabase](https://supabase.com/)
-- **Entrega das dependências**: import map com **SRI** (`integrity` por URL), servindo do **jsdelivr** com o `esm.sh` de reserva. O hash cobre o módulo de topo; o *worker* do pdf.js e o `.wasm` do sql.js não são *module script* e ficam declaradamente fora. É defesa em profundidade, não garantia.
+- **Entrega das dependências**: import map com **SRI** (`integrity` por URL), servindo do **jsdelivr** com o `esm.sh` de reserva (a biblioteca de planilhas vem do site do fabricante, sem reserva). O hash cobre o módulo de topo; o *worker* do pdf.js e o `.wasm` do sql.js não são *module script* e ficam declaradamente fora. É defesa em profundidade, não garantia.
 
 ```
 QualiLab/
@@ -401,7 +401,7 @@ QualiLab/
 
 O `docs/index.html` deste repositório é o **artefato publicado**: um arquivo único, sem bundler, sem npm e sem etapa de compilação do seu lado. Ele é **gerado** a partir de uma fonte modular (dezenas de fragmentos concatenados em bytes, sem transformação nenhuma) mantida no repositório de desenvolvimento.
 
-A seção [Sustentabilidade](#o-qualilab-não-é-um-formato-mágico) diz que há verificação a cada mudança. **Neste repositório** ela roda a cada push, e você pode inspecionar o `ci.yml`:
+A seção [Sustentabilidade](#limites-e-responsabilidade) diz que há verificação a cada mudança. **Neste repositório** ela roda a cada push, e você pode inspecionar o `ci.yml`:
 
 | Verificação | O que ela prova |
 |---|---|
@@ -423,7 +423,7 @@ Projeto em desenvolvimento ativo. Vale conhecer os limites antes de adotar num t
 - **Nem tudo sincroniza ao vivo.** Só codificações e respostas de categoria. Mudar o esquema de códigos, as categorias ou a distribuição de documentos exige recarregar a página.
 - **A fila de escrita não é modo offline.** Ela guarda e reenvia o que você *escreve* quando a nuvem falha, mas **ler** continua exigindo rede: sem conexão, abrir um documento ainda não carregado ou trocar de projeto não funciona. Para trabalhar sem rede, use o modo Arquivo.
 - **Capacidade do plano gratuito do Supabase** (ordem de 500 MB de banco, sujeita a mudança — confira em [supabase.com/pricing](https://supabase.com/pricing)). Projetos muito grandes podem exigir plano pago ou o modo Arquivo, que não tem esse teto.
-- **O QualiLab NÃO anonimiza.** A censura mascara **só os trechos que você marcou à mão**, e só no que sai de perto de você: as saídas do Relatório e o que vai para a IA, inclusive o assistente externo (salvo quando você mesmo inclui um código de censura numa análise, e com a ressalva dos clientes agênticos, acima). Ela não detecta o que é sensível, não esconde nada na sua própria tela, não cobre as exportações de trabalho (`.qualilab`, QDPX, QDC, CSV e JSON saem crus) e não alcança **título do documento, valor de categoria nem memo**. O manual traz o [fluxo de publicação](docs/MANUAL.md) que cuida desses três.
+- **O QualiLab NÃO anonimiza.** A censura mascara **só os trechos que você marcou à mão**, e só no que sai de perto de você: as saídas do Relatório e o que vai para a IA, inclusive o assistente externo (salvo quando você mesmo inclui um código de censura numa análise, e com a ressalva dos clientes agênticos, acima). Ela não detecta o que é sensível (a Repetir Codificação acha só as repetições **idênticas** do que você já marcou, veja acima), não esconde nada na sua própria tela, não cobre as exportações de trabalho (`.qualilab`, QDPX, QDC, CSV e JSON saem crus) e não alcança **título do documento, valor de categoria nem memo**. O manual traz o [fluxo de publicação](docs/MANUAL.md) que cuida desses três.
 - **A trilha de auditoria registra operações, não linhas, e não desfaz.** O histórico do projeto (Memos ▸ Histórico) lista importações, mesclagens e divisões de código, exclusões, edições de texto, aplicações em lote, consolidações e exportações, com autor e data, mas não guarda o conteúdo do que foi apagado: o **Ctrl+Z** segue desfazendo só a última codificação da sessão. O que devolve o conteúdo é o **espelho** (desde a 1.4.52): um retrato do projeto inteiro, criado à mão ou sozinho antes de limpar, excluir, mesclar, dividir, editar texto ou restaurar, que se restaura a partir da pílula do projeto — sem os PDFs originais e sem o histórico, que registra a restauração em vez de voltar atrás. Ele começa no primeiro evento depois da 1.4.51 (nada é reconstruído para trás), e na nuvem é só-acréscimo pela API, não prova forense: quem opera o servidor, ou o dono do arquivo, sempre pode alterá-lo.
 - **QDPX perde o que o formato não modela**: camadas individuais e autoria de atributo por pesquisador (limite do REFI-QDA, não nosso). E o tipo das categorias vindas de outra ferramenta é **inferido** quando ela não o declara — o resumo do import diz quantas foram, e vale revisar no esquema.
 - **A fidelidade do round-trip é medida, não presumida** (harness mantido no repositório de desenvolvimento, com corpus adversarial e matriz de sobrevive/degrada/se perde). Ainda assim, **validade de schema não substitui testar na ferramenta de destino real**, que pode ler o padrão de outro jeito.
@@ -457,20 +457,20 @@ O backlog completo é mantido no repositório de desenvolvimento, com o raciocí
 
 O QualiLab foi desenvolvido por **[Luiz Pimenta Filho](https://orcid.org/0000-0002-5165-6232)** no âmbito do **[LabDados / FGV Direito SP](https://direitosp.fgv.br/nucleos-de-pesquisa/laboratorio-dados-pesquisa-empirica-direito-labdados)** como projeto pessoal. Não representa posição institucional da FGV, que não tem qualquer responsabilidade pelo software.
 
-A maior parte do código deste projeto foi escrita com assistência do [Claude Code](https://claude.com/claude-code) (Anthropic).
+A maior parte do código deste projeto foi escrita por um modelo de linguagem ([Claude Code](https://claude.com/claude-code), da Anthropic), sob direção e revisão do autor.
 
 As principais inspirações foram:
 
 - **[Taguette](https://www.taguette.org/about.html)**: ferramenta de QDA aberto, pioneira em simplicidade e funcionamento on-line, com suporte a múltiplos formatos de importação de documentos e exportação do codebook em REFI-QDA (`.qdc`).
 - **[Magnolia](https://www.caledavis.eu/magnolia.html)**: QDA com foco em poder e intuitividade, transcrição de áudio/vídeo e análise de surveys. Um projeto impressionante e totalmente gratuito que merece sua atenção.
 - **[QualCoder](https://github.com/ccbogel/qualcoder)**: QDA maduro e completo (codificação de texto, imagem, áudio e vídeo; relatórios e medidas de concordância), livre e de código aberto. Uma referência robusta para quem precisa de uma ferramenta de desktop full-featured.
-- **[OpenQDA](https://openqda.org/)** ([código](https://github.com/openqda/openqda), AGPL-3.0): QDA aberto e colaborativo, feito na Universidade de Bremen, com arquitetura pensada desde o começo para receber extensões da comunidade. É o projeto de Jan Küster e Karsten D. Wolf, os autores do levantamento que enquadra a [Motivação](#por-que-existe) deste README: a crítica que abre o texto vem de quem também está construindo uma resposta para ela.
+- **[OpenQDA](https://openqda.org/)** ([código](https://github.com/openqda/openqda), AGPL-3.0): QDA aberto e colaborativo, feito na Universidade de Bremen, com arquitetura pensada desde o começo para receber extensões da comunidade. É o projeto de Jan Küster e Karsten D. Wolf, os autores do levantamento que enquadra a [motivação](#por-que-existe) deste README: a crítica que abre o texto vem de quem também está construindo uma resposta para ela.
 
 Todos demonstram que é possível fazer ferramentas de qualidade sem cobrar das pessoas que mais precisam delas, e que vale a pena apoiá-las.
 
 ### Referência
 
-O enquadramento da [Motivação](#por-que-existe) e a tabela [Onde o QualiLab está nessa régua](#onde-o-qualilab-está-nessa-régua) se apoiam em:
+O enquadramento da [motivação](#por-que-existe) e a tabela [Onde o QualiLab está nessa régua](#onde-o-qualilab-está-nessa-régua) se apoiam em:
 
 > Küster, J.; Wolf, K. D. *The Current State of CAQDAS is Insufficient for Open Science Qualitative Research.* **Electronic Communications of the EASST**, v. 85 (deRSE25: Selected Contributions of the 5th Conference for Research Software Engineering in Germany), 2025. DOI [10.14279/eceasst.v85.2709](https://doi.org/10.14279/eceasst.v85.2709). Licença CC-BY 4.0.
 

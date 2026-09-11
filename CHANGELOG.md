@@ -1,9 +1,9 @@
 # Changelog
 
 Mudanças relevantes para quem **usa** o QualiLab. O histórico completo (incluindo refatorações
-e decisões internas) está nos commits e no `CLAUDE.md`.
+e decisões internas) está nos commits e no guia de desenvolvimento, que vive no repositório de desenvolvimento.
 
-A versão aparece no canto direito do cabeçalho e no rodapé da tela de entrada. **Cite esse
+A versão aparece na barra de status, no rodapé do app, e na tela de entrada. **Cite esse
 número ao relatar um problema**: sem ele não há como saber qual build o seu navegador carregou.
 
 > **Este arquivo é próprio deste repositório desde ago/2026** e descreve só o aplicativo
@@ -13,6 +13,19 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 >
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
+
+## 1.4.65 (11/09/2026)
+
+### A Repetir Codificação continua disponível com a IA desligada
+
+A aba **Repetir Codificação** acha as outras ocorrências idênticas dos trechos que um código já
+tem, e é o jeito de estender uma censura às demais menções do mesmo nome. Ela não usa IA nenhuma,
+mas morava na tela **Auto-codificação**, que sumia junto com as telas de IA quando o projeto não
+usa IA. Ou seja, faltava justamente no caso mais comum, porque todo projeto nasce sem IA.
+
+Agora a Auto-codificação continua na barra com a IA desligada, só com essa aba e uma linha
+explicando por que as outras não aparecem. **Analisar com IA** e **Explorar com IA** continuam
+sumindo, como antes, e quem é somente-leitura continua sem a Auto-codificação, porque não codifica.
 
 ## 1.4.64 (11/09/2026)
 

@@ -933,7 +933,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.64';
+const QUALILAB_VERSION = '1.4.65';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -3203,6 +3203,7 @@ const MSG_PT = {
   'repeat.badRegex': 'Expressão regular inválida: {e}',
   'repeat.hint': 'Sem IA. Pega os trechos que um código **já tem** e acha as outras ocorrências **idênticas** no corpus inteiro, para você aprovar uma a uma. Útil quando o mesmo termo reaparece e passou sem código: é o caso da **censura**, que protege só o que foi marcado.',
   'repeat.hint2': 'Acha texto idêntico, **não variante**: "Banca Exemplo" não encontra "a banca". Para essas, use **pesquisar +** na aba Codificação.',
+  'repeat.aiOff': 'As outras abas desta tela usam IA, que não está disponível para você neste projeto. Esta não usa: só procura texto idêntico ao dos trechos que o código já tem.',
   'repeat.nTerms': ' ({n}, {terms} termo(s))',
 
   // -- memoria do projeto e conversas salvas --
@@ -5602,6 +5603,7 @@ const MSG_EN = {
   'repeat.badRegex': 'Invalid regular expression: {e}',
   'repeat.hint': 'No AI. It takes the passages a code **already has** and finds the other **identical** occurrences in the whole corpus, for you to approve one by one. Useful when the same term comes back uncoded: that is the case of **redaction**, which protects only what was marked.',
   'repeat.hint2': 'It finds identical text, **not variants**: "Example Chambers" does not find "the chambers". For those, use **search +** on the Coding tab.',
+  'repeat.aiOff': 'The other tabs on this screen use AI, which is not available to you in this project. This one does not: it only looks for text identical to the passages the code already has.',
   'repeat.nTerms': ' ({n}, {terms} term(s))',
 
   // -- project memory and saved conversations --
@@ -14594,7 +14596,9 @@ const ROUTE_VIEWS = ['codificar','reconciliar','visualizar','graficos','memos','
 // S7 — as telas que mandam MATERIAL DO CORPUS para um modelo de terceiro, que e o eixo do
 // interruptor `restrict_ai`. A MCP/RAG entra por despejar corpus a cada turno do laco; a busca
 // semantica, o OCR e o reflow ficam de fora por rodarem 100% no navegador. UMA LINHA, idem acima.
-const AI_VIEWS = ['ia_codificar','ia_analisar','mcp'];
+// A Auto-codificacao ('ia_codificar') SAIU daqui na v1.4.65: com a IA fechada ela fica, so com a
+// Repetir Codificacao (que nao usa IA), entao fechar a IA nao pode mais tirar a pessoa dela.
+const AI_VIEWS = ['ia_analisar','mcp'];
 
 /* '#/visualizar/abc?aba=trechos' -> { tela:'visualizar', doc:'abc', aba:'trechos' }.
 
@@ -18148,15 +18152,15 @@ function App(){
         allCodings=${allCodings} allValues=${allValues} store=${store} memos=${memos} pdfIdx=${docPdfIdx}
         restrictAi=${restrictAi} aiEverEnabled=${aiEverEnabled} nConversasIa=${(iaResults||[]).length} nMemoriasIa=${(aiMemory||[]).length}
         blind=${projBlind} catsAreMetadata=${catsAreMetadata} />`
-    /* S7: os tres bracos de IA levam `&& !aiLock`. O efeito do hook ja tira a pessoa da tela, mas
-       ele roda DEPOIS do render — sem o gate aqui, um `#/ia_analisar` colado renderiza o painel
-       por um quadro antes de sair, e um quadro basta para ele montar e disparar o que dispara ao
-       montar. Cair no ULTIMO braco do ternario e o desvio SILENCIOSO que a spec pede (mesmo
-       precedente do 'mcp' no app publico). */
-    : mainView==='ia_codificar' && !aiHidden && !readOnly ? html`<div class="split">
+    /* S7: Analisar e Explorar levam `&& !aiLock` — o efeito do hook tira a pessoa da tela DEPOIS do
+       render, e um quadro basta para um `#/ia_analisar` colado montar o painel e disparar o que ele
+       dispara ao montar; cair no ULTIMO braco e o desvio silencioso da spec. A Auto-codificacao saiu
+       do gate na v1.4.65: com a IA fechada ela entra so com a Repetir Codificacao, e o gate de um
+       quadro mora no IACodificarPanel (a aba e calculada no render). */
+    : mainView==='ia_codificar' && !readOnly ? html`<div class="split">
       <!-- CODIFICAR AUTOMATICAMENTE: tela inteira (config | resultado). 3 abas de IA (operações
            inline no turno da IA) + a aba "Repetir Codificação", que é mecânica e roda sem IA -->
-      <${IACodificarPanel} project=${project} docs=${docs} codes=${codes} codeById=${codeById} codePath=${codePath} onLog=${logAct} onSnapshot=${snapshotBefore}
+      <${IACodificarPanel} aiLock=${aiHidden} project=${project} docs=${docs} codes=${codes} codeById=${codeById} codePath=${codePath} onLog=${logAct} onSnapshot=${snapshotBefore}
         store=${store} allCodings=${allCodings} count=${schemaCodingCount} isAdmin=${isAdmin}
         cats=${cats} allValues=${allValues} projectMode=${projectMode} user=${user}
         reload=${reloadWrite} loadAll=${loadAll} onAdd=${addCode} memos=${memos} onSetMemo=${saveMemo}
@@ -19971,10 +19975,14 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
    (31 props, quase todas inputRef/doImport*) mais conta, projeto e pilulas de estado — 119
    identificadores livres e 5 setters. Cabe numa prop-objeto, o que ESCONDE a superficie em
    vez de reduzi-la. */
-/* `aiLock` (S7) esconde as tres telas de IA de quem esta sob a restricao do projeto. SOME MESMO,
+/* `aiLock` (S7) esconde as telas de IA de quem esta sob a restricao do projeto. SOME MESMO,
    sem placeholder de "IA desativada": anunciar a quem nao pode o que ele nao pode fazer e
    provocacao sem funcao. O INDICADOR do estado e o caminho de volta ficam na 2a LINHA do
-   cabecalho (entre a pilula do projeto e o nome), nao aqui — ver a nota na App(). */
+   cabecalho (entre a pilula do projeto e o nome), nao aqui — ver a nota na App().
+   A AUTO-CODIFICACAO FICA com a IA fechada (set/2026, v1.4.65), so com a aba Repetir Codificacao:
+   ela nao usa modelo nenhum, e e a ferramenta que o manual indica para achar as outras mencoes de
+   um termo censurado. Escondida junto das telas de IA, faltava justamente ao projeto sem IA, que e
+   como todo projeto nasce. Quem garante que nenhuma aba de IA monte e o IACodificarPanel. */
 
 /* FONTE UNICA das telas visiveis (ago/2026): o TopNav e a paleta de comandos (Ctrl+K) precisam
    da MESMA lista com os MESMOS gates — duas copias divergiriam em silencio (a paleta ofereceria
@@ -19991,10 +19999,12 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
    `id:'mcp'` desta lista e uma das marcas OBRIGATORIAS do scripts/estavel_core.py — ele aborta a
    geracao do app publico se ela sumir. Foi por isso que a marca deixou de ser `onView('mcp')` na
    extracao do TopNav: ao mexer em linha que os geradores procuram, confira o corte. */
-/* `readOnly` esconde as MESMAS tres telas que o aiLock (S7) esconde, e por um motivo
+/* `readOnly` esconde as tres telas de IA (a Auto-codificacao inclusive), e por um motivo
    proprio: elas existem para PROPOR mudanca que o papel nao pode aplicar, e salvar conversa
-   ou memoria e escrita que a RLS recusa. Os dois motivos somam aqui em vez de o viewer
-   acender o aiLock — sao coisas diferentes, e o selo de IA do cabecalho fala do PROJETO. */
+   ou memoria e escrita que a RLS recusa. A Repetir Codificacao tambem so grava codificacao, que
+   o leitor nao faz, e por isso ele nao fica com a Auto-codificacao como o aiLock fica. Os dois
+   motivos somam aqui em vez de o viewer acender o aiLock — sao coisas diferentes, e o selo de IA
+   do cabecalho fala do PROJETO. */
 function visibleViews({ projectMode, focusMode, blindLock, aiLock, readOnly }){
   const groups = [];
   const g1 = [{ id:'codificar', label:t('nav.coding') }];
@@ -20004,8 +20014,8 @@ function visibleViews({ projectMode, focusMode, blindLock, aiLock, readOnly }){
   if(!focusMode) g2.push({ id:'esquema', label:t('nav.scheme') });
   groups.push(g2);
   const g3 = [{ id:'graficos', label:t('nav.charts') }];
+  if(!readOnly) g3.push({ id:'ia_codificar', label:t('nav.autocoding') });
   if(!aiLock && !readOnly){
-    g3.push({ id:'ia_codificar', label:t('nav.autocoding') });
     g3.push({ id:'ia_analisar', label:t('nav.analyze') });
     g3.push({ id:'mcp', label:t('nav.explore') });
   }
@@ -28216,7 +28226,7 @@ function IAOrganizarPanel({ onLog, onSnapshot, project, docs, codes, codeById, c
 function IACodificarPanel(props){
   // A aba "Repetir Codificação" NAO usa IA (dai o painel ter deixado de se chamar "Codificar
   // com IA"): ela e mecanica, so procura texto identico ao dos trechos que o codigo ja tem.
-  const TABS = [
+  const TODAS = [
     { id:'codificar',   label:t('tab.suggestCoding') },
     { id:'repetir',     label:t('tab.repeatCoding') },
     { id:'categorizar', label:t('tab.suggestAttrs') },
@@ -28226,7 +28236,14 @@ function IACodificarPanel(props){
     { id:'definir',     label:t('tab.defineAttr') },
     { id:'organizar',   label:t('tab.organizeCodes') },
   ];
-  const [tab, setTab] = useState('codificar');
+  /* IA FECHADA PARA ESTA PESSOA (S7, ou a matriz sem use_ai): a tela continua, SO com a aba
+     Repetir Codificacao (v1.4.65). A aba e CALCULADA no render, e nao corrigida num efeito:
+     assim nenhum painel de IA chega a montar com a IA fechada, nem por um quadro — o mesmo
+     cuidado que o gate do ternario da App tinha quando esta tela sumia inteira. O estado
+     escolhido fica guardado, entao reabrir a IA devolve a aba em que a pessoa estava. */
+  const TABS = props.aiLock ? TODAS.filter(ab=>ab.id==='repetir') : TODAS;
+  const [escolhida, setTab] = useState('codificar');
+  const tab = props.aiLock ? 'repetir' : escolhida;
   // Cada sub-painel renderiza a propria barra do topo [⚙ configurar prompt][seg de abas],
   // espelhando o IAAnalisarPanel — por isso o wrapper so segura o estado das abas e repassa
   // tab/setTab/TABS; o botao ⚙ vive dentro de cada sub-painel (junto do showPrompt local) e a
@@ -28310,7 +28327,7 @@ const REP_TOTAL    = 500;  // teto de propostas: varrer e barato, REVISAR e que 
 const REP_SHOW     = 8;    // ocorrencias exibidas por grupo antes do "ver mais"
 const REP_CTX      = 56;   // chars de contexto em volta, pra decidir sem sair da tela
 
-function IARepetirPanel({ onLog, project, docs, codes, codeById, codePath, store, allCodings, projectMode, reload, loadAll, tab, setTab, TABS }){
+function IARepetirPanel({ onLog, project, docs, codes, codeById, codePath, store, allCodings, projectMode, reload, loadAll, tab, setTab, TABS, aiLock }){
   const [selCodes, setSelCodes] = useState([]);
   // palavra inteira LIGADA por padrao (decisao do autor): e a unica opcao cujo default difere da
   // busca global. Sem isso "Tal" casa dentro de "Total" e a lista enche de ruido.
@@ -28434,6 +28451,7 @@ function IARepetirPanel({ onLog, project, docs, codes, codeById, codePath, store
     <div style="flex:1;min-height:0;display:flex">
       <div class="pane-body scroll" style="flex:0 0 var(--pane-config)">
         <div class="section">
+          ${aiLock && html`<p class="hint" style="margin:0 0 10px">${t('repeat.aiOff')}</p>`}
           <p class="hint" style="margin:0 0 10px" dangerouslySetInnerHTML=${{__html: mdLite(t('repeat.hint'))}}></p>
           <p class="hint" style="margin:0 0 12px" dangerouslySetInnerHTML=${{__html: mdLite(t('repeat.hint2'))}}></p>
           ${codesWithTerms.length===0 && html`<div class="banner warn" style="margin-bottom:10px">${t('repeat.needCoded')}</div>`}
