@@ -933,7 +933,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.65';
+const QUALILAB_VERSION = '1.4.66';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -2924,6 +2924,10 @@ const MSG_PT = {
   'rec.disagreed': '✗ você discorda',
   'rec.disagreed.tip': 'Você registrou que este código não se aplica a este trecho.',
   'rec.undoDisagree.tip': 'Remove a sua discordância deste trecho.',
+  'rec.dissent.one': '1 discorda:',
+  'rec.dissent.many': '{n} discordam:',
+  'rec.dissent.tip': 'Quem registrou na Leitura que este código NÃO se aplica a este trecho.',
+  'rec.dissent.loadErr': 'Não foi possível ler as discordâncias. Quem discorda pode não estar aparecendo; recarregue a tela.',
   'review.progress': '{done} de {total} grifos com veredito seu',
   'review.pending': 'faltam {n}',
   'review.allDone': 'nenhum pendente',
@@ -5324,6 +5328,10 @@ const MSG_EN = {
   'rec.disagreed': '✗ you disagree',
   'rec.disagreed.tip': 'You recorded that this code does not apply to this passage.',
   'rec.undoDisagree.tip': 'Removes your disagreement from this passage.',
+  'rec.dissent.one': '1 disagrees:',
+  'rec.dissent.many': '{n} disagree:',
+  'rec.dissent.tip': 'Who recorded in Reading that this code does NOT apply to this passage.',
+  'rec.dissent.loadErr': 'Could not read the disagreements. Some may be missing; reload the screen.',
   'review.progress': '{done} of {total} highlights with your verdict',
   'review.pending': '{n} to go',
   'review.allDone': 'none pending',
@@ -6300,6 +6308,31 @@ function coderKey(c){
   if(!c) return null;
   if(c.created_by) return c.created_by;
   return c.author_name ? '__nm__' + c.author_name : null;
+}
+
+/* O AUTOR DA SESSAO NO RASCUNHO E NO ARQUIVO (item DV, set/2026). O SupabaseStore sempre gravou
+   `created_by = user.id` (salvo `null` EXPLICITO, que e o de toda importacao); o LocalStore e o
+   createFileStore gravavam a codificacao e a discordancia SEM o campo. SINTOMA, no .qualilab
+   coletivo: concordou, e o grifo seguia oferecendo "Concordo" (o segundo clique gravava outra
+   concordancia); discordou, e a barra "N de M com veredito seu" nao andava — o agreementState
+   reconhece o que e "meu" por created_by === userId ('file-user'/'local-user').
+   `withSessionAuthor` e a mesma regra do SupabaseStore: AUSENTE (ou undefined) vira a sessao; null fica.
+   `adoptSessionRows` e o legado, e e ESTREITO de proposito: so adota linha SEM a chave (as proprias
+   destes stores; importada tem null explicito e fica fora — a regra do coderKey) E cujo author_name e
+   o nome de quem esta usando. Sem o nome, um .qualilab editado no lugar por Ana e depois por Bruno
+   faria os dois virarem 'file-user', um codificador so. Sem o legado, a MESMA pessoa virava dois
+   (as linhas velhas por nome, as novas por id). Muda so a memoria: o disco recebe no proximo save. */
+function withSessionAuthor(row, userId){
+  if(row && row.created_by === undefined) row.created_by = userId;
+  return row;
+}
+function adoptSessionRows(rows, userId, name){
+  let n = 0;
+  if(!name) return n;
+  for(const r of (rows||[])){
+    if(r && !Object.prototype.hasOwnProperty.call(r, 'created_by') && r.author_name === name){ r.created_by = userId; n++; }
+  }
+  return n;
 }
 
 /* ===== O NOME DO AUTOR: O QUE SE GRAVA x O QUE SE MOSTRA (fatia 1 do item EN) =====
@@ -9471,6 +9504,15 @@ function collapseCodingsForIndividual(codings, valid){
   return { groups: out, collapsed: n - kept };
 }
 
+/* AI_PROMPT: o target_id E o id do prompt (o uid() de quem o salvou), e o unico escopo de memo sem
+   mapa de remapeio — o merge o repassava CRU. Arquivo feito a mao (a fixture _4 trazia 'prompt-1')
+   ou nascido do fallback do uid() sem randomUUID chega com id que nao e uuid, e a nuvem recusa a
+   linha (22P02) — "2 linha(s) recusadas pelo servidor", sem dizer que eram os prompts salvos.
+   Achado ao importar o corpus _5 no Supabase (11/set/2026). uuid valido passa como esta (reimportar
+   o mesmo arquivo continua idempotente); o resto ganha id novo. Funcao de topo para o teste puro. */
+function promptMemoTarget(id){
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id||'')) ? id : uid();
+}
 async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pdfs, pdfIdx, origin){
   const codLayer = projectMode==='individual' ? 'final' : 'individual';
   if(!db || !Array.isArray(db.documents)) throw new Error('Arquivo .qualilab sem o formato esperado');
@@ -9680,6 +9722,7 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
         else if(m.scope==='code') targetId = codeMap[m.target_id];
         else if(m.scope==='coding') targetId = codingMap[m.target_id];
         else if(MEMO_PROJECT_SCOPES.has(m.scope)) targetId = projectId;   // inclui os escopos ai_* do projeto
+        else if(m.scope==='ai_prompt') targetId = promptMemoTarget(m.target_id);
         if(!targetId) continue;
         if(m.scope==='coding'){
           const prev = codingMemoAcc[targetId];
@@ -9701,6 +9744,7 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
         else if(m.scope==='code') targetId = codeMap[m.target_id];
         else if(m.scope==='coding') targetId = codingMap[m.target_id];
         else if(MEMO_PROJECT_SCOPES.has(m.scope)) targetId = projectId;   // inclui os escopos ai_* do projeto
+        else if(m.scope==='ai_prompt') targetId = promptMemoTarget(m.target_id);
         if(targetId){
           if(m.scope==='coding'){
             const prev = codingMemoAcc[targetId];
@@ -12783,7 +12827,8 @@ function LocalStore(){
     },
     beginBatch(){ batching = true; },
     endBatch(){ batching = false; if(dirty){ dirty = false; let json; try { json=JSON.stringify(db); localStorage.setItem('qualilab:local', json); _onSaveError?.(null); } catch(e){ _onSaveError?.(e); return; } lastJsonLen=json.length; _onUsage?.(lastJsonLen); scheduleBackup(json); } },
-    async init(display){ name = display || name; return { id:'local-user', name }; },
+    // o nome so e conhecido aqui, entao a adocao do legado mora aqui (ver adoptSessionRows)
+    async init(display){ name = display || name; adoptSessionRows(db.codings, 'local-user', name); adoptSessionRows(db.disagreements, 'local-user', name); return { id:'local-user', name }; },
     currentUser(){ return { id:'local-user', name }; },
     async listMemos(){ return db.memos.slice(); },
     async setMemo(pid, scope, targetId, content, authorName, label){
@@ -12996,14 +13041,14 @@ function LocalStore(){
        guarda um projeto por db, mas o contrato do metodo e por projeto. */
     listAllCodings(pid){ return P(db.codings.slice()); },
     listAllDocValues(pid){ return P(db.doc_values.slice()); },
-    addCoding(pid,co){ const c={id:uid(),author_name:name,created_at:new Date().toISOString(),...co}; db.codings.push(c); save(); return P(c); },
+    addCoding(pid,co){ const c=withSessionAuthor({id:uid(),author_name:name,created_at:new Date().toISOString(),...co}, 'local-user'); db.codings.push(c); save(); return P(c); },
     deleteCoding(id){ db.codings=db.codings.filter(c=>c.id!==id); db.memos=db.memos.filter(m=>!(m.scope==='coding'&&m.target_id===id)); db.links=linksAfterCodingDelete(db.links,[id]); save(); return P(); },
     // DISCORDAR (v1.4.62). O rascunho e sempre individual e o gesto nao aparece nele; os metodos
     // existem para o .qualilab e o espelho carregarem e devolverem as discordancias sem perda
     // (regra de ouro #5). Sobre o clearProject: a lista branca dele NAO repete `disagreements`, de
     // proposito — a discordancia e presa ao MATERIAL (documento + trecho), como a codificacao.
     listDisagreements(pid,docId){ return P((db.disagreements||[]).filter(d=>!docId||d.document_id===docId)); },
-    addDisagreement(pid,d){ const r={id:uid(),author_name:name,created_at:new Date().toISOString(),...d}; (db.disagreements=db.disagreements||[]).push(r); save(); return P(r); },
+    addDisagreement(pid,d){ const r=withSessionAuthor({id:uid(),author_name:name,created_at:new Date().toISOString(),...d}, 'local-user'); (db.disagreements=db.disagreements||[]).push(r); save(); return P(r); },
     updateDisagreement(id,patch){ db.disagreements=(db.disagreements||[]).map(d=>d.id===id?{...d,...patch}:d); save(); return P(); },
     deleteDisagreement(id){ db.disagreements=(db.disagreements||[]).filter(d=>d.id!==id); save(); return P(); },
   };
@@ -13080,7 +13125,8 @@ async function createFileStore(fileHandle, isNew){
     onSaveError(cb){ _onSaveError=cb; },
     beginBatch(){ batching = true; },
     async endBatch(){ batching = false; if(dirty){ dirty = false; savePending=true; await doWrite(); } },   // fim do batch: grava JA (nao agenda)
-    async init(display){ name=display||name; return {id:'file-user',name,email:null,anon:false}; },
+    // o nome so e conhecido aqui, entao a adocao do legado mora aqui (ver adoptSessionRows)
+    async init(display){ name=display||name; adoptSessionRows(db.codings,'file-user',name); adoptSessionRows(db.disagreements,'file-user',name); return {id:'file-user',name,email:null,anon:false}; },
     currentUser(){ return {id:'file-user',name,email:null,anon:false}; },
     async changePassword(){ throw new Error('Modo arquivo: sem conta de usuário'); },
     async resetPassword(){ throw new Error('Modo arquivo: sem conta de usuário'); },
@@ -13185,11 +13231,11 @@ async function createFileStore(fileHandle, isNew){
        guarda um projeto por db, mas o contrato do metodo e por projeto. */
     async listAllCodings(pid){ return db.codings.slice(); },
     async listAllDocValues(pid){ return db.doc_values.slice(); },
-    async addCoding(pid,co){ const c={id:uid(),author_name:name,created_at:new Date().toISOString(),...co}; db.codings.push(c); await save(); return c; },
+    async addCoding(pid,co){ const c=withSessionAuthor({id:uid(),author_name:name,created_at:new Date().toISOString(),...co},'file-user'); db.codings.push(c); await save(); return c; },
     async deleteCoding(id){ db.codings=db.codings.filter(c=>c.id!==id); db.memos=db.memos.filter(m=>!(m.scope==='coding'&&m.target_id===id)); db.links=linksAfterCodingDelete(db.links,[id]); await save(); },
     // DISCORDAR (v1.4.62): guardadas no proprio .qualilab (o db inteiro e o arquivo), presas ao material
     async listDisagreements(pid,docId){ return (db.disagreements||[]).filter(d=>!docId||d.document_id===docId); },
-    async addDisagreement(pid,d){ const r={id:uid(),author_name:name,created_at:new Date().toISOString(),...d}; (db.disagreements=db.disagreements||[]).push(r); await save(); return r; },
+    async addDisagreement(pid,d){ const r=withSessionAuthor({id:uid(),author_name:name,created_at:new Date().toISOString(),...d},'file-user'); (db.disagreements=db.disagreements||[]).push(r); await save(); return r; },
     async updateDisagreement(id,patch){ db.disagreements=(db.disagreements||[]).map(d=>d.id===id?{...d,...patch}:d); await save(); },
     async deleteDisagreement(id){ db.disagreements=(db.disagreements||[]).filter(d=>d.id!==id); await save(); },
     async listMemos(){ return db.memos.slice(); },
@@ -18021,7 +18067,7 @@ function App(){
         const ctx = recon.doc==='all' ? t('recon.allDocs') : (activeDoc?` · ${activeDoc.name}`:'');
         // códigos que têm alguma codificação (conjunto útil para o seletor da aba Códigos)
         const codedIds = new Set(allCodings.map(c=>c.code_id));
-        const reconCodes = codes.filter(c=>codedIds.has(c.id));
+        const reconCodes = codes.filter(c=>codedIds.has(c.id)), disagree = reconDisagreeActions({ store, projectId:project.id, canDisagree:can('code'), onError:e=>setErr(t('err.coding.save',{e:String(e.message||e)})) });
         return html`<div class="split">
       <!-- RECONCILIACAO: barra lateral (Categorias / Códigos + navegação) + detalhe à direita -->
       <section class="pane" style="flex:0 0 var(--pane-side);min-width:0">
@@ -18044,13 +18090,13 @@ function App(){
               ? html`<${ReconcileCatAcrossDocs} docs=${docs} cat=${cats.find(c=>c.id===recon.cat)} allValues=${allValues} isOwner=${isAdmin} userId=${user?.id} onSetFinalDoc=${setFinalValueDoc} onSetOwnDoc=${setValueDoc} />`
               : codesAllMode
               ? html`<${ReconcileCodesAllDocs} docs=${docs} allCodings=${allCodings} coders=${coders}
-                  codeById=${codeById} codePath=${codePath} isOwner=${isAdmin} userId=${user?.id} selCode=${recon.code}
+                  codeById=${codeById} codePath=${codePath} isOwner=${isAdmin} userId=${user?.id} selCode=${recon.code} disagree=${disagree}
                   onConsolidateDoc=${async (docId,codeId,start,end,quote)=>{ await addFinalCoding(docId,codeId,start,end,quote); loadAll(); }}
                   onAgreeDoc=${async (docId,codeId,start,end,quote)=>{ await addAgreementCoding(docId,codeId,start,end,quote); loadAll(); }}
                   onConsolidated=${(n)=>logAct({ op:'reconcile', layer:'final', target_kind:'project', target_id:project.id, detail:{ codings:n } })}
                   onDelCoding=${async id=>{ await delCoding(id); loadAll(); }} />`
               : html`<${Reconcile} activeDoc=${activeDoc} codings=${codings} coders=${coders}
-                  codeById=${codeById} codePath=${codePath} tab=${recon.aba}
+                  codeById=${codeById} codePath=${codePath} tab=${recon.aba} disagree=${disagree}
                   cats=${cats} values=${values} isOwner=${isAdmin} userId=${user?.id} onSetFinal=${setFinalValue} onSetOwn=${setValue}
                   onConsolidate=${(codeId,start,end,quote)=>addFinalCoding(activeId,codeId,start,end,quote)}
                   onAgree=${(codeId,start,end,quote)=>addAgreementCoding(activeId,codeId,start,end,quote)}
@@ -23656,6 +23702,81 @@ function agreementState(group, userId, disagreements){
   return d ? { kind:'disagreed', id:d.id } : { kind:'none' };
 }
 
+/* QUEM DISCORDA DE UM GRUPO (item DV, set/2026). O "Discordo" nasce na Leitura, mas quem decide o
+   gabarito le a Reconciliacao — e sem isto "2 de 3" nao dizia se o terceiro recusou ou nao olhou.
+   Casamento IGUAL ao do agreementState (codigo + sobreposicao; o chamador ja recortou o documento).
+   Identidade por coderKey, e NAO created_by cru: discordancia IMPORTADA chega com created_by nulo e o
+   nome em author_name (o merge do .qualilab), e aqui a pergunta e "que PESSOA discorda", nao "sou eu".
+   Fica de fora quem tem codificacao no grupo (a mesma precedencia own/agreed > disagreed) e a mesma
+   pessoa conta uma vez. */
+function groupDissent(group, disagreements){
+  if(!group) return [];
+  const noGrupo = new Set((group.items||[]).map(coderKey));
+  const out = [], vistos = new Set();
+  for(const d of (disagreements||[])){
+    if(String(d.code_id)!==String(group.codeId) || !(d.span_start < group.end && group.start < d.span_end)) continue;
+    const k = coderKey(d);
+    if(!k || noGrupo.has(k) || vistos.has(k)) continue;
+    vistos.add(k); out.push(d);
+  }
+  return out;
+}
+
+/* As discordancias que a Reconciliacao le: `docId` um documento, `null` o projeto inteiro. Estado
+   LOCAL do componente, como na Leitura (VizDocReader), para nao criar estado na App (catraca da S5);
+   relida ao remontar a tela, fora do realtime (regra de ouro #11). A dependencia e a CHAVE, nao a
+   funcao `disagree.list`, que nasce nova a cada render da App. */
+function useReconDisagreements(disagree, docId, active){
+  const key = active && disagree && disagree.list ? disagree.projectId + ':' + (docId || '*') : null;
+  const [st, setSt] = useState({ key:null, rows:[], err:false });
+  // DUPLO CLIQUE: na Leitura o menu fecha antes de gravar; aqui o botao fica na tela ate a lista
+  // voltar, entao o mesmo grupo nao aceita um segundo "Discordo" enquanto o primeiro esta em voo
+  const emVoo = useRef(new Set());
+  useEffect(()=>{
+    if(!key) return;
+    let alive = true;
+    disagree.list(docId || null).then(
+      rows=>{ if(alive) setSt({ key, rows:rows||[], err:false }); },
+      ()=>{ if(alive) setSt({ key, rows:[], err:true }); });
+    return ()=>{ alive = false; };
+  }, [key]);
+  const mine = st.key === key;
+  return { rows: mine ? st.rows : [], err: mine && st.err,
+    undo: disagree && disagree.onUndo ? (async id=>{ if(await disagree.onUndo(id)) setSt(s=> ({ ...s, rows:s.rows.filter(x=>x.id!==id) })); }) : null,
+    // sem a lista lida (erro ou ainda carregando) nao ha como saber se ja discordei: o gesto some
+    add: disagree && disagree.onAdd && mine && !st.err ? (async (docId, codeId, start, end, quote)=>{
+      const k = docId + '|' + codeId + '|' + start;
+      if(emVoo.current.has(k)) return;
+      emVoo.current.add(k);
+      try{
+        const r = await disagree.onAdd(docId, codeId, start, end, quote);
+        if(r) setSt(s=> s.key === key ? { ...s, rows:[...s.rows, r] } : s);
+      } finally { emVoo.current.delete(k); }
+    }) : null };
+}
+
+/* as acoes que a App entrega as telas de reconciliacao; mora aqui pelo mesmo motivo do readingAgreeActions.
+   `canDisagree` e o mesmo gate da Leitura (capacidade `code`); sem ele a tela so mostra e desfaz. */
+function reconDisagreeActions({ store, projectId, canDisagree, onError }){
+  if(!store.listDisagreements) return null;
+  return { projectId,
+    list: (docId)=> store.listDisagreements(projectId, docId || undefined),
+    onAdd: canDisagree && store.addDisagreement ? (async (docId, codeId, start, end, quote)=>{
+      try{ return await store.addDisagreement(projectId, { document_id:docId, code_id:codeId, span_start:start, span_end:end, quote }); }
+      catch(e){ onError(e); return null; } }) : null,
+    onUndo: async (id)=>{ try{ await store.deleteDisagreement(id); return true; }catch(e){ onError(e); return false; } } };
+}
+
+/* A linha "N discordam" de um card de grupo, com os nomes. Componente unico: os DOIS cards da aba
+   Codigos (um documento e todos) mostram isto. */
+function DissentRow({ dissent, nameOf }){
+  if(!dissent || !dissent.length) return null;
+  return html`<div class="row" style="flex-wrap:wrap;gap:4px;margin-bottom:6px;align-items:center">
+    <span class="meta" style="color:var(--danger);font-weight:600" title=${t('rec.dissent.tip')}>${dissent.length>1 ? t('rec.dissent.many',{n:dissent.length}) : t('rec.dissent.one')}</span>
+    ${dissent.map(d=>html`<span class="author" key=${d.id} style="background:color-mix(in srgb, var(--danger) 13%, transparent);color:var(--danger)">${nameOf(d.created_by, d.author_name)}</span>`)}
+  </div>`;
+}
+
 /* PROGRESSO DA REVISAO de um documento (v1.4.62): os grupos que tem trabalho de OUTRA pessoa (grupo
    so meu nao e o que se revisa) e que o leitor esta mostrando (`visibleIds`: o recorte do "Ver:" e
    do filtro de codigo). Pendente = estado 'none'. E o que torna a AUSENCIA de concordancia legivel
@@ -23696,8 +23817,9 @@ function agreementTargetsAt(docCodings, shownHere, pos){
 /* Com `readOnly` os dois gestos de escrita desta tela somem (concordar e desfazer a
    concordancia). A TELA fica: e nela que se VE onde a equipe divergiu, que e o que um
    orientador abre para ler. */
-/* `onDisagree`/`onUndoDisagree` sao opcionais: so a Leitura os passa (v1.4.62). Sem eles o botao e o
-   de sempre, e a Reconciliacao nao muda. Num estado JULGADO so se oferece desfazer — o gesto oposto
+/* `onDisagree`/`onUndoDisagree` sao opcionais. A Leitura os passa desde a v1.4.62 e a Reconciliacao
+   desde a 1.4.66 (item DV, pedido do autor), nas duas telas de Codigos; sem eles o botao e so o
+   "Concordo". Num estado JULGADO so se oferece desfazer — o gesto oposto
    exige desfazer antes, de proposito: trocar de veredito em um clique esconderia que houve troca. */
 function AgreeButton({ state, onAgree, onUndo, onDisagree, onUndoDisagree, readOnly }){
   if(readOnly) return state.kind==='none' ? null : html`<span class="author">${state.kind==='own'?t('rec.own'):state.kind==='disagreed'?t('rec.disagreed'):t('rec.agreed')}</span>`;
@@ -23770,7 +23892,9 @@ function CatAgreeRows({ cat, finalVal, indivVals }){
   </div>`;
 }
 
-function Reconcile({ activeDoc, codings, coders, codeById, codePath, cats, values, isOwner, userId, tab, onSetFinal, onSetOwn, onConsolidate, onConsolidated, onAgree, onDelCoding }){
+function Reconcile({ activeDoc, codings, coders, codeById, codePath, cats, values, isOwner, userId, tab, onSetFinal, onSetOwn, onConsolidate, onConsolidated, onAgree, onDelCoding, disagree }){
+  // o hook vem ANTES do return antecipado (hook nao fica atras de condicao)
+  const disc = useReconDisagreements(disagree, activeDoc?.id, tab==='codigos' && !!activeDoc);
   if(!activeDoc) return html`<div class="card"><span class="meta">${t('rec.openDoc')}</span></div>`;
   const indiv = codings.filter(c=>c.layer!=='final');
   const finals = codings.filter(c=>c.layer==='final');
@@ -23826,12 +23950,15 @@ function Reconcile({ activeDoc, codings, coders, codeById, codePath, cats, value
           ${t('rec.all',{n:pending.length})}</button>
       </div>`;
     })()}
+    ${disc.err && html`<div class="meta" style="color:var(--danger);margin-bottom:8px">${t('rec.dissent.loadErr')}</div>`}
     ${groups.length===0 && html`<div class="card"><span class="meta">${t('rec.noCodings')}</span></div>`}
     ${groups.map(g=>{
       const code = codeById[g.codeId]; const col = code?codeColor(code.hue,code.depth,code.hue_deg,false,code.sat):codeColor(0,0);
       const coderIds = [...new Set(g.items.map(coderKey))];
       const fin = finalFor(g);
-      const consensus = coderIds.length>=totalCoders && totalCoders>1;
+      const dissent = groupDissent(g, disc.rows);
+      // quem registrou que o codigo nao se aplica desfaz o "consenso" de quem aplicou
+      const consensus = coderIds.length>=totalCoders && totalCoders>1 && !dissent.length;
       const quote = activeDoc.content.slice(g.start,g.end);
       return html`<div class="card" key=${g.codeId+':'+g.start} style=${`margin-bottom:8px;padding:10px 12px;${consensus?'border-color:var(--teal)':''}`}>
         <div class="row" style="gap:7px;margin-bottom:4px">
@@ -23842,10 +23969,12 @@ function Reconcile({ activeDoc, codings, coders, codeById, codePath, cats, value
         <div class="row" style="flex-wrap:wrap;gap:4px;margin-bottom:6px">
           ${coderIds.map(id=>html`<span class="author" key=${id}>${nameOf(id, (g.items.find(i=>coderKey(i)===id)||{}).author_name)}</span>`)}
         </div>
+        <${DissentRow} dissent=${dissent} nameOf=${nameOf} />
         <div style="font-family:var(--mono);font-size:11px;color:var(--ink-soft);margin-bottom:8px">"${quote.slice(0,180)}"</div>
         <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap">
-          <${AgreeButton} state=${agreementState(g, userId)}
-            onAgree=${()=>onAgree(g.codeId, g.start, g.end, quote)} onUndo=${onDelCoding} />
+          <${AgreeButton} state=${agreementState(g, userId, disc.rows)}
+            onAgree=${()=>onAgree(g.codeId, g.start, g.end, quote)} onUndo=${onDelCoding} onUndoDisagree=${disc.undo}
+            onDisagree=${disc.add && (()=>disc.add(activeDoc.id, g.codeId, g.start, g.end, quote))} />
           ${fin
             ? html`<span class="row" style="gap:8px">
                 <span class="author" style="background:var(--teal-soft);color:var(--teal-deep)">${t('rec.inFinal')}</span>
@@ -23946,7 +24075,7 @@ function ReconcileCatAcrossDocs({ docs, cat, allValues, isOwner, userId, onSetFi
 }
 
 /* Bloco colapsável de UM documento na visão "todos os documentos" da aba Códigos. */
-function ReconcileDocCodes({ d, groups, finalFor, totalCoders, coders, codeById, codePath, userId, onConsolidateDoc, onConsolidated, onAgreeDoc, onDelCoding }){
+function ReconcileDocCodes({ d, groups, finalFor, totalCoders, coders, codeById, codePath, userId, disagreements, onUndoDisagree, onDisagreeDoc, onConsolidateDoc, onConsolidated, onAgreeDoc, onDelCoding }){
   const [open, setOpen] = useState(true);
   const nameOf = (id, fallback)=> (coders.find(c=>c.id===id)||{}).name || authorLabel(fallback);
   const pend = groups.filter(g=>!finalFor(g)).length;
@@ -23962,7 +24091,8 @@ function ReconcileDocCodes({ d, groups, finalFor, totalCoders, coders, codeById,
         const code = codeById[g.codeId]; const col = code?codeColor(code.hue,code.depth,code.hue_deg,false,code.sat):codeColor(0,0);
         const coderIds = [...new Set(g.items.map(coderKey))];
         const fin = finalFor(g);
-        const consensus = coderIds.length>=totalCoders && totalCoders>1;
+        const dissent = groupDissent(g, disagreements);
+        const consensus = coderIds.length>=totalCoders && totalCoders>1 && !dissent.length;   // ver a nota no Reconcile
         const quote = (d.content||'').slice(g.start,g.end);
         return html`<div class="card" key=${g.codeId+':'+g.start} style=${`margin-bottom:8px;padding:10px 12px;${consensus?'border-color:var(--teal)':''}`}>
           <div class="row" style="gap:7px;margin-bottom:4px">
@@ -23973,10 +24103,12 @@ function ReconcileDocCodes({ d, groups, finalFor, totalCoders, coders, codeById,
           <div class="row" style="flex-wrap:wrap;gap:4px;margin-bottom:6px">
             ${coderIds.map(id=>html`<span class="author" key=${id}>${nameOf(id, (g.items.find(i=>coderKey(i)===id)||{}).author_name)}</span>`)}
           </div>
+          <${DissentRow} dissent=${dissent} nameOf=${nameOf} />
           <div style="font-family:var(--mono);font-size:11px;color:var(--ink-soft);margin-bottom:8px">"${quote.slice(0,180)}"</div>
           <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap">
-            <${AgreeButton} state=${agreementState(g, userId)}
-              onAgree=${()=>onAgreeDoc(d.id, g.codeId, g.start, g.end, quote)} onUndo=${onDelCoding} />
+            <${AgreeButton} state=${agreementState(g, userId, disagreements)}
+              onAgree=${()=>onAgreeDoc(d.id, g.codeId, g.start, g.end, quote)} onUndo=${onDelCoding} onUndoDisagree=${onUndoDisagree}
+              onDisagree=${onDisagreeDoc && (()=>onDisagreeDoc(d.id, g.codeId, g.start, g.end, quote))} />
             ${fin
               ? html`<span class="row" style="gap:8px">
                   <span class="author" style="background:var(--teal-soft);color:var(--teal-deep)">${t('rec.inFinal')}</span>
@@ -23996,7 +24128,9 @@ function ReconcileDocCodes({ d, groups, finalFor, totalCoders, coders, codeById,
    ORDEM POR NOME (docsByName) pelo mesmo motivo do ReconcileCatAcrossDocs: esta tela nao
    oferece escolha de ordenacao, e a ordem do store embaralha em projeto IMPORTADO (empate
    de created_at no lote — ver listDocuments no store-supabase). */
-function ReconcileCodesAllDocs({ docs, allCodings, coders, codeById, codePath, isOwner, userId, selCode, onConsolidateDoc, onConsolidated, onAgreeDoc, onDelCoding }){
+function ReconcileCodesAllDocs({ docs, allCodings, coders, codeById, codePath, isOwner, userId, selCode, onConsolidateDoc, onConsolidated, onAgreeDoc, onDelCoding, disagree }){
+  // as discordancias do projeto inteiro, lidas uma vez; cada bloco recebe as do seu documento
+  const disc = useReconDisagreements(disagree, null, true);
   // por documento: grupos individuais + finais, e os pendentes (sem equivalente no gabarito)
   const perDoc = docsByName(docs).map(d=>{
     const dc = allCodings.filter(c=>c.document_id===d.id);
@@ -24029,10 +24163,12 @@ function ReconcileCodesAllDocs({ docs, allCodings, coders, codeById, codePath, i
         onClick=${()=>{ if(confirm(t('rec.allAll.ask',{n:allPending.length}))) consolidateMany(allPending); }}>
         ${t('rec.all',{n:allPending.length})}</button>
     </div>`}
+    ${disc.err && html`<div class="meta" style="color:var(--danger);margin-bottom:8px">${t('rec.dissent.loadErr')}</div>`}
     ${perDoc.length===0 && html`<div class="card"><span class="meta">${selCode && selCode!=='all' ? t('rec.noneOfCode') : t('rec.noneAtAll')}</span></div>`}
     ${perDoc.map(({d, groups, finalFor, totalCoders})=>html`<${ReconcileDocCodes} key=${d.id}
       d=${d} groups=${groups} finalFor=${finalFor} totalCoders=${totalCoders}
       coders=${coders} codeById=${codeById} codePath=${codePath} userId=${userId}
+      disagreements=${disc.rows.filter(x=>x.document_id===d.id)} onUndoDisagree=${disc.undo} onDisagreeDoc=${disc.add}
       onConsolidateDoc=${onConsolidateDoc} onConsolidated=${onConsolidated} onAgreeDoc=${onAgreeDoc} onDelCoding=${onDelCoding} />`)}
   </div>`;
 }

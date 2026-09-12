@@ -14,6 +14,31 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.66 (12/09/2026)
+
+### "Discordo" também na Reconciliação
+
+Na aba **Códigos** da Reconciliação, tanto de um documento quanto de todos, cada trecho agora tem
+o botão **Discordo** ao lado do **Concordo**, e mostra **quem discorda** ("2 discordam:" e os
+nomes), venha o veredito desta tela ou do botão direito da Leitura. Antes, "2 de 3" não dizia se a
+terceira pessoa tinha recusado o código ou só não tinha olhado. Enquanto alguém discordar, o selo
+de **consenso** não acende. Quem discordou vê **você discorda**, com **desfazer**.
+
+### Concordar e discordar num arquivo coletivo agora ficam registrados como seus
+
+Num projeto coletivo aberto como arquivo `.qualilab`, depois de concordar o trecho continuava
+oferecendo "Concordo" (um segundo clique gravava outra concordância), e depois de discordar a barra
+"N de M grifos com veredito seu" da Leitura não andava. As codificações e discordâncias feitas no
+arquivo e no rascunho passam a levar o seu autor, e as que você já tinha feito antes da correção
+são reconhecidas ao abrir o arquivo. As importadas e as de outras pessoas continuam de quem são.
+
+### Prompts salvos entram na nuvem ao importar um `.qualilab`
+
+Quando o identificador de um prompt da biblioteca não tinha a forma que o servidor exige (arquivo
+montado à mão, ou salvo num navegador antigo), a importação terminava com "N linha(s) recusadas
+pelo servidor" sem dizer que eram os prompts. Agora esses prompts ganham um identificador novo e
+entram.
+
 ## 1.4.65 (11/09/2026)
 
 ### A Repetir Codificação continua disponível com a IA desligada
