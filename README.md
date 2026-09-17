@@ -1,28 +1,35 @@
 <p align="center">
-  <a href="https://luizpf42.github.io/QualiLab"><img src="images/logo.png" alt="QualiLab" width="180"></a>
+  <a href="https://luizpf42.github.io/QualiLab"><img src="images/logo.png" alt="QualiLab" width="150"></a>
 </p>
 
 <p align="center"><b><img src="https://flagcdn.com/br.svg" width="16" alt="BR"> Português</b> · <a href="README.en.md"><img src="https://flagcdn.com/gb.svg" width="16" alt="GB"> English</a></p>
 
-# QualiLab
+<h1 align="center">QualiLab</h1>
 
-**o seu laboratório de pesquisa qualitativa / your own lab for qualitative research**
+<p align="center">
+  <b>o seu laboratório de pesquisa qualitativa</b><br>
+  <sub>your own lab for qualitative research</sub>
+</p>
 
-[![DOI](https://zenodo.org/badge/1274527946.svg)](https://doi.org/10.5281/zenodo.21935682)
+<p align="center">
+  <a href="https://doi.org/10.5281/zenodo.21935682"><img src="https://zenodo.org/badge/1274527946.svg" alt="DOI"></a>
+</p>
 
-QualiLab é uma ferramenta **gratuita e de código aberto** para análise qualitativa de dados. Roda inteira em um único arquivo `index.html`, sem instalação, sem servidor próprio, sem assinatura.
+QualiLab é uma ferramenta **gratuita e de código aberto** para análise qualitativa de dados. Roda inteira em um único arquivo `index.html`: sem instalação, sem servidor próprio, sem assinatura.
+
+**▶ [Abrir o QualiLab no navegador](https://luizpf42.github.io/QualiLab)** — é uma URL, não há nada para instalar.
+
+**⬇ [Instalar como aplicativo](docs/MANUAL.md#instalar-como-aplicativo-e-abrir-sem-internet)** — abre sem internet, ganha janela e ícone próprios, e o duplo clique num `.qualilab` passa a abrir no QualiLab. **No Windows, instale pelo Edge.**
+
+**📖 [Manual de uso](https://luizpf42.github.io/QualiLab/manual.html)** — guia completo, passo a passo, de todas as telas. O que mudou em cada versão está no [`CHANGELOG.md`](CHANGELOG.md).
 
 > Inspirado por **[Taguette](https://www.taguette.org/about.html)**, **[Magnolia](https://www.caledavis.eu/magnolia.html)**, **[QualCoder](https://github.com/ccbogel/qualcoder)** e **[OpenQDA](https://openqda.org/)** — projetos que merecem o seu apoio; os créditos estão [no fim](#créditos-referência-e-licença).
-
-Acesse a ferramenta **[aqui](https://luizpf42.github.io/QualiLab)** / Instale como aplicativo **[aqui](docs/MANUAL.md#instalar-como-aplicativo-e-abrir-sem-internet)** — abre sem internet, ganha janela e ícone próprios, e o duplo clique num `.qualilab` passa a abrir no QualiLab; **no Windows, instale pelo Edge**.
-
-📖 **Novo por aqui?** Comece pelo **[Manual de uso](https://luizpf42.github.io/QualiLab/manual.html)**: guia completo, passo a passo, de todas as telas. · 📝 **O que mudou em cada versão:** [`CHANGELOG.md`](CHANGELOG.md)
-
-*A **versão em uso** aparece na barra de status, no rodapé do próprio app, e na tela de entrada. Cite esse número ao relatar um problema: sem ele não há como saber qual build o seu navegador carregou.*
 
 > ⚠️ **Leia antes de usar com dados reais.** O QualiLab é um projeto **pessoal e experimental**, sob licença **MIT, SEM QUALQUER GARANTIA**, que **não passou por auditoria de segurança**; **bugs são esperados**. E ele **não anonimiza** o seu material: a censura mascara só o que **você** marcou à mão, e só em algumas saídas. Para onde cada modo de uso leva os seus dados está em **[Onde os seus dados ficam](#onde-os-seus-dados-ficam)**; o que a ferramenta não faz por você, em **[Limites e responsabilidade](#limites-e-responsabilidade)**.
 >
 > **Isenção.** O QualiLab é um projeto pessoal de **[Luiz Pimenta Filho](https://orcid.org/0000-0002-5165-6232)**, no âmbito do **[LabDados / FGV Direito SP](https://direitosp.fgv.br/nucleos-de-pesquisa/laboratorio-dados-pesquisa-empirica-direito-labdados)**. **Não representa posição nem implica responsabilidade de qualquer instituição (incluindo a FGV).** O autor **não se responsabiliza** por perda de dados, vazamento, uso indevido ou quaisquer consequências do uso do software. Use por sua conta e risco, com as cautelas éticas e legais que a sua pesquisa exige.
+
+<sub>A **versão em uso** aparece na barra de status, no rodapé do próprio app, e na tela de entrada. Cite esse número ao relatar um problema: sem ele não há como saber qual build o seu navegador carregou.</sub>
 
 ---
 

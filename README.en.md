@@ -1,30 +1,42 @@
 <p align="center">
-  <a href="https://luizpf42.github.io/QualiLab"><img src="images/logo.png" alt="QualiLab" width="180"></a>
+  <a href="https://luizpf42.github.io/QualiLab"><img src="images/logo.png" alt="QualiLab" width="150"></a>
 </p>
 
 <p align="center"><a href="README.md"><img src="https://flagcdn.com/br.svg" width="16" alt="BR"> Português</a> · <b><img src="https://flagcdn.com/gb.svg" width="16" alt="GB"> English</b></p>
 
-# QualiLab
+<h1 align="center">QualiLab</h1>
 
-**o seu laboratório de pesquisa qualitativa / your own lab for qualitative research**
+<p align="center">
+  <b>o seu laboratório de pesquisa qualitativa</b><br>
+  <sub>your own lab for qualitative research</sub>
+</p>
 
-[![DOI](https://zenodo.org/badge/1274527946.svg)](https://doi.org/10.5281/zenodo.21935682)
+<p align="center">
+  <a href="https://doi.org/10.5281/zenodo.21935682"><img src="https://zenodo.org/badge/1274527946.svg" alt="DOI"></a>
+</p>
 
-> 🌐 **A note on language:** since v1.4.48 the **application interface exists in English**, and it follows your browser — a browser set to Portuguese opens in Portuguese, any other language opens in English, and the picker in **My account** overrides that. What stays in Portuguese is deliberate: the requests QualiLab makes to the AI (translating them changes the model's behaviour, and that has to be measured first) and the redacted-passage marker inside exported files (so the same file does not change content depending on who exported it). Interface labels below sometimes give the Portuguese wording in quotes: the **screenshots are still of the Portuguese interface**, so those quotes are there to match the images, not because the tool is Portuguese-only. The [`CHANGELOG.md`](CHANGELOG.md) remains in Portuguese, as does the contributor guide, which lives in the development repository.
+QualiLab is a **free and open-source** tool for qualitative data analysis. It runs entirely in a single `index.html` file: no installation, no server of its own, no subscription.
 
-QualiLab is a **free and open-source** tool for qualitative data analysis. It runs entirely in a single `index.html` file — no installation, no server of its own, no subscription.
+**▶ [Open QualiLab in your browser](https://luizpf42.github.io/QualiLab)** — it is a URL, there is nothing to install.
+
+**⬇ [Install it as an app](docs/MANUAL.en.md#install-as-an-app-and-open-without-internet)** — it opens without internet, gets its own window and icon, and double-clicking a `.qualilab` starts opening in QualiLab. **On Windows, install through Edge.**
+
+**📖 [User manual](docs/MANUAL.en.md)** — a complete, step-by-step guide to every screen; the [Portuguese manual](https://luizpf42.github.io/QualiLab/manual.html) is the one with screenshots. What changed in each version is in [`CHANGELOG.md`](CHANGELOG.md) *(Portuguese)*.
 
 > Inspired by **[Taguette](https://www.taguette.org/about.html)**, **[Magnolia](https://www.caledavis.eu/magnolia.html)**, **[QualCoder](https://github.com/ccbogel/qualcoder)** and **[OpenQDA](https://openqda.org/)** — projects that deserve your support; credits are [at the end](#credits-reference-and-license).
 
-Use the tool **[here](https://luizpf42.github.io/QualiLab)** / Install it as an app **[here](docs/MANUAL.en.md#install-as-an-app-and-open-without-internet)** — it opens without internet, gets its own window and icon, and double-clicking a `.qualilab` starts opening in QualiLab; **on Windows, install through Edge**.
+<details>
+<summary>🌐 <b>A note on language</b> — the interface is in English, some things stay in Portuguese on purpose</summary>
 
-📖 **New here?** Start with the **[user manual](https://luizpf42.github.io/QualiLab/manual.html)** *(Portuguese)*, or the [English manual](docs/MANUAL.en.md): a complete, step-by-step guide to every screen. · 📝 **What changed in each version:** [`CHANGELOG.md`](CHANGELOG.md) *(Portuguese)*
+Since v1.4.48 the **application interface exists in English**, and it follows your browser — a browser set to Portuguese opens in Portuguese, any other language opens in English, and the picker in **My account** overrides that. What stays in Portuguese is deliberate: the requests QualiLab makes to the AI (translating them changes the model's behaviour, and that has to be measured first) and the redacted-passage marker inside exported files (so the same file does not change content depending on who exported it). Interface labels below sometimes give the Portuguese wording in quotes: the **screenshots are still of the Portuguese interface**, so those quotes are there to match the images, not because the tool is Portuguese-only. The [`CHANGELOG.md`](CHANGELOG.md) remains in Portuguese, as does the contributor guide, which lives in the development repository.
 
-*The **version in use** is shown in the status bar, at the bottom of the app itself, and on the entry screen. Quote that number when reporting a problem: without it there is no way to know which build your browser loaded.*
+</details>
 
 > ⚠️ **Read this before using it with real data.** QualiLab is a **personal, experimental** project, under the **MIT license, WITHOUT ANY WARRANTY**, which **has not undergone a security audit**; **bugs are to be expected**. And it does **not anonymize** your material: redaction masks only what **you** marked by hand, and only in some outputs. Where each mode of use sends your data is covered in **[Where your data lives](#where-your-data-lives)**; what the tool does not do for you, in **[Limits and responsibility](#limits-and-responsibility)**.
 >
 > **Disclaimer.** QualiLab is a personal project by **[Luiz Pimenta Filho](https://orcid.org/0000-0002-5165-6232)**, within **[LabDados / FGV Direito SP](https://direitosp.fgv.br/nucleos-de-pesquisa/laboratorio-dados-pesquisa-empirica-direito-labdados)**. **It does not represent the position of, nor imply any responsibility of, any institution (including FGV).** The author **accepts no liability** for data loss, leakage, misuse, or any consequences of using the software. Use it at your own risk, with the ethical and legal precautions your research requires.
+
+<sub>The **version in use** is shown in the status bar, at the bottom of the app itself, and on the entry screen. Quote that number when reporting a problem: without it there is no way to know which build your browser loaded.</sub>
 
 ---
 
