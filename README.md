@@ -12,7 +12,10 @@
 </p>
 
 <p align="center">
-  <a href="https://doi.org/10.5281/zenodo.21935682"><img src="https://zenodo.org/badge/1274527946.svg" alt="DOI"></a>
+  <a href="https://doi.org/10.5281/zenodo.21935682">
+    <img src="https://img.shields.io/badge/DOI-10.5281%2Fzenodo.21935682-1682D4"
+         alt="DOI: 10.5281/zenodo.21935682">
+  </a>
 </p>
 
 QualiLab é uma ferramenta **gratuita e de código aberto** para análise qualitativa de dados. Roda inteira em um único arquivo `index.html`: sem instalação, sem servidor próprio, sem assinatura.
