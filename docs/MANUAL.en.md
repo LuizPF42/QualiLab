@@ -123,7 +123,7 @@ Before loading any material, decide **how much of the tool you can use**, becaus
 
 It is worth being honest about the tool's origin. QualiLab was written, **for the most part, with [Claude Code](https://claude.com/claude-code)** (Anthropic's programming AI), **guided by the author** from real problems found in his own research practice and in dialogue with the community and the qualitative methods literature. In part, the project is itself an experiment on a question: **how far can a guided AI be turned into a research tool?**
 
-Two honest consequences follow: **bugs are to be expected** (it is young software, under active development) and **improvements are constant**. Save your work often ([section 16](#16-saving-backup-and-storage-modes)) and, if you find a problem or have an idea, report it at [github.com/LuizPF42/QualiLab](https://github.com/LuizPF42/QualiLab/issues). That feedback is part of how the tool evolves.
+In practice, QualiLab is under active development: it improves constantly and, like any software at this stage, it may contain errors. Save your work often ([section 16](#16-saving-backup-and-storage-modes)) and, if you find a problem or have an idea, report it at [github.com/LuizPF42/QualiLab](https://github.com/LuizPF42/QualiLab/issues). That feedback is part of how the tool evolves.
 
 ### A word about the AI inside QualiLab
 

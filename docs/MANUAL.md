@@ -121,7 +121,7 @@ Antes de carregar qualquer material, decida **o quanto da ferramenta você pode 
 
 Vale ser honesto sobre a origem da ferramenta. O QualiLab foi escrito, **em sua maior parte, com o [Claude Code](https://claude.com/claude-code)** (a IA de programação da Anthropic), **guiado pelo autor** a partir de problemas reais encontrados na própria prática de pesquisa e no diálogo com a comunidade e a literatura de métodos qualitativos. Em parte, o projeto é ele mesmo um experimento sobre uma pergunta: **até onde dá para transformar uma IA guiada numa ferramenta de pesquisa?**
 
-Disso decorrem duas consequências honestas: **bugs são esperados** (é software jovem, em desenvolvimento ativo) e **as melhorias são constantes**. Salve o seu trabalho com frequência ([seção 16](#16-salvamento-backup-e-modos-de-armazenamento)) e, se encontrar um problema ou tiver uma ideia, relate em [github.com/LuizPF42/QualiLab](https://github.com/LuizPF42/QualiLab/issues). Esse retorno é parte de como a ferramenta evolui.
+Na prática, o QualiLab está em desenvolvimento ativo: recebe melhorias constantes e, como todo software nessa fase, pode apresentar erros. Salve o seu trabalho com frequência ([seção 16](#16-salvamento-backup-e-modos-de-armazenamento)) e, se encontrar um problema ou tiver uma ideia, relate em [github.com/LuizPF42/QualiLab](https://github.com/LuizPF42/QualiLab/issues). Esse retorno é parte de como a ferramenta evolui.
 
 ### Uma palavra sobre a IA dentro do QualiLab
 
