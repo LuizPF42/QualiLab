@@ -333,7 +333,51 @@ São duas formas, escolhidas pelo conteúdo:
 
 A leitura decide pelo **primeiro byte** (`PK` = zip), então arquivos antigos, anteriores ao contêiner, continuam abrindo. O `project.json` tem estas chaves de topo: `_meta`, `documents`, `categories`, `doc_values`, `codes`, `codings`, `memos`, `ia_results`, `ia_memory`, `activity` (o histórico), `link_relations` e `links` (as conexões) e `disagreements` (as discordâncias); as quatro últimas podem faltar em arquivos anteriores a elas.
 
-Ler é isto, sem dependência nenhuma além da biblioteca padrão:
+O núcleo da estrutura, simplificado (memos, IA, histórico, conexões e discordâncias ficam fora do desenho; um memo se prende ao projeto, a um documento, a um código ou a um trecho pelo par `scope` + `target_id`):
+
+```mermaid
+erDiagram
+    codes ||--o{ codings : "rotula"
+    documents ||--o{ codings : "tem trechos"
+    documents ||--o{ doc_values : "recebe respostas"
+    categories ||--o{ doc_values : "define"
+
+    codes {
+        uuid id
+        text name
+        uuid parent_id "família"
+    }
+    codings {
+        uuid document_id
+        uuid code_id
+        int span_start
+        int span_end
+        text layer "individual ou final"
+        text author_name
+        text quote "fatia exata de content"
+    }
+    documents {
+        uuid id
+        text name
+        text content "texto puro"
+    }
+    doc_values {
+        uuid document_id
+        uuid category_id
+        text value
+        text layer
+    }
+    categories {
+        uuid id
+        text name
+        text kind "select, date, number..."
+    }
+```
+
+**Tudo se ancora em posição de caractere.** Cada trecho é `(document_id, span_start, span_end)` sobre o `content` do documento, que é texto puro, e o `quote` gravado é exatamente essa fatia. Nos exemplos do repositório isso vale para todos os trechos. É a mesma invariante que o servidor MCP e os testes de censura verificam, e é ela que permite reprocessar o corpus fora do app sem depender de nada nosso.
+
+<details>
+<summary>Ler e conferir um <code>.qualilab</code> em Python, só com a biblioteca padrão</summary>
 
 ```python
 import json, zipfile
@@ -353,16 +397,13 @@ texto = {d["id"]: d["content"] for d in db["documents"]}
 
 for t in db["codings"]:
     print(nome[t["code_id"]], "|", t["layer"], "|", t["author_name"], "|", t["quote"])
-```
 
-**Tudo se ancora em posição de caractere.** Cada trecho é `(document_id, span_start, span_end)` sobre o `content` do documento, que é texto puro. Ou seja, você pode recortar por conta própria e **conferir a promessa**:
-
-```python
+# a promessa: todo quote é a fatia do texto do documento
 assert all(t["quote"] == texto[t["document_id"]][t["span_start"]:t["span_end"]]
            for t in db["codings"])
 ```
 
-Nos exemplos do repositório isso vale para todos os trechos. É a mesma invariante que o servidor MCP e os testes de censura verificam, e é ela que permite reprocessar o corpus fora do app sem depender de nada nosso.
+</details>
 
 Duas coisas que **não** estão no arquivo, e é bom saber: a **distribuição de documentos** (ela depende de identificadores de usuário que só existem na nuvem) e os **caches derivados**, como o índice da busca semântica, que é refeito quando o corpus muda. E uma que **está**: o `.qualilab` é formato de **trabalho**, então carrega o texto **cru, censura inclusive** — mascarar aqui destruiria dado de forma irreversível. Quem mascara são as saídas do Relatório (Padrão, ATI e W3C) e o que vai para a IA.
 

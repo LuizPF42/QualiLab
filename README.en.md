@@ -337,7 +337,51 @@ There are two shapes, chosen by content:
 
 Reading decides by the **first byte** (`PK` = zip), so old files, from before the container, still open. The `project.json` has these top-level keys: `_meta`, `documents`, `categories` (the attributes), `doc_values`, `codes`, `codings`, `memos`, `ia_results`, `ia_memory`, `activity` (the history), `link_relations` and `links` (the links) and `disagreements` (the disagreements); the last four may be missing from files older than them.
 
-Reading it is this, with no dependency beyond the standard library:
+The core of the structure, simplified (memos, AI, history, links and disagreements are left out of the drawing; a memo attaches to the project, a document, a code or a passage through the `scope` + `target_id` pair):
+
+```mermaid
+erDiagram
+    codes ||--o{ codings : "labels"
+    documents ||--o{ codings : "has passages"
+    documents ||--o{ doc_values : "gets answers"
+    categories ||--o{ doc_values : "defines"
+
+    codes {
+        uuid id
+        text name
+        uuid parent_id "family"
+    }
+    codings {
+        uuid document_id
+        uuid code_id
+        int span_start
+        int span_end
+        text layer "individual or final"
+        text author_name
+        text quote "exact slice of content"
+    }
+    documents {
+        uuid id
+        text name
+        text content "plain text"
+    }
+    doc_values {
+        uuid document_id
+        uuid category_id
+        text value
+        text layer
+    }
+    categories {
+        uuid id
+        text name
+        text kind "select, date, number..."
+    }
+```
+
+**Everything anchors on character positions.** Each passage is `(document_id, span_start, span_end)` over the document's `content`, which is plain text, and the stored `quote` is exactly that slice. In the repository's examples this holds for every passage. It is the same invariant the MCP server and the redaction tests verify, and it is what lets you reprocess the corpus outside the app without depending on anything of ours.
+
+<details>
+<summary>Reading and checking a <code>.qualilab</code> in Python, with the standard library only</summary>
 
 ```python
 import json, zipfile
@@ -357,16 +401,13 @@ text = {d["id"]: d["content"] for d in db["documents"]}
 
 for t in db["codings"]:
     print(name[t["code_id"]], "|", t["layer"], "|", t["author_name"], "|", t["quote"])
-```
 
-**Everything anchors on character positions.** Each passage is `(document_id, span_start, span_end)` over the document's `content`, which is plain text. Which means you can slice it yourself and **check the promise**:
-
-```python
+# the promise: every quote is the slice of the document's text
 assert all(t["quote"] == text[t["document_id"]][t["span_start"]:t["span_end"]]
            for t in db["codings"])
 ```
 
-In the repository's examples this holds for every passage. It is the same invariant the MCP server and the redaction tests verify, and it is what lets you reprocess the corpus outside the app without depending on anything of ours.
+</details>
 
 Two things that are **not** in the file, and it is good to know: the **document assignment** (it depends on user identifiers that only exist in the cloud) and the **derived caches**, such as the semantic search index, which is rebuilt when the corpus changes. And one that **is**: the `.qualilab` is a **work** format, so it carries the text **raw, redaction included** — masking here would destroy data irreversibly. The masking happens in the Report outputs (Standard, ATI and W3C) and in what goes to the AI.
 
