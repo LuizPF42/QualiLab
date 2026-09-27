@@ -2,7 +2,7 @@
   <a href="https://luizpf42.github.io/QualiLab"><img src="images/logo.png" alt="QualiLab" width="150"></a>
 </p>
 
-<p align="center"><b> 🌐 Português</b> · <a href="README.en.md"> 🌐 English</a></p>
+<p align="center"><b><img src="https://flagcdn.com/br.svg" width="16" alt="BR"> Português</b> · <a href="README.en.md"><img src="https://flagcdn.com/gb.svg" width="16" alt="GB"> English</a></p>
 
 <h1 align="center">QualiLab</h1>
 
