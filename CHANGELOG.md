@@ -14,6 +14,38 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.67 (02/10/2026)
+
+### A aba Categorias do Esquema volta a rolar
+
+Com mais categorias do que cabem na janela, as de baixo ficavam cortadas, sem barra de rolagem, e
+não havia como chegar nelas nem no botão de adicionar categoria. A lista volta a rolar.
+
+### Explorar com IA: o assistente deixa de receber respostas erradas que pareciam certas
+
+Numa revisão das ferramentas de leitura que a tela **Explorar com IA** oferece ao modelo, nove
+pedidos devolviam uma resposta plausível e errada, sem erro e sem aviso. O modelo é instruído a
+confiar no total e no "acabou" que as ferramentas devolvem, e por isso repassava o número errado
+com segurança. Todos foram corrigidos:
+
+- **Filtrar documentos por uma opção de uma categoria de múltipla escolha** só achava quem tinha
+  marcado aquela opção sozinha: num projeto de exemplo, 1 documento onde eram 8.
+- **Pedir os trechos de uma pessoa** trazia também os de quem tinha o nome dela dentro do próprio
+  ("Marina" trazia "Marinaldo"). Agora vale o nome inteiro, e um nome que não é de ninguém volta um
+  aviso com a lista de codificadores.
+- **Num projeto de equipe no meio da reconciliação**, pedir as codificações sem filtro devolvia só
+  o gabarito. Agora vem o gabarito onde ele existe e o trabalho individual onde ainda não há, e
+  cada trecho diz de que camada é.
+- **A busca parava em 400 ocorrências por documento** sem dizer. Agora ela conta até 5.000 por
+  documento e 50.000 no corpus, e acima disso avisa que o número é um piso.
+- **Uma nota escrita sobre um trecho censurado** era entregue inteira ao modelo, com o que o trecho
+  escondia. Agora ela fica de fora, e a omissão é avisada.
+- **O total de uma família de códigos** somava as marcas de um código de censura guardado dentro
+  dela.
+- **O nome de um documento no lugar do identificador**, **um termo de busca de um só caractere** e
+  **um valor de categoria escrito de outro jeito** ("true" onde está gravado "Sim") davam zero
+  resultados; agora voltam um aviso que diz como pedir.
+
 ## 1.4.66 (12/09/2026)
 
 ### "Discordo" também na Reconciliação

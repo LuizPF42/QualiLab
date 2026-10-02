@@ -933,7 +933,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.66';
+const QUALILAB_VERSION = '1.4.67';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -18171,7 +18171,7 @@ function App(){
              isAdmin=${isAdmin} store=${store} project=${project} reload=${reloadWrite} loadAll=${loadAll}
              allCodings=${allCodings} cats=${cats} selCode=${selCode} setSelCode=${setSelCode} onUpd=${updCode} onSetColor=${setCodeColor} onSetSat=${setCodeSat} onSetRedaction=${setCodeRedaction}
              onAdd=${addCode} onDel=${delCode} onLog=${logAct} onSnapshot=${snapshotBefore} canEditCodes=${can('edit_codes')} />`}
-      ${esquemaTab==='categorias' && html`<section class="pane left" style="flex:1 1 100%;border-right:none;max-width:none">
+      ${esquemaTab==='categorias' && html`<section class="pane left" style="flex:1 1 100%;min-height:0;border-right:none;max-width:none">
         <div class="pane-body scroll">
           <div style="max-width:760px;margin:0 auto" class="section">
             <p class="h">⍞ ${t('scheme.cats.title')}</p>
@@ -30527,6 +30527,13 @@ function MemoryPanel({ memory, onToggle, onDelete, onAdd, showAdd=true, bare=fal
 // servidor) e continuam existindo: sao a defesa contra laco caro, e nenhum deles e silencioso.
 const QL_LIMIT_DEF = 100, QL_LIMIT_MAX = 1000;
 const QL_WINDOW_DEF = 30000, QL_WINDOW_MAX = 400000;
+// Ceilings of search_corpus (M11). Counting occurrences is what the tool is asked for, so they are
+// high, and hitting one is DECLARED in `notes` with the documents named — before this the search
+// stopped at a literal 400 per document and returned next_offset null, which the preamble teaches
+// the model to read as "that is all". The per-document one bounds a pathological regex; the
+// corpus-wide one bounds the list of offsets. Context strings are built only for the page that goes
+// back, so a high ceiling costs an array of offsets, not tens of thousands of strings.
+const QL_SEARCH_PER_DOC = 5000, QL_SEARCH_TOTAL = 50000;
 const QL_MAX_STEPS = 24;                // passos do laco por pergunta
 // NAO volte a igualar isto ao IA_TOTAL_CHAR_LIMIT (era 600k, "= IA_TOTAL_CHAR_LIMIT", e ESTOUROU):
 // nas telas de IA aquele numero e material enviado UMA vez num prompt de uma rodada; aqui e o que
@@ -30557,7 +30564,7 @@ Conduta, sem exceção:
 7. Você não altera o projeto. Nenhuma ferramenta escreve. Sugestões de codificação são feitas ao pesquisador em palavras, para ele decidir na interface.
 8. Responda em português, com a sobriedade de quem escreve para publicação: sem elogiar a pergunta, sem prometer o que não leu.`;
 
-const QL_LAYER_PARAM = { type:'string', enum:['auto','final','individual','all'], description:'auto (padrão) = gabarito quando existir, senão individual' };
+const QL_LAYER_PARAM = { type:'string', enum:['auto','final','individual','all'], description:'auto (padrão) = gabarito onde ele existe, trabalho individual onde ainda não há' };
 
 const QL_TOOLS = [
   {
@@ -30625,7 +30632,7 @@ const QL_TOOLS = [
       include_descendants: { type:'boolean', description:'inclui a subárvore do código (padrão falso)' },
       document_id: { type:'string', description:'id como retornado por list_documents' },
       layer: QL_LAYER_PARAM,
-      author: { type:'string', description:'nome como listado em get_project.coders' },
+      author: { type:'string', description:'nome exato como listado em get_project.coders; traz o trabalho dessa pessoa em qualquer camada' },
       offset: { type:'integer' }, limit: { type:'integer' },
     } },
   },
@@ -30651,12 +30658,31 @@ function qlPage(items, a, extra){
   return { items: slice, total: items.length, returned: slice.length,
     next_offset: (off+slice.length < items.length) ? off+slice.length : null, ...(extra||{}) };
 }
-// 'auto' = gabarito quando existir, senao individual (a regra do pickTransparencyLayer)
-function qlLayer(rows, layer){
+/* 'auto' = the gold standard WHERE it exists, individual work elsewhere — resolved per UNIT (the
+   reconciled group, for codings: same document, same code, overlapping span; the document and
+   category, for attribute answers), never per call. It used to be decided on whatever subset the
+   call happened to filter: asked for every coding, a team halfway through reconciliation got the
+   gold standard and NOTHING of the work still pending, with no note, while the same question asked
+   code by code returned everything. `hasFinal(row)` says whether that row's unit has a gold standard.
+   Deliberately NOT the pickTransparencyLayer rule (all-final or all-individual for the whole
+   project): that one shapes an artifact published for third parties, where only the consolidated
+   position goes out; here the reader is exploring, and a document nobody reconciled yet is still
+   data — each item carries its layer, and list_codings declares the mix. */
+function qlLayer(rows, layer, hasFinal){
   const l = layer || 'auto';
+  const of = r => r.layer || 'individual';
   if(l === 'all') return rows;
-  if(l === 'final' || l === 'individual') return rows.filter(r=>(r.layer||'individual')===l);
-  return rows.filter(r=>(r.layer||'individual') === (rows.some(x=>x.layer==='final') ? 'final' : 'individual'));
+  if(l === 'final' || l === 'individual') return rows.filter(r=>of(r)===l);
+  return rows.filter(r=>of(r) === (hasFinal(r) ? 'final' : 'individual'));
+}
+/* The options a stored category answer holds. A checkbox answer is several options in ONE string
+   ("A | B"), and comparing the whole string made a filter by one option miss every document that
+   picked more than one. Every other kind is a single value, even if it contains the separator.
+   Composed from catValueKey, the same reading the Reconciliation compares answers by. */
+function qlCatParts(kind, v){
+  const key = catValueKey(kind, v);
+  if(!key) return [];
+  return kind === 'checkbox' ? key.split(CAT_MULTI_SEP) : [key];
 }
 
 /* O suggest_terms so pode devolver termo que o modelo TEM DIREITO DE LER, e o filtro e AQUI, na
@@ -30707,8 +30733,25 @@ function makeQlToolRunner(ctx){
   const codingsOfDoc = {}; allCodings.forEach(c=>{ (codingsOfDoc[c.document_id] = codingsOfDoc[c.document_id] || []).push(c); });
   const kidsOf = {}; codes.forEach(c=>{ if(c.parent_id) (kidsOf[c.parent_id] = kidsOf[c.parent_id] || []).push(c); });
   const memoOf = {}; (memos||[]).forEach(m=>{ memoOf[m.scope+':'+m.target_id] = m; });
-  const agg = aggCounts(allCodings, codes);
-  const direct = {}; allCodings.forEach(c=>{ direct[c.code_id] = (direct[c.code_id]||0)+1; });
+  const codingById = {}; allCodings.forEach(c=>{ codingById[c.id] = c; });
+  const analyticCodings = allCodings.filter(c=>!redIds.has(c.code_id));
+  // Counts over ANALYTIC codings only. A censorship code living under an analytic family used to add
+  // its marks to the family total, which then disagreed with what list_codings returns for it.
+  const agg = aggCounts(analyticCodings, codes);
+  const direct = {}; analyticCodings.forEach(c=>{ direct[c.code_id] = (direct[c.code_id]||0)+1; });
+  // Where a gold standard exists, for qlLayer's 'auto'. An individual coding is superseded by a final
+  // coding of the SAME code, in the same document, over an overlapping span — which is what
+  // "Consolidar no final" produces, group by group. NOT per document: reconciliation is partial
+  // inside a document (the fixture legal_ai_5 has gold for some codes of a document and not for
+  // others), and a per-document rule hid every pending group of a document the moment one group
+  // was consolidated. Only analytic codings count.
+  const finaisDe = {};
+  analyticCodings.forEach(c=>{ if(c.layer==='final') (finaisDe[c.document_id+':'+c.code_id] = finaisDe[c.document_id+':'+c.code_id] || []).push(c); });
+  const codingHasFinal = c => c.layer === 'final'
+    || (finaisDe[c.document_id+':'+c.code_id] || []).some(f=>f.span_start < c.span_end && f.span_end > c.span_start);
+  const finalAnswers = new Set((allValues||[]).filter(v=>v.layer==='final').map(v=>v.document_id+':'+v.category_id));
+  const valueHasFinal = v => finalAnswers.has(v.document_id+':'+v.category_id);
+  const isAuto = layer => !layer || layer === 'auto';
   // o texto MASCARADO e a unica versao que sai daqui, e ele e o referencial dos offsets: o quote
   // de list_codings e uma FATIA dele, nao um campo mascarado a parte — assim os dois nao tem como
   // divergir (era o jeito de o quote e o content discordarem sobre onde a censura comeca).
@@ -30721,7 +30764,6 @@ function makeQlToolRunner(ctx){
   const pageOf = (docId, off) => { const e = pdfIdx && pdfIdx[docId]; return (e && e.index) ? pageOfOffset(e.index, off) : null; };
   const pagesOf = docId => { const e = pdfIdx && pdfIdx[docId]; if(!(e && e.index && e.index.length)) return null; let mx=null; for(const f of e.index) if(f.page!=null && (mx==null || f.page>mx)) mx=f.page; return mx; };
   const subtree = id => { const out=new Set([id]); const walk=x=>(kidsOf[x]||[]).forEach(k=>{ out.add(k.id); walk(k.id); }); walk(id); return out; };
-  const analyticCodings = allCodings.filter(c=>!redIds.has(c.code_id));
   // UM PEDACO DE TEXTO por linha, nao uma codificacao (recebe um grupo do groupCodingSpans, o mesmo
   // consolidador das telas do app): o mesmo intervalo marcado com o MESMO codigo por tres pessoas —
   // ou por alguem e pelo gabarito — sao tres codificacoes e UM pedaco, e repetir a citacao por
@@ -30775,21 +30817,57 @@ function makeQlToolRunner(ctx){
         };
       }
       case 'list_documents': {
+        const ordem = a.order || 'name';
+        if(!['name','import','length','codings'].includes(ordem)) return { error:`order inválido: ${ordem}`, hint:'use name, import, length ou codings' };
         let list = docs.slice();
+        const notes = [];
         if(a.query){ const q = qlNorm(a.query); list = list.filter(d=>qlNorm(d.name).includes(q)); }
         if(a.category_id){
           const cat = (cats||[]).find(c=>c.id===a.category_id);
           if(!cat) return { error:'category_id desconhecido', hint:'as categorias e seus ids vêm de get_project' };
-          const vals = qlLayer((allValues||[]).filter(v=>v.category_id===a.category_id), a.layer);
-          const alvo = a.value == null ? null : qlNorm(a.value);
-          const ok = new Set(vals.filter(v=>alvo==null ? String(v.value||'').trim() : qlNorm(v.value)===alvo).map(v=>v.document_id));
+          const vals = qlLayer((allValues||[]).filter(v=>v.category_id===a.category_id), a.layer, valueHasFinal);
+          const pedido = (a.value == null || !String(a.value).trim()) ? null : qlCatParts(cat.kind, a.value).map(qlNorm);
+          // several options asked of a checkbox mean ALL of them, in any order
+          const casa = v => { const tem = qlCatParts(cat.kind, v.value).map(qlNorm);
+            return pedido == null ? tem.length > 0 : pedido.length > 0 && pedido.every(p=>tem.includes(p)); };
+          const casados = vals.filter(casa);
+          const ok = new Set(casados.map(v=>v.document_id));
           list = list.filter(d=>ok.has(d.id));
+          if(pedido != null && !ok.size){
+            // A value that matches nothing is usually a spelling the category does not store ("true"
+            // for "Sim", an ISO date for DD/MM/AAAA). Name the values it does hold, or the empty page
+            // reads as "no document has this".
+            const docsCom = {};
+            vals.forEach(v=>qlCatParts(cat.kind, v.value).forEach(p=>{ (docsCom[p] = docsCom[p] || new Set()).add(v.document_id); }));
+            const vistos = Object.keys(docsCom).sort((x,y)=>docsCom[y].size-docsCom[x].size || x.localeCompare(y));
+            const camada = isAuto(a.layer) ? '' : ` na camada ${a.layer}`;
+            notes.push(vistos.length
+              ? `Nenhum documento tem o valor ${JSON.stringify(String(a.value))} em "${cat.name}"${camada}. Os valores gravados nesta categoria são ${vistos.slice(0, 20).map(p=>`${JSON.stringify(p)} (${docsCom[p].size} doc.)`).join(', ')}${vistos.length > 20 ? ` e mais ${vistos.length-20}` : ''}: repita o filtro com um deles, escrito como está.`
+              : `Nenhum documento tem valor preenchido em "${cat.name}"${camada}.`);
+          }
+          if(isAuto(a.layer) && ok.size){
+            const porFinal = new Set(casados.filter(v=>v.layer==='final').map(v=>v.document_id));
+            const porIndividual = [...ok].filter(id=>!porFinal.has(id));
+            const autores = new Set(vals.filter(v=>(v.layer||'individual')!=='final').map(v=>v.author_name||''));
+            if(porIndividual.length && (porFinal.size || autores.size > 1))
+              notes.push((porFinal.size
+                ? `O filtro usou o gabarito (camada final) em ${porFinal.size} documento(s) e as respostas individuais em ${porIndividual.length} que ainda não têm gabarito nesta categoria. `
+                : 'Esta categoria ainda não tem gabarito: o filtro usou as respostas individuais. ')
+                + 'Entre respostas individuais, basta um codificador ter marcado o valor para o documento entrar; peça include_values para ver quem respondeu o quê.');
+          }
         }
         const nC = {}; analyticCodings.forEach(c=>{ nC[c.document_id] = (nC[c.document_id]||0)+1; });
-        const ordem = a.order || 'name';
         if(ordem==='name') list.sort((x,y)=>qlNorm(x.name).localeCompare(qlNorm(y.name)));
         else if(ordem==='length') list.sort((x,y)=>(y.content||'').length-(x.content||'').length);
         else if(ordem==='codings') list.sort((x,y)=>(nC[y.id]||0)-(nC[x.id]||0));
+        else {
+          // 'import' is explicit, not the array's accident (M12b): creation time where the store keeps
+          // it (the cloud), otherwise the order of the file, which .qualilab and the draft keep as inserted
+          const pos = new Map(docs.map((d,i)=>[d.id, i]));
+          const quando = d => Date.parse(d.created_at || '');
+          const temData = list.every(d=>Number.isFinite(quando(d)));
+          list.sort((x,y)=>(temData ? quando(x)-quando(y) : 0) || pos.get(x.id)-pos.get(y.id));
+        }
         return qlPage(list.map(d=>{
           const saude = extractionHealth(d.content||'', (pdfIdx && pdfIdx[d.id]) ? pdfIdx[d.id].index : null);
           const pgs = pagesOf(d.id);
@@ -30797,12 +30875,12 @@ function makeQlToolRunner(ctx){
           if(pgs!=null) row.pages = pgs;
           if(!saude.ok) row.extraction_warning = saude.flags.join(' · ');
           if(a.include_values){
-            row.values = qlLayer((allValues||[]).filter(v=>v.document_id===d.id), a.layer)
+            row.values = qlLayer((allValues||[]).filter(v=>v.document_id===d.id), a.layer, valueHasFinal)
               .map(v=>({ category:(cats||[]).find(c=>c.id===v.category_id)?.name || '(categoria removida)',
                 value:v.value, layer:v.layer||'individual', author:authorLabel(v.author_name) }));
           }
           return row;
-        }), a);
+        }), a, notes.length ? { notes } : null);
       }
       case 'get_document_content': {
         const d = docById[a.document_id];
@@ -30813,27 +30891,54 @@ function makeQlToolRunner(ctx){
         const naJanela = (codingsOfDoc[d.id]||[]).filter(c=>!redIds.has(c.code_id) && c.span_start < end && c.span_end > start);
         return { document_id:d.id, document_name:d.name, content: texto.slice(start, end),
           start, end, total_length: texto.length, next_start: end < texto.length ? end : null,
-          codings_in_window: qlLayer(naJanela, a.layer).map(c=>({ code:pathOf(c.code_id), span_start:c.span_start,
+          codings_in_window: qlLayer(naJanela, a.layer, codingHasFinal).map(c=>({ code:pathOf(c.code_id), span_start:c.span_start,
             span_end:c.span_end, layer:c.layer||'individual', author:authorLabel(c.author_name) })) };
       }
       case 'search_corpus': {
         if(!a.query || !String(a.query).trim()) return { error:'query vazia', hint:'passe o termo a procurar; para descobrir termos do corpus, use suggest_terms' };
-        const alvo = a.document_ids?.length ? docs.filter(d=>a.document_ids.includes(d.id)) : docs;
+        // findMatches skips literal terms under 2 characters on purpose (it also serves the reader's
+        // search bar); passed on, that became "0 occurrences", which reads as absence from the corpus
+        if(!a.regex && String(a.query).trim().length < 2)
+          return { error:'termo literal de 1 caractere não é buscado', hint:'use um termo de 2 ou mais caracteres, ou repita com regex verdadeiro (e whole_word) para buscar um caractere isolado' };
+        const ids = Array.isArray(a.document_ids) ? a.document_ids : (a.document_ids ? [a.document_ids] : []);
+        // An id that is not an id (a document NAME, typically) used to be dropped in silence, and the
+        // "zero occurrences" that followed read as "the term is not in this document".
+        const desconhecidos = ids.filter(id=>!docById[id]);
+        if(desconhecidos.length) return { error:`document_ids desconhecido(s): ${desconhecidos.slice(0, 5).map(x=>JSON.stringify(String(x))).join(', ')}`,
+          hint:'os ids vêm de list_documents; são identificadores, não nomes de documento' };
+        const alvo = ids.length ? docs.filter(d=>ids.includes(d.id)) : docs;
         const ctxN = qlInt(a.context, 120, 0, 400);
-        const hits = [];
+        const opts = { re:!!a.regex, cs:!!a.case_sensitive, whole:!!a.whole_word };
+        // Offsets first, context later: offsets for the whole corpus are cheap, and the context
+        // strings are built below only for the page that goes back. Asking one past the ceiling tells
+        // "exactly at the ceiling" (not truncated) from "past it" (truncated).
+        const achados = [], cortados = [];
+        let noTetoGeral = false;
         for(const d of alvo){
-          const texto = maskedOf(d.id);
-          const r = findMatches(texto, String(a.query), { re:!!a.regex, cs:!!a.case_sensitive, whole:!!a.whole_word }, 400);
+          const r = findMatches(maskedOf(d.id), String(a.query), opts, QL_SEARCH_PER_DOC + 1);
           if(r.error) return { error:`expressão regular inválida: ${r.error}`, hint:'corrija o padrão ou repita a busca com regex falso (busca literal)' };
-          for(const [s,e] of r.spans){
-            const emCima = (codingsOfDoc[d.id]||[]).filter(c=>!redIds.has(c.code_id) && c.span_start < e && c.span_end > s);
-            hits.push({ document_id:d.id, document_name:d.name, span_start:s, span_end:e,
-              context: (s>ctxN?'…':'') + texto.slice(Math.max(0,s-ctxN), s) + '[[' + texto.slice(s,e) + ']]' + texto.slice(e, e+ctxN) + (e+ctxN<texto.length?'…':''),
-              ...(pageOf(d.id,s)!=null ? { page:pageOf(d.id,s) } : {}),
-              ...(emCima.length ? { codes:[...new Set(emCima.map(c=>pathOf(c.code_id)))] } : {}) });
+          let spans = r.spans;
+          if(spans.length > QL_SEARCH_PER_DOC){ spans = spans.slice(0, QL_SEARCH_PER_DOC); cortados.push(d.name); }
+          for(const [s,e] of spans){
+            if(achados.length >= QL_SEARCH_TOTAL){ noTetoGeral = true; break; }
+            achados.push([d, s, e]);
           }
+          if(noTetoGeral) break;
         }
-        return qlPage(hits, a, { notes:['a busca roda sobre o texto mascarado: termo censurado não é encontrável'] });
+        const notes = ['a busca roda sobre o texto mascarado: termo censurado não é encontrável'];
+        if(cortados.length) notes.push(`${cortados.length} documento(s) passaram do teto de ${QL_SEARCH_PER_DOC} ocorrências por documento e foram contados só até ele: ${cortados.slice(0, 10).map(n=>JSON.stringify(n)).join(', ')}${cortados.length > 10 ? ' e outros' : ''}. O total é um piso (pelo menos ${achados.length}), não a contagem real; para contar num desses documentos, use um termo mais específico ou whole_word.`);
+        if(noTetoGeral) notes.push(`A busca parou no teto de ${QL_SEARCH_TOTAL} ocorrências no corpus: o total é um piso (pelo menos ${QL_SEARCH_TOTAL}), e os documentos seguintes nem foram varridos. Restrinja com document_ids ou com um termo mais específico.`);
+        const pagina = qlPage(achados, a, { notes });
+        pagina.items = pagina.items.map(([d,s,e])=>{
+          const texto = maskedOf(d.id);
+          const emCima = (codingsOfDoc[d.id]||[]).filter(c=>!redIds.has(c.code_id) && c.span_start < e && c.span_end > s);
+          const pg = pageOf(d.id, s);
+          return { document_id:d.id, document_name:d.name, span_start:s, span_end:e,
+            context: (s>ctxN?'…':'') + texto.slice(Math.max(0,s-ctxN), s) + '[[' + texto.slice(s,e) + ']]' + texto.slice(e, e+ctxN) + (e+ctxN<texto.length?'…':''),
+            ...(pg!=null ? { page:pg } : {}),
+            ...(emCima.length ? { codes:[...new Set(emCima.map(c=>pathOf(c.code_id)))] } : {}) };
+        });
+        return pagina;
       }
       case 'suggest_terms': {
         if(!a.query || !String(a.query).trim()) return { error:'query vazia', hint:'descreva em poucas palavras o sentido procurado' };
@@ -30861,8 +30966,17 @@ function makeQlToolRunner(ctx){
             ...(d < maxD ? { children:(kidsOf[c.id]||[]).filter(k=>!redIds.has(k.id)).map(k=>monta(k, d+1)) } : {}) };
         };
         const raiz = a.parent_id ? (kidsOf[a.parent_id]||[]) : codes.filter(c=>!c.parent_id);
-        return { items: raiz.filter(c=>!redIds.has(c.id)).map(c=>monta(c,1)), total: codes.filter(c=>!redIds.has(c.id)).length,
-          notes: redIds.size ? [`${redIds.size} código(s) de censura fora desta árvore de propósito (ver get_project)`] : [] };
+        const notes = redIds.size ? [`${redIds.size} código(s) de censura fora desta árvore de propósito (ver get_project)`] : [];
+        // In a team project a count here is APPLICATIONS (each coder and the gold standard add one for
+        // the same piece of text), while list_codings returns PIECES and, by default, one layer per
+        // document. Unsaid, a model read count_direct 22 as 22 excerpts where list_codings had 8.
+        // Conditional on purpose: a note costs nothing when it does not apply, a description sentence
+        // is paid on every turn of every conversation.
+        const camadas = [...new Set(analyticCodings.map(c=>c.layer||'individual'))];
+        const quem = new Set(analyticCodings.map(c=>authorLabel(c.author_name)));
+        if(camadas.length > 1 || quem.size > 1)
+          notes.push(`As contagens somam aplicações de código, de todas as camadas e de todos os codificadores (${camadas.join(' e ')}; ${quem.size} codificador(es)): o mesmo pedaço de texto marcado por três pessoas conta 3. list_codings devolve pedaços de texto e, por padrão, uma camada por documento; os dois números não se comparam diretamente.`);
+        return { items: raiz.filter(c=>!redIds.has(c.id)).map(c=>monta(c,1)), total: codes.filter(c=>!redIds.has(c.id)).length, notes };
       }
       case 'list_codings': {
         let rows = analyticCodings;
@@ -30875,16 +30989,37 @@ function makeQlToolRunner(ctx){
           if(!docById[a.document_id]) return { error:'document_id desconhecido', hint:'os ids vêm de list_documents' };
           rows = rows.filter(c=>c.document_id===a.document_id);
         }
-        rows = qlLayer(rows, a.layer);
-        if(a.author){ const q = qlNorm(a.author); rows = rows.filter(c=>qlNorm(c.author_name).includes(q)); }
+        const notes = [];
+        if(a.author != null && String(a.author).trim()){
+          // One coder, by the WHOLE name. `includes` made "Marina" also bring "Marinaldo", and the
+          // model then credited one person with another's work (conduct 3). Case and accents are
+          // forgiven; a name that matches nobody is an error listing the coders, never an empty page.
+          const q = qlNorm(a.author).trim();
+          const eDele = c => qlNorm(c.author_name).trim() === q || qlNorm(authorLabel(c.author_name)).trim() === q;
+          const conhecidos = [...new Set([...(coders||[]).map(x=>x && (x.name || x)), ...allCodings.map(c=>authorLabel(c.author_name))]
+            .filter(n=>typeof n === 'string' && n.trim()))];
+          if(!conhecidos.some(n=>qlNorm(n).trim() === q) && !allCodings.some(eDele))
+            return { error:`codificador desconhecido: ${a.author}`, hint:`use o nome exato de um codificador, como listado em get_project.coders: ${conhecidos.join(', ')}` };
+          rows = rows.filter(eDele);
+          // A person's work is what they coded, in any layer: resolving 'auto' first would hide their
+          // individual work in every reconciled document behind a gold standard that is not theirs.
+          if(!isAuto(a.layer)) rows = qlLayer(rows, a.layer, codingHasFinal);
+        } else {
+          rows = qlLayer(rows, a.layer, codingHasFinal);
+          if(isAuto(a.layer)){
+            const nF = rows.filter(c=>c.layer==='final').length;
+            const indiv = rows.filter(c=>c.layer!=='final');
+            const docsI = [...new Set(indiv.map(c=>c.document_id))];
+            if(nF && indiv.length) notes.push(`Camada auto: vêm ${nF} aplicação(ões) do gabarito (camada final) e ${indiv.length} de trabalho individual em trechos que ainda não têm gabarito, em ${docsI.length} documento(s)${docsI.length <= 5 ? ' (' + docsI.map(id=>JSON.stringify(docById[id]?.name || id)).join(', ') + ')' : ''}. Cada item traz a camada: não apresente o trabalho individual como posição da equipe.`);
+          }
+        }
         rows = rows.slice().sort((x,y)=>x.document_id===y.document_id ? x.span_start-y.span_start : String(x.document_id).localeCompare(String(y.document_id)));
         // consolida DEPOIS dos filtros (author/layer recortam o que entra no grupo) e depois da
         // ordenacao (o agrupamento preserva a ordem de entrada). A consolidacao e DECLARADA: sem a
         // nota, o total daqui contradiria em silencio o counts.codings do get_project.
         const trechos = groupCodingSpans(rows);
-        const notes = trechos.length < rows.length
-          ? [`${rows.length} codificações do mesmo texto consolidadas em ${trechos.length} trecho(s): quando mais de um codificador (ou o gabarito) marca o MESMO intervalo com o MESMO código, o trecho vem uma vez e o campo codings lista cada aplicação, com autor e camada. O counts.codings de get_project conta aplicações, não trechos.`]
-          : [];
+        if(trechos.length < rows.length)
+          notes.push(`${rows.length} codificações do mesmo texto consolidadas em ${trechos.length} trecho(s): quando mais de um codificador (ou o gabarito) marca o MESMO intervalo com o MESMO código, o trecho vem uma vez e o campo codings lista cada aplicação, com autor e camada. O counts.codings de get_project conta aplicações, não trechos.`);
         // Declared, never silent (same rule as every other partial result in this envelope):
         // a coding whose anchor is invalid ships with an empty quote, because the stored text
         // cannot be verified against the served document.
@@ -30899,14 +31034,25 @@ function makeQlToolRunner(ctx){
         let rows = (memos||[]).filter(m=>alvo.includes(m.scope));
         if(a.target_id) rows = rows.filter(m=>m.target_id===a.target_id);
         // codigos de censura: o nome do codigo ja e informacao sobre o que foi removido, mas a
-        // DEFINICAO dele costuma descrever exatamente o dado sensivel — fica de fora, como os trechos
-        rows = rows.filter(m=>!(m.scope==='code' && redIds.has(m.target_id)));
+        // DEFINICAO dele costuma descrever exatamente o dado sensivel — fica de fora, como os trechos.
+        // The same holds for a note written ON a censored excerpt ("the speaker here is ..."): it was
+        // served in full. The transparency artifacts already skip it (their annotations drop
+        // censorship codings before looking up notes); this surface is the one that did not.
+        const censurado = m => (m.scope==='code' && redIds.has(m.target_id))
+          || (m.scope==='coding' && redIds.has(codingById[m.target_id]?.code_id));
+        const fora = rows.filter(censurado).length;
+        rows = rows.filter(m=>!censurado(m));
+        // a note on an excerpt names the code as well as the document (M12c): without it the model got
+        // the reasoning without the object of the reasoning, and needed a list_codings call to join them
+        const doTrecho = id => { const c = codingById[id];
+          return c ? `${docById[c.document_id]?.name || '(documento removido)'} · código ${pathOf(c.code_id)}` : '(trecho removido)'; };
         return qlPage(rows.map(m=>({ scope:m.scope, target_id:m.target_id,
           target_name: m.scope==='document' ? (docById[m.target_id]?.name||'(documento removido)')
             : m.scope==='code' ? pathOf(m.target_id)
-            : m.scope==='coding' ? (docById[allCodings.find(c=>c.id===m.target_id)?.document_id]?.name || '(trecho removido)')
+            : m.scope==='coding' ? doTrecho(m.target_id)
             : (project?.name||'projeto'),
-          content:m.content, author:authorLabel(m.author_name), updated_at:m.updated_at })), a);
+          content:m.content, author:authorLabel(m.author_name), updated_at:m.updated_at })), a,
+          fora ? { notes:[`${fora} nota(s) ficaram de fora por serem sobre códigos ou trechos de censura: elas descrevem o dado que o pesquisador censurou. É recorte deliberado, não ausência de notas.`] } : null);
       }
       default:
         return { error:`ferramenta desconhecida: ${name}`, hint:`as disponíveis são ${QL_TOOLS.map(t=>t.name).join(', ')}` };
