@@ -14,6 +14,13 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.68 (06/10/2026)
+
+### "Consolidar no final" só para quem pode consolidar
+
+- **O botão aparecia para quem não é administrador.** Na aba Códigos da Reconciliação, o membro via "Consolidar no final", clicava e recebia "Sem permissão para esta operação neste projeto": a camada final é do administrador, e o servidor recusava. O botão e o "Remover do final" passam a aparecer só para administradores. Quem é membro continua vendo o que já está na camada final e registrando **Concordo** e **Discordo**.
+- **Aviso "o espelho automático falhou" para membros.** Antes de uma operação irreversível o app tentava gravar um ponto de restauração, o que também é do administrador, e o membro recebia um aviso de falha a cada vez. Em projeto coletivo o espelho automático agora só roda para administradores.
+
 ## 1.4.67 (02/10/2026)
 
 ### A aba Categorias do Esquema volta a rolar

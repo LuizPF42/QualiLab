@@ -933,7 +933,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.67';
+const QUALILAB_VERSION = '1.4.68';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -16919,6 +16919,7 @@ function App(){
      cada um custa duas requisicoes por documento. */
   async function snapshotBefore(op){
     if(!store?.createSnapshot || !project || !snapshotsAuto) return null;   // interruptor do projeto (ligado por padrao)
+    if(projectMode==='collective' && !isAdmin) return null;   // gravar retrato e de admin (snapshots_insert): para o membro so sobrava o aviso de falha
     try{
       const list = await store.listSnapshots(project.id);
       if(!snapshotAutoDue(list)) return null;
@@ -23978,8 +23979,8 @@ function Reconcile({ activeDoc, codings, coders, codeById, codePath, cats, value
           ${fin
             ? html`<span class="row" style="gap:8px">
                 <span class="author" style="background:var(--teal-soft);color:var(--teal-deep)">${t('rec.inFinal')}</span>
-                <button class="btn sm ghost" onClick=${()=>onDelCoding(fin.id)}>${t('rec.removeFinal')}</button></span>`
-            : html`<button class="btn sm primary" onClick=${async ()=>{ await onConsolidate(g.codeId, g.start, g.end, quote); onConsolidated?.(1); }}>${t('rec.consolidate')}</button>`}
+                ${isOwner && html`<button class="btn sm ghost" onClick=${()=>onDelCoding(fin.id)}>${t('rec.removeFinal')}</button>`}</span>`
+            : isOwner && html`<button class="btn sm primary" onClick=${async ()=>{ await onConsolidate(g.codeId, g.start, g.end, quote); onConsolidated?.(1); }}>${t('rec.consolidate')}</button>`}
         </div>
       </div>`;
     })}
@@ -24075,7 +24076,7 @@ function ReconcileCatAcrossDocs({ docs, cat, allValues, isOwner, userId, onSetFi
 }
 
 /* Bloco colapsável de UM documento na visão "todos os documentos" da aba Códigos. */
-function ReconcileDocCodes({ d, groups, finalFor, totalCoders, coders, codeById, codePath, userId, disagreements, onUndoDisagree, onDisagreeDoc, onConsolidateDoc, onConsolidated, onAgreeDoc, onDelCoding }){
+function ReconcileDocCodes({ d, groups, finalFor, totalCoders, coders, codeById, codePath, isOwner, userId, disagreements, onUndoDisagree, onDisagreeDoc, onConsolidateDoc, onConsolidated, onAgreeDoc, onDelCoding }){
   const [open, setOpen] = useState(true);
   const nameOf = (id, fallback)=> (coders.find(c=>c.id===id)||{}).name || authorLabel(fallback);
   const pend = groups.filter(g=>!finalFor(g)).length;
@@ -24112,8 +24113,8 @@ function ReconcileDocCodes({ d, groups, finalFor, totalCoders, coders, codeById,
             ${fin
               ? html`<span class="row" style="gap:8px">
                   <span class="author" style="background:var(--teal-soft);color:var(--teal-deep)">${t('rec.inFinal')}</span>
-                  <button class="btn sm ghost" onClick=${()=>onDelCoding(fin.id)}>${t('rec.removeFinal')}</button></span>`
-              : html`<button class="btn sm primary" onClick=${async ()=>{ await onConsolidateDoc(d.id, g.codeId, g.start, g.end, quote); onConsolidated?.(1); }}>${t('rec.consolidate')}</button>`}
+                  ${isOwner && html`<button class="btn sm ghost" onClick=${()=>onDelCoding(fin.id)}>${t('rec.removeFinal')}</button>`}</span>`
+              : isOwner && html`<button class="btn sm primary" onClick=${async ()=>{ await onConsolidateDoc(d.id, g.codeId, g.start, g.end, quote); onConsolidated?.(1); }}>${t('rec.consolidate')}</button>`}
           </div>
         </div>`;
       })}
@@ -24169,7 +24170,7 @@ function ReconcileCodesAllDocs({ docs, allCodings, coders, codeById, codePath, i
       d=${d} groups=${groups} finalFor=${finalFor} totalCoders=${totalCoders}
       coders=${coders} codeById=${codeById} codePath=${codePath} userId=${userId}
       disagreements=${disc.rows.filter(x=>x.document_id===d.id)} onUndoDisagree=${disc.undo} onDisagreeDoc=${disc.add}
-      onConsolidateDoc=${onConsolidateDoc} onConsolidated=${onConsolidated} onAgreeDoc=${onAgreeDoc} onDelCoding=${onDelCoding} />`)}
+      isOwner=${isOwner} onConsolidateDoc=${onConsolidateDoc} onConsolidated=${onConsolidated} onAgreeDoc=${onAgreeDoc} onDelCoding=${onDelCoding} />`)}
   </div>`;
 }
 
