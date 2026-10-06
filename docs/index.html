@@ -16918,8 +16918,7 @@ function App(){
      SNAPSHOT_AUTO_MIN_GAP_MS, senao apagar vinte documentos em serie gera vinte retratos, e na nuvem
      cada um custa duas requisicoes por documento. */
   async function snapshotBefore(op){
-    if(!store?.createSnapshot || !project || !snapshotsAuto) return null;   // interruptor do projeto (ligado por padrao)
-    if(projectMode==='collective' && !isAdmin) return null;   // gravar retrato e de admin (snapshots_insert): para o membro so sobrava o aviso de falha
+    if(!store?.createSnapshot || !project || !snapshotsAuto || (projectMode==='collective' && !isAdmin)) return null;   // interruptor do projeto (ligado por padrao); e gravar retrato e de admin (snapshots_insert): ao membro so sobrava o aviso de falha
     try{
       const list = await store.listSnapshots(project.id);
       if(!snapshotAutoDue(list)) return null;
