@@ -4,6 +4,8 @@
 
 <p align="center"><a href="README.md">Português</a> · <b>English</b> · <a href="README.es.md">Español</a></p>
 
+> 🤖 **Translated with AI.** This text was translated from Portuguese using artificial intelligence. If something reads oddly or seems wrong, the [Portuguese version](README.md) is the reference.
+
 <h1 align="center">QualiLab</h1>
 
 <p align="center">

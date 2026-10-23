@@ -8,6 +8,8 @@
 
 [Português](MANUAL.md) · [English](MANUAL.en.md) · **Español** · [Leer en el navegador](manual.html?lang=es)
 
+> 🤖 **Traducción hecha con IA.** Este texto se tradujo del portugués con inteligencia artificial. Si algo suena extraño o parece incorrecto, la [versión en portugués](MANUAL.md) es la referencia.
+
 Este manual enseña a *usar* QualiLab paso a paso. Para conocer sus funciones y la parte técnica (instalación, Supabase, formatos), consulta el [README](https://github.com/LuizPF42/QualiLab#readme). Para contribuir al código, visita el [repositorio en GitHub](https://github.com/LuizPF42/QualiLab).
 
 > QualiLab funciona por completo en el navegador, en un único archivo. No requiere instalación, inicio de sesión ni servidor propio. Puedes empezar ahora en **[luizpf42.github.io/QualiLab](https://luizpf42.github.io/QualiLab)**. ¿Quieres probar antes de leer? Los **[Primeros 5 minutos](#primeros-5-minutos)** te permiten empezar a codificar de inmediato.

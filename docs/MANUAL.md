@@ -6,7 +6,7 @@
 
 **Guia completo de uso, do primeiro acesso à publicação dos resultados.**
 
-<img src="https://flagcdn.com/gb.svg" width="16" alt="GB"> [English version](MANUAL.en.md) · [Español](MANUAL.es.md) · [Ler no navegador](manual.html?lang=pt)
+**Português** · [English](MANUAL.en.md) · [Español](MANUAL.es.md) · [Ler no navegador](manual.html?lang=pt)
 
 Este manual ensina a *usar* o QualiLab passo a passo. Para a lista de recursos e a parte técnica (instalação, Supabase, formatos), veja o [README](../README.md). Para contribuir com o código, veja o [repositório no GitHub](https://github.com/LuizPF42/QualiLab).
 

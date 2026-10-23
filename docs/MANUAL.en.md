@@ -6,7 +6,9 @@
 
 **A complete usage guide, from first access to publishing your results.**
 
-<img src="https://flagcdn.com/br.svg" width="16" alt="BR"> [Versão em português](MANUAL.md) · [Español](MANUAL.es.md) · [Read in the browser](manual.html?lang=en)
+[Português](MANUAL.md) · **English** · [Español](MANUAL.es.md) · [Read in the browser](manual.html?lang=en)
+
+> 🤖 **Translated with AI.** This text was translated from Portuguese using artificial intelligence. If something reads oddly or seems wrong, the [Portuguese version](MANUAL.md) is the reference.
 
 > 🌐 **A note on language.** Since v1.4.48 the **application interface exists in English**, and it follows your browser; the picker in **My account** overrides that (see [section 14](#14-my-account)). This manual gives the original Portuguese label in quotes wherever it helps — the **screenshots still show the Portuguese interface**, so use the quotes to match the images, and the images for layout rather than for wording.
 
