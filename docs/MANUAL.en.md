@@ -957,8 +957,10 @@ QualiLab exists in **Portuguese, English and Spanish**. It uses the first suppor
 have to configure anything: the picker in **My account** is there for choosing otherwise, or going back to automatic.
 Switching **reloads the page**.
 
-Three things worth knowing:
+Four things worth knowing:
 
+- **The English and Spanish versions were translated with AI.** The interface says so in **My
+  account**, under the picker, and in the footer of the start screen; when in doubt, the Portuguese version is the reference.
 - The choice is **yours and stays in this browser**. It **does not travel with the project**: two
   researchers on the same team can read the **same** project in different languages.
 - **Numbers and dates follow the language** (in English, `1.234` shows as `1,234`).

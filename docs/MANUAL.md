@@ -952,8 +952,10 @@ usa o primeiro idioma suportado da sua lista de preferências, ou inglês quando
 nada: o seletor em **Minha conta** serve para escolher o contrário, ou voltar ao automático. Trocar **recarrega a**
 **página**.
 
-Três coisas que vale saber:
+Quatro coisas que vale saber:
 
+- **As versões em inglês e espanhol foram traduzidas com IA.** A interface diz isso em **Minha
+  conta**, sob o seletor, e no rodapé da tela de entrada; na dúvida, a versão em português é a referência.
 - A escolha é **sua e fica neste navegador**. Ela **não viaja no projeto**: dois pesquisadores da
   mesma equipe podem ler o **mesmo** projeto em idiomas diferentes.
 - **Números e datas acompanham o idioma** (em inglês, `1.234` aparece como `1,234`).

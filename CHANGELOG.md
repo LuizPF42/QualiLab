@@ -14,6 +14,16 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.71 (23/10/2026)
+
+### Aviso de que a interface em inglês e espanhol foi traduzida com IA
+
+As versões em inglês e espanhol do QualiLab foram traduzidas com inteligência artificial, e agora
+a interface diz isso em dois lugares discretos: em **Minha conta**, logo abaixo do seletor de
+idioma, e no rodapé da tela de entrada, ao lado da versão (este último só aparece quando a
+interface não está em português). Na dúvida sobre o sentido de uma frase, a versão em português
+é a referência. Os READMEs e os manuais em inglês e espanhol trazem o mesmo aviso no topo.
+
 ## 1.4.70 (23/10/2026)
 
 ### O QualiLab em espanhol

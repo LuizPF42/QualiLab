@@ -870,6 +870,7 @@ Pulsa **tu nombre** en cualquier modo para abrir **Mi cuenta**:
 
 QualiLab tiene interfaz en **portugués, inglés y español**. Usa la primera preferencia compatible del navegador y, si no encuentra ninguna, inglés. **Mi cuenta → Idioma** permite elegir explícitamente o volver a automático. El cambio **recarga la página**.
 
+- **Las versiones en inglés y español se tradujeron con IA.** La interfaz lo indica en **Mi cuenta**, debajo del selector, y en el pie de la pantalla de entrada; ante la duda, la versión en portugués es la referencia.
 - La elección es **personal y queda en este navegador**; no viaja con el proyecto. Un equipo puede trabajar sobre el mismo proyecto en idiomas distintos.
 - **Números y fechas siguen el idioma**; en inglés, por ejemplo, `1.234` se presenta como `1,234`.
 - **El contenido que escribiste no se traduce**: documentos, códigos, categorías, valores y memos son datos de investigación. **Sí/No**, **No informado** y **Otros** tienen etiquetas traducidas sin modificar el valor guardado; siguen siendo la misma respuesta al comparar codificadores.

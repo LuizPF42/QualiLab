@@ -949,7 +949,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.70';
+const QUALILAB_VERSION = '1.4.71';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -1640,6 +1640,8 @@ const MSG_PT = {
   'wel.openFile': 'Abrir arquivo existente',
   'wel.noFileApi': 'No Firefox/Safari o modo arquivo não está disponível. Use nuvem ou rascunho.',
   'wel.by': 'licença MIT · por Luiz Pimenta Filho · LabDados / FGV Direito SP',
+
+  'wel.aiTranslated': 'interface traduzida com IA',
   'srv.connected': 'nuvem pessoal conectada',
   'srv.back': 'Voltar ao servidor padrão',
   'srv.connect': 'Conectar ao meu Supabase',
@@ -3245,6 +3247,8 @@ const MSG_PT = {
   'lang.en': 'English',
   'lang.es': 'Español',
   'lang.hint': 'Vale só para a interface deste navegador: o material da pesquisa e o que você escreve não são traduzidos.',
+
+  'lang.aiNote': 'As versões em inglês e espanhol da interface foram traduzidas com IA. Na dúvida, a versão em português é a referência.',
   // -- papel somente leitura (viewer) --
   'err.readOnly': 'O seu papel neste projeto é somente leitura: você lê tudo e comenta nos memos, mas não altera o material.',
   'readOnly.pill': 'somente leitura',
@@ -4058,6 +4062,8 @@ const MSG_EN = {
   'wel.openFile': 'Open an existing file',
   'wel.noFileApi': 'File mode is not available in Firefox/Safari. Use the cloud or a draft.',
   'wel.by': 'MIT licence · by Luiz Pimenta Filho · LabDados / FGV Direito SP',
+
+  'wel.aiTranslated': 'interface translated with AI',
   'srv.connected': 'personal cloud connected',
   'srv.back': 'Back to the default server',
   'srv.connect': 'Connect to my own Supabase',
@@ -5663,6 +5669,8 @@ const MSG_EN = {
   'lang.en': 'English',
   'lang.es': 'Español',
   'lang.hint': 'Applies to the interface in this browser only: your research material and what you write are not translated.',
+
+  'lang.aiNote': 'The English and Spanish versions of the interface were translated with AI. When in doubt, the Portuguese version is the reference.',
   // -- the read-only role (viewer) --
   'err.readOnly': 'Your role in this project is read-only: you read everything and comment in the memos, but you do not change the material.',
   'readOnly.pill': 'read-only',
@@ -6443,6 +6451,8 @@ const MSG_ES = {
   'wel.openFile': 'Abrir archivo existente',
   'wel.noFileApi': 'En Firefox/Safari el modo archivo no está disponible. Usa la nube o el borrador.',
   'wel.by': 'licencia MIT · por Luiz Pimenta Filho · LabDados / FGV Direito SP',
+
+  'wel.aiTranslated': 'interfaz traducida con IA',
   'srv.connected': 'nube personal conectada',
   'srv.back': 'Volver al servidor estándar',
   'srv.connect': 'Conectar a mi Supabase',
@@ -8048,6 +8058,8 @@ const MSG_ES = {
   'lang.en': 'English',
   'lang.es': 'Español',
   'lang.hint': 'Vale solo para la interfaz de este navegador: el material de la investigación y lo que escribes no se traducen.',
+
+  'lang.aiNote': 'Las versiones en inglés y español de la interfaz se tradujeron con IA. Ante la duda, la versión en portugués es la referencia.',
   // -- read-only role (viewer) --
   'err.readOnly': 'Tu rol en este proyecto es de solo lectura: lees todo y comentas en los memos, pero no modificas el material.',
   'readOnly.pill': 'solo lectura',
@@ -21056,7 +21068,7 @@ function Welcome({ onNewFile, onOpenFile, onCloud, onRascunho, onServer, onReset
     ${onServer && html`<${ServerConnect} onConnect=${onServer} onReset=${onResetServer} />`}
     <div style="text-align:center;margin-top:18px;padding-top:12px;border-top:1px solid var(--line-soft)">
       <p class="meta" style="margin:0;font-size:11.5px;line-height:1.6">
-        <a href="https://github.com/LuizPF42/QualiLab" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:underline;text-underline-offset:2px">GitHub</a> · ${t('wel.by')} · v${QUALILAB_VERSION}
+        <a href="https://github.com/LuizPF42/QualiLab" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:underline;text-underline-offset:2px">GitHub</a> · ${t('wel.by')} · v${QUALILAB_VERSION}${QL_LANG !== 'pt' ? ` · ${t('wel.aiTranslated')}` : ''}
       </p>
     </div>
   </div></div>`;
@@ -22319,6 +22331,7 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
                   onClick=${()=>setLang(id)}>${rot}</button>`)}
       </div>
       <p class="hint" style="margin:8px 0 0">${t('lang.hint')}</p>
+      <p class="hint" style="margin:4px 0 0">${t('lang.aiNote')}</p>
     </div>
 
     <!-- senha (só para contas com e-mail) -->
