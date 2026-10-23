@@ -21,14 +21,14 @@ QualiLab is a **free and open-source** tool for qualitative data analysis. It ru
 
 **⬇ [Install it as an app](docs/MANUAL.en.md#install-as-an-app-and-open-without-internet)** — it opens without internet, gets its own window and icon, and double-clicking a `.qualilab` starts opening in QualiLab. **On Windows, install through Edge.**
 
-**📖 [User manual](docs/MANUAL.en.md)** — a complete, step-by-step guide to every screen; the [Portuguese manual](https://luizpf42.github.io/QualiLab/manual.html) is the one with screenshots. What changed in each version is in [`CHANGELOG.md`](CHANGELOG.md) *(Portuguese)*.
+**📖 [User manual](docs/MANUAL.en.md)** — a complete, step-by-step guide to every screen; the [Portuguese manual](https://luizpf42.github.io/QualiLab/manual.html) is the one with screenshots, and there is a [Spanish one](https://luizpf42.github.io/QualiLab/manual.html?lang=es) too. What changed in each version is in [`CHANGELOG.md`](CHANGELOG.md) *(Portuguese)*.
 
 > Inspired by **[Taguette](https://www.taguette.org/about.html)**, **[Magnolia](https://www.caledavis.eu/magnolia.html)**, **[QualCoder](https://github.com/ccbogel/qualcoder)** and **[OpenQDA](https://openqda.org/)** — projects that deserve your support; credits are [at the end](#credits-reference-and-license).
 
 <details>
-<summary>🌐 <b>A note on language</b> — the interface is in English, some things stay in Portuguese on purpose</summary>
+<summary>🌐 <b>A note on language</b> — the interface is in English (and Spanish), some things stay in Portuguese on purpose</summary>
 
-Since v1.4.48 the **application interface exists in English**, and it follows your browser — a browser set to Portuguese opens in Portuguese, any other language opens in English, and the picker in **My account** overrides that. What stays in Portuguese is deliberate: the requests QualiLab makes to the AI (translating them changes the model's behaviour, and that has to be measured first) and the redacted-passage marker inside exported files (so the same file does not change content depending on who exported it). Interface labels below sometimes give the Portuguese wording in quotes: the **screenshots are still of the Portuguese interface**, so those quotes are there to match the images, not because the tool is Portuguese-only. The [`CHANGELOG.md`](CHANGELOG.md) remains in Portuguese, as does the contributor guide, which lives in the development repository.
+Since v1.4.48 the **application interface exists in English**, and it follows your browser — a browser set to Portuguese opens in Portuguese, one set to Spanish opens in Spanish (since v1.4.70), any other language opens in English, and the picker in **My account** overrides that. What stays in Portuguese is deliberate: the requests QualiLab makes to the AI (translating them changes the model's behaviour, and that has to be measured first) and the redacted-passage marker inside exported files (so the same file does not change content depending on who exported it). Interface labels below sometimes give the Portuguese wording in quotes: the **screenshots are still of the Portuguese interface**, so those quotes are there to match the images, not because the tool is Portuguese-only. The [`CHANGELOG.md`](CHANGELOG.md) remains in Portuguese, as does the contributor guide, which lives in the development repository.
 
 </details>
 

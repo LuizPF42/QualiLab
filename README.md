@@ -24,7 +24,7 @@ QualiLab é uma ferramenta **gratuita e de código aberto** para análise qualit
 
 **⬇ [Instalar como aplicativo](docs/MANUAL.md#instalar-como-aplicativo-e-abrir-sem-internet)** — abre sem internet, ganha janela e ícone próprios, e o duplo clique num `.qualilab` passa a abrir no QualiLab. **No Windows, instale pelo Edge.**
 
-**📖 [Manual de uso](https://luizpf42.github.io/QualiLab/manual.html)** — guia completo, passo a passo, de todas as telas. O que mudou em cada versão está no [`CHANGELOG.md`](CHANGELOG.md).
+**📖 [Manual de uso](https://luizpf42.github.io/QualiLab/manual.html)** — guia completo, passo a passo, de todas as telas. O que mudou em cada versão está no [`CHANGELOG.md`](CHANGELOG.md). A interface e o manual também existem em **inglês e espanhol**: a interface segue o idioma do navegador, e **Minha conta → Idioma** troca.
 
 > Inspirado por **[Taguette](https://www.taguette.org/about.html)**, **[Magnolia](https://www.caledavis.eu/magnolia.html)**, **[QualCoder](https://github.com/ccbogel/qualcoder)** e **[OpenQDA](https://openqda.org/)** — projetos que merecem o seu apoio; os créditos estão [no fim](#créditos-referência-e-licença).
 

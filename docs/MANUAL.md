@@ -6,7 +6,7 @@
 
 **Guia completo de uso, do primeiro acesso à publicação dos resultados.**
 
-<img src="https://flagcdn.com/gb.svg" width="16" alt="GB"> [English version](MANUAL.en.md)
+<img src="https://flagcdn.com/gb.svg" width="16" alt="GB"> [English version](MANUAL.en.md) · [Español](MANUAL.es.md) · [Ler no navegador](manual.html?lang=pt)
 
 Este manual ensina a *usar* o QualiLab passo a passo. Para a lista de recursos e a parte técnica (instalação, Supabase, formatos), veja o [README](../README.md). Para contribuir com o código, veja o [repositório no GitHub](https://github.com/LuizPF42/QualiLab).
 
@@ -224,7 +224,7 @@ Ao criar um projeto (rascunho, arquivo ou nuvem), o QualiLab pergunta se ele ter
 
 Quando o navegador permite instalar, a tela de entrada mostra também **Instalar o QualiLab** (no Windows com Chrome, em destaque **Instalar pelo Edge**): veja [Instalar como aplicativo](#instalar-como-aplicativo-e-abrir-sem-internet).
 
-A interface abre em português se o navegador estiver em português, e em inglês nos demais casos; troque em **Minha conta ▸ Idioma** ([seção 14](#idioma-da-interface)).
+A interface segue o primeiro idioma suportado nas preferências do navegador: português, espanhol ou inglês (inglês também é o padrão quando nenhum é suportado); troque em **Minha conta ▸ Idioma** ([seção 14](#idioma-da-interface)).
 
 Um botão violeta **"Conectar ao meu Supabase"** (na tela de entrada e no login) aponta o app para o **seu próprio servidor Supabase** antes de logar: é onde ficam os seus projetos coletivos.
 
@@ -730,7 +730,7 @@ leitura, agrupados por documento. É onde você responde "o que eu chamei de X?"
 Recursos:
 - **Trechos idênticos, um card só**: quando **mais de um pesquisador** marca o **mesmo trecho com o mesmo código**, ele aparece **uma vez**, com um **balão de nome por pesquisador** embaixo, em vez de cards repetidos. Cada balão traz um **×** para remover aquela marcação específica.
 - **Nota analítica (●)**: um balão com **●** avisa que aquele trecho tem uma nota analítica; clique no **●** para **ler a nota ali mesmo**. (A nota se escreve pelo botão direito no leitor da **Codificação**, em "Anotar trecho (nota analítica)", ou na aba Memos.)
-- **Abrir no documento**: clique no **texto do trecho** (ou no nome do documento) para abri-lo na sub-aba **Documentos**, aqui mesmo, rolando até o grifo, que pisca para você achar. Para ir à Codificação, clique no grifo e use **abrir na Codificação →**. Com a caixa **grifos** desmarcada, o documento abre no topo.
+- **Abrir no documento**: clique no **texto do trecho** (ou no nome do documento) para abri-lo na sub-aba **Documentos**, aqui mesmo, rolando até o grifo, que pisca para você achar — e o trecho inteiro recebe um **sublinhado ondulado**, que mostra onde ele começa e termina, mesmo quando outros códigos o partem por dentro. O sublinhado some junto com o piscar. Para ir à Codificação, clique no grifo e use **abrir na Codificação →**. Com a caixa **grifos** desmarcada, o documento abre no topo.
 - **Filtro por categoria**: restringe aos documentos que atendem certos atributos.
 - **Co-ocorrência com:** mostra só os trechos em que o código selecionado se sobrepõe a outro (ou a mais dois, com **e também…**).
 - **Aceitar no gabarito** *(admin, projeto coletivo)*: consolida um trecho individual direto na camada final, sem ir à Reconciliação.
@@ -942,13 +942,13 @@ Clique no **seu nome** no cabeçalho para abrir **Minha conta** (funciona **em t
 - Alterar a **senha** (só contas com e-mail; some nos modos rascunho/arquivo).
 - Ver **todos os seus projetos** num lugar só, com ações diretas: abrir, renomear (admin), sair ou excluir (admin).
 - Configurar a sua **chave/modelo de IA** (BYOK), incluindo o **Ollama local** (ver [seção 17](#17-codificar-e-analisar-com-ia)).
-- Escolher o **idioma da interface**: automático (do navegador), português ou inglês (ver abaixo).
+- Escolher o **idioma da interface**: automático (do navegador), português, inglês ou espanhol (ver abaixo).
 - **Sair da conta** (só no modo nuvem).
 
 ### Idioma da interface
 
-O QualiLab existe em **português e inglês**, e o padrão vem do **seu navegador**: navegador em
-português abre em português, qualquer outro idioma abre em inglês. Você não precisa configurar
+O QualiLab existe em **português, inglês e espanhol**, e o padrão vem do **seu navegador**:
+usa o primeiro idioma suportado da sua lista de preferências, ou inglês quando nenhum é suportado. Você não precisa configurar
 nada: o seletor em **Minha conta** serve para escolher o contrário, ou voltar ao automático. Trocar **recarrega a**
 **página**.
 

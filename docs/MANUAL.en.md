@@ -6,7 +6,7 @@
 
 **A complete usage guide, from first access to publishing your results.**
 
-<img src="https://flagcdn.com/br.svg" width="16" alt="BR"> [Versão em português](MANUAL.md)
+<img src="https://flagcdn.com/br.svg" width="16" alt="BR"> [Versão em português](MANUAL.md) · [Español](MANUAL.es.md) · [Read in the browser](manual.html?lang=en)
 
 > 🌐 **A note on language.** Since v1.4.48 the **application interface exists in English**, and it follows your browser; the picker in **My account** overrides that (see [section 14](#14-my-account)). This manual gives the original Portuguese label in quotes wherever it helps — the **screenshots still show the Portuguese interface**, so use the quotes to match the images, and the images for layout rather than for wording.
 
@@ -226,7 +226,7 @@ When you create a project (draft, file or cloud), QualiLab asks whether it will 
 
 When the browser allows installing, the entry screen also shows **Install QualiLab** ("Instalar o QualiLab") (on Windows with Chrome, **Install through Edge** ("Instalar pelo Edge") is highlighted): see [Install as an app](#install-as-an-app-and-open-without-internet).
 
-The interface opens in Portuguese if the browser is in Portuguese, and in English otherwise; switch it in **My account ▸ Language** ("Minha conta ▸ Idioma") ([section 14](#interface-language)).
+The interface follows the first supported language in your browser preferences: Portuguese, Spanish or English (also the fallback when none is supported); switch it in **My account ▸ Language** ("Minha conta ▸ Idioma") ([section 14](#interface-language)).
 
 A violet button **"Connect to my Supabase"** ("Conectar ao meu Supabase") — on the entry screen and on the login — points the app at your **own Supabase server** before logging in: that is where your collective projects will live.
 
@@ -733,7 +733,7 @@ typography, grouped by document. This is where you answer "what did I call X?".
 Features:
 - **Identical passages, a single card**: when **more than one researcher** marks the **same passage with the same code**, it appears **once**, with a **name chip per researcher** below, instead of repeated cards. Each chip carries an **×** to remove that specific marking.
 - **Analytic note (●)**: a chip with **●** signals that the passage has an analytic note; click the **●** to **read the note right there**. (The note is written by right-clicking in the **Coding** reader, under "Annotate passage (analytic note)", or on the Memos tab.)
-- **Open in the document**: click the **passage's text** (or the document's name) to open it in the **Documents** sub-tab, right here, scrolling to the highlight, which flashes so you can find it. To go to Coding, click the highlight and use **open it in Coding →**. With the **highlights** box unchecked, the document opens at the top.
+- **Open in the document**: click the **passage's text** (or the document's name) to open it in the **Documents** sub-tab, right here, scrolling to the highlight, which flashes so you can find it — and the whole passage gets a **wavy underline** showing where it starts and ends, even when other codes split it from within. The underline fades away together with the flash. To go to Coding, click the highlight and use **open it in Coding →**. With the **highlights** box unchecked, the document opens at the top.
 - **Attribute filter**: restricts to documents matching certain attributes.
 - **Co-occurrence with:** shows only the passages where the selected code overlaps another one (or two more, with **and also…**).
 - **Accept into the reference layer** *(admin, collective project)*: consolidates an individual passage straight into the final layer, without going to Reconciliation.
@@ -945,13 +945,13 @@ Click **your name** in the header to open **My account** ("Minha conta"; it work
 - Change your **password** (accounts with e-mail only; hidden in draft/file modes).
 - See **all your projects** in one place, with direct actions: open, rename (admin), leave or delete (admin).
 - Configure your **AI key/model** (BYOK), including **local Ollama** (see [section 17](#17-coding-and-analyzing-with-ai)).
-- Choose the **interface language**: automatic (from the browser), Portuguese or English (see below).
+- Choose the **interface language**: automatic (from the browser), Portuguese, English or Spanish (see below).
 - **Sign out** (cloud mode only).
 
 ### Interface language
 
-QualiLab exists in **Portuguese and English**, and the default comes from **your browser**: a
-browser set to Portuguese opens in Portuguese, any other language opens in English. You do not
+QualiLab exists in **Portuguese, English and Spanish**. It uses the first supported language in
+**your browser** preferences, or English when none is supported. You do not
 have to configure anything: the picker in **My account** is there for choosing otherwise, or going back to automatic.
 Switching **reloads the page**.
 

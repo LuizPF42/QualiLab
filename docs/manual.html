@@ -46,6 +46,7 @@ body{margin:0;font-family:var(--sans);color:var(--ink);background:var(--paper);f
 .spacer{flex:1}
 .top-link{font-size:13px;color:var(--ink-soft);text-decoration:none;padding:6px 9px;border-radius:7px;display:inline-flex;align-items:center;gap:6px}
 .top-link:hover{background:var(--line-soft);color:var(--ink)}
+#manual-lang{background:var(--surface);border:1px solid var(--line);max-width:120px}
 .iconbtn{background:none;border:1px solid var(--line);color:var(--ink-soft);width:34px;height:34px;border-radius:8px;cursor:pointer;font-size:15px;display:inline-flex;align-items:center;justify-content:center;flex:none}
 .iconbtn:hover{background:var(--line-soft);color:var(--ink)}
 .hamburger{display:none}
@@ -155,6 +156,11 @@ blockquote.callout.tip{background:var(--ok-soft);border-left-color:var(--ok)}
   .scrim.show{opacity:1;pointer-events:auto}
 }
 
+@media(max-width:480px){
+  .topbar{gap:6px;padding:0 10px}
+  .topbar>a.top-link{display:none}
+}
+
 @media print{
   .topbar,.sidebar,.scrim,.backtop{display:none!important}
   .layout{display:block}
@@ -172,6 +178,7 @@ blockquote.callout.tip{background:var(--ok-soft);border-left-color:var(--ok)}
   <a class="logo" href="#top" aria-label="QualiLab"><b>Q</b>ualiLab</a>
   <span class="tagword">Manual</span>
   <span class="spacer"></span>
+  <select id="manual-lang" class="top-link" aria-label="Idioma do manual"><option value="pt">Português</option><option value="en">English</option><option value="es">Español</option></select>
   <a class="top-link" href="https://github.com/LuizPF42/QualiLab" target="_blank" rel="noopener">GitHub</a>
   <button class="iconbtn" id="themeBtn" aria-label="Alternar tema claro/escuro">⏾</button>
 </header>
@@ -195,7 +202,103 @@ blockquote.callout.tip{background:var(--ok-soft);border-left-color:var(--ok)}
 
 <script type="module">
 const MARKED_URL = 'https://cdn.jsdelivr.net/npm/marked@12.0.2/lib/marked.esm.js';
-const MANUAL_PATH = 'MANUAL.md';
+// A shareable URL wins over the app preference, then the browser language.
+const MANUAL_LANGS = ['pt', 'en', 'es'];
+function manualLanguage(){
+  const requested = new URLSearchParams(location.search).get('lang');
+  if(MANUAL_LANGS.includes(requested)) return requested;
+  try { const saved = localStorage.getItem('qualilab:lang'); if(MANUAL_LANGS.includes(saved)) return saved; } catch(e){}
+  for(const tag of navigator.languages?.length ? navigator.languages : [navigator.language]){
+    const lang = String(tag || '').toLowerCase().split('-')[0];
+    if(MANUAL_LANGS.includes(lang)) return lang;
+  }
+  return 'en';
+}
+const MANUAL_LANG = manualLanguage();
+const MANUAL_PATH = MANUAL_LANG === 'pt' ? 'MANUAL.md' : `MANUAL.${MANUAL_LANG}.md`;
+const LABELS = {
+  "pt": {
+    "title": "Manual do QualiLab",
+    "menu": "Abrir menu",
+    "theme": "Alternar tema claro/escuro",
+    "search": "Buscar no manual...",
+    "contents": "Índice do manual",
+    "loading": "Carregando o manual...",
+    "top": "Voltar ao topo",
+    "section": "Link para esta seção",
+    "expand": "Expandir",
+    "light": "Tema claro",
+    "dark": "Tema escuro",
+    "language": "Idioma do manual",
+    "fileTitle": "Sirva a pasta para ler o manual",
+    "fileHelp": "O navegador bloqueia a leitura do Markdown em file://. Sirva a raiz do projeto e abra o endereço abaixo.",
+    "formatterTitle": "Não consegui carregar o formatador",
+    "formatterHelp": "Verifique a conexão e recarregue a página. O manual em texto está disponível no link abaixo.",
+    "loadTitle": "Não consegui abrir o manual",
+    "loadHelp": "Confirme que o arquivo está na mesma pasta desta página.",
+    "description": "Guia completo de uso do QualiLab, do primeiro acesso à publicação dos resultados."
+  },
+  "en": {
+    "title": "QualiLab Manual",
+    "menu": "Open menu",
+    "theme": "Toggle light/dark theme",
+    "search": "Search the manual...",
+    "contents": "Manual contents",
+    "loading": "Loading the manual...",
+    "top": "Back to top",
+    "section": "Link to this section",
+    "expand": "Expand",
+    "light": "Light theme",
+    "dark": "Dark theme",
+    "language": "Manual language",
+    "fileTitle": "Serve the folder to read the manual",
+    "fileHelp": "The browser blocks Markdown loading over file://. Serve the project root and open the address below.",
+    "formatterTitle": "Could not load the formatter",
+    "formatterHelp": "Check your connection and reload the page. The text manual is available at the link below.",
+    "loadTitle": "Could not open the manual",
+    "loadHelp": "Check that the file is in the same folder as this page.",
+    "description": "Complete guide to QualiLab, from first access to publishing results."
+  },
+  "es": {
+    "title": "Manual de QualiLab",
+    "menu": "Abrir menú",
+    "theme": "Alternar tema claro/oscuro",
+    "search": "Buscar en el manual...",
+    "contents": "Índice del manual",
+    "loading": "Cargando el manual...",
+    "top": "Volver arriba",
+    "section": "Enlace a esta sección",
+    "expand": "Expandir",
+    "light": "Tema claro",
+    "dark": "Tema oscuro",
+    "language": "Idioma del manual",
+    "fileTitle": "Inicia un servidor para leer el manual",
+    "fileHelp": "El navegador bloquea la lectura del Markdown mediante file://. Sirve la raíz del proyecto y abre la dirección de abajo.",
+    "formatterTitle": "No se pudo cargar el formateador",
+    "formatterHelp": "Comprueba la conexión y recarga la página. El manual en texto está disponible en el enlace de abajo.",
+    "loadTitle": "No se pudo abrir el manual",
+    "loadHelp": "Comprueba que el archivo esté en la misma carpeta que esta página.",
+    "description": "Guía completa de QualiLab, desde el primer acceso hasta la publicación de resultados."
+  }
+};
+const ui = LABELS[MANUAL_LANG];
+document.documentElement.lang = MANUAL_LANG === 'pt' ? 'pt-BR' : MANUAL_LANG;
+document.title = ui.title;
+document.querySelector('meta[name="description"]').content = ui.description;
+document.getElementById('hamburger').setAttribute('aria-label', ui.menu);
+document.getElementById('themeBtn').setAttribute('aria-label', ui.theme);
+document.getElementById('search').placeholder = ui.search;
+document.getElementById('toc-nav').setAttribute('aria-label', ui.contents);
+document.querySelector('.loading').textContent = ui.loading;
+for(const attr of ['title','aria-label']) document.getElementById('backtop').setAttribute(attr, ui.top);
+const languageSelect = document.getElementById('manual-lang');
+languageSelect.value = MANUAL_LANG;
+languageSelect.setAttribute('aria-label', ui.language);
+languageSelect.addEventListener('change', ()=>{
+  const url = new URL(location.href); url.searchParams.set('lang', languageSelect.value);
+  url.hash = ''; // Translated headings have different anchors.
+  location.href = url.href;
+});
 const GITHUB_BLOB = 'https://github.com/LuizPF42/QualiLab/blob/main/';
 
 const contentEl = document.getElementById('content');
@@ -227,14 +330,18 @@ function slug(text){
 function preprocess(md){
   md = md.replace(/<p align="center">[\s\S]*?logo\.png[\s\S]*?<\/p>\s*/i,'');
   const lines = md.split('\n');
-  const start = lines.findIndex(l => /^##\s+Índice\s*$/.test(l));
+  const start = lines.findIndex(l => /^##\s+(?:Índice|Contents|Table of contents)\s*$/i.test(l));
   if(start !== -1){
     let end = start+1;
     while(end < lines.length && !/^##\s+/.test(lines[end])) end++;
     lines.splice(start, end-start);
   }
   md = lines.join('\n');
-  md = md.replace(/\]\((README|CLAUDE)\.md\)/g, '](' + GITHUB_BLOB + '$1.md)');
+  // Keep translated manuals in this reader; repository documents belong on GitHub.
+  md = md.replace(/\]\(MANUAL(?:\.(en|es))?\.md(#[^)]*)?\)/g,
+    (_, lang, hash) => '](manual.html?lang=' + (lang || 'pt') + (hash || '') + ')');
+  md = md.replace(/\]\((?:\.\.\/)?((?:README|CLAUDE)(?:\.(?:en|es))?\.md)(#[^)]*)?\)/g,
+    (_, file, hash) => '](' + GITHUB_BLOB + file + (hash || '') + ')');
   return md;
 }
 
@@ -245,7 +352,7 @@ function enhance(){
     h.dataset.title = h.textContent.trim();
     const a = document.createElement('a');
     a.className='headerlink'; a.href='#'+h.id; a.textContent='#'; a.setAttribute('aria-hidden','true');
-    a.title='Link para esta secao';
+    a.title=ui.section;
     h.appendChild(a);
   });
   // tabelas com rolagem horizontal
@@ -286,7 +393,7 @@ function buildToc(){
     html += '<div class="toc-group" data-group="'+gid+'">';
     html += '<div class="toc-grouphead">';
     html += g.children.length
-      ? '<button class="toc-caret" data-caret="'+gid+'" aria-label="Expandir">&#9656;</button>'
+      ? '<button class="toc-caret" data-caret="'+gid+'" aria-label="'+ui.expand+'">&#9656;</button>'
       : '<span class="toc-caret empty"></span>';
     html += g.id
       ? '<a class="toc-link toc-l2" href="#'+g.id+'" data-id="'+g.id+'">'+escapeHtml(g.title)+'</a>'
@@ -366,7 +473,7 @@ document.addEventListener('click', e=>{
 
 // tema
 const themeBtn = document.getElementById('themeBtn');
-function updateThemeBtn(){ const d=document.documentElement.getAttribute('data-theme')==='dark'; themeBtn.textContent=d?'☀︎':'⏾'; themeBtn.title=d?'Tema claro':'Tema escuro'; }
+function updateThemeBtn(){ const d=document.documentElement.getAttribute('data-theme')==='dark'; themeBtn.textContent=d?'☀︎':'⏾'; themeBtn.title=d?ui.light:ui.dark; }
 themeBtn.addEventListener('click', ()=>{
   const next = document.documentElement.getAttribute('data-theme')==='dark' ? 'light' : 'dark';
   document.documentElement.setAttribute('data-theme', next);
@@ -383,23 +490,25 @@ backtop.addEventListener('click', ()=>window.scrollTo({top:0,behavior:'smooth'})
 window.addEventListener('scroll', ()=>{ backtop.classList.toggle('show', window.scrollY>620); }, {passive:true});
 
 async function main(){
+  const textLink = '<p><a href="'+GITHUB_BLOB+'docs/'+MANUAL_PATH+'">'+MANUAL_PATH+'</a></p>';
   if(location.protocol==='file:'){
-    showError('<h2>Sirva a pasta para ler o manual</h2><p>Esta pagina carrega o conteudo do arquivo <code>MANUAL.md</code>, e o navegador bloqueia essa leitura quando a pagina e aberta direto do disco (<code>file://</code>).</p><p>Rode um servidor local na raiz do projeto e abra pelo <code>http://</code>:</p><pre><code>py -m http.server 8000</code></pre><p>Depois acesse <a href="http://localhost:8000/docs/manual.html">http://localhost:8000/docs/manual.html</a>. (No GitHub Pages ja funciona direto.) Enquanto isso, o manual em texto esta em <a href="'+GITHUB_BLOB+'docs/MANUAL.md">MANUAL.md</a>.</p>');
+    const localUrl = 'http://localhost:8001/docs/manual.html?lang='+MANUAL_LANG;
+    showError('<h2>'+ui.fileTitle+'</h2><p>'+ui.fileHelp+'</p><pre><code>python -m http.server 8001</code></pre><p><a href="'+localUrl+'">'+localUrl+'</a></p>'+textLink);
     return;
   }
   let marked;
   try{ ({marked} = await import(MARKED_URL)); }
-  catch(e){ showError('<h2>Nao consegui carregar o formatador</h2><p>A pagina precisa de internet na primeira vez para baixar a biblioteca que formata o texto. Verifique a conexao e recarregue.</p><p>O manual em texto puro esta sempre em <a href="'+GITHUB_BLOB+'docs/MANUAL.md">MANUAL.md</a>.</p>'); return; }
+  catch(e){ showError('<h2>'+ui.formatterTitle+'</h2><p>'+ui.formatterHelp+'</p>'+textLink); return; }
   let md;
   try{ const r = await fetch(MANUAL_PATH, {cache:'no-cache'}); if(!r.ok) throw new Error('HTTP '+r.status); md = await r.text(); }
-  catch(e){ showError('<h2>Nao consegui abrir o MANUAL.md</h2><p>Erro: <code>'+escapeHtml(String(e.message||e))+'</code>. Confirme que <code>MANUAL.md</code> esta na mesma pasta desta pagina.</p>'); return; }
+  catch(e){ showError('<h2>'+ui.loadTitle+'</h2><p><code>'+escapeHtml(String(e.message||e))+'</code>. '+ui.loadHelp+'</p>'+textLink); return; }
 
   marked.setOptions({gfm:true, breaks:false});
   contentEl.innerHTML = marked.parse(preprocess(md));
   enhance();
   buildToc();
   wire();
-  document.title = (contentEl.querySelector('h1')?.dataset.title || 'Manual do QualiLab');
+  document.title = (contentEl.querySelector('h1')?.dataset.title || ui.title);
   if(location.hash){ const el=document.getElementById(decodeURIComponent(location.hash.slice(1))); if(el) setTimeout(()=>el.scrollIntoView(),60); }
 }
 main();

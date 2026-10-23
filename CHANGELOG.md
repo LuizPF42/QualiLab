@@ -14,6 +14,32 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.70 (23/10/2026)
+
+### O QualiLab em espanhol
+
+- **Interface em espanhol.** Um navegador configurado em espanhol abre o QualiLab em espanhol, e **Minha conta → Idioma** ganhou a opção **Español**. São as mesmas frases que já existiam em português e inglês, traduzidas para um espanhol latino-americano neutro. Os demais idiomas continuam abrindo em inglês.
+- **Manual em espanhol.** O manual de uso tem agora uma versão em espanhol, com os mesmos capítulos, imagens e links internos. O leitor do manual oferece Português, English e Español, e um link com `?lang=es` abre direto a versão em espanhol; sem idioma no link, vale a escolha feita no aplicativo ou, na falta dela, a do navegador. As capturas de tela continuam mostrando a interface em português.
+- **Mais frases traduzidas.** Avisos, contagens e custos das ferramentas de IA, que ainda saíam em português nas outras línguas, passam a acompanhar o idioma escolhido. A página também declara o idioma em que está, o que ajuda leitores de tela e a tradução automática do navegador.
+- **Explorar com IA abre no início da tela.** Numa conversa ainda vazia, a tela rolava até o fim e o aviso de primeira utilização aparecia cortado. Agora ela só rola sozinha quando já há mensagens.
+- **O que não muda com o idioma:** os pedidos que o QualiLab envia à IA continuam em português (traduzi-los muda o comportamento do modelo, e isso precisa ser medido antes); a lista de palavras ignoradas da nuvem de palavras é a do português; o que você escreve no projeto não é traduzido; e os e-mails de acesso (código de confirmação, troca de senha) seguem no idioma em que foram configurados.
+
+## 1.4.69 (18/10/2026)
+
+### O trecho que você clicou fica sublinhado enquanto o destaque dura
+
+Ao clicar num trecho na Leitura, o documento abre e o trecho pisca para você encontrá-lo. O
+piscar diz *onde olhar*, mas não diz *até onde o trecho vai*: num documento cheio de grifos, a
+passagem que trouxe você até ali se perdia entre as vizinhas assim que o piscar acabava.
+
+Agora, junto com o piscar, o trecho inteiro recebe um **sublinhado ondulado** que o delimita do
+começo ao fim, inclusive quando outros códigos aplicados por dentro dele o partem em pedaços. O
+sublinhado é cinza, nunca colorido (no leitor, a cor identifica a família do código, e uma marca
+colorida seria ambígua), e desaparece junto com o piscar.
+
+Vale nos dois caminhos: clicar no **texto do trecho** na aba Trechos e, depois de clicar num
+grifo no documento, usar **abrir na Codificação →**.
+
 ## 1.4.68 (06/10/2026)
 
 ### "Consolidar no final" só para quem pode consolidar
