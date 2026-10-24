@@ -722,6 +722,8 @@ En el [Informe Interactivo (ATI)](#121-informe-interactivo-ati), la **nota del f
 - **Conversaciones guardadas**: conversaciones de [Analizar con IA](#173-analizar-con-ia-lectura-asistida-del-material), abiertas completas al pulsarlas.
 - **Memoria del proyecto**: diario de ideas de IA, con hechos/decisiones breves usados entre sesiones; añades entradas manualmente o apruebas sugerencias y activas/desactivas cuáles usar.
 
+> **Con codificación ciega o distribución de documentos** activada (ver [Colaboración](#13-colaboración)), las **Conversaciones guardadas** y la **Memoria del proyecto** quedan **aisladas**: cada persona ve solo las suyas y las de la **referencia**, y en sus análisis entran solo esas memorias. El administrador las ve todas, para revisarlas, y en cada conversación o memoria tiene **Consolidar en la referencia**: desde entonces vale para el equipo (aparece como *del equipo (referencia)*) y entra también en los análisis de los demás; **Devolver a individual** lo deshace. Solo el administrador elimina o activa/desactiva lo que está en la referencia. Incluso para el administrador, la memoria individual de un miembro entra en los análisis solo después de consolidada. Todo esto lo impone el servidor.
+
 ### 11.1. Historial del proyecto (registro de auditoría)
 
 La última entrada, fuera de IA, es **Historial del proyecto**. Enumera los cambios de más reciente a más antiguo, con fecha y autor: importaciones y combinaciones de archivos; fusiones/divisiones de códigos; eliminaciones de documentos, códigos, categorías o contenido; edición de texto y reanclaje; aplicaciones en lote de Repetir Codificación e IA; consolidaciones; cambios de tipo/configuración; creación/restauración de instantáneas; renombrado; entradas, salidas y cambios de rol en nube; y exportaciones. Hay **filtro por operación**, **búsqueda por texto** y **Exportar CSV** de la lista completa, con descripción y detalle JSON.
@@ -846,6 +848,8 @@ Desmarcar **Edita la definición de los códigos** para ambos roles deja la defi
 
 > El **servidor** impide acceder por API a lo oculto, incluidos texto, PDF y notas de fragmentos no visibles. Bajo ciego desaparecen **Ver:** y **Reconciliación** para miembros. Los cambios de asignación requieren **recargar**. Es una función exclusiva de **nube colectiva** y **no viaja en `.qualilab`**.
 
+> Las **conversaciones y memorias de IA** siguen la misma lógica: bajo cualquiera de las dos reglas, cada miembro ve solo las suyas y las de la referencia (ver [Memos](#11-memos)).
+
 ### Enviar a la nube
 Desde un **borrador** o **archivo**, **Enviar a la nube** crea un nuevo proyecto y copia documentos, categorías, códigos, codificaciones y memos sin exportar/importar a mano. Solicita tipo de proyecto y, si es colectivo, la matriz de roles. Solo sube los **PDF originales** si marcas **Enviar también los PDFs originales**.
 
@@ -864,7 +868,7 @@ Pulsa **tu nombre** en cualquier modo para abrir **Mi cuenta**:
 - Ver **todos tus proyectos**, abrirlos, renombrarlos (admin), salir o eliminarlos (admin).
 - Configurar **clave/modelo de IA** (BYOK), incluido **Ollama local** ([17](#17-codificar-y-analizar-con-ia)).
 - Elegir **idioma**: automático, portugués, inglés o español.
-- **Salir de la cuenta**, en nube.
+- **Salir de la cuenta**, en nube. Si hay una **clave de IA guardada en este navegador**, la app pregunta si quieres **borrarla también**: la clave queda en el navegador, no en la cuenta, y en una computadora compartida quien venga después podría usarla, con el gasto en tu cuenta del proveedor. Borrar quita solo la clave; proveedor y modelo quedan, y la próxima vez basta con volver a pegarla.
 
 ### Idioma de la interfaz
 
@@ -920,6 +924,8 @@ Los menús están en el encabezado. **exportar ▾** aparece si hay documentos; 
 > En **nube colectiva**, importar requiere **admin**, porque puede crear datos compartidos y referencia. En borrador, archivo o individual puede importar cualquier usuario.
 
 > Al importar un `.qualilab` **colectivo** en **borrador/individual**, se combinan las capas: cada codificador individual conserva su codificación y nota, aunque coincidan en el mismo fragmento; la referencia solo se incorpora donde no hay codificación individual. El resumen cuenta lo **realmente guardado** y cuántas marcas se combinaron.
+
+> Si el `.qualilab` trae **memorias de IA**, la app muestra cuáles son y pregunta si quieres importarlas antes de grabar nada, porque entran en los análisis de IA como si las hubieras registrado tú. **Importar sin las memorias** trae todo lo demás, y el resumen dice cuántas quedaron fuera; **Cancelar la importación** no graba nada. La pregunta no aparece para el corpus de ejemplo, al restaurar un espejo ni al enviar tu propio proyecto a la nube.
 
 #### Importar una colección de Zotero (paso a paso)
 1. **Zotero**: clic derecho en colección → **Exportar colección…** → **Zotero RDF**, con **Exportar archivos**. Se crea una carpeta con `.rdf` y `files/`.

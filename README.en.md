@@ -139,7 +139,7 @@ One line per feature: this is the inventory. The **step by step** for each one i
 | **Layers** | each researcher codes in their own (`individual`); the team consolidates a reference layer (`final`) in Reconciliation. Also applies to attribute answers |
 | **Roles** | admin, member and read-only, **enforced by the server** (RLS), not hidden in the interface: deleting a document or code, editing shared text, merging codes and importing require admin. What a member and a read-only participant may do (comment, code, add documents, create codes, edit definitions, use AI) is decided **item by item, when the project is created**, in a matrix the server enforces; left untouched, members do everything and read-only participants read and **comment** |
 | **Document assignment** | a documents × researchers matrix, with rotation: each person only **sees** what was assigned to them |
-| **Blind coding** | each person only sees their **own** work (the reference layer disappears too). With the same document given to two people, the study becomes double-blind. When attributes are study-design metadata (platform, sampled profile), the project can declare it and **their** reference values stay visible; the codings' reference layer never does |
+| **Blind coding** | each person only sees their **own** work (the reference layer disappears too), AI conversations and memories included, until the administrator consolidates them into the reference layer. With the same document given to two people, the study becomes double-blind. When attributes are study-design metadata (platform, sampled profile), the project can declare it and **their** reference values stay visible; the codings' reference layer never does |
 | **Locked definitions** | optional: when on, only admins edit what each code means, so the instrument does not change mid-round in a calibration study. Reading stays open |
 | **Project types** | individual (everything goes straight to the reference layer) or collective |
 | **Real time** | codings and attribute answers sync live; the code scheme and attributes require a reload |
@@ -161,7 +161,7 @@ An **AI** badge in the header shows the state at all times — a **green** ring 
 | **Explore with AI** ("Explorar com IA") *(experimental)* | the AI **asks for** the material instead of receiving a pre-cut selection, through read-only tools; **each call is shown on screen**, read from the data and not from the model's narration |
 | **Visible, editable prompt** | **⚙ Configure Prompt** ("Configurar Prompt") shows what will be sent, section by section, with the active model, the token estimate and the **cost** — before sending |
 | **Blind mode** | the AI answers **without seeing** your reference layer and the panel returns an agreement score: it stops being a checker and becomes a measuring stick |
-| **Project memory** | an insights journal across sessions; the AI proposes, you approve, and each entry has a usage switch |
+| **Project memory** | an insights journal across sessions; the AI proposes, you approve, and each entry has a usage switch. Under blind coding or distribution, each person’s entries are their own until the administrator consolidates them |
 | **Providers** | Gemini, OpenAI, Anthropic, Azure OpenAI, any API in the classic OpenAI format (DeepSeek, Mistral, Qwen, vLLM) and **local Ollama** — the only one where nothing leaves your machine |
 | **Material cuts are announced** | there is a cap per document and per send; whenever something is cut, a banner says **how many documents were left out** and how many made it in only partially |
 
@@ -305,7 +305,7 @@ The **default is BYOK**: each researcher brings their own key and the **browser 
 
 With no key configured, the AI screens return a clear error; the rest of the app works normally.
 
-**Personal key (BYOK)**: under **My Account** ("Minha Conta"), each researcher can enter their own key (for any provider on the list above) and choose the model. It is saved only in their browser (never on the server) and applies to their analyses — which go **directly** from the browser to the provider. The **Azure** and **Custom** providers are pure BYOK (they never use a server key) and are the only ones that may fall back to the Edge Function, when the endpoint does not allow the browser. **Local Ollama** requires none of this server setup (see [AI: off by default, and with your own key](#ai-off-by-default-and-with-your-own-key), above).
+**Personal key (BYOK)**: under **My Account** ("Minha Conta"), each researcher can enter their own key (for any provider on the list above) and choose the model. It is saved only in their browser (never on the server), and signing out asks whether to delete it from there; it applies to their analyses — which go **directly** from the browser to the provider. The **Azure** and **Custom** providers are pure BYOK (they never use a server key) and are the only ones that may fall back to the Edge Function, when the endpoint does not allow the browser. **Local Ollama** requires none of this server setup (see [AI: off by default, and with your own key](#ai-off-by-default-and-with-your-own-key), above).
 
 ---
 

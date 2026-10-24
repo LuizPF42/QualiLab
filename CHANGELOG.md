@@ -14,6 +14,44 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.73 (24/10/2026)
+
+### Conversas e memórias de IA isoladas sob codificação cega, e duas perguntas que protegem quem divide o computador
+
+- **Conversas e memórias de IA sob codificação cega ou distribuição de documentos.** Até aqui, as
+  conversas salvas com a IA e a memória do projeto ficavam visíveis a todos os membros, mesmo com a
+  codificação cega ligada, e uma conversa pode citar trechos e dizer quem codificou o quê, que é
+  justamente o que o modo cego esconde. Agora, com codificação cega **ou** distribuição de
+  documentos, cada pessoa vê só as próprias conversas e memórias, mais as que o administrador
+  consolidar no **gabarito**; o administrador vê todas. Em cada conversa e memória, o administrador
+  tem **Consolidar no gabarito** (passa a valer para a equipe) e **Devolver ao individual**. O que
+  está no gabarito só o administrador apaga ou liga/desliga. A regra é imposta pelo servidor, e sem
+  as duas travas nada muda.
+- **O que vai para a IA de cada um.** Nesses projetos, entram nas análises de cada pessoa as
+  memórias dela e as do gabarito. Vale também para o administrador: ele vê as memórias dos membros
+  para revisar, mas só as leva às próprias análises depois de consolidá-las.
+- **O que já existe começa individual.** Num projeto cego que já tinha conversas e memórias, cada
+  uma passa a ser de quem a criou, e o administrador consolida no gabarito o que deve valer para a
+  equipe. Isso inclui as memórias que o próprio administrador criou: elas deixam de chegar às
+  análises dos membros até serem consolidadas.
+- **No Relatório**, quando quem gera não é o administrador de um projeto isolado, a declaração de
+  uso de IA passa a dizer que a contagem é a das conversas e memórias visíveis a essa pessoa.
+- **Sair da conta** com uma chave de IA guardada neste navegador agora pergunta se você quer
+  apagá-la também. A chave fica no navegador, não na conta: num computador compartilhado, quem
+  usasse o QualiLab depois poderia gastar na sua conta do provedor. Apagar tira só a chave; o
+  provedor e o modelo ficam.
+- **Importar um `.qualilab` que traz memórias de IA** agora mostra quais são e pergunta se você
+  quer importá-las, porque elas entram nas análises como se tivessem sido registradas por você.
+  "Importar sem as memórias" traz todo o resto, e o resumo diz quantas ficaram de fora. A pergunta
+  não aparece para o corpus de exemplo, ao restaurar um espelho nem ao enviar o próprio projeto
+  para a nuvem.
+
+**Do lado do servidor**, o isolamento é imposto pelo banco. O servidor padrão do QualiLab já tem essa
+atualização. **Para quem mantém a própria nuvem (Supabase):** rode de novo o `supabase/schema.sql`
+deste repositório no SQL Editor; ele foi feito para rodar por cima do que já existe. Sem isso o app
+continua funcionando, mas o isolamento não vale no servidor, e o botão de consolidar avisa que o
+banco precisa ser atualizado.
+
 ## 1.4.72 (24/10/2026)
 
 ### Correções de segurança e de integridade (auditoria de outubro)

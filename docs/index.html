@@ -949,7 +949,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.72';
+const QUALILAB_VERSION = '1.4.73';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -1204,6 +1204,8 @@ const MSG_PT = {
   'err.read.file': 'Falha ao ler {f}: {e}',
   'err.ai.adminOnly': 'O acesso à IA deste projeto é definido pelos administradores, em Projeto → Recursos de IA.',
   'err.ai.needKey': 'Para usar a IA, configure uma chave própria em "Minha conta". Sem ela nada é enviado: o material não sai do seu navegador.',
+  'err.ia.layerNoColumn': 'O banco desta nuvem ainda não tem a camada das conversas e memórias de IA. Rode de novo o supabase/schema.sql no SQL Editor do Supabase e tente outra vez.',
+  'err.ia.layerRefused': 'Não foi possível mudar: só o administrador consolida no gabarito, e só o que ele consegue ver.',
   'err.load.memos': 'Não consegui carregar os memos deste projeto ({e}). A lista na tela pode estar incompleta: não edite um memo que pareça vazio antes de recarregar.',
   'err.pdf.missing': 'Este documento não tem PDF original guardado (envie um .pdf para vê-lo aqui).',
   'err.pdf.load': 'Falha ao carregar o PDF: {e}',
@@ -1296,6 +1298,15 @@ const MSG_PT = {
   'imp.done.qualilab': 'Importado: {docs} documento(s), {cats} categoria(s), {codes} código(s), {spans} trecho(s) codificado(s), {memos} memo(s)',
   'imp.ai.chats': ', {n} conversa(s) de IA',
   'imp.ai.memories': ', {n} memória(s) de IA',
+  'imp.ai.memSkipped': ' {n} memória(s) de IA do arquivo não foram importadas, por sua escolha.',
+  'imp.aimem.title': 'Deseja importar as memórias de IA?',
+  'imp.aimem.body': 'Este arquivo traz {n} memórias de IA. Elas entram nas análises da IA deste projeto como se tivessem sido registradas por você. Confira antes de importar, sobretudo se o arquivo veio de outra pessoa.',
+  'imp.aimem.body1': 'Este arquivo traz 1 memória de IA. Ela entra nas análises da IA deste projeto como se tivesse sido registrada por você. Confira antes de importar, sobretudo se o arquivo veio de outra pessoa.',
+  'imp.aimem.list': 'Ver as memórias',
+  'imp.aimem.more': 'e mais {n}',
+  'imp.aimem.cancel': 'Cancelar a importação',
+  'imp.aimem.no': 'Importar sem as memórias',
+  'imp.aimem.yes': 'Importar com as memórias',
   'imp.done.sheet': 'Importado da planilha: {docs} documento(s), {cats} categoria(s){memo}.',
   'imp.done.zotero': 'Importado do Zotero: {docs} documento(s), {cats} categoria(s), {memos} memo(s) com a referência.',
   'imp.taguette.noAttrs': ' Sem atributos de documento ou autor por trecho: o Taguette não tem esses conceitos.',
@@ -1360,6 +1371,7 @@ const MSG_PT = {
   'ai.decl.cod': '{n} codificação(ões) de origem assistida',
   'ai.decl.offAll': ' Atualmente os recursos de IA estão desativados para todos os pesquisadores.',
   'ai.decl.offMembers': ' Atualmente os recursos de IA estão disponíveis apenas para os administradores do projeto.',
+  'ai.decl.partial': ' Com codificação cega ou distribuição de documentos, cada membro vê só as próprias conversas e memórias de IA e as do gabarito: a contagem acima é a de quem gerou este relatório.',
   'reading.openSpan': 'abrir na Codificação →',
   'q.valueDel': 'resposta removida',
   'q.value': 'resposta de categoria',
@@ -1508,6 +1520,12 @@ const MSG_PT = {
   'mem.empty': 'Nenhuma memória ainda. A IA pode sugerir após uma análise.',
   'mem.emptyAdd': 'Nenhuma memória ainda. A IA pode sugerir após uma análise, ou adicione abaixo.',
   'mem.useInAnalysis': 'usar na análise',
+  'mem.finalLocked': 'Memória do gabarito: só o administrador a liga, desliga ou exclui, na tela Memos.',
+  'mem.isolatedHint': 'Este projeto usa codificação cega ou distribuição de documentos: cada pessoa vê as próprias memórias e as do gabarito, e nas análises dela entram só essas. O administrador vê todas e consolida no gabarito o que deve valer para a equipe.',
+  'ia.layer.final': 'da equipe (gabarito)',
+  'ia.layer.toFinal': 'Consolidar no gabarito',
+  'ia.layer.toIndividual': 'Devolver ao individual',
+  'ia.layer.toFinal.tip': 'Passa a valer para a equipe: todos os membros a veem, e uma memória consolidada entra nas análises de todos.',
   'mem.manual': 'manual',
   'mem.byAi': 'IA',
   'mem.confirmDel': 'confirmar?',
@@ -1884,6 +1902,10 @@ const MSG_PT = {
   'acc.rename': 'renomear',
   'acc.leaveShort': 'sair',
   'acc.logout': 'Sair da conta',
+  'logout.key.title': 'Apagar também a chave de IA deste navegador?',
+  'logout.key.body': 'A sua chave de IA fica guardada neste navegador, não na sua conta. Num computador compartilhado, quem usar o QualiLab depois de você pode usá-la, e o gasto cai na sua conta do provedor. Apagando, na próxima vez basta colar a chave de novo em "Minha conta".',
+  'logout.key.keep': 'Sair e manter a chave',
+  'logout.key.delete': 'Sair e apagar a chave',
   'repeat.needCoded': 'Nenhum código tem trecho codificado ainda. Codifique um trecho primeiro; é dele que sai o termo a repetir.',
   'repeat.compare': 'Como comparar',
   'repeat.whole': '"Palavra inteira" vem ligada: sem ela, um termo curto casa dentro de outra palavra.',
@@ -3237,6 +3259,7 @@ const MSG_PT = {
   // -- memoria do projeto e conversas salvas --
   'conv.pickOne': 'Escolha uma conversa salva à esquerda para ver o conteúdo.',
   'conv.confirmDelete': 'confirmar exclusão?',
+  'conv.finalLocked': 'Conversa do gabarito: só o administrador a exclui.',
   'mem.added': 'Memórias adicionadas ao diário do projeto.',
   'mem.suggested': 'A IA sugeriu {n} memória(s) para o projeto',
   'mem.reviewFirst': 'Revise antes de gravar: nada entra no diário sem sua confirmação.',
@@ -3631,6 +3654,8 @@ const MSG_EN = {
   'err.read.file': 'Could not read {f}: {e}',
   'err.ai.adminOnly': 'Access to AI in this project is set by the administrators, under Project → AI features.',
   'err.ai.needKey': 'To use AI, set up your own key in "My account". Without it nothing is sent: the material does not leave your browser.',
+  'err.ia.layerNoColumn': 'This cloud’s database does not have the layer of AI conversations and memories yet. Run supabase/schema.sql again in the Supabase SQL Editor and try again.',
+  'err.ia.layerRefused': 'Could not change it: only the administrator consolidates into the reference layer, and only what they can see.',
   'err.load.memos': 'Could not load the memos of this project ({e}). The list on screen may be incomplete: do not edit a memo that looks empty before reloading.',
   'err.pdf.missing': 'This document has no original PDF stored (upload a .pdf to view it here).',
   'err.pdf.load': 'Could not load the PDF: {e}',
@@ -3724,6 +3749,15 @@ const MSG_EN = {
   'imp.done.qualilab': 'Imported: {docs} document(s), {cats} attribute(s), {codes} code(s), {spans} coded passage(s), {memos} memo(s)',
   'imp.ai.chats': ', {n} AI conversation(s)',
   'imp.ai.memories': ', {n} AI memory item(s)',
+  'imp.ai.memSkipped': ' {n} AI memory item(s) from the file were not imported, by your choice.',
+  'imp.aimem.title': 'Import the AI memories?',
+  'imp.aimem.body': 'This file carries {n} AI memories. They go into this project’s AI analyses as if you had recorded them. Check them before importing, especially if the file came from someone else.',
+  'imp.aimem.body1': 'This file carries 1 AI memory. It goes into this project’s AI analyses as if you had recorded it. Check it before importing, especially if the file came from someone else.',
+  'imp.aimem.list': 'See the memories',
+  'imp.aimem.more': 'and {n} more',
+  'imp.aimem.cancel': 'Cancel the import',
+  'imp.aimem.no': 'Import without the memories',
+  'imp.aimem.yes': 'Import with the memories',
   'imp.done.sheet': 'Imported from the spreadsheet: {docs} document(s), {cats} attribute(s){memo}.',
   'imp.done.zotero': 'Imported from Zotero: {docs} document(s), {cats} attribute(s), {memos} memo(s) with the reference.',
   'imp.taguette.noAttrs': ' No document attributes and no author per passage: Taguette does not have those concepts.',
@@ -3788,6 +3822,7 @@ const MSG_EN = {
   'ai.decl.cod': '{n} AI-assisted coding(s)',
   'ai.decl.offAll': ' The AI features are currently switched off for every researcher.',
   'ai.decl.offMembers': ' The AI features are currently available only to the project administrators.',
+  'ai.decl.partial': ' With blind coding or document distribution, each member sees only their own AI conversations and memories and the reference layer’s: the count above is that of whoever generated this report.',
   'reading.openSpan': 'open it in Coding →',
   'q.valueDel': 'answer removed',
   'q.value': 'attribute answer',
@@ -3936,6 +3971,12 @@ const MSG_EN = {
   'mem.empty': 'No memory yet. The AI can suggest one after an analysis.',
   'mem.emptyAdd': 'No memory yet. The AI can suggest one after an analysis, or add one below.',
   'mem.useInAnalysis': 'use it in the analysis',
+  'mem.finalLocked': 'Reference-layer memory: only the administrator switches it on or off or deletes it, on the Memos screen.',
+  'mem.isolatedHint': 'This project uses blind coding or document distribution: each person sees their own memories and the reference layer’s, and only those go into their analyses. The administrator sees them all and consolidates into the reference layer what should hold for the team.',
+  'ia.layer.final': 'team (reference layer)',
+  'ia.layer.toFinal': 'Consolidate into the reference layer',
+  'ia.layer.toIndividual': 'Return to individual',
+  'ia.layer.toFinal.tip': 'It becomes the team’s: every member sees it, and a consolidated memory goes into everyone’s analyses.',
   'mem.manual': 'manual',
   'mem.byAi': 'AI',
   'mem.confirmDel': 'confirm?',
@@ -4312,6 +4353,10 @@ const MSG_EN = {
   'acc.rename': 'rename',
   'acc.leaveShort': 'leave',
   'acc.logout': 'Sign out',
+  'logout.key.title': 'Also delete this browser’s AI key?',
+  'logout.key.body': 'Your AI key is stored in this browser, not in your account. On a shared computer, whoever uses QualiLab after you can use it, and the cost falls on your provider account. If you delete it, next time just paste the key again in "My account".',
+  'logout.key.keep': 'Sign out and keep the key',
+  'logout.key.delete': 'Sign out and delete the key',
   'repeat.needCoded': 'No code has a coded passage yet. Code a passage first; that is where the term to repeat comes from.',
   'repeat.compare': 'How to compare',
   'repeat.whole': '“Whole words only” comes switched on: without it, a short term matches inside another word.',
@@ -5665,6 +5710,7 @@ const MSG_EN = {
   // -- project memory and saved conversations --
   'conv.pickOne': 'Pick a saved conversation on the left to see its content.',
   'conv.confirmDelete': 'confirm deletion?',
+  'conv.finalLocked': 'Reference-layer conversation: only the administrator deletes it.',
   'mem.added': 'Memory items added to the project diary.',
   'mem.suggested': 'The AI suggested {n} memory item(s) for the project',
   'mem.reviewFirst': 'Review before saving: nothing enters the diary without your confirmation.',
@@ -6060,6 +6106,8 @@ const MSG_ES = {
   'err.read.file': 'No se pudo leer {f}: {e}',
   'err.ai.adminOnly': 'El acceso a la IA de este proyecto lo definen los administradores, en Proyecto → Recursos de IA.',
   'err.ai.needKey': 'Para usar la IA, configura una clave propia en "Mi cuenta". Sin ella no se envía nada: el material no sale de tu navegador.',
+  'err.ia.layerNoColumn': 'La base de datos de esta nube todavía no tiene la capa de las conversaciones y memorias de IA. Vuelve a ejecutar supabase/schema.sql en el SQL Editor de Supabase e inténtalo de nuevo.',
+  'err.ia.layerRefused': 'No se pudo cambiar: solo el administrador consolida en la referencia, y solo lo que puede ver.',
   'err.load.memos': 'No pude cargar los memos de este proyecto ({e}). La lista en pantalla puede estar incompleta: no edites un memo que parezca vacío antes de recargar.',
   'err.pdf.missing': 'Este documento no tiene un PDF original guardado (sube un .pdf para verlo aquí).',
   'err.pdf.load': 'No se pudo cargar el PDF: {e}',
@@ -6152,6 +6200,15 @@ const MSG_ES = {
   'imp.done.qualilab': 'Importado: {docs} documento(s), {cats} categoría(s), {codes} código(s), {spans} fragmento(s) codificado(s), {memos} memo(s)',
   'imp.ai.chats': ', {n} conversación(es) de IA',
   'imp.ai.memories': ', {n} memoria(s) de IA',
+  'imp.ai.memSkipped': ' {n} memoria(s) de IA del archivo no se importaron, por tu elección.',
+  'imp.aimem.title': '¿Deseas importar las memorias de IA?',
+  'imp.aimem.body': 'Este archivo trae {n} memorias de IA. Entran en los análisis de IA de este proyecto como si las hubieras registrado tú. Revísalas antes de importar, sobre todo si el archivo vino de otra persona.',
+  'imp.aimem.body1': 'Este archivo trae 1 memoria de IA. Entra en los análisis de IA de este proyecto como si la hubieras registrado tú. Revísala antes de importar, sobre todo si el archivo vino de otra persona.',
+  'imp.aimem.list': 'Ver las memorias',
+  'imp.aimem.more': 'y {n} más',
+  'imp.aimem.cancel': 'Cancelar la importación',
+  'imp.aimem.no': 'Importar sin las memorias',
+  'imp.aimem.yes': 'Importar con las memorias',
   'imp.done.sheet': 'Importado de la hoja de cálculo: {docs} documento(s), {cats} categoría(s){memo}.',
   'imp.done.zotero': 'Importado de Zotero: {docs} documento(s), {cats} categoría(s), {memos} memo(s) con la referencia.',
   'imp.taguette.noAttrs': ' Sin atributos de documento ni autor por fragmento: Taguette no tiene esos conceptos.',
@@ -6183,6 +6240,7 @@ const MSG_ES = {
   'ai.decl.cod': '{n} codificación(es) de origen asistido',
   'ai.decl.offAll': ' Actualmente los recursos de IA están desactivados para todos los investigadores.',
   'ai.decl.offMembers': ' Actualmente los recursos de IA están disponibles solo para los administradores del proyecto.',
+  'ai.decl.partial': ' Con codificación ciega o distribución de documentos, cada miembro ve solo sus propias conversaciones y memorias de IA y las de la referencia: el recuento de arriba es el de quien generó este informe.',
   'reading.openSpan': 'abrir en Codificación →',
   'q.valueDel': 'respuesta eliminada',
   'q.value': 'respuesta de categoría',
@@ -6331,6 +6389,12 @@ const MSG_ES = {
   'mem.empty': 'Todavía no hay memorias. La IA puede sugerirlas después de un análisis.',
   'mem.emptyAdd': 'Todavía no hay memorias. La IA puede sugerirlas después de un análisis, o agrégalas abajo.',
   'mem.useInAnalysis': 'usar en el análisis',
+  'mem.finalLocked': 'Memoria de la referencia: solo el administrador la activa, desactiva o elimina, en la pantalla Memos.',
+  'mem.isolatedHint': 'Este proyecto usa codificación ciega o distribución de documentos: cada persona ve sus propias memorias y las de la referencia, y en sus análisis entran solo esas. El administrador las ve todas y consolida en la referencia lo que debe valer para el equipo.',
+  'ia.layer.final': 'del equipo (referencia)',
+  'ia.layer.toFinal': 'Consolidar en la referencia',
+  'ia.layer.toIndividual': 'Devolver a individual',
+  'ia.layer.toFinal.tip': 'Pasa a valer para el equipo: todos los miembros la ven, y una memoria consolidada entra en los análisis de todos.',
   'mem.manual': 'manual',
   'mem.byAi': 'IA',
   'mem.confirmDel': '¿confirmar?',
@@ -6707,6 +6771,10 @@ const MSG_ES = {
   'acc.rename': 'renombrar',
   'acc.leaveShort': 'salir',
   'acc.logout': 'Cerrar sesión',
+  'logout.key.title': '¿Borrar también la clave de IA de este navegador?',
+  'logout.key.body': 'Tu clave de IA se guarda en este navegador, no en tu cuenta. En una computadora compartida, quien use QualiLab después de ti puede usarla, y el gasto recae en tu cuenta del proveedor. Si la borras, la próxima vez basta con volver a pegar la clave en "Mi cuenta".',
+  'logout.key.keep': 'Salir y conservar la clave',
+  'logout.key.delete': 'Salir y borrar la clave',
   'repeat.needCoded': 'Ningún código tiene todavía un fragmento codificado. Codifica un fragmento primero; de él sale el término que se repite.',
   'repeat.compare': 'Cómo comparar',
   'repeat.whole': '"Palabra completa" viene activada: sin ella, un término corto coincide dentro de otra palabra.',
@@ -8060,6 +8128,7 @@ const MSG_ES = {
   // -- project memory and saved conversations --
   'conv.pickOne': 'Elige una conversación guardada a la izquierda para ver su contenido.',
   'conv.confirmDelete': '¿confirmar eliminación?',
+  'conv.finalLocked': 'Conversación de la referencia: solo el administrador la elimina.',
   'mem.added': 'Memorias agregadas al diario del proyecto.',
   'mem.suggested': 'La IA sugirió {n} memoria(s) para el proyecto',
   'mem.reviewFirst': 'Revísalas antes de guardar: nada entra en el diario sin tu confirmación.',
@@ -11865,15 +11934,27 @@ function reflowOcrText(raw){
 }
 
 async function importQualilab(file, store, projectId, projectMode, onProgress, origin){
-  let parsed;
-  try{ parsed = await readQualilabFile(new Uint8Array(await file.arrayBuffer())); }
+  const parsed = await readQualilabForImport(file);
+  return mergeQualilabDb(parsed.db, store, projectId, projectMode, onProgress, parsed.pdfs, parsed.pdfIndex, origin || { file:file.name, via:'import' });
+}
+/* The READING half of importQualilab, on its own since 1.4.73: the App reads the file ONCE, asks
+   about AI memories when it carries any (aiMemoriesToAsk), and only then merges what it already read
+   -- a .qualilab with PDFs runs to tens of MB. */
+async function readQualilabForImport(file){
+  try{ return await readQualilabFile(new Uint8Array(await file.arrayBuffer())); }
   catch(e){
     const m=String(e&&e.message||e);
     // falha de REDE/CDN ao carregar a biblioteca de leitura (JSZip) NAO e arquivo invalido — nao acusar o arquivo
     if(/Failed to fetch|dynamically imported|NetworkError|Load failed/i.test(m)) throw new Error('Não consegui carregar a biblioteca de leitura do arquivo (rede/CDN). O arquivo NÃO tem problema. Verifique a conexão e tente de novo.');
     throw new Error('Arquivo .qualilab inválido ('+(e.message||'formato não reconhecido')+')');
   }
-  return mergeQualilabDb(parsed.db, store, projectId, projectMode, onProgress, parsed.pdfs, parsed.pdfIndex, origin || { file:file.name, via:'import' });
+}
+/* IMPORT ASKS ABOUT AI MEMORIES (1.4.73, author's decision): which memories of a file to ask about
+   before merging. None for our own example corpus, and none when the destination refuses AI material
+   anyway (restrict_ai 'all': the merge already refuses those rows and says why in the summary). */
+function aiMemoriesToAsk(db, { via, restrictAi } = {}){
+  if(via === 'example' || restrictAi === 'all') return [];
+  return ((db && db.ia_memory) || []).filter(e => e && String(e.content || '').trim());
 }
 /* nucleo do merge de um .qualilab (objeto ja parseado) num projeto ATIVO — extraido de
    importQualilab pra poder ser chamado tambem sem passar por arquivo (ex.: "enviar pra
@@ -12028,6 +12109,7 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
   let trechosGravados = 0, trechosColapsados = 0;   // o resumo conta o que ENTROU, nao o que o arquivo tinha (declarado AQUI: o return fica fora do try)
   let memosGravados = 0, configMantida = 0, configAplicada = 0, configNaoLida = 0, memoProjetoAnexado = false;   // same: counted in the memo loop, read by the return
   let conversas = 0, memorias = 0, conversasRepetidas = 0, memoriasRepetidas = 0;
+  let memoriasPuladas = 0;   // 1.4.73: memories the person chose NOT to import (origin.skipAiMemory)
   let activityEntries = 0, activityRepeated = 0;   // TRILHA (S4): eventos que entraram / ja registrados (dedup por id)
   // CONEXOES (item R): gravadas / ja existentes no destino / descartadas por ponta que nao resolveu
   let conexoes = 0, conexoesRepetidas = 0, conexoesDescartadas = 0;
@@ -12316,7 +12398,11 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
                   + (db.ia_memory ||[]).filter(e=>e && e.content).length;
     }
     // diário de insights da IA: preserva memórias (conteúdo/origem/modelo/autor) do arquivo
-    if(store.addMemory && !iaBloqueada){
+    // 1.4.73: a memory goes into every analysis as if the researcher had approved it, so an import
+    // asks first (the App), and "no" arrives here as skipAiMemory. Counted, so the summary says so.
+    const pulaMemorias = !!(origin && origin.skipAiMemory);
+    if(pulaMemorias && !iaBloqueada) memoriasPuladas = (db.ia_memory||[]).filter(e=>e && e.content).length;
+    if(store.addMemory && !iaBloqueada && !pulaMemorias){
       // PERF: as duas ultimas fases que ficaram 1-a-1 na conversao pra lote. Aqui era ate
       // 2 round-trips por memoria (addMemory + setMemoryActive nas desativadas); o
       // addMemoriesBulk grava `active` direto na linha, entao o segundo some.
@@ -12329,7 +12415,7 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
         linhasRecusadas += bulkFails(await store.addMemoriesBulk(projectId, memEntries));
       } else {
         for(const e of memEntries){
-          const row = await store.addMemory(projectId, { content:e.content, reason:e.reason||'', source:e.source||'ai', ai_model:e.ai_model||'', mode_label:e.mode_label||'', author_name:e.author_name });
+          const row = await store.addMemory(projectId, { content:e.content, reason:e.reason||'', source:e.source||'ai', ai_model:e.ai_model||'', mode_label:e.mode_label||'', author_name:e.author_name, layer:e.layer });
           if(row?.id && e.active===false) await store.setMemoryActive?.(row.id, false);
         }
       }
@@ -12340,7 +12426,7 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
     if(store.addIaResult && !iaBloqueada){
       const conv = dedupeByField(await readExisting(store, 'listIaResults', projectId),
         (db.ia_results||[]).filter(r=>r && r.result)
-          .map(r=>({ scope:r.scope||'docs', mode_label:r.mode_label||'', result:r.result, author_name:r.author_name, created_at:r.created_at })),
+          .map(r=>({ scope:r.scope||'docs', mode_label:r.mode_label||'', result:r.result, author_name:r.author_name, created_at:r.created_at, layer:r.layer })),
         'result');
       conversasRepetidas = conv.repetidos;
       const iaRows = conv.novos;
@@ -12522,7 +12608,7 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
     // conversas/memorias contam o que FOI GRAVADO, nao o que veio no arquivo: sao as duas unicas
     // colecoes que o "Limpar conteudo" preserva de proposito, entao numero do arquivo e numero do
     // projeto sao coisas diferentes aqui — e e justamente o caso em que a diferenca importa.
-    conversas, memorias, conversasRepetidas, memoriasRepetidas, linhasRecusadas,
+    conversas, memorias, conversasRepetidas, memoriasRepetidas, memoriasPuladas, linhasRecusadas,
     activity:activityEntries, activityRepeated,
     conexoes, conexoesRepetidas, conexoesDescartadas, discordancias
   };
@@ -13863,7 +13949,7 @@ function maskQuoteSpans(coding, codingsInDoc, maskedIds, content){
    tecnica e nao alcanca copiar-colar para outra aba — prometer mais seria falsa seguranca, que e
    pior do que nao ter o recurso. */
 const AI_DECL_TETO = t('ai.decl.cap');
-function aiUsageStatement({ restrictAi, aiEverEnabled, conversas, memorias, codificacoes } = {}){
+function aiUsageStatement({ restrictAi, aiEverEnabled, conversas, memorias, codificacoes, parcial } = {}){
   const nConv = Number(conversas) || 0, nMem = Number(memorias) || 0, nCod = Number(codificacoes) || 0;
   const houve = nConv + nMem + nCod > 0;
   /* A CONTAGEM TAMBEM E PROVA DE DISPONIBILIDADE, e sem isto a frase NEGA USO QUE HOUVE — o outro
@@ -13888,6 +13974,10 @@ function aiUsageStatement({ restrictAi, aiEverEnabled, conversas, memorias, codi
     if(nCod)  p.push(t('ai.decl.cod',{n:nCod}));
     frase = t('ai.decl.used',{what:p.join(', ')});
   }
+  // AI ISOLATION (1.4.73): a member under blind coding or distribution counts only what they SEE (their
+  // own plus the gabarito); without this sentence their report would say "no conversation" about a
+  // project that has dozens -- the false statement this block exists to prevent
+  if(parcial) frase += t('ai.decl.partial');
   // o estado ATUAL do interruptor so entra quando ele de fato restringe: dizer "estao ativados"
   // seria ruido, ja que e o padrao de quem tem a trava acesa.
   if(restrictAi === 'all')          frase += t('ai.decl.offAll');
@@ -15423,16 +15513,21 @@ function LocalStore(){
       db.link_relations=(db.link_relations||[]).filter(r=>r.id!==id); save();
     },
     async listIaResults(){ return (db.ia_results||[]).slice().reverse(); },
-    async addIaResult(pid,{scope,mode_label,result,author_name}){
+    async addIaResult(pid,{scope,mode_label,result,author_name,layer}){
       if(!db.ia_results) db.ia_results=[];
-      const r={ id:uid(), project_id:pid, scope, mode_label, result, author_name:author_name||name, created_at:new Date().toISOString() };
+      const r={ id:uid(), project_id:pid, scope, mode_label, result, author_name:author_name||name, layer:iaLayerOf(layer), created_at:new Date().toISOString() };
       db.ia_results.push(r); save(); return r;
+    },
+    // AI GABARITO (1.4.73): single user, no isolation here; the layer only has to travel intact in the file
+    async setIaLayer(table,id,layer){
+      if(table!=='ia_results' && table!=='ia_memory') throw new Error('setIaLayer: '+table);
+      const row=(db[table]||[]).find(x=>x.id===id); if(row){ row.layer=iaLayerOf(layer); save(); }
     },
     async deleteIaResult(id){ db.ia_results=(db.ia_results||[]).filter(r=>r.id!==id); save(); },
     async listMemory(){ return (db.ia_memory||[]).slice().reverse(); },
-    async addMemory(pid,{content,reason,source,ai_model,mode_label,author_name}){
+    async addMemory(pid,{content,reason,source,ai_model,mode_label,author_name,layer}){
       if(!db.ia_memory) db.ia_memory=[];
-      const r={ id:uid(), project_id:pid, content, reason:reason||'', source:source||'ai', active:true, ai_model:ai_model||'', mode_label:mode_label||'', author_name:author_name||name, created_at:new Date().toISOString() };
+      const r={ id:uid(), project_id:pid, content, reason:reason||'', source:source||'ai', active:true, ai_model:ai_model||'', mode_label:mode_label||'', author_name:author_name||name, layer:iaLayerOf(layer), created_at:new Date().toISOString() };
       db.ia_memory.push(r); save(); return r;
     },
     async setMemoryActive(id,active){ const m=(db.ia_memory||[]).find(x=>x.id===id); if(m) m.active=!!active; save(); },
@@ -15830,16 +15925,21 @@ async function createFileStore(fileHandle, isNew){
       db.link_relations=(db.link_relations||[]).filter(r=>r.id!==id); await save();
     },
     async listIaResults(){ return (db.ia_results||[]).slice().reverse(); },
-    async addIaResult(pid,{scope,mode_label,result,author_name}){
+    async addIaResult(pid,{scope,mode_label,result,author_name,layer}){
       if(!db.ia_results) db.ia_results=[];
-      const r={ id:uid(), project_id:pid, scope, mode_label, result, author_name:author_name||name, created_at:new Date().toISOString() };
+      const r={ id:uid(), project_id:pid, scope, mode_label, result, author_name:author_name||name, layer:iaLayerOf(layer), created_at:new Date().toISOString() };
       db.ia_results.push(r); await save(); return r;
+    },
+    // AI GABARITO (1.4.73): idem LocalStore — single user, the layer only travels intact in the file
+    async setIaLayer(table,id,layer){
+      if(table!=='ia_results' && table!=='ia_memory') throw new Error('setIaLayer: '+table);
+      const row=(db[table]||[]).find(x=>x.id===id); if(row){ row.layer=iaLayerOf(layer); await save(); }
     },
     async deleteIaResult(id){ db.ia_results=(db.ia_results||[]).filter(r=>r.id!==id); await save(); },
     async listMemory(){ return (db.ia_memory||[]).slice().reverse(); },
-    async addMemory(pid,{content,reason,source,ai_model,mode_label,author_name}){
+    async addMemory(pid,{content,reason,source,ai_model,mode_label,author_name,layer}){
       if(!db.ia_memory) db.ia_memory=[];
-      const r={ id:uid(), project_id:pid, content, reason:reason||'', source:source||'ai', active:true, ai_model:ai_model||'', mode_label:mode_label||'', author_name:author_name||name, created_at:new Date().toISOString() };
+      const r={ id:uid(), project_id:pid, content, reason:reason||'', source:source||'ai', active:true, ai_model:ai_model||'', mode_label:mode_label||'', author_name:author_name||name, layer:iaLayerOf(layer), created_at:new Date().toISOString() };
       db.ia_memory.push(r); await save(); return r;
     },
     async setMemoryActive(id,active){ const m=(db.ia_memory||[]).find(x=>x.id===id); if(m) m.active=!!active; await save(); },
@@ -16788,8 +16888,12 @@ function SupabaseStore(sb){
        memoria da aba ate ser salva (o IA_CONV_CACHE nao sobrevive ao F5), entao um 504 aqui
        custava a analise inteira. E o melhor caso possivel de enfileiramento: append puro, sem FK
        que possa sumir e sem ordem a preservar com mais nada. */
-    async addIaResult(pid,{scope,mode_label,result,author_name}){
+    // LAYER (1.4.73): the column may be missing in a personal cloud that has not reapplied the schema,
+    // and the default already does 'individual' -- so the field only travels when it is 'final'
+    // (store tolerant to the missing column). Same rule in the three writers below.
+    async addIaResult(pid,{scope,mode_label,result,author_name,layer}){
       const row = { id:uid(), project_id:pid, scope, mode_label, result, author_name:author_name||'anonimo', created_by:user?.id||null, created_at:new Date().toISOString() };
+      if(iaLayerOf(layer)==='final') row.layer = 'final';
       return writeQ(
         { pid, label:t('q.convSaved'),
           jobs:[{ t:'insert', table:'ia_results', payload:row }],
@@ -16805,9 +16909,21 @@ function SupabaseStore(sb){
       const rows = items.map(r=>{
         const row = { project_id:pid, scope:r.scope, mode_label:r.mode_label, result:r.result, author_name:r.author_name||'anonimo', created_by:user?.id||null };
         if(r.created_at) row.created_at = r.created_at;
+        if(iaLayerOf(r.layer)==='final') row.layer = 'final';
         return row;
       });
       return bulkWrite('ia_results', rows, { chunk:100 });
+    },
+    /* AI GABARITO (1.4.73): the admin moves a conversation or a memory into the gabarito ('final') or
+       back. NOT queued: it is a management act, and a refusal has to show now. ZERO ROWS IS NOT
+       SUCCESS -- RLS filters instead of refusing (same pattern as updateCoding). A cloud without the
+       column answers with its name, and that becomes the sentence that says what to do. */
+    async setIaLayer(table, id, layer){
+      if(table!=='ia_results' && table!=='ia_memory') throw new Error('setIaLayer: '+table);
+      let r;
+      try{ r = must(await sb.from(table).update({ layer:iaLayerOf(layer) }).eq('id',id).select('id')); }
+      catch(e){ if(/\blayer\b/.test(String(e?.message||e))) throw new Error(t('err.ia.layerNoColumn')); throw e; }
+      if(!r || !r.length) throw new Error(t('err.ia.layerRefused'));
     },
     async deleteIaResult(id){
       return writeQ(
@@ -16821,8 +16937,9 @@ function SupabaseStore(sb){
         .order('created_at',{ascending:false}).order('id'), 'memórias do projeto');
       return qSortDesc(applyQueue(rows, qEffs('ia_memory',pid), r=> r.project_id===pid));
     },
-    async addMemory(pid,{content,reason,source,ai_model,mode_label,author_name}){
+    async addMemory(pid,{content,reason,source,ai_model,mode_label,author_name,layer}){
       const row = { id:uid(), project_id:pid, content, reason:reason||'', source:source||'ai', active:true, ai_model:ai_model||'', mode_label:mode_label||'', author_name:author_name||'anonimo', created_by:user?.id||null, created_at:new Date().toISOString() };
+      if(iaLayerOf(layer)==='final') row.layer = 'final';
       return writeQ(
         { pid, label:t('q.memory'),
           jobs:[{ t:'insert', table:'ia_memory', payload:row }],
@@ -16838,6 +16955,7 @@ function SupabaseStore(sb){
       const rows = items.map(e=>{
         const row = { project_id:pid, content:e.content, reason:e.reason||'', source:e.source||'ai', active:e.active!==false, ai_model:e.ai_model||'', mode_label:e.mode_label||'', author_name:e.author_name||'anonimo', created_by:user?.id||null };
         if(e.created_at) row.created_at = e.created_at;
+        if(iaLayerOf(e.layer)==='final') row.layer = 'final';
         return row;
       });
       return bulkWrite('ia_memory', rows, { chunk:100 });
@@ -17305,7 +17423,7 @@ const UI_INITIAL = { paleta: false, atalhos: false, toast: null, aggBusy: false,
    elas ESCOLHEM entre alternativas. Um `useState` com um discriminante ja torna o estado
    invalido inexprimivel, e um reducer por cima seria cerimonia.
 
-   - `pendImport` = {tipo:'csv'|'attr'|'quotes'|'zotero', dados}. Eram estados independentes para
+   - `pendImport` = {tipo:'csv'|'attr'|'quotes'|'zotero'|'iamem', dados}. Eram estados independentes para
      cada modal de mapeamento, e nada impedia dois abertos ao mesmo tempo.
    - `menu` = 'exportar'|'importar'|'enviar'|'docs'|'doc'|null. Eram cinco booleanos, e o
      Escape tinha de zerar os cinco um a um; hoje e `setMenu(null)`. O toggle do gatilho ficou
@@ -18101,6 +18219,7 @@ function App(){
   const [viewCoder, setViewCoder] = useState('all');      // all | mine | <userId> | final
   const [userMode, setUserMode] = useState(()=>{ try{ return localStorage.getItem('qualilab:usermode')==='1'; }catch(e){ return false; } }); // FR-05: admin em "modo foco" (UI-only; RLS intacta no servidor)
   const [account, setAccount] = useState(false);  // tela "Minha conta"
+  const [logoutAsk, setLogoutAsk] = useState(false);  // 1.4.73: sign out asks whether to delete the AI key of this browser
   const [projEdit, setProjEdit] = useState(false); // editar tipo do projeto (pelo pill)
   // UM estado para os cinco dropdowns: dois abertos deixa de ser exprimivel
   const [menu, setMenu] = useState(null); // 'exportar'|'importar'|'enviar'|'docs'|'doc'|null
@@ -18116,7 +18235,7 @@ function App(){
   const quoteInputRef = useRef(null);                 // planilha que codifica TRECHOS em documentos ja existentes
   const zoteroInputRef = useRef(null);                // pasta exportada em "Zotero RDF" (webkitdirectory)
   // quatro modais de mapeamento que sao mutuamente exclusivos — ver src/app/areas.js
-  const [pendImport, setPendImport] = useState(null); // {tipo:'csv'|'attr'|'quotes'|'zotero', dados}
+  const [pendImport, setPendImport] = useState(null); // {tipo:'csv'|'attr'|'quotes'|'zotero'|'iamem', dados}
   const abrePend = (tipo, dados)=> setPendImport({ tipo, dados });
   const pendDe = (tipo)=> pendImport && pendImport.tipo===tipo ? pendImport.dados : null;
   const undoStackRef = useRef([]);
@@ -18206,6 +18325,9 @@ function App(){
           changeProjectFlags, toggleAssignment, replaceAssignments } =
     useProjFlags({ store, project, phase, isAdmin, setViewCoder, setMainView,
                    onError: setErr, reloadProject: ()=>loadProject(store, project.id) });
+  // AI ISOLATION (1.4.73): under blind coding or distribution each one's AI conversations and memories
+  // are their own, plus the gabarito the admin consolidates (the server enforces it: can_see_ia)
+  const iaIsolated = projBlind || projRestrict;
   /* REGRAS DE ACESSO POR PAPEL: `can(cap)` e a MESMA pergunta que o role_can do servidor responde
      (roleCan, em dados/regras-de-acesso.js). Aqui so gateia botao — a autoridade e a RLS. Em
      rascunho/arquivo/individual o papel e 'admin' e tudo passa. `aiHidden` soma a capacidade
@@ -18428,6 +18550,17 @@ function App(){
   }, []);
 
   /* apos autenticar (sessao existente ou login): reentra no projeto salvo ou vai pro gate */
+  /* SIGN OUT (1.4.73): ONE function for the three sign-out paths (header, and "Minha conta" in the gate
+     and in the work phase), which were three copies of the same line. With an AI key stored in this
+     browser it asks first (LogoutKeyModal); without one it signs out straight away, as before. */
+  function pedeSair(){ setAccount(false); if(hasStoredAiKey()) setLogoutAsk(true); else sair(false); }
+  async function sair(apagarChave){
+    setLogoutAsk(false); setAccount(false);
+    if(apagarChave) clearStoredAiKey();
+    try{localStorage.removeItem('qualilab:project');}catch(e){}
+    try{ await store.signOut(); }catch(e){}
+    clearSessionCaches(); setProject(null); setUser(null); setDocs([]); setActiveId(null); setPhase('welcome');
+  }
   async function afterAuth(st, display){
     setUser(st.currentUser());
     const saved = (()=>{ try{return JSON.parse(localStorage.getItem('qualilab:project')||'null');}catch(e){return null;} })();
@@ -18731,6 +18864,13 @@ function App(){
   async function toggleMemoryActive(id, active){
     await store.setMemoryActive(id, active);
     await loadMemory();
+  }
+  // the AI screens receive only the memories that may go into THIS person's prompt (memoryForPrompt)
+  const aiMemoryPrompt = useMemo(()=> memoryForPrompt(aiMemory, iaIsolated, user?.id), [aiMemory, iaIsolated, user?.id]);
+  async function setIaLayer(table, id, layer){
+    try{ await store.setIaLayer(table, id, layer); }
+    catch(e){ const raw = String(e?.message||e); setErr(humanizeError(raw)||raw); return; }
+    if(table==='ia_memory') await loadMemory(); else await loadIaResults();
   }
   async function deleteMemory(id){
     await store.deleteMemory(id);
@@ -19668,11 +19808,25 @@ function App(){
       await doImportQualilab(f);
     }catch(e){ setBusy(null); setErr(t('err.example.load',{e:e.message||e})); }
   }
+  /* IMPORT ASKS ABOUT AI MEMORIES (1.4.73): the file is read ONCE here; when it carries AI memories
+     (aiMemoriesToAsk) the import waits for the answer in ImportAiMemoryModal (pendImport 'iamem'),
+     and mergeQualilabFile then merges what was already read. */
   async function doImportQualilab(file){
+    const via = file.name==='corpus-de-exemplo.qualilab' ? 'example' : 'import';
+    setBusy(t('busy.impQualilab'));
+    let parsed;
+    try{ parsed = await readQualilabForImport(file); }
+    catch(e){ setBusy(null); setErr(t('err.import.qualilab',{e:e.message||e})); return; }
+    const memorias = aiMemoriesToAsk(parsed.db, { via, restrictAi });
+    if(memorias.length){ setBusy(null); abrePend('iamem', { file, parsed, via, memorias }); return; }
+    await mergeQualilabFile(file, parsed, via, false);
+  }
+  async function mergeQualilabFile(file, parsed, via, skipAiMemory){
+    setPendImport(null);
     setBusy(t('busy.impQualilab'));
     setProgress({done:0,total:0});
     try{
-      const r = await importQualilab(file, store, project.id, projectMode, (done,total)=>setProgress({done,total}), { file:file.name, via: file.name==='corpus-de-exemplo.qualilab' ? 'example' : 'import' });
+      const r = await mergeQualilabDb(parsed.db, store, project.id, projectMode, (done,total)=>setProgress({done,total}), parsed.pdfs, parsed.pdfIndex, { file:file.name, via, skipAiMemory });
       setProgress(null);
       const freshDocs = await store.listDocuments(project.id);
       const [cats2, codes2] = await Promise.all([store.listCategories(project.id), store.listCodes(project.id)]);
@@ -19690,7 +19844,7 @@ function App(){
         + (r.conversas ? t('imp.ai.chats',{n:r.conversas}) : '')
         + (r.memorias ? t('imp.ai.memories',{n:r.memorias}) : '')
         + (r.conexoes ? t('imp.links',{n:r.conexoes}) : '')
-        + '.' + (r.trechosColapsados ? t('imp.qualilab.collapsed',{n:r.trechosColapsados}) : '') + iaDupNotice(r) + iaOrigemNotice(r) + (r.memoProjetoAnexado ? t('imp.qualilab.projectMemoAppended') : '') + (r.configMantida ? t('imp.qualilab.configKept',{n:r.configMantida}) : '') + (r.configNaoLida ? t('imp.qualilab.configUnread',{n:r.configNaoLida}) : '') + (r.configAplicada ? t('imp.qualilab.configApplied',{n:r.configAplicada}) : '')
+        + '.' + (r.trechosColapsados ? t('imp.qualilab.collapsed',{n:r.trechosColapsados}) : '') + iaDupNotice(r) + iaOrigemNotice(r) + (r.memoriasPuladas ? t('imp.ai.memSkipped',{n:r.memoriasPuladas}) : '') + (r.memoProjetoAnexado ? t('imp.qualilab.projectMemoAppended') : '') + (r.configMantida ? t('imp.qualilab.configKept',{n:r.configMantida}) : '') + (r.configNaoLida ? t('imp.qualilab.configUnread',{n:r.configNaoLida}) : '') + (r.configAplicada ? t('imp.qualilab.configApplied',{n:r.configAplicada}) : '')
         + ((r.activity || r.activityRepeated) ? t('imp.activity',{n:r.activity||0, rep:r.activityRepeated ? t('imp.activity.rep',{n:r.activityRepeated}) : ''}) : '')
         + (r.conexoesRepetidas ? t('imp.links.rep',{n:r.conexoesRepetidas}) : '')
         + (r.conexoesDescartadas ? t('imp.links.dropped',{n:r.conexoesDescartadas}) : '')
@@ -20121,6 +20275,10 @@ function App(){
   // DEFINIDO ANTES dos returns de fase (o Auth referencia connectCustomCloud) pra evitar TDZ.
   const connectCustomCloud = (url,key)=>{ try{ localStorage.setItem('qualilab:url',url); localStorage.setItem('qualilab:key',key); localStorage.removeItem('qualilab:forcelocal'); }catch(e){ return t('err.cloud.save',{e:(e&&e.name)||'erro'}); } location.reload(); }; // #25: erro nao recarrega
   const resetCustomCloud = ()=>{ try{ localStorage.removeItem('qualilab:url'); localStorage.removeItem('qualilab:key'); localStorage.removeItem('qualilab:forcelocal'); }catch(e){} location.reload(); };
+  // ONE element for the gate and the work phases, declared BEFORE their returns: the component's name
+  // exists in one place, and both phases read this const on every render, so a typo fails at boot
+  // in the suites that already exist, not only when someone signs out from inside a project (M13)
+  const logoutModal = logoutAsk && html`<${LogoutKeyModal} onDelete=${()=>sair(true)} onKeep=${()=>sair(false)} onCancel=${()=>setLogoutAsk(false)} />`;
 
   if(phase==='boot') return html`<div class="empty"><div class="t">${t('common.loading')}</div></div>`;
 
@@ -20274,7 +20432,8 @@ function App(){
     ${account && html`<${AccountModal} user=${user} projects=${myProjects}
       onClose=${()=>setAccount(false)} onChangePassword=${changePassword} onChangeName=${changeDisplayName}
       onOpen=${acctOpenProject} onRename=${acctRenameProject} onDelete=${acctDeleteProject} onLeave=${acctLeaveProject}
-      onLogout=${async()=>{ setAccount(false); try{localStorage.removeItem('qualilab:project');}catch(e){} try{ await store.signOut(); }catch(e){} clearSessionCaches(); setProject(null); setUser(null); setDocs([]); setActiveId(null); setPhase('welcome'); }} />`}
+      onLogout=${pedeSair} />`}
+    ${logoutModal}
   </div>`;
 
   return html`
@@ -20327,7 +20486,7 @@ function App(){
           onClick=${()=>setUserMode(v=>{ const nv=!v; try{localStorage.setItem('qualilab:usermode',nv?'1':'');}catch(e){} return nv; })}
           title=${userMode?t('focus.on.tip'):t('focus.off.tip')}>${userMode?t('focus.on'):t('focus.off')}</button>`}
         ${mode==='cloud' && html`<button class="btn sm ghost" onClick=${()=>{ try{localStorage.removeItem('qualilab:project');}catch(e){} setProject(null); setPhase('gate'); }}>${t('project.switch')}</button>`}
-        ${mode==='cloud' && user && html`<button class="btn sm ghost" onClick=${async()=>{ try{localStorage.removeItem('qualilab:project');}catch(e){} try{ await store.signOut(); }catch(e){} clearSessionCaches(); setProject(null); setUser(null); setDocs([]); setActiveId(null); setPhase('welcome'); }}>${t('auth.signout')}</button>`}
+        ${mode==='cloud' && user && html`<button class="btn sm ghost" onClick=${pedeSair}>${t('auth.signout')}</button>`}
         ${project && docs.length>0 && html`<div style="position:relative">
           <button class="btn sm" onClick=${()=>alternaMenu('exportar')}>${t('export.menu')}</button>
           ${(menu==='exportar') && html`<div>
@@ -20702,9 +20861,11 @@ function App(){
           ${memoSel?.scope==='activity'
             ? html`<${ActivityPanel} activity=${activity} error=${activityError} />`
             : memoSel?.scope==='ai_memory'
-            ? html`<${MemoryPanel} memory=${aiMemory} onToggle=${toggleMemoryActive} onDelete=${deleteMemory} onAdd=${addMemory} />`
+            ? html`<${MemoryPanel} memory=${aiMemory} onToggle=${toggleMemoryActive} onDelete=${deleteMemory} onAdd=${addMemory}
+                isAdmin=${isAdmin} isolated=${iaIsolated} onLayer=${(id,l)=>setIaLayer('ia_memory',id,l)} />`
             : memoSel?.scope==='ia_results'
-            ? html`<${IAResultView} result=${(iaResults||[]).find(r=>r.id===memoSel.targetId)} onDelete=${deleteIaResult} />`
+            ? html`<${IAResultView} result=${(iaResults||[]).find(r=>r.id===memoSel.targetId)} onDelete=${deleteIaResult}
+                isAdmin=${isAdmin} isolated=${iaIsolated} onLayer=${(id,l)=>setIaLayer('ia_results',id,l)} />`
             // NAO passe o readOnly de PAPEL no MemoEditor: o viewer escreve memo por desenho (e a
             // excecao que o memo_is_note existe para abrir). O unico motivo de travar este campo
             // e a trava do VERBETE. (E o comentario fica AQUI, em JS: <!-- --> dentro da lista de
@@ -20753,7 +20914,7 @@ function App(){
         docs=${docs} cats=${cats} codes=${codes} codeById=${codeById} codePath=${codePath}
         view=${viewCoder} onView=${setViewCoder} coders=${coders} userId=${user?.id} mode=${mode}
         allCodings=${allCodings} allValues=${allValues} store=${store} memos=${memos} pdfIdx=${docPdfIdx}
-        restrictAi=${restrictAi} aiEverEnabled=${aiEverEnabled} nConversasIa=${(iaResults||[]).length} nMemoriasIa=${(aiMemory||[]).length}
+        restrictAi=${restrictAi} aiEverEnabled=${aiEverEnabled} nConversasIa=${(iaResults||[]).length} nMemoriasIa=${(aiMemory||[]).length} iaParcial=${iaIsolated && !isAdmin}
         blind=${projBlind} catsAreMetadata=${catsAreMetadata} />`
     /* S7: Analisar e Explorar levam `&& !aiLock` — o efeito do hook tira a pessoa da tela DEPOIS do
        render, e um quadro basta para um `#/ia_analisar` colado montar o painel e disparar o que ele
@@ -20767,7 +20928,7 @@ function App(){
         store=${store} allCodings=${allCodings} count=${schemaCodingCount} isAdmin=${isAdmin}
         cats=${cats} allValues=${allValues} projectMode=${projectMode} user=${user}
         reload=${reloadWrite} loadAll=${loadAll} onAdd=${addCode} memos=${memos} onSetMemo=${saveMemo}
-        memory=${aiMemory} onAddMemory=${addMemory} onToggleMemory=${toggleMemoryActive} onDeleteMemory=${deleteMemory} />
+        memory=${aiMemoryPrompt} onAddMemory=${addMemory} onToggleMemory=${toggleMemoryActive} onDeleteMemory=${deleteMemory} />
     </div>`
     : mainView==='mcp' && !aiHidden && !readOnly ? html`<div class="split">
       <!-- MCP/RAG: chat sobre o laco agentico. Sem painel de configuracao de proposito — o
@@ -20779,7 +20940,7 @@ function App(){
       <!-- ANALISAR COM IA: barra de Material no topo + duas telas (config | chat) -->
       <${IAAnalisarPanel} project=${project} docs=${docs} codes=${codes} codeById=${codeById} codePath=${codePath}
         store=${store} allCodings=${allCodings} memos=${memos} cats=${cats} allValues=${allValues}
-        memory=${aiMemory} onAddMemory=${addMemory} onToggleMemory=${toggleMemoryActive} onDeleteMemory=${deleteMemory}
+        memory=${aiMemoryPrompt} onAddMemory=${addMemory} onToggleMemory=${toggleMemoryActive} onDeleteMemory=${deleteMemory}
         onSave=${saveIaResult} onSetMemo=${saveMemo} onDeletePrompt=${removeMemo} />
     </div>`
     : html`<div class="split" style="flex-direction:column">
@@ -21034,7 +21195,8 @@ function App(){
   ${account && html`<${AccountModal} user=${user} projects=${myProjects}
     onClose=${()=>setAccount(false)} onChangePassword=${changePassword} onChangeName=${changeDisplayName}
     onOpen=${acctOpenProject} onRename=${acctRenameProject} onDelete=${acctDeleteProject} onLeave=${acctLeaveProject}
-    onLogout=${mode==='cloud' ? (async()=>{ setAccount(false); try{localStorage.removeItem('qualilab:project');}catch(e){} try{ await store.signOut(); }catch(e){} clearSessionCaches(); setProject(null); setUser(null); setDocs([]); setActiveId(null); setPhase('welcome'); }) : undefined} />`}
+    onLogout=${mode==='cloud' ? pedeSair : undefined} />`}
+  ${logoutModal}
 
   ${assignOpen && html`<${AssignModal} docs=${docs} members=${members} assignments=${assignments} allCodings=${allCodings}
     blind=${projBlind} restrict=${projRestrict} codeMemos=${restrictCodeMemos} catsMeta=${catsAreMetadata} roleCaps=${roleCaps} restrictAi=${restrictAi} onToggle=${toggleAssignment} onReplace=${replaceAssignments}
@@ -21076,6 +21238,10 @@ function App(){
   ${pendDe('quotes') && html`<${QuoteImportModal} parsed=${pendDe('quotes').parsed} fileName=${pendDe('quotes').fileName}
     docs=${docs} codes=${codes} codePath=${codePath} allCodings=${pendDe('quotes').allCodings} projectMode=${projectMode} isAdmin=${isAdmin}
     onCancel=${()=>setPendImport(null)} onConfirm=${doImportQuote} />`}
+  ${pendDe('iamem') && html`<${ImportAiMemoryModal} memorias=${pendDe('iamem').memorias}
+    onCancel=${()=>setPendImport(null)}
+    onImport=${()=>{ const d=pendDe('iamem'); mergeQualilabFile(d.file, d.parsed, d.via, false); }}
+    onSkip=${()=>{ const d=pendDe('iamem'); mergeQualilabFile(d.file, d.parsed, d.via, true); }} />`}
 
   ${ui.paleta && html`<${CommandPalette} docs=${docs} activeId=${activeId}
     gates=${{ projectMode, focusMode, blindLock, aiLock: aiHidden, readOnly }}
@@ -22569,6 +22735,23 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
     <div class="row" style="justify-content:space-between;margin-top:14px">
       ${onLogout && html`<button class="btn ghost" style="color:var(--danger)" onClick=${onLogout}>${t('acc.logout')}</button>`}
       <button class="btn" onClick=${onClose}>${t('common.close')}</button>
+    </div>
+  </div></div>`;
+}
+
+/* SIGN OUT ON A SHARED COMPUTER (1.4.73, author's decision): asked by the three sign-out paths when an
+   AI key is stored in this browser (hasStoredAiKey). Deleting is the primary button: it is the safe
+   answer on a shared machine, and the one who uses their own computer reads the question once. */
+function LogoutKeyModal({ onDelete, onKeep, onCancel }){
+  // Escape on the CONTAINER, as in ImportAiMemoryModal (a document listener from an effect only exists after paint)
+  return html`<div class="modal-bg"><div class="modal" style="max-width:480px" onKeyDown=${e=>{ if(e.key==='Escape'){ e.preventDefault(); onCancel(); } }}>
+    <h2>${t('logout.key.title')}</h2>
+    <p class="hint" style="margin:0">${t('logout.key.body')}</p>
+    <div class="row" style="gap:8px;margin-top:14px;flex-wrap:wrap">
+      <button class="btn ghost" onClick=${onCancel}>${t('common.cancel')}</button>
+      <div class="grow"></div>
+      <button class="btn" onClick=${onKeep}>${t('logout.key.keep')}</button>
+      <button class="btn primary" onClick=${onDelete}>${t('logout.key.delete')}</button>
     </div>
   </div></div>`;
 }
@@ -27804,7 +27987,7 @@ const REPORT_GROUPS = [
 ];
 
 function ReportView({ project, projectMode, docs, cats, codes, codeById, codePath, allCodings, allValues, store, view, onView, coders:projCoders, userId, mode, memos, pdfIdx,
-                      restrictAi, aiEverEnabled, nConversasIa, nMemoriasIa, activity, onLog, blind, catsAreMetadata }){
+                      restrictAi, aiEverEnabled, nConversasIa, nMemoriasIa, iaParcial, activity, onLog, blind, catsAreMetadata }){
   // §4: offset -> página no PDF original (mapa docPdfIdx carregado pelo App; null = sem índice)
   const pageOfR = (docId, off)=>{ const e=(pdfIdx||{})[docId]; return (e && e.index) ? pageOfOffset(e.index, off) : null; };
   const [enabled, setEnabled] = useState(()=>new Set(['credito','resumo','freq']));
@@ -27818,8 +28001,8 @@ function ReportView({ project, projectMode, docs, cats, codes, codeById, codePat
      e aqui a divergência seria entre o que o artefato afirma e o que o projeto tem. */
   const [incluirIa, setIncluirIa] = useState(true);
   const aiDecl = useMemo(()=> incluirIa ? aiUsageStatement({
-      restrictAi, aiEverEnabled, conversas:nConversasIa, memorias:nMemoriasIa }) : null,
-    [incluirIa, restrictAi, aiEverEnabled, nConversasIa, nMemoriasIa]);
+      restrictAi, aiEverEnabled, conversas:nConversasIa, memorias:nMemoriasIa, parcial:iaParcial }) : null,
+    [incluirIa, restrictAi, aiEverEnabled, nConversasIa, nMemoriasIa, iaParcial]);
   /* TRILHA (S4, decisao ⚑5 da spec): o bloco "Historico do processo", no MESMO molde da declaracao
      de IA — fonte unica pura (activityStatement), caixa ligada por padrao, sai nas tres saidas. E
      onde o criterio do Kuster & Wolf vira valor citavel: quem consome a trilha e quem le o
@@ -28792,6 +28975,12 @@ let AI_PRICES = null;
    navegador do proprio pesquisador (risco dele, nao proxy aberto nosso); na ai-ask ela continua
    valendo. Fica de fora tambem o orcamento de wall-clock (nao ha teto no navegador).
    =============================================================================================== */
+/* SIGN OUT ON A SHARED COMPUTER (1.4.73): the key lives in THIS BROWSER, in one slot, and not in the
+   account -- signing out leaves it to whoever uses the browser next, and the spending falls on the
+   owner's provider account. The sign-out asks when there is one (LogoutKeyModal). Only the KEY goes:
+   provider, model and endpoint stay, so next time pasting the key is enough. */
+function hasStoredAiKey(){ try{ return !!String(localStorage.getItem('qualilab:ai_key')||'').trim(); }catch(e){ return false; } }
+function clearStoredAiKey(){ try{ localStorage.removeItem('qualilab:ai_key'); }catch(e){} }
 const AI_MAX_TOKENS = 8192;                            // trava de SAIDA (mesma da ai-ask)
 const AI_TRANSIENT = new Set([429, 500, 502, 503, 504]); // erro transitorio do provedor -> reenvia
 const aiTrunc = (s, n=600) => (String(s).length > n ? String(s).slice(0, n) + '…' : String(s));
@@ -33006,10 +33195,27 @@ function IACodificacaoPanel({ onLog, project, docs, codes, codeById, codePath, s
   </section>`;
 }
 
+/* AI GABARITO (1.4.73): 'final' = consolidated by the admin into the team's gabarito; anything else
+   (absent included: rows written before the column, or by a cloud that has not reapplied the schema)
+   belongs to whoever created it. One normalization for the three stores and the screens. */
+function iaLayerOf(v){ return v === 'final' ? 'final' : 'individual'; }
+
+/* AI ISOLATION (1.4.73): under blind coding or distribution a memory goes into the prompt of whoever
+   CREATED it or, once consolidated, of everyone -- the admin included: the admin SEES the members'
+   own memories in order to review and consolidate them, but they reach the admin's analyses only
+   after that (author's decision). Off isolation, every memory, as before. The App filters the list
+   the AI screens receive with this, so what their memory panel shows is what goes to the model;
+   memoryBlock still keeps only the active ones. */
+function memoryForPrompt(memory, isolated, userId){
+  const list = memory || [];
+  if(!isolated) return list;
+  return list.filter(m => m && (iaLayerOf(m.layer) === 'final' || (userId != null && m.created_by === userId)));
+}
+
 /* ============ IAResultView — uma ÚNICA conversa salva (painel direito de Memos) ============
    Espelha o MemoEditor: cabeçalho com título + procedência, conteúdo da conversa (markdown)
    e botão de apagar. Mostrado quando se clica numa conversa na navegação. */
-function IAResultView({ result, onDelete }){
+function IAResultView({ result, onDelete, isAdmin=false, isolated=false, onLayer }){
   // apagar em dois passos (o botão vira "confirmar?"), mesmo padrão do AccountModal —
   // era destrutivo em 1 clique, sem volta
   const [confirming, setConfirming] = useState(false);
@@ -33020,15 +33226,22 @@ function IAResultView({ result, onDelete }){
   </div>`;
   const r = result;
   const scopeLabel = r.scope==='docs'?t('nav.documents'):r.scope==='codes'?t('ia.scope.codes'):t('ia.scope.docsCodes');
+  // a conversation in the gabarito belongs to the team: only the admin removes it (the server enforces)
+  const fin = iaLayerOf(r.layer)==='final';
+  const locked = fin && !isAdmin;
   return html`<div class="section" style="max-width:760px;margin:0 auto">
     <p class="h" style="margin-bottom:2px">${r.mode_label}</p>
-    <p class="hint" style="margin:0 0 12px">${scopeLabel} · ${authorLabel(r.author_name)}${r.created_at?` · ${new Date(r.created_at).toLocaleString(QL_LOCALE())}`:''}</p>
+    <p class="hint" style="margin:0 0 12px">${scopeLabel} · ${authorLabel(r.author_name)}${r.created_at?` · ${new Date(r.created_at).toLocaleString(QL_LOCALE())}`:''}${fin && html` · <strong>${t('ia.layer.final')}</strong>`}</p>
     <div class="card"><div dangerouslySetInnerHTML=${{__html: mdLite(r.result)}} /></div>
     <div class="row" style="margin-top:10px;gap:8px">
-      ${confirming
+      ${locked
+        ? html`<span class="meta">${t('conv.finalLocked')}</span>`
+        : confirming
         ? html`<button class="btn sm" style="color:var(--danger)" onClick=${()=>onDelete(r.id)}>${t('conv.confirmDelete')}</button>
                <button class="btn sm ghost" onClick=${()=>setConfirming(false)}>${t('common.cancel')}</button>`
         : html`<button class="btn sm ghost" onClick=${()=>setConfirming(true)}>${t('conv.delete')}</button>`}
+      ${isAdmin && isolated && onLayer && html`<button class="btn sm" title=${fin?'':t('ia.layer.toFinal.tip')}
+          onClick=${()=>onLayer(r.id, fin?'individual':'final')}>${fin?t('ia.layer.toIndividual'):t('ia.layer.toFinal')}</button>`}
     </div>
   </div>`;
 }
@@ -33088,12 +33301,17 @@ function MemoryProposalReview({ proposals, onCommit }){
    (controla o flag active → só as ativas entram no prompt, por economia/transparência), autoria
    (membro) e o modelo que gerou (proveniência, auditoria em coletivo). Permite apagar e adicionar
    memória manual (form opcional via showAdd). Lista em .card. */
-function MemoryPanel({ memory, onToggle, onDelete, onAdd, showAdd=true, bare=false }){
+/* AI GABARITO (1.4.73): a memory in the gabarito goes into the whole team's prompts, so its switch
+   and its delete are the admin's (the server enforces; this only avoids offering a gesture that will
+   be refused). `isAdmin` is passed only by the Memos screen: the inline panels of the AI screens
+   lock those rows for everyone and point to Memos. Consolidating needs `isolated` and `onLayer`. */
+function MemoryPanel({ memory, onToggle, onDelete, onAdd, showAdd=true, bare=false, isAdmin=false, isolated=false, onLayer }){
   const [draft, setDraft] = useState('');
   const [adding, setAdding] = useState(false);
   const [confirmDel, setConfirmDel] = useState(null); // id aguardando o 2º clique de "apagar"
   const list = memory||[];
   const activeN = list.filter(m=>m.active).length;
+  const locked = m => iaLayerOf(m.layer)==='final' && !isAdmin;
   async function addManual(){
     const content = draft.trim();
     if(!content) return;
@@ -33104,25 +33322,30 @@ function MemoryPanel({ memory, onToggle, onDelete, onAdd, showAdd=true, bare=fal
   return html`<div class=${bare?'field':'section'} style=${bare?'':'padding:14px;border-bottom:1px solid var(--line)'}>
     <p class=${bare?'field-label':'h'} style="margin-bottom:2px">${t('insp.sec.memory')}</p>
     <p class="hint" style="margin:0 0 ${list.length>0?'8px':'10px'}">${activeN===1?t('mem.activeOf',{on:activeN, n:list.length}):t('mem.activeOfN',{on:activeN, n:list.length})}</p>
+    ${isolated && html`<p class="hint" style="margin:0 0 10px">${t('mem.isolatedHint')}</p>`}
     ${list.length>0 && html`<div class="row" style="gap:6px;margin-bottom:10px">
-      <button class="btn sm ghost" onClick=${()=>list.forEach(m=>{ if(!m.active) onToggle(m.id,true); })}>${t('mem.enableAll')}</button>
-      <button class="btn sm ghost" onClick=${()=>list.forEach(m=>{ if(m.active) onToggle(m.id,false); })}>${t('mem.disableAll')}</button>
+      <button class="btn sm ghost" onClick=${()=>list.forEach(m=>{ if(!m.active && !locked(m)) onToggle(m.id,true); })}>${t('mem.enableAll')}</button>
+      <button class="btn sm ghost" onClick=${()=>list.forEach(m=>{ if(m.active && !locked(m)) onToggle(m.id,false); })}>${t('mem.disableAll')}</button>
     </div>`}
     ${list.length===0 && html`<span class="meta">${showAdd?t('mem.emptyAdd'):t('mem.empty')}</span>`}
     ${list.map(m=>html`<div key=${m.id} class="card" style="margin-bottom:8px;padding:8px 10px;${m.active?'':'opacity:.55'}">
-      <label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer">
-        <input type="checkbox" checked=${!!m.active} onChange=${e=>onToggle(m.id, e.target.checked)} title=${t('mem.useInAnalysis')} style="margin-top:3px" />
+      <label style="display:flex;gap:8px;align-items:flex-start;cursor:${locked(m)?'default':'pointer'}">
+        <input type="checkbox" checked=${!!m.active} disabled=${locked(m)} onChange=${e=>onToggle(m.id, e.target.checked)} title=${locked(m)?t('mem.finalLocked'):t('mem.useInAnalysis')} style="margin-top:3px" />
         <span class="node-name" style="flex:1;min-width:0;font-weight:500">${m.content}</span>
       </label>
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin:4px 0 0 26px">
         <span class="meta">${m.reason && html`${m.reason} · `}${authorLabel(m.author_name)}
           · ${m.source==='manual' ? t('mem.manual') : (m.ai_model || t('mem.byAi'))}
-          ${m.created_at ? ' · '+new Date(m.created_at).toLocaleDateString(QL_LOCALE()) : ''}</span>
-        ${confirmDel===m.id
-          ? html`<span style="flex:none;display:inline-flex;gap:6px">
-              <button class="btn sm" style="color:var(--danger)" onClick=${()=>{ setConfirmDel(null); onDelete(m.id); }}>${t('mem.confirmDel')}</button>
-              <button class="btn sm ghost" onClick=${()=>setConfirmDel(null)}>${t('common.cancel')}</button></span>`
-          : html`<button class="btn sm ghost" style="flex:none" onClick=${()=>setConfirmDel(m.id)}>${t('mem.delete')}</button>`}
+          ${m.created_at ? ' · '+new Date(m.created_at).toLocaleDateString(QL_LOCALE()) : ''}${iaLayerOf(m.layer)==='final' && html` · <strong>${t('ia.layer.final')}</strong>`}</span>
+        <span style="flex:none;display:inline-flex;gap:6px">
+        ${isAdmin && isolated && onLayer && html`<button class="btn sm ghost" title=${iaLayerOf(m.layer)==='final'?'':t('ia.layer.toFinal.tip')}
+            onClick=${()=>onLayer(m.id, iaLayerOf(m.layer)==='final'?'individual':'final')}>${iaLayerOf(m.layer)==='final'?t('ia.layer.toIndividual'):t('ia.layer.toFinal')}</button>`}
+        ${locked(m) ? null
+          : confirmDel===m.id
+          ? html`<button class="btn sm" style="color:var(--danger)" onClick=${()=>{ setConfirmDel(null); onDelete(m.id); }}>${t('mem.confirmDel')}</button>
+              <button class="btn sm ghost" onClick=${()=>setConfirmDel(null)}>${t('common.cancel')}</button>`
+          : html`<button class="btn sm ghost" onClick=${()=>setConfirmDel(m.id)}>${t('mem.delete')}</button>`}
+        </span>
       </div>
     </div>`)}
     ${showAdd && html`<div style="margin-top:8px">
@@ -33130,6 +33353,35 @@ function MemoryPanel({ memory, onToggle, onDelete, onAdd, showAdd=true, bare=fal
       <button class="btn sm" style="margin-top:4px" disabled=${!draft.trim()||adding} onClick=${addManual}>${t('mem.add')}</button>
     </div>`}
   </div>`;
+}
+
+/* IMPORT ASKS ABOUT AI MEMORIES (1.4.73, author's decision): a memory goes into every AI analysis as
+   "registered by the researcher", so the ones in an imported file are shown and asked about before
+   the merge (which memories: aiMemoriesToAsk). Cancel gives up the whole import; the two answers
+   import the file with or without the memories. At most IMPORT_MEM_SHOWN are listed. */
+const IMPORT_MEM_SHOWN = 50;
+function ImportAiMemoryModal({ memorias, onImport, onSkip, onCancel }){
+  const list = memorias || [];
+  // Escape on the CONTAINER, the house pattern for dialogs: a document listener registered in an
+  // effect only exists after paint, and an Escape pressed before that was lost (measured in the
+  // suite); the global focus mechanism already puts the focus inside the .modal
+  return html`<div class="modal-bg"><div class="modal" style="max-width:560px" onKeyDown=${e=>{ if(e.key==='Escape'){ e.preventDefault(); onCancel(); } }}>
+    <h2>${t('imp.aimem.title')}</h2>
+    <p class="hint" style="margin:0 0 8px">${list.length===1 ? t('imp.aimem.body1') : t('imp.aimem.body',{n:list.length})}</p>
+    <details style="margin:0 0 4px">
+      <summary class="field-label" style="font-weight:400;cursor:pointer">${t('imp.aimem.list')}</summary>
+      <ul style="margin:6px 0 0 18px;padding:0;max-height:240px;overflow:auto">
+        ${list.slice(0, IMPORT_MEM_SHOWN).map((m,i)=>html`<li key=${i} style="margin:2px 0;font-size:12.5px">${m.content}</li>`)}
+      </ul>
+      ${list.length > IMPORT_MEM_SHOWN && html`<p class="meta" style="margin:4px 0 0">${t('imp.aimem.more',{n:list.length - IMPORT_MEM_SHOWN})}</p>`}
+    </details>
+    <div class="row" style="gap:8px;margin-top:14px;flex-wrap:wrap">
+      <button class="btn ghost" onClick=${onCancel}>${t('imp.aimem.cancel')}</button>
+      <div class="grow"></div>
+      <button class="btn" onClick=${onSkip}>${t('imp.aimem.no')}</button>
+      <button class="btn primary" onClick=${onImport}>${t('imp.aimem.yes')}</button>
+    </div>
+  </div></div>`;
 }
 
 /* ===== MCP/RAG — SUPERFICIE DE LEITURA DO CORPUS (jul/2026) ==================================

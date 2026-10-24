@@ -1675,6 +1675,26 @@ revoke execute on function public.projects_ai_guard() from public, anon, authent
 drop trigger if exists trg_projects_ai_guard on public.projects;
 create trigger trg_projects_ai_guard before insert or update on public.projects
   for each row execute function public.projects_ai_guard();
+
+-- AI ISOLATION (1.4.73, author's decision): under blind coding OR document distribution, a saved AI
+-- conversation quotes excerpts and says who coded what, and a memory goes into the prompts of whoever
+-- sees it. So under either flag each member reads only their OWN conversations/memories plus the ones
+-- CONSOLIDATED into the gabarito (layer 'final'); the admin reads everything. With both flags off
+-- nothing changes: every member reads every row, as before. One call per row, in the mould of
+-- can_read_coding (the cost of RLS is the function call, not the data).
+create or replace function public.can_see_ia(p_project uuid, p_owner uuid, p_layer text)
+returns boolean language sql security definer stable set search_path = public as $$
+  select exists (
+    select 1 from public.members m join public.projects pr on pr.id = m.project_id
+    where m.project_id = p_project and m.user_id = auth.uid()
+      and (m.role = 'admin'
+           or p_layer = 'final'
+           or not (coalesce(pr.blind, false) or coalesce(pr.restrict_docs, false))
+           or p_owner = auth.uid())
+  );
+$$;
+grant execute on function public.can_see_ia(uuid, uuid, text) to anon, authenticated;
+
 -- ---------- resultados salvos da aba "Analisar com IA" ----------
 create table if not exists public.ia_results (
   id           uuid primary key default gen_random_uuid(),
@@ -1686,6 +1706,10 @@ create table if not exists public.ia_results (
   author_name  text not null default 'anonimo',
   created_at   timestamptz not null default now()
 );
+-- layer (1.4.73): 'individual' = whoever created it; 'final' = consolidated into the gabarito by the
+-- admin, read by the whole team even under isolation. Same vocabulary as codings/doc_values, and the
+-- same precedent of NO check constraint: the policies treat anything that is not 'final' as personal.
+alter table public.ia_results add column if not exists layer text not null default 'individual';
 alter table public.ia_results enable row level security;
 -- proveniencia confiavel (espelha ia_memory): insere so como si mesmo (ou null legado);
 -- edita/apaga so o autor ou admin — antes um for all deixava reescrever/apagar resultado
@@ -1695,22 +1719,30 @@ drop policy if exists ia_results_select on public.ia_results;
 drop policy if exists ia_results_insert on public.ia_results;
 drop policy if exists ia_results_update on public.ia_results;
 drop policy if exists ia_results_delete on public.ia_results;
-create policy ia_results_select on public.ia_results for select using (public.is_member(project_id));
+create policy ia_results_select on public.ia_results for select
+  using (public.can_see_ia(project_id, created_by, layer));
 -- can_use_ai (S7): conversa nao entra em projeto cujo escopo fechou a IA pra quem esta gravando.
 -- MORDE O IMPORT de proposito, e o cliente TEM de nomear o motivo no resumo: o mergeQualilabDb
 -- grava por addIaResultsBulk, entao um .qualilab com historico entrando num projeto 'all' vira
 -- linha recusada — numero sem motivo passa por bug.
+-- layer 'final' is born only from the admin (import of a file that carries it, or consolidation)
 create policy ia_results_insert on public.ia_results for insert
   with check (public.role_can(project_id, 'use_ai') and (created_by = auth.uid() or created_by is null)
-              and public.can_use_ai(project_id));
+              and public.can_use_ai(project_id)
+              and (layer = 'individual' or public.is_admin(project_id)));
 -- can_use_ai in the WITH CHECK too, as in the INSERT: without it, a project declared without AI
--- still let the author overwrite an old conversation with a new one made elsewhere (audit, Oct/2026)
+-- still let the author overwrite an old conversation with a new one made elsewhere (audit, Oct/2026).
+-- A row in the gabarito belongs to the team: only the admin changes or removes it, and only the admin
+-- moves a row in or out of it (the author's WITH CHECK keeps layer 'individual').
 create policy ia_results_update on public.ia_results for update
-  using (public.role_can(project_id, 'use_ai') and (created_by = auth.uid() or public.is_admin(project_id)))
-  with check (public.role_can(project_id, 'use_ai') and (created_by = auth.uid() or public.is_admin(project_id))
+  using (public.role_can(project_id, 'use_ai')
+         and ((created_by = auth.uid() and layer = 'individual') or public.is_admin(project_id)))
+  with check (public.role_can(project_id, 'use_ai')
+              and ((created_by = auth.uid() and layer = 'individual') or public.is_admin(project_id))
               and public.can_use_ai(project_id));
 create policy ia_results_delete on public.ia_results for delete
-  using (public.role_can(project_id, 'use_ai') and (created_by = auth.uid() or public.is_admin(project_id)));
+  using (public.role_can(project_id, 'use_ai')
+         and ((created_by = auth.uid() and layer = 'individual') or public.is_admin(project_id)));
 
 -- ---------- diario de insights da IA: memoria persistente e curada do projeto ----------
 -- Lista de memorias curtas (fatos/decisoes/insights) que a IA propoe e o pesquisador
@@ -1730,6 +1762,8 @@ create table if not exists public.ia_memory (
   author_name  text not null default 'anonimo',
   created_at   timestamptz not null default now()
 );
+-- layer (1.4.73): the same contract as ia_results above
+alter table public.ia_memory add column if not exists layer text not null default 'individual';
 alter table public.ia_memory enable row level security;
 -- proveniencia (created_by/ai_model) e AUDITORIA em coletivo — por isso o update direto
 -- e restrito ao autor/admin (antes qualquer membro podia reescrever o content de uma
@@ -1741,32 +1775,49 @@ drop policy if exists ia_memory_select on public.ia_memory;
 drop policy if exists ia_memory_insert on public.ia_memory;
 drop policy if exists ia_memory_update on public.ia_memory;
 drop policy if exists ia_memory_delete on public.ia_memory;
-create policy ia_memory_select on public.ia_memory for select using (public.is_member(project_id));
+create policy ia_memory_select on public.ia_memory for select
+  using (public.can_see_ia(project_id, created_by, layer));
 create policy ia_memory_insert on public.ia_memory for insert
   with check (public.role_can(project_id, 'use_ai') and (created_by = auth.uid() or created_by is null)
-              and public.can_use_ai(project_id));
+              and public.can_use_ai(project_id)
+              and (layer = 'individual' or public.is_admin(project_id)));
 create policy ia_memory_update on public.ia_memory for update
-  using (public.role_can(project_id, 'use_ai') and (created_by = auth.uid() or public.is_admin(project_id)))
-  with check (public.role_can(project_id, 'use_ai') and (created_by = auth.uid() or public.is_admin(project_id))
+  using (public.role_can(project_id, 'use_ai')
+         and ((created_by = auth.uid() and layer = 'individual') or public.is_admin(project_id)))
+  with check (public.role_can(project_id, 'use_ai')
+              and ((created_by = auth.uid() and layer = 'individual') or public.is_admin(project_id))
               and public.can_use_ai(project_id));
+-- collective curation stays (any member removes an INDIVIDUAL memory), but only over what the member
+-- SEES (1.4.73: under isolation that is their own), and a memory in the gabarito is the admin's
 create policy ia_memory_delete on public.ia_memory for delete
-  using (public.role_can(project_id, 'use_ai'));
+  using (public.role_can(project_id, 'use_ai') and public.can_see_ia(project_id, created_by, layer)
+         and (layer = 'individual' or public.is_admin(project_id)));
 
 -- toggle de active aberto a qualquer membro (a policy de update acima nao cobre
 -- memoria alheia de proposito); o SupabaseStore.setMemoryActive chama esta RPC.
 create or replace function public.set_memory_active(p_id uuid, p_active boolean)
 returns void language plpgsql security definer set search_path = public as $$
-declare v_pid uuid;
+declare v_pid uuid; v_owner uuid; v_layer text;
 begin
-  select project_id into v_pid from public.ia_memory where id = p_id;
+  -- the session first (1.4.73): checked after the lookup, it told anyone holding the public key
+  -- whether a memory id existed
+  if auth.uid() is null then raise exception 'E preciso estar autenticado'; end if;
+  select project_id, created_by, layer into v_pid, v_owner, v_layer from public.ia_memory where id = p_id;
   if v_pid is null then raise exception 'Memória não encontrada'; end if;
   -- o gate vai AQUI e nao so na policy: a RPC e security definer, entao sem ele ela seria a
   -- porta de fuga do viewer para o toggle de "usar na análise".
-  -- S02: `is not true` em vez de `not`, e a sessao conferida antes. Com o role_can ja total o
-  -- `not` bastaria; as duas linhas ficam porque esta e uma RPC security definer aberta a anon --
-  -- a guarda nao pode depender de o helper continuar total para sempre.
-  if auth.uid() is null then raise exception 'E preciso estar autenticado'; end if;
+  -- S02: `is not true` em vez de `not`. Com o role_can ja total o `not` bastaria; fica porque esta
+  -- e uma RPC security definer aberta a anon -- a guarda nao pode depender de o helper continuar
+  -- total para sempre.
   if public.role_can(v_pid, 'use_ai') is not true then raise exception 'Este papel não altera a memória do projeto'; end if;
+  -- ISOLATION (1.4.73): security definer, so the read policy does not reach here. Without this line a
+  -- member under blind coding toggled another member's memory (the id was enough). A memory the
+  -- caller cannot see answers exactly like one that does not exist.
+  if public.can_see_ia(v_pid, v_owner, v_layer) is not true then raise exception 'Memória não encontrada'; end if;
+  -- a memory in the gabarito goes into the whole team's prompts: only the admin switches it
+  if v_layer = 'final' and public.is_admin(v_pid) is not true then
+    raise exception 'Só o administrador liga ou desliga uma memória do gabarito';
+  end if;
   update public.ia_memory set active = p_active where id = p_id;
 end; $$;
 grant execute on function public.set_memory_active(uuid, boolean) to anon, authenticated;

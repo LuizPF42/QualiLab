@@ -142,7 +142,7 @@ Una línea por recurso: esto es el inventario. El **paso a paso** de cada uno es
 | **Capas** | cada investigador codifica en la suya (`individual`); el equipo consolida una referencia (`final`) en la Reconciliación. Vale también para las respuestas de categoría |
 | **Roles** | administrador, miembro y solo lectura, **impuestos por el servidor** (RLS), no escondidos en la interfaz: eliminar un documento o un código, editar texto compartido, fusionar códigos e importar exigen administrador. Lo que pueden hacer miembro y solo lectura (comentar, codificar, agregar documentos, crear códigos, editar la definición, usar IA) se decide **ítem por ítem, al crear el proyecto**, en una matriz que el servidor aplica; sin tocarla, el miembro hace todo y el de solo lectura lee y **comenta** |
 | **Distribución de documentos** | matriz documentos × investigadores, con rotación: cada uno solo **ve** lo que se le asignó |
-| **Codificación ciega** | cada uno solo ve su **propio** trabajo (la referencia también desaparece). Con el mismo documento para dos personas, el estudio queda doble ciego. Si las categorías son metadato del diseño (plataforma, perfil sorteado), el proyecto puede declararlo y la referencia **de ellas** queda visible; la de las codificaciones, nunca |
+| **Codificación ciega** | cada uno solo ve su **propio** trabajo (la referencia también desaparece), incluidas las conversaciones y memorias de IA, hasta que el administrador las consolida en la referencia. Con el mismo documento para dos personas, el estudio queda doble ciego. Si las categorías son metadato del diseño (plataforma, perfil sorteado), el proyecto puede declararlo y la referencia **de ellas** queda visible; la de las codificaciones, nunca |
 | **Definición bloqueada** | opcional: activada, solo la administración edita la definición de los códigos, para que el instrumento no cambie en medio de una ronda de calibración. Leerla sigue siendo libre |
 | **Tipos de proyecto** | individual (todo va directo a la referencia) o colectivo |
 | **Tiempo real** | las codificaciones y las respuestas de categoría se sincronizan en vivo; el esquema de códigos y las categorías exigen recargar |
@@ -164,7 +164,7 @@ Un sello **IA** en el encabezado muestra el estado todo el tiempo — anillo **v
 | **Explorar con IA** *(experimental)* | la IA **pide** el material en lugar de recibir un recorte listo, mediante herramientas de solo lectura; **cada llamada aparece en pantalla**, leída del dato y no de la narración del modelo |
 | **Prompt visible y editable** | **⚙ Configurar Prompt** muestra lo que se va a enviar, sección por sección, con el modelo activo, la estimación de tokens y el **costo** — antes de enviar |
 | **Modo ciego** | la IA responde **sin ver** tu referencia y el panel devuelve un marcador de concordancia: deja de ser revisora y se vuelve vara de medir |
-| **Memoria del proyecto** | diario de hallazgos entre sesiones; la IA propone, tú apruebas, y cada entrada tiene un interruptor de uso |
+| **Memoria del proyecto** | diario de hallazgos entre sesiones; la IA propone, tú apruebas, y cada entrada tiene un interruptor de uso. Con codificación ciega o distribución, las entradas de cada persona son suyas hasta que el administrador las consolida |
 | **Proveedores** | Gemini, OpenAI, Anthropic, Azure OpenAI, cualquier API en el formato clásico de OpenAI (DeepSeek, Mistral, Qwen, vLLM) y **Ollama local** — el único en el que nada sale de tu máquina |
 | **Recorte de material avisado** | hay un tope por documento y por envío; siempre que algo se recorta, una franja dice **cuántos documentos quedaron fuera** y cuántos entraron solo por el comienzo |
 
@@ -308,7 +308,7 @@ En **Authentication → Providers**:
 
 Sin ninguna clave configurada, las pantallas de IA devuelven un error claro; el resto de la aplicación funciona normalmente.
 
-**Clave personal (BYOK)**: en **Mi cuenta**, cada investigador puede indicar su propia clave (de cualquier proveedor de la lista de arriba) y elegir el modelo. Queda guardada solo en su navegador (nunca en el servidor) y pasa a valer para sus análisis — que van **directo** del navegador al proveedor. Los proveedores **Azure** y **Personalizado** son BYOK puro (nunca usan clave de servidor) y son los únicos que pueden recurrir a la Edge Function, cuando el endpoint no permite el navegador. **Ollama local** prescinde de toda esta configuración de servidor (mira [IA: apagada por defecto, y con tu clave](#ia-apagada-por-defecto-y-con-tu-clave), arriba).
+**Clave personal (BYOK)**: en **Mi cuenta**, cada investigador puede indicar su propia clave (de cualquier proveedor de la lista de arriba) y elegir el modelo. Queda guardada solo en su navegador (nunca en el servidor), y al cerrar sesión la app pregunta si quiere borrarla de ahí; vale para sus análisis — que van **directo** del navegador al proveedor. Los proveedores **Azure** y **Personalizado** son BYOK puro (nunca usan clave de servidor) y son los únicos que pueden recurrir a la Edge Function, cuando el endpoint no permite el navegador. **Ollama local** prescinde de toda esta configuración de servidor (mira [IA: apagada por defecto, y con tu clave](#ia-apagada-por-defecto-y-con-tu-clave), arriba).
 
 ---
 

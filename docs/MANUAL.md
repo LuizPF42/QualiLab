@@ -801,6 +801,8 @@ No [Relatório Interativo (ATI)](#121-relatório-interativo-ati), a **nota de tr
 - **Conversas salvas**: cada conversa do [Analisar com IA](#173-analisar-com-ia-leitura-assistida-do-material) que você guardou, aberta por inteiro ao clicar.
 - **Memória do projeto**, o **diário de insights da IA**: memórias curtas (fatos/decisões) que entram no contexto entre sessões; você adiciona à mão ou aprova as que a IA sugere, e liga/desliga quais usar.
 
+> **Com codificação cega ou distribuição de documentos** ligada (ver [Colaboração](#13-colaboração)), as **Conversas salvas** e a **Memória do projeto** ficam **isoladas**: cada pessoa vê só as próprias e as do **gabarito**, e nas análises dela entram só essas memórias. O administrador vê todas, para revisar, e em cada conversa ou memória tem **Consolidar no gabarito**: a partir daí ela vale para a equipe (aparece como *da equipe (gabarito)*) e entra também nas análises dos outros; **Devolver ao individual** desfaz. O que está no gabarito só o administrador apaga ou liga/desliga. Mesmo para o administrador, a memória individual de um membro só entra nas análises depois de consolidada. Tudo isso é imposto pelo servidor.
+
 ### 11.1. Histórico do projeto (a trilha de auditoria)
 
 A última entrada da coluna, fora das seções de IA, é o **Histórico do projeto**: a **trilha de auditoria do processo**. É uma lista de frases, da mais recente para a mais antiga, com o que **alterou** o projeto, cada uma com data e autor: importações e mesclagens de arquivo, mesclagens e divisões de código, exclusões (documento, código, categoria, limpar conteúdo), edições de texto com reancoragem dos grifos, aplicações em lote (Repetir Codificação e as telas de IA), consolidações da Reconciliação, mudanças de tipo e configuração, criação e restauração de espelhos, renomeação do projeto, entradas, saídas e mudanças de papel de membros (na nuvem) e exportações. Há um **filtro por operação** e uma **busca por texto**: digite o nome de um código para ver o que já aconteceu com ele. **Exportar CSV** baixa a lista inteira (frase legível + detalhe em JSON).
@@ -925,6 +927,8 @@ Desmarcar **Edita o verbete dos códigos** para os dois papéis **trava o verbet
 
 > As duas regras são impostas pelo **servidor**, não só escondidas na tela: o membro não alcança pela API o que está oculto (nem o texto do trecho, nem o PDF, nem a **nota analítica** escrita sobre um trecho que ele não pode ver). Para o membro em projeto cego somem o filtro **"Ver:"** e a aba **Reconciliação**. Mudanças na distribuição aparecem ao **recarregar** (não em tempo real). É recurso **só da nuvem coletiva** (depende de contas de vários pesquisadores) e **não** viaja no `.qualilab`.
 
+> As **conversas e memórias de IA** seguem a mesma lógica: sob qualquer das duas regras, cada membro vê só as suas e as do gabarito (ver [Memos](#11-memos)).
+
 ### Enviar para a nuvem
 Se o projeto ativo for **rascunho** ou **arquivo**, a pílula mostra **"Enviar para a nuvem"**: cria um projeto novo na nuvem e copia tudo (documentos, categorias, códigos, codificações, memos) de uma vez, sem exportar/importar `.qualilab` na mão. O formulário pergunta o tipo do projeto e, se for coletivo, mostra a mesma matriz de papéis. Os **PDFs originais** só sobem se você marcar **Enviar também os PDFs originais**.
 
@@ -943,7 +947,7 @@ Clique no **seu nome** no cabeçalho para abrir **Minha conta** (funciona **em t
 - Ver **todos os seus projetos** num lugar só, com ações diretas: abrir, renomear (admin), sair ou excluir (admin).
 - Configurar a sua **chave/modelo de IA** (BYOK), incluindo o **Ollama local** (ver [seção 17](#17-codificar-e-analisar-com-ia)).
 - Escolher o **idioma da interface**: automático (do navegador), português, inglês ou espanhol (ver abaixo).
-- **Sair da conta** (só no modo nuvem).
+- **Sair da conta** (só no modo nuvem). Se houver uma **chave de IA guardada neste navegador**, o app pergunta se você quer **apagá-la também**: a chave fica no navegador, não na conta, e num computador compartilhado quem usar depois poderia usá-la, com o gasto na sua conta do provedor. Apagar tira só a chave; provedor e modelo ficam, e na próxima vez basta colar a chave de novo.
 
 ### Idioma da interface
 
@@ -1015,6 +1019,8 @@ Os menus ficam no cabeçalho. **exportar ▾** aparece quando há documentos; **
 > Em projeto **coletivo na nuvem**, **importar é uma ação de administrador** (o import cria dados compartilhados e pode escrever o gabarito). Em rascunho, arquivo ou projeto individual, qualquer usuário importa.
 
 > Ao importar um `.qualilab` de projeto **coletivo** num **rascunho** ou projeto **individual**, as duas camadas se fundem numa só, e a regra é por trecho: **cada codificador da camada individual continua sendo uma codificação própria** (três pessoas marcando o mesmo trecho seguem sendo três, cada uma com a sua nota), e o gabarito só entra nos trechos que não têm nenhuma codificação individual. O resumo da importação conta o que **foi gravado** e diz quantas codificações do arquivo se fundiram por essa regra.
+
+> Se o `.qualilab` traz **memórias de IA**, o app mostra quais são e pergunta se você quer importá-las antes de gravar qualquer coisa, porque elas entram nas análises da IA como se tivessem sido registradas por você. **Importar sem as memórias** traz todo o resto, e o resumo diz quantas ficaram de fora; **Cancelar a importação** não grava nada. A pergunta não aparece para o corpus de exemplo, ao restaurar um espelho nem ao enviar o próprio projeto para a nuvem.
 
 #### Importar uma coleção do Zotero (passo a passo)
 1. **No Zotero**: botão direito na coleção → **Exportar coleção…** → formato **Zotero RDF**, com **Exportar arquivos** marcado. Ele cria uma **pasta** (um `.rdf` mais uma subpasta `files/`).

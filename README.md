@@ -133,7 +133,7 @@ Uma linha por recurso: aqui é o inventário. O **passo a passo** de cada um est
 | **Camadas** | cada pesquisador codifica na sua (`individual`); a equipe consolida um gabarito (`final`) na Reconciliação. Vale também para as respostas de categoria |
 | **Papéis** | admin, membro e somente-leitura, **impostos pelo servidor** (RLS), não escondidos na interface: excluir documento ou código, editar texto compartilhado, mesclar códigos e importar exigem admin. O que membro e somente-leitura podem fazer (comentar, codificar, adicionar documentos, criar códigos, editar o verbete, usar IA) é decidido **item a item, na criação do projeto**, numa matriz que o servidor aplica; sem mexer, membro faz tudo e somente-leitura lê e **comenta** |
 | **Distribuição de documentos** | matriz documentos × pesquisadores, com rodízio: cada um só **enxerga** o que lhe foi atribuído |
-| **Codificação cega** | cada um só enxerga o **próprio** trabalho (o gabarito também some). Com o mesmo documento para duas pessoas, o estudo fica duplo-cego. Se as categorias são metadado do desenho (plataforma, perfil sorteado), o projeto pode declará-lo e o gabarito **delas** fica visível; o das codificações, nunca |
+| **Codificação cega** | cada um só enxerga o **próprio** trabalho (o gabarito também some), inclusive as conversas e memórias de IA, até o administrador consolidá-las no gabarito. Com o mesmo documento para duas pessoas, o estudo fica duplo-cego. Se as categorias são metadado do desenho (plataforma, perfil sorteado), o projeto pode declará-lo e o gabarito **delas** fica visível; o das codificações, nunca |
 | **Verbete travado** | opcional: ligado, só a administração edita a definição dos códigos, para o instrumento não mudar no meio de uma rodada de calibração. Ler continua livre |
 | **Tipos de projeto** | individual (tudo vai direto ao gabarito) ou coletivo |
 | **Tempo real** | codificações e respostas de categoria sincronizam ao vivo; esquema de códigos e categorias exigem recarregar |
@@ -299,7 +299,7 @@ O **padrão é BYOK**: cada pesquisador traz a sua chave e o **navegador chama o
 
 Sem nenhuma chave configurada, as telas de IA retornam um erro claro; o restante do app funciona normalmente.
 
-**Chave pessoal (BYOK)**: em **Minha Conta**, cada pesquisador pode informar a própria chave (de qualquer provedor da lista acima) e escolher o modelo. Ela fica salva só no navegador dele (nunca no servidor) e passa a valer pras análises dele — que vão **direto** do navegador ao provedor. Os provedores **Azure** e **Personalizado** são BYOK puro (nunca usam chave de servidor) e são os únicos que podem recair na Edge Function, quando o endpoint não libera o navegador. O **Ollama local** dispensa toda esta configuração de servidor (veja [IA: desligada por padrão, e com a sua chave](#ia-desligada-por-padrão-e-com-a-sua-chave), acima).
+**Chave pessoal (BYOK)**: em **Minha Conta**, cada pesquisador pode informar a própria chave (de qualquer provedor da lista acima) e escolher o modelo. Ela fica salva só no navegador dele (nunca no servidor), e ao sair da conta o app pergunta se ele quer apagá-la de lá; ela vale pras análises dele — que vão **direto** do navegador ao provedor. Os provedores **Azure** e **Personalizado** são BYOK puro (nunca usam chave de servidor) e são os únicos que podem recair na Edge Function, quando o endpoint não libera o navegador. O **Ollama local** dispensa toda esta configuração de servidor (veja [IA: desligada por padrão, e com a sua chave](#ia-desligada-por-padrão-e-com-a-sua-chave), acima).
 
 ---
 

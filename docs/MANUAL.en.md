@@ -806,6 +806,8 @@ In the [Interactive Report (ATI)](#121-interactive-report-ati), the **passage no
 - **Saved conversations** ("Conversas salvas"): each [Analyze with AI](#173-analyze-with-ai-assisted-reading-of-the-material) conversation you kept, opened in full on click.
 - **Project memory** ("Memória do projeto"), the AI's **insights journal**: short memories (facts/decisions) that enter the context across sessions; you add them by hand or approve the ones the AI suggests, and toggle which ones to use.
 
+> **With blind coding or document distribution** on (see [Collaboration](#13-collaboration)), **Saved conversations** and **Project memory** are **isolated**: each person sees only their own and the **reference layer**’s, and only those memories go into their analyses. The administrator sees them all, to review them, and on each conversation or memory has **Consolidate into the reference layer**: from then on it holds for the team (it shows as *team (reference layer)*) and also goes into the others’ analyses; **Return to individual** undoes it. Only the administrator deletes or switches on/off what is in the reference layer. Even for the administrator, a member’s individual memory goes into analyses only once consolidated. All of this is enforced by the server.
+
 ### 11.1. Project history (the audit trail)
 
 The last entry in the column, outside the AI sections, is the **Project history** ("Histórico do projeto"): the **audit trail of the process**. It is a list of sentences, newest first, with what **changed** the project, each with date and author: file imports and merges, code merges and splits, deletions (document, code, attribute, clear content), text edits with highlight re-anchoring, bulk applications (Repeat Coding and the AI screens), Reconciliation consolidations, changes of project type and settings, creating and restoring mirrors, renaming the project, members joining, leaving and changing role (in the cloud) and exports. There is a **filter by operation** and a **text search**: type a code's name to see what has already happened to it. **Export CSV** downloads the whole list (readable sentence + detail as JSON).
@@ -930,6 +932,8 @@ Unticking **Edits code definitions** for both roles **locks the definitions**: o
 
 > Both rules are enforced by the **server**, not merely hidden on screen: the member cannot reach through the API what is hidden (not the passage's text, not the PDF, not the **analytic note** written on a passage they cannot see). For a member in a blind project, the **"Ver:"** filter and the **Reconciliation** tab disappear. Assignment changes show up on **reload** (not in real time). It is a **collective-cloud-only** feature (it depends on multiple researcher accounts) and does **not** travel in the `.qualilab`.
 
+> **AI conversations and memories** follow the same logic: under either rule, each member sees only their own and the reference layer’s (see [Memos](#11-memos)).
+
 ### Send to the cloud
 If the active project is a **draft** or a **file**, the pill shows **"Send to the cloud"** ("Enviar para a nuvem"): it creates a new cloud project and copies everything (documents, attributes, codes, codings, memos) at once, with no manual `.qualilab` export/import. The form asks for the project type and, if it is collective, shows the same role matrix. The **original PDFs** are only uploaded if you tick **Also upload the original PDFs**.
 
@@ -948,7 +952,7 @@ Click **your name** in the header to open **My account** ("Minha conta"; it work
 - See **all your projects** in one place, with direct actions: open, rename (admin), leave or delete (admin).
 - Configure your **AI key/model** (BYOK), including **local Ollama** (see [section 17](#17-coding-and-analyzing-with-ai)).
 - Choose the **interface language**: automatic (from the browser), Portuguese, English or Spanish (see below).
-- **Sign out** (cloud mode only).
+- **Sign out** (cloud mode only). If an **AI key is stored in this browser**, the app asks whether to **delete it too**: the key lives in the browser, not in the account, and on a shared computer whoever comes next could use it, with the cost on your provider account. Deleting removes only the key; provider and model stay, so next time pasting the key again is enough.
 
 ### Interface language
 
@@ -1019,6 +1023,8 @@ The menus sit in the header. **export ▾** ("exportar ▾") appears when there 
 > In a **collective cloud** project, **importing is an administrator action** (an import creates shared data and can write the reference layer). In a draft, a file or an individual project, any user imports.
 
 > When importing a `.qualilab` from a **collective** project into a **draft** or an **individual** project, the two layers merge into one, and the rule is per passage: **each coder of the individual layer remains a coding of their own** (three people marking the same passage are still three, each with their own note), and the reference layer only enters passages that have no individual coding at all. The import summary counts what **was saved** and says how many codings from the file merged under that rule.
+
+> If the `.qualilab` carries **AI memories**, the app shows them and asks whether to import them before writing anything, because they go into the AI analyses as if you had recorded them. **Import without the memories** brings everything else, and the summary says how many stayed out; **Cancel the import** writes nothing. The question does not appear for the example corpus, when restoring a mirror, nor when sending your own project to the cloud.
 
 #### Importing a Zotero collection (step by step)
 1. **In Zotero**: right-click the collection → **Export collection…** → format **Zotero RDF**, with **Export files** checked. It creates a **folder** (an `.rdf` plus a `files/` subfolder).
