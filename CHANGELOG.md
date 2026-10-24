@@ -14,6 +14,65 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.72 (24/10/2026)
+
+### Correções de segurança e de integridade (auditoria de outubro)
+
+Uma auditoria do código inteiro, com cada achado conferido no código e, onde dava, reproduzido.
+O que muda para quem usa:
+
+- **Leitor interativo (ATI) exportado.** Um `.qualilab` recebido de outra pessoa podia trazer, no
+  índice de páginas do PDF, um texto que virava código ativo na página exportada — inclusive se
+  ela fosse hospedada junto do app. Agora o número de página só é aceito como número, e o painel o
+  mostra como texto. Um esquema de códigos com hierarquia circular (que só chega por arquivo)
+  também travava a geração do leitor; não trava mais.
+- **IA sem chave configurada.** Quem clicava em analisar sem ter configurado uma chave em "Minha
+  conta" tinha o material enviado ao servidor de quem mantém o app antes de receber a recusa —
+  inclusive no rascunho, que promete não sair da máquina. Agora a recusa vem antes de qualquer
+  envio, com a frase que diz onde configurar a chave.
+- **Censura e IA.** A definição de um código de censura e a nota escrita sobre um trecho censurado
+  podiam ser marcadas em "outros memos" e iam inteiras ao modelo, ao lado de um material em que o
+  mesmo trecho estava mascarado. Agora ficam de fora da lista, e a tela diz quantas. A **nuvem de
+  palavras** também passou a mascarar o texto censurado quando "ignorar censura" está ligado:
+  antes a palavra sob a máscara podia aparecer na nuvem, que é exportável.
+- **Importar um `.qualilab` num projeto que já existe** substituía, sem aviso, o memo do projeto e
+  a configuração de IA (instruções, postura, memo para a IA, palavras ignoradas) pelos do arquivo.
+  Agora o memo do projeto que vem no arquivo é acrescentado ao final do seu, a configuração do seu
+  projeto é mantida, e o resumo da importação diz o que aconteceu. O resumo também passou a contar
+  os memos que de fato foram gravados, e não os que vinham no arquivo.
+- **Exportar QDPX, W3C ou o leitor ATI** com falha ao ler os memos produzia o arquivo sem nenhum
+  verbete de código e sem nenhuma nota analítica, sem aviso. Agora a exportação para e diz que
+  falhou. Do mesmo jeito, uma falha ao carregar os memos deixava a tela mostrando o projeto como se
+  não tivesse memo nenhum — e um memo que parecia vazio podia ser sobrescrito ao digitar. Agora
+  aparece um aviso e a lista que estava na tela fica.
+- **Mesclar códigos num código que fica dentro de um dos mesclados.** Mesclar uma família no
+  próprio filho fazia o filho virar pai de si mesmo: no Esquema (pela árvore ou pelo Mapa) a
+  família era excluída e os filhos sumiam da árvore; no Organizar Códigos (IA) a aba travava no
+  rascunho. Agora essa fusão é recusada nos dois lugares, com a frase que diz por quê.
+- **Excluir o projeto do rascunho** deixava os espelhos (retratos completos do projeto) no
+  navegador, e eles reapareciam como pontos de restauração no projeto seguinte. Agora saem junto.
+- **Cancelar a troca de senha** depois de abrir o link de "esqueci minha senha" deixava a conta
+  conectada atrás da tela de login: bastava recarregar a página para entrar nela. Agora cancelar
+  desconecta.
+- **Computador compartilhado.** Ao entrar com outra conta no mesmo navegador, o app podia reabrir
+  sozinho o último projeto da conta anterior — e, com isso, inscrever a conta nova como membro
+  dele. Agora só reabre um projeto que a própria conta já abriu. Sair da conta também apaga a
+  conversa de IA que ficava guardada na memória da aba.
+- **Enviar o PDF original para a nuvem.** Se a marcação "tem PDF" falhasse ao gravar, o original
+  ficava no servidor e sumia do app sem aviso. Agora o envio acusa a falha.
+- **Definir Categoria (IA)** agora avisa na tela quando um documento é longo demais e entra cortado
+  na leitura do modelo, como as outras telas de IA já avisavam.
+- **`.qdpx` exportado de um projeto aberto de terceiro.** Identificadores com aspas ou barras podiam
+  corromper o XML ou criar caminhos estranhos dentro do zip. Agora só passam os caracteres de um
+  identificador.
+
+**Do lado do servidor**, três pontos foram fechados: entrar num projeto sem estar conectado deixa
+de revelar se um código existe; conversas e memórias de IA não podem mais ser movidas de um
+projeto para outro; e, num projeto que declarou não usar IA, uma conversa antiga não pode ser
+reescrita. O servidor padrão do QualiLab já tem essas correções. **Para quem mantém a própria
+nuvem (Supabase):** rode de novo o `supabase/schema.sql` deste repositório no SQL Editor; ele foi
+feito para rodar por cima do que já existe. O app funciona com ou sem essa atualização.
+
 ## 1.4.71 (23/10/2026)
 
 ### Aviso de que a interface em inglês e espanhol foi traduzida com IA

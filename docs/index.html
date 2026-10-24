@@ -949,7 +949,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.71';
+const QUALILAB_VERSION = '1.4.72';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
@@ -1000,7 +1000,8 @@ async function aiAuthToken(){
    O QUE ISTO E, E O QUE NAO E. Isto traduz EXIBICAO. Nada aqui toca valor gravado, nome de
    coluna, token de intercambio ou nome de ferramenta MCP — o glossario (to-do/glossario-en.md)
    e a regra de ouro do IDIOMA no CLAUDE.md decidem isso, e onde rotulo e valor sao hoje a MESMA
-   string a separacao vem ANTES (fatia 1, ver base/rotulos-de-valor.js).
+   string a separacao vem ANTES (fatia 1, ver catValueLabel/catKindLabel em base/tipos-de-categoria.js
+   e authorLabel em base/contagens-e-agrupamento.js).
 
    POR QUE UM CATALOGO E NAO UMA BIBLIOTECA. Nao ha bundler, e o app e um arquivo unico que roda
    ate em file:// — qualquer i18n de prateleira chegaria por CDN, ou seja, uma dependencia de
@@ -1202,6 +1203,8 @@ const MSG_PT = {
   'err.unexpected': 'Algo falhou de forma inesperada: {e}',
   'err.read.file': 'Falha ao ler {f}: {e}',
   'err.ai.adminOnly': 'O acesso à IA deste projeto é definido pelos administradores, em Projeto → Recursos de IA.',
+  'err.ai.needKey': 'Para usar a IA, configure uma chave própria em "Minha conta". Sem ela nada é enviado: o material não sai do seu navegador.',
+  'err.load.memos': 'Não consegui carregar os memos deste projeto ({e}). A lista na tela pode estar incompleta: não edite um memo que pareça vazio antes de recarregar.',
   'err.pdf.missing': 'Este documento não tem PDF original guardado (envie um .pdf para vê-lo aqui).',
   'err.pdf.load': 'Falha ao carregar o PDF: {e}',
   'err.pdf.notFound': 'Não localizei esse trecho no texto extraído (seleção muito curta, ou página escaneada sem OCR).',
@@ -2097,6 +2100,7 @@ const MSG_PT = {
   'iap.memoAi.empty': ' (vazio: escreva na aba Memos)',
   'iap.otherMemos': 'outros memos ({n})',
   'iap.noOtherMemos': 'Nenhum outro memo com conteúdo.',
+  'iap.redactedMemosOut': '{n} memo(s) sobre censura ficam de fora: a definição de um código de censura e a nota escrita sobre um trecho censurado não vão ao modelo.',
   'iap.inspector.hint': 'Ajuste os controles; a prévia mostra exatamente o que a IA recebe.',
   'iap.docs': 'Documentos',
   'iap.all': 'todos',
@@ -3426,6 +3430,10 @@ const MSG_PT = {
   'qdpx.loss.trail': 'O histórico do projeto ({n} evento(s)) fica de fora: o REFI-QDA não tem onde guardá-lo. Ele viaja só no .qualilab.',
   'imp.activity': ' Histórico: {n} evento(s) novo(s){rep}.',
   'imp.qualilab.collapsed': ' {n} codificação(ões) do arquivo não foram gravadas em separado: eram o gabarito de trechos que já tinham codificação individual (em projeto individual as duas camadas se fundem).',
+  'imp.qualilab.configKept': ' {n} configuração(ões) do projeto vieram diferentes no arquivo (instruções e postura da IA, memo para a IA, palavras ignoradas) e NÃO foram aplicadas: o projeto manteve as suas.',
+  'imp.qualilab.configUnread': ' Não consegui ler a configuração do projeto de destino, então {n} configuração(ões) que vieram no arquivo NÃO foram aplicadas, para não sobrescrever a sua. Se quiser aplicá-las, importe de novo.',
+  'imp.qualilab.configApplied': ' {n} configuração(ões) do projeto vieram do arquivo e foram aplicadas porque o projeto ainda não tinha as suas: confira em Configurar Prompt antes de usar a IA.',
+  'imp.qualilab.projectMemoAppended': ' O memo do projeto que veio no arquivo foi acrescentado ao final do seu (separado por ---), em vez de substituí-lo.',
   'imp.activity.rep': ', {n} já registrado(s)',
   /* CONEXOES (item R) — os nomes das 6 relacoes que o projeto ja encontra prontas. O nome
      GRAVADO e o canonico em ingles (o do ATLAS.ti, que viaja no <Link name> do .qdpx); estas
@@ -3488,6 +3496,7 @@ const MSG_PT = {
   'link.problem.repetida': 'Essa conexão já existe.',
   'link.willDelete': ' e {n} conexão(ões)',
   'sch.merge.links': 'Conexões: {moved} passaram para o código que ficou; {dropped} saíram por virarem repetidas ou ligação de um código com ele mesmo.',
+  'sch.merge.descendant': 'Não dá para mesclar num código que fica dentro de um dos mesclados: "{name}" viraria pai de si mesmo. Escolha como código que fica um que não seja filho dos outros marcados.',
   'link.evidence': 'Evidência (opcional)',
   'link.evidence.none': 'sem trecho anexado',
   'link.evidence.hint': 'Um trecho deste código que sustenta a afirmação. Só os primeiros aparecem aqui; para outro, cite-o no comentário.',
@@ -3621,6 +3630,8 @@ const MSG_EN = {
   'err.unexpected': 'Something failed unexpectedly: {e}',
   'err.read.file': 'Could not read {f}: {e}',
   'err.ai.adminOnly': 'Access to AI in this project is set by the administrators, under Project → AI features.',
+  'err.ai.needKey': 'To use AI, set up your own key in "My account". Without it nothing is sent: the material does not leave your browser.',
+  'err.load.memos': 'Could not load the memos of this project ({e}). The list on screen may be incomplete: do not edit a memo that looks empty before reloading.',
   'err.pdf.missing': 'This document has no original PDF stored (upload a .pdf to view it here).',
   'err.pdf.load': 'Could not load the PDF: {e}',
   'err.pdf.notFound': 'I could not find that passage in the extracted text (the selection is too short, or the page was scanned without OCR).',
@@ -4517,6 +4528,7 @@ const MSG_EN = {
   'iap.memoAi.empty': ' (empty: write it in the Memos tab)',
   'iap.otherMemos': 'other memos ({n})',
   'iap.noOtherMemos': 'No other memo has any content.',
+  'iap.redactedMemosOut': '{n} memo(s) about redaction are left out: the definition of a redaction code and a note written on a redacted passage are not sent to the model.',
   'iap.inspector.hint': 'Adjust the controls; the preview shows exactly what the AI receives.',
   'iap.docs': 'Documents',
   'iap.all': 'all',
@@ -5846,6 +5858,10 @@ const MSG_EN = {
   'qdpx.loss.trail': 'The project history ({n} event(s)) stays behind: REFI-QDA has nowhere to keep it. It travels only in the .qualilab.',
   'imp.activity': ' History: {n} new event(s){rep}.',
   'imp.qualilab.collapsed': ' {n} coding(s) from the file were not saved separately: they were the reference layer of passages that already had an individual coding (individual projects merge the two layers).',
+  'imp.qualilab.configKept': ' {n} project setting(s) came different in the file (AI instructions and stance, memo for the AI, ignored words) and were NOT applied: the project kept its own.',
+  'imp.qualilab.configUnread': ' Could not read the destination project\'s settings, so {n} setting(s) that came in the file were NOT applied, so as not to overwrite yours. To apply them, import again.',
+  'imp.qualilab.configApplied': ' {n} project setting(s) came from the file and were applied because the project did not have its own yet: review them in Configure Prompt before using AI.',
+  'imp.qualilab.projectMemoAppended': ' The project memo that came in the file was appended to the end of yours (separated by ---) instead of replacing it.',
   'imp.activity.rep': ', {n} already recorded',
   /* LINKS (item R) — the six relations a project already finds ready to use. The STORED name is
      the canonical English one (the ATLAS.ti one, which travels in the .qdpx <Link name>); these
@@ -5908,6 +5924,7 @@ const MSG_EN = {
   'link.problem.repetida': 'That link already exists.',
   'link.willDelete': ' and {n} link(s)',
   'sch.merge.links': 'Links: {moved} moved to the surviving code; {dropped} were dropped for becoming duplicates or a code linked to itself.',
+  'sch.merge.descendant': 'Cannot merge into a code that sits inside one of the merged codes: "{name}" would become its own parent. Choose as the surviving code one that is not a child of the others you selected.',
   'link.evidence': 'Evidence (optional)',
   'link.evidence.none': 'no passage attached',
   'link.evidence.hint': 'A passage of this code that backs the claim. Only the first ones show up here; for another one, cite it in the comment.',
@@ -6042,6 +6059,8 @@ const MSG_ES = {
   'err.unexpected': 'Algo falló de forma inesperada: {e}',
   'err.read.file': 'No se pudo leer {f}: {e}',
   'err.ai.adminOnly': 'El acceso a la IA de este proyecto lo definen los administradores, en Proyecto → Recursos de IA.',
+  'err.ai.needKey': 'Para usar la IA, configura una clave propia en "Mi cuenta". Sin ella no se envía nada: el material no sale de tu navegador.',
+  'err.load.memos': 'No pude cargar los memos de este proyecto ({e}). La lista en pantalla puede estar incompleta: no edites un memo que parezca vacío antes de recargar.',
   'err.pdf.missing': 'Este documento no tiene un PDF original guardado (sube un .pdf para verlo aquí).',
   'err.pdf.load': 'No se pudo cargar el PDF: {e}',
   'err.pdf.notFound': 'No encontré ese fragmento en el texto extraído (selección muy corta, o página escaneada sin OCR).',
@@ -6904,6 +6923,7 @@ const MSG_ES = {
   'iap.memoAi.empty': ' (vacío: escríbelo en la pestaña Memos)',
   'iap.otherMemos': 'otros memos ({n})',
   'iap.noOtherMemos': 'Ningún otro memo con contenido.',
+  'iap.redactedMemosOut': '{n} memo(s) sobre censura quedan fuera: la definición de un código de censura y la nota escrita sobre un fragmento censurado no van al modelo.',
   'iap.inspector.hint': 'Ajusta los controles; la vista previa muestra exactamente lo que recibe la IA.',
   'iap.docs': 'Documentos',
   'iap.all': 'todos',
@@ -8233,6 +8253,10 @@ const MSG_ES = {
   'qdpx.loss.trail': 'El historial del proyecto ({n} evento(s)) queda fuera: REFI-QDA no tiene dónde guardarlo. Viaja solo en el .qualilab.',
   'imp.activity': ' Historial: {n} evento(s) nuevo(s){rep}.',
   'imp.qualilab.collapsed': ' {n} codificación(es) del archivo no se grabaron por separado: eran la referencia de fragmentos que ya tenían codificación individual (en un proyecto individual las dos capas se funden).',
+  'imp.qualilab.configKept': ' {n} configuración(es) del proyecto vinieron distintas en el archivo (instrucciones y postura de la IA, memo para la IA, palabras ignoradas) y NO se aplicaron: el proyecto mantuvo las suyas.',
+  'imp.qualilab.configUnread': ' No pude leer la configuración del proyecto de destino, así que {n} configuración(es) que venían en el archivo NO se aplicaron, para no sobrescribir la tuya. Si quieres aplicarlas, importa de nuevo.',
+  'imp.qualilab.configApplied': ' {n} configuración(es) del proyecto vinieron del archivo y se aplicaron porque el proyecto aún no tenía las suyas: revísalas en Configurar Prompt antes de usar la IA.',
+  'imp.qualilab.projectMemoAppended': ' El memo del proyecto que vino en el archivo se añadió al final del tuyo (separado por ---) en lugar de reemplazarlo.',
   'imp.activity.rep': ', {n} ya registrado(s)',
   /* CONNECTIONS (item R): the names of the 6 relations every project starts with. The STORED name
      is the English canonical one (ATLAS.ti's, which travels in the .qdpx <Link name>); these keys
@@ -8295,6 +8319,7 @@ const MSG_ES = {
   'link.problem.repetida': 'Esa conexión ya existe.',
   'link.willDelete': ' y {n} conexión(es)',
   'sch.merge.links': 'Conexiones: {moved} pasaron al código que quedó; {dropped} salieron por quedar repetidas o por vincular un código consigo mismo.',
+  'sch.merge.descendant': 'No se puede fusionar en un código que está dentro de uno de los fusionados: "{name}" pasaría a ser padre de sí mismo. Elige como código que queda uno que no sea hijo de los otros marcados.',
   'link.evidence': 'Evidencia (opcional)',
   'link.evidence.none': 'sin fragmento adjunto',
   'link.evidence.hint': 'Un fragmento de este código que sostiene la afirmación. Aquí aparecen solo los primeros; para otro, cítalo en el comentario.',
@@ -9552,7 +9577,9 @@ function unpackPdfIndex(raw){                    // string/objeto -> { content, 
   try{
     const o = typeof raw==='string' ? JSON.parse(raw) : raw;
     if(!o || o.v!==1 || typeof o.content!=='string' || !Array.isArray(o.frags)) return null;
-    return { content: o.content, index: o.frags.map(a=>({ start:a[0], end:a[1], page:a[2],
+    // page is an integer >= 1 on every legitimate path (pdfPageItems counts from 1). From a third-party
+    // .qualilab it is hostile text: a string reached the ATI reader's "p. N" raw, as live markup.
+    return { content: o.content, index: o.frags.map(a=>({ start:a[0], end:a[1], page:(Number.isInteger(a[2]) && a[2]>0 ? a[2] : null),
       x:a[3], y:a[4], w:a[5], h:a[6], conf:a[7], origem: PDF_INDEX_ORIGENS[a[8]]||'nativo' })) };
   }catch(e){ return null; }
 }
@@ -10133,6 +10160,26 @@ function maskRedactedContent(content, codings, maskedCodeIds, opts){
   return out + content.slice(pos);
 }
 
+/* MEMO ON REDACTION. The mask covers the TEXT; two memos are the same text by another road: the
+   DEFINITION of a redaction code (scope code), which tends to describe the removed data itself, and
+   the note written on a redacted coding (scope coding: "the speaker here is ..."). Both stay out of
+   everything that goes to a model. Single source: the MCP list_memos calls the predicate and the four
+   AI panels call memosForModel, which also returns HOW MANY left, because the screen says so (M6).
+   `codeOf(id)` answers the code_id of a coding. */
+function memoOnRedaction(m, redIds, codeOf){
+  if(!m || !redIds || !redIds.size) return false;
+  if(m.scope==='code') return redIds.has(m.target_id);
+  if(m.scope==='coding') return redIds.has(codeOf(m.target_id));
+  return false;
+}
+function memosForModel(memos, codes, allCodings){
+  const red = new Set((codes||[]).filter(c=>c.is_redaction).map(c=>c.id));
+  if(!red.size) return { memos: memos||[], fora: 0 };
+  const codeOfId = {}; (allCodings||[]).forEach(c=>{ codeOfId[c.id] = c.code_id; });
+  const sobre = m => memoOnRedaction(m, red, id=>codeOfId[id]);
+  return { memos: (memos||[]).filter(m=>!sobre(m)), fora: (memos||[]).filter(m=>m.content && m.content.trim() && sobre(m)).length };
+}
+
 function hslToHex(h,s,l){
   s/=100; l/=100;
   const k=n=>(n+h/30)%12;
@@ -10142,7 +10189,12 @@ function hslToHex(h,s,l){
   return '#'+toHex(f(0))+toHex(f(8))+toHex(f(4));
 }
 function xmlEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function stripGuid(g){ return String(g||'').replace(/[{}]/g,'').trim(); }
+/* SEG-7: the guid becomes an XML ATTRIBUTE (guid=, targetGUID=) and a zip ENTRY NAME
+   (sources/<guid>.txt) in the exported .qdpx, and it arrives raw from a third-party .qualilab (the
+   FileStore opens the db as it came). Only a guid's alphabet survives: a quote cannot close the
+   attribute, a slash cannot become a path. For a legitimate id (uuid, hex with hyphens) it is a
+   no-op, and both directions (export and import) go through here. */
+function stripGuid(g){ return String(g||'').replace(/[{}]/g,'').trim().replace(/[^A-Za-z0-9._-]/g,''); }
 
 /* REFI-QDA conta posicoes de trecho em CARACTERES (code points); o app indexa strings em
    UTF-16 (semantica de String do JS, span_start/span_end). Os dois so divergem quando ha
@@ -10329,6 +10381,15 @@ function humanizeError(raw){
 // o painel desmonta ao trocar de mainView e, sem isto, a conversa (que custou tokens)
 // sumia só de espiar outra tela. Morre com a aba (não é persistido).
 const IA_CONV_CACHE = {};
+/* MODULE caches outlive an account switch in the SAME tab (signing out does not reload the page):
+   the AI conversation holds corpus excerpts and the model's analysis, and the next account in the
+   same browser would reopen it on entering the same project. The three sign-out paths call this.
+   CAT_DRAFTS stays out on purpose: it is the unsaved text of whoever left, and the pending-draft
+   warning is theirs. */
+function clearSessionCaches(){
+  for(const k of Object.keys(IA_CONV_CACHE)) delete IA_CONV_CACHE[k];
+  try{ linksInvalidate(); }catch(e){}
+}
 
 /* S08 — CELULA QUE COMECA COM OPERADOR VIRA FORMULA NO CONSUMIDOR, e as aspas do CSV nao
    impedem isso: elas delimitam o campo, nao declaram que ele e texto. Excel, LibreOffice e
@@ -11965,6 +12026,7 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
   const tick = makeProgressTicker(onProgress, total);
   let linhasRecusadas = 0;   // linhas recusadas pelo servidor num lote (ver bulkFails)
   let trechosGravados = 0, trechosColapsados = 0;   // o resumo conta o que ENTROU, nao o que o arquivo tinha (declarado AQUI: o return fica fora do try)
+  let memosGravados = 0, configMantida = 0, configAplicada = 0, configNaoLida = 0, memoProjetoAnexado = false;   // same: counted in the memo loop, read by the return
   let conversas = 0, memorias = 0, conversasRepetidas = 0, memoriasRepetidas = 0;
   let activityEntries = 0, activityRepeated = 0;   // TRILHA (S4): eventos que entraram / ja registrados (dedup por id)
   // CONEXOES (item R): gravadas / ja existentes no destino / descartadas por ponta que nao resolveu
@@ -12149,6 +12211,44 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
     // label: preservado (scope='ai_prompt' usa label como nome do prompt salvo — bug real corrigido
     // aqui, antes o merge nunca repassava m.label pro setMemo e o nome do prompt sumia ao
     // importar/mesclar um .qualilab ou "enviar pra nuvem"). Demais escopos nao usam label (fica '').
+    //
+    // PROJECT SETTINGS (the eight MEMO_PROJECT_SCOPES) collapse onto the DESTINATION project id, and
+    // writing is REPLACING: merging a file erased the project memo and swapped the study's
+    // instructions, stance, memo for the AI and ignored words for the file's, with no warning and no
+    // snapshot. Rule, except on restore (which clears first and MUST put back): the project memo is
+    // APPENDED to the existing one (as importQDPX does); a setting only goes in where the destination
+    // has none yet. Both counts reach the summary. "Merging does not change the destination's key"
+    // (S7) holds here too.
+    const repoe = !!(origin && origin.via==='restore');
+    const destinoCfg = {};
+    let destinoIlegivel = false;
+    if(!repoe && store.listMemos && (db.memos||[]).some(m=>MEMO_PROJECT_SCOPES.has(m.scope))){
+      // A read failure FAILS CLOSED: none of the file's settings is written (the destination's stay)
+      // and the summary says so. [] here would let the file overwrite them, the very defect this
+      // block closes; throwing would leave the merge half written, with codings already in.
+      let lidos = null;
+      try{ lidos = (await store.listMemos(projectId)) || []; }catch(e){ destinoIlegivel = true; }
+      // only what the screens read: target_id = this project (a legacy project memo may have none).
+      // An orphan left by an old import, invisible in Configure Prompt, must not decide.
+      for(const m of (lidos||[])){
+        if(!MEMO_PROJECT_SCOPES.has(m.scope) || !(m.content||'').trim()) continue;
+        if(m.target_id===projectId) destinoCfg[m.scope] = m.content;
+        else if(m.scope==='project' && !m.target_id && destinoCfg.project==null) destinoCfg.project = m.content;
+      }
+    }
+    // the content to write for a project-scope memo, or null to write nothing
+    const conteudoDeProjeto = (m)=>{
+      const novo = (m.content||'').trim(), atual = destinoCfg[m.scope];
+      if(destinoIlegivel){ if(novo) configNaoLida++; return null; }
+      if(repoe || !novo || atual == null){ if(!repoe && novo && m.scope!=='project') configAplicada++; return m.content; }
+      if(m.scope==='project'){
+        if(atual.includes(novo)) return null;   // reimporting the same file does not stack the memo
+        memoProjetoAnexado = true;
+        return atual.trim() + '\n\n---\n\n' + novo;
+      }
+      if(atual.trim() !== novo) configMantida++;
+      return null;
+    };
     if(store.setMemosBulk){
       // mesma acumulacao/mescla do caminho serial abaixo, so que em memoria (sem chamada de
       // rede por item) — rowsByKey dedup por (scope,target_id) e OBRIGATORIO: dois itens com a
@@ -12168,14 +12268,19 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
           codingMemoAcc[targetId] = merged;
           rowsByKey['coding:'+targetId] = { scope:'coding', target_id:targetId, content:merged, author_name:m.author_name, label:m.label||'' };
         } else {
-          rowsByKey[m.scope+':'+targetId] = { scope:m.scope, target_id:targetId, content:m.content, author_name:m.author_name, label:m.label||'' };
+          const content = MEMO_PROJECT_SCOPES.has(m.scope) ? conteudoDeProjeto(m) : m.content;
+          if(content == null) continue;
+          rowsByKey[m.scope+':'+targetId] = { scope:m.scope, target_id:targetId, content, author_name:m.author_name, label:m.label||'' };
         }
       }
       const rows = Object.values(rowsByKey).filter(r=>(r.content||'').trim());
-      linhasRecusadas += bulkFails(await store.setMemosBulk(projectId, rows));
+      const memosRecusados = bulkFails(await store.setMemosBulk(projectId, rows));
+      linhasRecusadas += memosRecusados;
+      memosGravados = rows.length - memosRecusados;   // what was WRITTEN: deduped by target, empties out, refusals out
       for(let i=0;i<(db.memos||[]).length;i++) await tick();
     } else if(store.setMemo){
       const codingMemoAcc = {}; // #19: dois memos de trecho colapsados no dedup -> concatena (nao sobrescreve)
+      const gravados = new Set();   // target (scope:id) that got a memo: the summary counts what was WRITTEN
       for(const m of (db.memos||[])){
         let targetId = m.target_id;
         if(m.scope==='document') targetId = docMap[m.target_id];
@@ -12189,12 +12294,15 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
             const merged = prev ? (prev + '\n\n---\n\n' + (m.content||'')) : (m.content||'');
             codingMemoAcc[targetId] = merged;
             await store.setMemo(projectId, 'coding', targetId, merged, m.author_name, m.label);
+            if(merged.trim()) gravados.add('coding:'+targetId);
           } else {
-            await store.setMemo(projectId, m.scope, targetId, m.content, m.author_name, m.label);
+            const content = MEMO_PROJECT_SCOPES.has(m.scope) ? conteudoDeProjeto(m) : m.content;
+            if(content != null && (content||'').trim()){ await store.setMemo(projectId, m.scope, targetId, content, m.author_name, m.label); gravados.add(m.scope+':'+targetId); }
           }
         }
         await tick();
       }
+      memosGravados = gravados.size;
     }
 
     /* S7 — projeto com a IA desativada NAO recebe conversa nem memoria de IA, e o resumo diz o
@@ -12401,7 +12509,7 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
     if(store.logActivity && !(origin && origin.via==='restore')) await store.logActivity(projectId, { op:'merge_file', target_kind:'project', target_id:projectId,
       detail:{ file:(origin && origin.file) || null, via:(origin && origin.via) || 'import',
                documents:(db.documents||[]).length, categories:(db.categories||[]).length, codes:(db.codes||[]).length,
-               codings:trechosGravados, codings_collapsed:trechosColapsados||undefined, memos:(db.memos||[]).length, conversations:conversas, memories:memorias,
+               codings:trechosGravados, codings_collapsed:trechosColapsados||undefined, memos:memosGravados, conversations:conversas, memories:memorias,
                activity:activityEntries, links:conexoes||undefined, disagreements:discordancias||undefined, rejected:linhasRecusadas, ai_origin_off:iaOrigemSemIa } });
   }catch(e){}
 
@@ -12410,7 +12518,7 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
     documentos:(db.documents||[]).length, categorias:(db.categories||[]).length, codigos:(db.codes||[]).length,
     // trechos: o que FOI GRAVADO (um resumo anunciava 3.211 e o projeto ficava com 2.116 — ver
     // collapseCodingsForIndividual); trechosColapsados diz quantas do arquivo se fundiram, e por que.
-    trechos:trechosGravados, trechosColapsados, memos:(db.memos||[]).length,
+    trechos:trechosGravados, trechosColapsados, memos:memosGravados, configMantida, configAplicada, configNaoLida, memoProjetoAnexado,
     // conversas/memorias contam o que FOI GRAVADO, nao o que veio no arquivo: sao as duas unicas
     // colecoes que o "Limpar conteudo" preserva de proposito, entao numero do arquivo e numero do
     // projeto sao coisas diferentes aqui — e e justamente o caso em que a diferenca importa.
@@ -13089,14 +13197,18 @@ async function importTaguette(file, store, projectId, projectMode, onProgress){
     // Taguette e de um unico projeto; nao ha, ainda, escolha de qual importar na interface)
     const projects = all('SELECT id, name FROM projects ORDER BY id');
     if(!projects.length) throw new Error('Nenhum projeto encontrado no arquivo .sqlite3.');
-    const srcProjectId = projects[0].id;
+    // Taguette ids are INTEGER PRIMARY KEY, but they come from the file ITSELF and go into a query built
+    // as text: only integers pass (anything else is dropped instead of becoming SQL).
+    const inteiro = v => Number.isSafeInteger(Number(v)) ? Number(v) : null;
+    const srcProjectId = inteiro(projects[0].id);
+    if(srcProjectId == null) throw new Error('Arquivo do Taguette com id de projeto inválido.');
 
     const docsRows = all(`SELECT id, name, contents FROM documents WHERE project_id=${srcProjectId}`);
     const tagsRows = all(`SELECT id, path FROM tags WHERE project_id=${srcProjectId}`);
-    const docIds = docsRows.map(d=>d.id);
+    const docIds = docsRows.map(d=>inteiro(d.id)).filter(v=>v!=null);
     const highlightsRows = docIds.length
       ? all(`SELECT id, document_id, start_offset, end_offset, snippet FROM highlights WHERE document_id IN (${docIds.join(',')})`) : [];
-    const hlIds = highlightsRows.map(h=>h.id);
+    const hlIds = highlightsRows.map(h=>inteiro(h.id)).filter(v=>v!=null);
     const linkRows = hlIds.length
       ? all(`SELECT highlight_id, tag_id FROM highlight_tags WHERE highlight_id IN (${hlIds.join(',')})`) : [];
 
@@ -13913,7 +14025,9 @@ function buildTransparencyReaderHTML(docs, codes, allC, memos, project, anonymiz
   const showIds = new Set(usedIds);
   usedIds.forEach(id=>{ for(const p of ancestorsOf(id, x=>codeById[x]?.parent_id)) showIds.add(p); });   // S05: nao sobe em ciclo
   const legAgg = {}; // contagem agregada (código + descendentes) no recorte da transparência
-  useC.forEach(c=>{ let id=c.code_id; while(id){ legAgg[id]=(legAgg[id]||0)+1; id=codeById[id]?.parent_id; } });
+  // S05: climbs through ancestorsOf, like the line above. The bare while never ended on a parent_id
+  // cycle from a file (draft and file stores have no trigger) and froze the tab in the ATI report.
+  useC.forEach(c=>{ if(!c.code_id) return; legAgg[c.code_id]=(legAgg[c.code_id]||0)+1; for(const p of ancestorsOf(c.code_id, x=>codeById[x]?.parent_id)) legAgg[p]=(legAgg[p]||0)+1; });
   const byPos = (a,b)=> (a.position??0)-(b.position??0) || String(a.name).localeCompare(String(b.name));
   const legNode = (c)=>{ const col=codeColor(c.hue,c.depth,c.hue_deg,false,c.sat).solid; const hasMemo=!!codeMemo[c.id]; const n=legAgg[c.id]||0;
     const kids = codes.filter(k=>k.parent_id===c.id && showIds.has(k.id)).sort(byPos);
@@ -14021,7 +14135,7 @@ document.addEventListener('click',function(e){
   var panel=document.getElementById('panel');
   var ids=sp.getAttribute('data-ann').split(' '), out='<h3>'+${JSON.stringify(t('ati.note'))}+'</h3>';
   ids.forEach(function(id){ var a=ANNS[id]; if(!a) return;
-    var meta=[esc(a.author||''), a.page?('p. '+a.page):''].filter(Boolean).join(' · ');
+    var meta=[esc(a.author||''), a.page?('p. '+esc(a.page)):''].filter(Boolean).join(' · ');
     out+='<div class="ann"><div class="ann-code" style="color:'+a.color+'">'+esc(a.code)+'</div>'
       +(meta?'<div class="ann-meta">'+meta+'</div>':'')
       +(a.note?'<div class="ann-note">'+esc(a.note)+'</div>':'<div class="ann-empty">'+${JSON.stringify(t('ati.noNote'))}+'</div>')
@@ -15385,8 +15499,10 @@ function LocalStore(){
     // O rascunho nao persiste nome nem tipo (o App os guarda em qualilab:project), entao aqui so
     // se conhece o valor NOVO — o detail leva `to` e o `from` fica de fora, em vez de inventado.
     async renameProject(pid,pn){ if(pn) await this.logActivity(pid, { op:'project_renamed', target_kind:'project', target_id:pid, target_name:pn, detail:{ to:pn } }); },
+    // SNAPSHOTS: the draft's id is always 'local', so the deleted project's snapshots came back listed
+    // (and restorable) in the next one, and the corpus the researcher deleted stayed in the IDB.
     // idem FileStore: sem memos/ia_* aqui, db.memos ficava undefined até recarregar a página
-    async deleteProject(){ const ids=db.documents.map(d=>d.id); db={ documents:[], categories:[], doc_values:[], codes:[], codings:[], memos:[], ia_results:[], ia_memory:[] }; ids.forEach(id=>{ IDB.delBlob(id); IDB.delIdx(id); }); save(); return P(); },
+    async deleteProject(pid){ for(const r of await IDB.allSnaps()) if(r && r.meta && r.meta.project_id===String(pid ?? 'local')) await IDB.delSnap(r.meta.id); const ids=db.documents.map(d=>d.id); db={ documents:[], categories:[], doc_values:[], codes:[], codings:[], memos:[], ia_results:[], ia_memory:[] }; ids.forEach(id=>{ IDB.delBlob(id); IDB.delIdx(id); }); save(); return P(); },
     async setProjectMode(pid,pmode){ if(pmode) await this.logActivity(pid, { op:'mode_changed', target_kind:'project', target_id:pid, detail:{ to:pmode } }); },
     // DISTRIBUICAO/CEGO: idem createFileStore — usuario unico e sempre admin, stubs inertes.
     async listAssignments(){ return P([]); },
@@ -15654,7 +15770,7 @@ async function createFileStore(fileHandle, isNew){
     async getDocValues(docId){ return db.doc_values.filter(v=>v.document_id===docId); },
     // setDocValue grava a CAMADA INDIVIDUAL do usuário do arquivo (igual ao LocalStore) —
     // era idêntico ao setFinalValue e sobrescrevia o gabarito num .qualilab coletivo
-    async setDocValue(pid,docId,catId,value){ db.doc_values=db.doc_values.filter(v=>!(v.document_id===docId&&v.category_id===catId&&v.set_by==='file-user'&&v.layer==='individual')); if(value!=='') db.doc_values.push({id:uid(),document_id:docId,category_id:catId,value,set_by:'file-user',author_name:name,layer:'individual'}); await save(); },
+    async setDocValue(pid,docId,catId,value){ db.doc_values=db.doc_values.filter(v=>!(v.document_id===docId&&v.category_id===catId&&v.set_by==='file-user'&&(v.layer||'individual')==='individual')); if(value!=='') db.doc_values.push({id:uid(),document_id:docId,category_id:catId,value,set_by:'file-user',author_name:name,layer:'individual'}); await save(); },
     async setFinalValue(pid,docId,catId,value){ db.doc_values=db.doc_values.filter(v=>!(v.document_id===docId&&v.category_id===catId&&v.layer==='final')); if(value!=='') db.doc_values.push({id:uid(),document_id:docId,category_id:catId,value,set_by:'file-user',author_name:name,layer:'final'}); await save(); },
     async addDocValue(pid,v){ const row={id:uid(),document_id:v.document_id,category_id:v.category_id,value:v.value,set_by:v.set_by??null,author_name:v.author_name||'anonimo',layer:v.layer||'individual'}; db.doc_values.push(row); await save(); return row; },
     listCodes(){ return P(db.codes.slice().sort((a,b)=>a.depth-b.depth||a.position-b.position)); },
@@ -15915,7 +16031,8 @@ function SupabaseStore(sb){
      FIFO persistida no IDB, a mudanca continua na tela (applyQueue, sobreposto nas LEITURAS deste
      store) e o replay acontece sozinho. Substituiu o "withQueue" morto removido em jul/2026.
 
-     O QUE ENTRA: codings, doc_values, memos, ia_results, ia_memory. O QUE NAO ENTRA, DE PROPOSITO:
+     O QUE ENTRA: codings, doc_values, memos, ia_results, ia_memory, coding_disagreements e activity
+     (ver addDisagreement e logActivity). O QUE NAO ENTRA, DE PROPOSITO:
      documentos, esquema de codigos/categorias, gestao de projeto e os *Bulk do import. Duas razoes
      independentes — (a) replay atrasado de mudanca ESTRUTURAL em projeto coletivo e semanticamente
      perigoso (criar um codigo 10 min depois, quando outro pesquisador ja reorganizou a arvore,
@@ -16261,7 +16378,7 @@ function SupabaseStore(sb){
        documents.has_pdf + RLS (ver supabase/schema.sql). Só usado com consentimento explícito
        (decisão do autor); ausência do bucket/coluna degrada com erro claro, não quebra o resto. */
     async getPdfBlob(docId){ try{ const r=await sb.storage.from('pdfs').download(`${docId}.pdf`); if(r.error||!r.data) return null; return new Uint8Array(await r.data.arrayBuffer()); }catch(e){ return null; } },
-    async setPdfBlob(docId,bytes){ const body = bytes instanceof Blob ? bytes : new Blob([bytes],{type:'application/pdf'}); const r=await sb.storage.from('pdfs').upload(`${docId}.pdf`, body, { upsert:true, contentType:'application/pdf' }); if(r.error) throw r.error; try{ await sb.from('documents').update({ has_pdf:true }).eq('id',docId); }catch(e){} },
+    async setPdfBlob(docId,bytes){ const body = bytes instanceof Blob ? bytes : new Blob([bytes],{type:'application/pdf'}); const r=await sb.storage.from('pdfs').upload(`${docId}.pdf`, body, { upsert:true, contentType:'application/pdf' }); if(r.error) throw r.error; must(await sb.from('documents').update({ has_pdf:true }).eq('id',docId)); },
     async deletePdfBlob(docId){
       const r = await sb.storage.from('pdfs').remove([`${docId}.pdf`]);
       if(pdfPurgeErrKind(r?.error) === 'falha') throw new Error('nao foi possivel remover o PDF original: ' + (r.error.message || r.error));
@@ -16281,7 +16398,10 @@ function SupabaseStore(sb){
        o merge seguiria, o deleteCode apagaria EM CASCATA justamente as codificacoes que ainda nao
        migraram, e a fila reaplicaria updates que nao casam com linha nenhuma (update sem alvo nao
        da erro). Trocaria um banner por perda silenciosa de dados. Mexeu aqui? Releia isto. */
-    async updateCoding(id,patch){ must(await sb.from('codings').update(patch).eq('id',id)); },
+    // ZERO ROWS IS NOT SUCCESS: RLS filters instead of refusing, and a coding that exists only in the
+    // queue also comes back empty. The moveCodings contract (failed>0 aborts before deleteCode, which
+    // cascades) depends on the failure THROWING. Same pattern as updateLinkRelation.
+    async updateCoding(id,patch){ const r = must(await sb.from('codings').update(patch).eq('id',id).select('id')); if(!r || !r.length) throw new Error('coding not updated (missing or not allowed)'); },
     async deleteDocument(id){ let cids=[]; try{ cids=(await sb.from('codings').select('id').eq('document_id',id)).data?.map(r=>r.id)||[]; }catch(e){}
       await purgePdfObjects([id]);   // ANTES do delete da linha -- ver o comentario de purgePdfObjects
       must(await sb.from('documents').delete().eq('id',id)); await sb.from('memos').delete().eq('scope','document').eq('target_id',id); if(cids.length) await sb.from('memos').delete().eq('scope','coding').in('target_id',cids); },
@@ -18295,7 +18415,7 @@ function App(){
   useEffect(()=>{ if(phase==='gate' || account) loadMyProjects(); }, [phase, account, loadMyProjects]);
 
   const openProject = (p)=>{
-    setProject(p); setProjectMode(p.mode||'collective');
+    setProject(p); setMemos([]); setProjectMode(p.mode||'collective');   // memos belong to ONE project: a failed load must never leave the previous one's in place
     // recorte "Ver:" volta ao padrão (individuais de todos) ao entrar num projeto
     setViewCoder('all');
   };
@@ -18311,7 +18431,7 @@ function App(){
   async function afterAuth(st, display){
     setUser(st.currentUser());
     const saved = (()=>{ try{return JSON.parse(localStorage.getItem('qualilab:project')||'null');}catch(e){return null;} })();
-    if(saved && saved.code){
+    if(saved && saved.code && getRecent(st).some(x=>x.code===saved.code)){   // the key is per BROWSER and joinProject ENROLLS: re-enter only an account that already opened this project
       try{ const p = await st.joinProject(saved.code, display||st.currentUser()?.name||'anonimo'); pushRecent(p, st); openProject(p); setPhase('work'); return; }
       catch(e){ try{localStorage.removeItem('qualilab:project');}catch(_){} }
     }
@@ -18567,9 +18687,9 @@ function App(){
   /* memos: nota unica por alvo (projeto/documento/codigo) */
   const loadMemos = useCallback(async ()=>{
     if(!store || !project || !store.listMemos){ setMemos([]); return; }
-    try{ setMemos(await store.listMemos(project.id) || []); }catch(e){ setMemos([]); }
+    try{ setMemos(await store.listMemos(project.id) || []); }catch(e){ setErr(t('err.load.memos',{e:e?.message||e})); }   // does NOT clear: an empty list would claim "no memo at all", and the MemoEditor would open blank over the real one
   }, [store, project]);
-  useEffect(()=>{ if(phase==='work' && (mainView==='memos'||mainView==='ia_analisar'||mainView==='codificar'||mainView==='relatorio'||mainView==='visualizar'||mainView==='graficos'||mainView==='mcp')) loadMemos(); }, [phase, mainView, loadMemos]);
+  useEffect(()=>{ if(phase==='work' && (mainView==='memos'||mainView==='ia_analisar'||mainView==='ia_codificar'||mainView==='codificar'||mainView==='relatorio'||mainView==='visualizar'||mainView==='graficos'||mainView==='mcp')) loadMemos(); }, [phase, mainView, loadMemos]);
   async function saveMemo(scope, targetId, content, label){
     await store.setMemo(project.id, scope, targetId, content, authorLabel(user?.name), label);
     await loadMemos();
@@ -19480,7 +19600,7 @@ function App(){
         // prefere a camada final (gabarito consolidado); se nao houver, usa as individuais
         const finalCods = allC.filter(c=>c.layer==='final');
         const codForQdpx = finalCods.length > 0 ? finalCods : allC.filter(c=>(c.layer||'individual')!=='final');
-        let memosForQdpx=[]; try{ memosForQdpx=(await store.listMemos?.(project.id))||[]; }catch(e){} // #18: memos no round-trip
+        const memosForQdpx=(await store.listMemos?.(project.id))||[]; // #18: memos no round-trip. A failure THROWS (D02): an empty list would export the codebook with no definitions
         // PDF-BLOCK: junta os bytes dos PDFs originais pra emitir <PDFSource> (brief §6) — EM
         // PARALELO, com barra (antes era 1 a 1 sobre TODOS os docs; travava minutos com muitos PDFs)
         const qdpxPdfs = {};
@@ -19494,7 +19614,7 @@ function App(){
         await exportQDPX(docs, cats, Object.values(pick), codes, codForQdpx, project, memosForQdpx, qdpxPdfs, linksQdpx, relsQdpx); // #18 memos + bytes do PDF + item R
         setBusy(null);
       } else if(kind==='ati' || kind==='leitor'){
-        let memosForExport=[]; try{ memosForExport=(await store.listMemos?.(project.id))||[]; }catch(e){}
+        const memosForExport=(await store.listMemos?.(project.id))||[];   // a failure THROWS, same reason as D02: a published artifact with no analytic note at all
         const pageOfX = await gatherPageOf();   // §4: página no PDF original
         if(kind==='ati') exportWebAnnotations(docs, codes, allC, memosForExport, project, undefined, pageOfX);
         else exportTransparencyReader(docs, codes, allC, memosForExport, project, undefined, pageOfX);
@@ -19570,7 +19690,7 @@ function App(){
         + (r.conversas ? t('imp.ai.chats',{n:r.conversas}) : '')
         + (r.memorias ? t('imp.ai.memories',{n:r.memorias}) : '')
         + (r.conexoes ? t('imp.links',{n:r.conexoes}) : '')
-        + '.' + (r.trechosColapsados ? t('imp.qualilab.collapsed',{n:r.trechosColapsados}) : '') + iaDupNotice(r) + iaOrigemNotice(r)
+        + '.' + (r.trechosColapsados ? t('imp.qualilab.collapsed',{n:r.trechosColapsados}) : '') + iaDupNotice(r) + iaOrigemNotice(r) + (r.memoProjetoAnexado ? t('imp.qualilab.projectMemoAppended') : '') + (r.configMantida ? t('imp.qualilab.configKept',{n:r.configMantida}) : '') + (r.configNaoLida ? t('imp.qualilab.configUnread',{n:r.configNaoLida}) : '') + (r.configAplicada ? t('imp.qualilab.configApplied',{n:r.configAplicada}) : '')
         + ((r.activity || r.activityRepeated) ? t('imp.activity',{n:r.activity||0, rep:r.activityRepeated ? t('imp.activity.rep',{n:r.activityRepeated}) : ''}) : '')
         + (r.conexoesRepetidas ? t('imp.links.rep',{n:r.conexoesRepetidas}) : '')
         + (r.conexoesDescartadas ? t('imp.links.dropped',{n:r.conexoesDescartadas}) : '')
@@ -20031,7 +20151,7 @@ function App(){
       try{ await afterAuth(store, display); }
       catch(e){ setErr(String(e.message||e)); setPhase('gate'); }
     }}
-    onCancel=${()=>{ clearRecoveryUrl(); setErr(null); setRecoverExpired(false); setPhase('auth'); }}
+    onCancel=${async()=>{ clearRecoveryUrl(); setErr(null); setRecoverExpired(false); try{ await store?.signOut?.(); }catch(e){} setUser(null); setPhase('auth'); }}   // the reset link already opened a SESSION: giving up closes it, or one F5 lands inside the account
   />`;
 
   const openFileProject = async (isNew)=>{
@@ -20140,7 +20260,6 @@ function App(){
     <${Gate}
       err=${err} user=${user} projects=${myProjects} mode=${mode} onAccount=${()=>setAccount(true)}
       onOpenFile=${()=>openFileProject(false)} onNewFile=${()=>openFileProject(true)}
-      onLogin=${async()=>{ try{ await store.signOut(); }catch(e){} setUser(null); setPhase('auth'); }}
       onOpen=${async (proj)=>{ try{ const p=await store.joinProject(proj.code, user?.name||''); try{localStorage.setItem('qualilab:project',JSON.stringify(p));}catch(e){} pushRecent(p); openProject(p); setPhase('work'); }catch(e){ setErr(String(e.message||e)); } }}
       onCreate=${async (n,disp,pmode,prai,access)=>{ try{ try{localStorage.setItem('qualilab:name',disp);}catch(e){} const p=await store.createProject(n,disp,pmode,prai);
         /* REGRAS DE ACESSO NO t0: gravadas logo depois do createProject, ANTES de alguem entrar (o codigo
@@ -20155,7 +20274,7 @@ function App(){
     ${account && html`<${AccountModal} user=${user} projects=${myProjects}
       onClose=${()=>setAccount(false)} onChangePassword=${changePassword} onChangeName=${changeDisplayName}
       onOpen=${acctOpenProject} onRename=${acctRenameProject} onDelete=${acctDeleteProject} onLeave=${acctLeaveProject}
-      onLogout=${async()=>{ setAccount(false); try{localStorage.removeItem('qualilab:project');}catch(e){} try{ await store.signOut(); }catch(e){} setProject(null); setUser(null); setDocs([]); setActiveId(null); setPhase('welcome'); }} />`}
+      onLogout=${async()=>{ setAccount(false); try{localStorage.removeItem('qualilab:project');}catch(e){} try{ await store.signOut(); }catch(e){} clearSessionCaches(); setProject(null); setUser(null); setDocs([]); setActiveId(null); setPhase('welcome'); }} />`}
   </div>`;
 
   return html`
@@ -20208,7 +20327,7 @@ function App(){
           onClick=${()=>setUserMode(v=>{ const nv=!v; try{localStorage.setItem('qualilab:usermode',nv?'1':'');}catch(e){} return nv; })}
           title=${userMode?t('focus.on.tip'):t('focus.off.tip')}>${userMode?t('focus.on'):t('focus.off')}</button>`}
         ${mode==='cloud' && html`<button class="btn sm ghost" onClick=${()=>{ try{localStorage.removeItem('qualilab:project');}catch(e){} setProject(null); setPhase('gate'); }}>${t('project.switch')}</button>`}
-        ${mode==='cloud' && user && html`<button class="btn sm ghost" onClick=${async()=>{ try{localStorage.removeItem('qualilab:project');}catch(e){} try{ await store.signOut(); }catch(e){} setProject(null); setUser(null); setDocs([]); setActiveId(null); setPhase('welcome'); }}>${t('auth.signout')}</button>`}
+        ${mode==='cloud' && user && html`<button class="btn sm ghost" onClick=${async()=>{ try{localStorage.removeItem('qualilab:project');}catch(e){} try{ await store.signOut(); }catch(e){} clearSessionCaches(); setProject(null); setUser(null); setDocs([]); setActiveId(null); setPhase('welcome'); }}>${t('auth.signout')}</button>`}
         ${project && docs.length>0 && html`<div style="position:relative">
           <button class="btn sm" onClick=${()=>alternaMenu('exportar')}>${t('export.menu')}</button>
           ${(menu==='exportar') && html`<div>
@@ -20659,7 +20778,7 @@ function App(){
     : mainView==='ia_analisar' && !aiHidden ? html`<div class="split">
       <!-- ANALISAR COM IA: barra de Material no topo + duas telas (config | chat) -->
       <${IAAnalisarPanel} project=${project} docs=${docs} codes=${codes} codeById=${codeById} codePath=${codePath}
-        activeDoc=${activeDoc} sel=${sel} store=${store} allCodings=${allCodings} memos=${memos} cats=${cats} allValues=${allValues}
+        store=${store} allCodings=${allCodings} memos=${memos} cats=${cats} allValues=${allValues}
         memory=${aiMemory} onAddMemory=${addMemory} onToggleMemory=${toggleMemoryActive} onDeleteMemory=${deleteMemory}
         onSave=${saveIaResult} onSetMemo=${saveMemo} onDeletePrompt=${removeMemo} />
     </div>`
@@ -20738,7 +20857,7 @@ function App(){
             isAdmin=${isAdmin} mode=${mode}
             onDelCoding=${async id=>{ await delCoding(id); loadAll(); }}
             onAccept=${async c=>{ await addFinalCoding(c.document_id, c.code_id, c.span_start, c.span_end, c.quote); loadAll(); }}
-            onJump=${(docId, span)=>{ setVizSelDoc(docId); setVizSub('documentos'); if(span && span.start!=null) setPendingJump({ docId, start:span.start, end:span.end }); }} projectMode=${projectMode} darkMode=${darkMode} />
+            onJump=${(docId, span)=>{ setVizSelDoc(docId); setVizSub('documentos'); if(span && span.start!=null) setPendingJump({ docId, start:span.start, end:span.end }); }} projectMode=${projectMode} />
         </div>
       </section>
       </div>`}
@@ -20915,7 +21034,7 @@ function App(){
   ${account && html`<${AccountModal} user=${user} projects=${myProjects}
     onClose=${()=>setAccount(false)} onChangePassword=${changePassword} onChangeName=${changeDisplayName}
     onOpen=${acctOpenProject} onRename=${acctRenameProject} onDelete=${acctDeleteProject} onLeave=${acctLeaveProject}
-    onLogout=${mode==='cloud' ? (async()=>{ setAccount(false); try{localStorage.removeItem('qualilab:project');}catch(e){} try{ await store.signOut(); }catch(e){} setProject(null); setUser(null); setDocs([]); setActiveId(null); setPhase('welcome'); }) : undefined} />`}
+    onLogout=${mode==='cloud' ? (async()=>{ setAccount(false); try{localStorage.removeItem('qualilab:project');}catch(e){} try{ await store.signOut(); }catch(e){} clearSessionCaches(); setProject(null); setUser(null); setDocs([]); setActiveId(null); setPhase('welcome'); }) : undefined} />`}
 
   ${assignOpen && html`<${AssignModal} docs=${docs} members=${members} assignments=${assignments} allCodings=${allCodings}
     blind=${projBlind} restrict=${projRestrict} codeMemos=${restrictCodeMemos} catsMeta=${catsAreMetadata} roleCaps=${roleCaps} restrictAi=${restrictAi} onToggle=${toggleAssignment} onReplace=${replaceAssignments}
@@ -21350,7 +21469,7 @@ function AccessMatrix({ flags, caps, restrictAi, onFlags, onCaps, hint }){
   </div>`;
 }
 /* ============ GATE (Meus Projetos + criar / entrar em projeto) ============ */
-function Gate({ onCreate, onJoin, onOpen, onOpenFile, onNewFile, err, user, projects, mode, onAccount, onLogin }){
+function Gate({ onCreate, onJoin, onOpen, onOpenFile, onNewFile, err, user, projects, mode, onAccount }){
   const [name,setName]=useState(user?.name||'');
   const [pname,setPname]=useState('');
   const [pmode,setPmode]=useState('individual'); // individual | collective
@@ -22255,7 +22374,9 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
     ? (aiPrices[`${aiProvider}|${refModelId}`] || aiPrices[`${aiProvider}|${String(refModelId).replace(/-\d{8}$/,'')}`])
     : null;
 
-  const run = async (fn)=>{ setErr(null); setMsg(null); try{ await fn(); }catch(e){ setErr(String(e.message||e)); } };
+  // humanize only the RAW server error, here at the source: `err` also carries messages this screen
+  // already composed (acc.ai.saveFail, acc.pw.*), and a pattern rule would rewrite those into a wrong one
+  const run = async (fn)=>{ setErr(null); setMsg(null); try{ await fn(); }catch(e){ const raw = String(e.message||e); setErr(humanizeError(raw)||raw); } };
 
   const saveName = ()=>run(async()=>{ await onChangeName(name.trim()||'pesquisador'); setMsg(t('acc.nameSaved')); });
   const savePw   = ()=>{
@@ -24942,10 +25063,11 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
     // a regra vive no reparentPatch (topo do arquivo), pra poder ser testada sem bootar o app
     const patchFor = (node, base)=> reparentPatch(node, base, adoptColor, markRedaction);
     await store.updateCode(codeId, patchFor(codeById[codeId], { parent_id:newParentId, depth:newDepth }));
-    const stack=[{id:codeId,depth:newDepth}];
+    const stack=[{id:codeId,depth:newDepth}], vistos=new Set([codeId]);   // S05: a parent_id cycle from a file does not hang the loop
     while(stack.length){
       const {id,depth}=stack.pop();
       for(const ch of childrenOf(id)){
+        if(vistos.has(ch.id)) continue; vistos.add(ch.id);
         const cd = depth+1;
         await store.updateCode(ch.id, patchFor(ch, { depth:cd }));
         stack.push({id:ch.id,depth:cd});
@@ -25040,6 +25162,11 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
        reunir um codigo de censura num codigo normal e ato legitimo de admin, so nao pode ser
        feito sem saber. */
   async function handleMerge(survivorId, mergedIds){
+    // survivor INSIDE the subtree of a merged code: the merged code's children would be reparented
+    // onto the survivor itself, making it its own parent (in draft/file the whole old subtree drops
+    // out of the tree; in the cloud the cycle guard throws after moveCodings). Refused BEFORE
+    // anything is written; same check as the Organizar panel. Both the tree and the Map land here.
+    if(mergedIds.some(mid=>isDescendantOf(survivorId, mid))){ setNotice(t('sch.merge.descendant',{name:codeById[survivorId]?.name||''})); return; }
     const alvo = codeById[survivorId];
     if(alvo?.is_redaction){
       const filhos = redactionImpact(mergedIds.flatMap(id=>childrenOf(id).map(ch=>ch.id)));
@@ -25227,7 +25354,7 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
       </div>`}
       ${schemaMode==='arvore' ? treeBody
         : html`<div class="pane-body" style="position:relative;padding:0;overflow:hidden;min-height:0">
-            <${SchemaMapView} codes=${codes} codeById=${codeById} codePath=${codePath} count=${count}
+            <${SchemaMapView} codes=${codes} codeById=${codeById} count=${count}
               selCode=${selCode} setSelCode=${setSelCode} selectedIds=${selectedIds} setSelectedIds=${setSelectedIds}
               onUpd=${onUpd} onPersistPositions=${persistPositions}
               onMoveInto=${(t,ids)=>handleGroup(t,'',ids)} onMerge=${handleMerge} onGroupNew=${handleGroupNew}
@@ -27350,7 +27477,16 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
   // ---- nuvem de palavras: tokens dos trechos codificados, cor herdada do código dominante.
   // usa `cod` (já respeita filtro de categorias, "Ver:" e "ignorar censura"); se houver código
   // selecionado na árvore, restringe à família dele (código + descendentes).
-  const docContentById = useMemo(()=>{ const m={}; docs.forEach(d=>{ m[d.id]=d.content||''; }); return m; }, [docs]);
+  // REDACTION: the cloud slices the TEXT, so "ignore redaction" (which drops redaction codings from
+  // the bars) was not enough: the word under the mask came in through the slice of any OTHER
+  // overlapping coding, and the chart exports to SVG/PNG. With the filter on, mask with `fill`: it
+  // keeps the slice offsets, and the mask block is not a letter, so it never becomes a word.
+  const docContentById = useMemo(()=>{
+    const m={}, red = hideRedaction ? new Set(codes.filter(c=>c.is_redaction).map(c=>c.id)) : null;
+    const byDoc = {}; if(red && red.size) (allCodings||[]).forEach(c=>{ (byDoc[c.document_id]=byDoc[c.document_id]||[]).push(c); });
+    docs.forEach(d=>{ m[d.id] = (red && red.size) ? maskRedactedContent(d.content||'', byDoc[d.id]||[], red, { fill:true }) : (d.content||''); });
+    return m;
+  }, [docs, codes, allCodings, hideRedaction]);
   const wordCloud = useMemo(()=>{
     const src = cloudCodeSet ? cod.filter(c=>cloudCodeSet.has(c.code_id)) : cod;
     const wf={}; // palavra -> { total, codes:{codeId:n} }
@@ -29092,6 +29228,11 @@ async function askAIChat({ system, messages, signal, json }){
       console.warn('[IA] chamada direta falhou (provável CORS do endpoint); tentando pela função ai-ask:', e?.message || e);
     }
   }
+  // No direct path and no SERVER key: the proxy can only refuse, after the material has already
+  // reached the operator (up to 2 MB of corpus, even from the draft, which promises nothing leaves the
+  // machine). Refuse here, BEFORE the POST: that is the BYOK header's promise. Same move as askAITools
+  // below; the custom/azure CORS fallback still works, because it leaves from inside if(canAskDirect).
+  if(!canAskDirect(cfg) && !AI_SHARED_KEY) throw new Error(t('err.ai.needKey'));
   return askAIProxy(cfg, { system, messages, signal });
 }
 // Motor do LACO AGENTICO (um PASSO dele). Diferenca pro askAIChat: devolve o turno inteiro
@@ -29600,8 +29741,11 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
     : m.scope==='document' ? `Documento: ${(docs.find(d=>d.id===m.target_id)||{}).name||'(sem nome)'}`
     : m.scope==='code' ? `Código: ${codePath(m.target_id).join(' ▸ ')}`
     : m.scope==='coding' ? 'Nota de trecho' : m.scope;
-  const injectableMemos = (memos||[]).filter(m=> ['project','document','code','coding'].includes(m.scope) && m.content && m.content.trim());
-  const injectedMemos = (memos||[]).filter(m=> injectSel.has(memoKey(m)) && m.content && m.content.trim());
+  // REDACTION: a memo ON redaction (the code's definition, a note on the coding) never goes to the
+  // model; single source with the MCP list_memos. It leaves the pick list, and the screen says how many.
+  const memosModelo = useMemo(()=> memosForModel(memos, codes, allCodings), [memos, codes, allCodings]);
+  const injectableMemos = memosModelo.memos.filter(m=> ['project','document','code','coding'].includes(m.scope) && m.content && m.content.trim());
+  const injectedMemos = memosModelo.memos.filter(m=> injectSel.has(memoKey(m)) && m.content && m.content.trim());
 
   const changeScope = (s)=>{ setScope(s); };
   // insere uma sugestão no campo da tarefa (SUBSTITUI, confirmando se já houver texto)
@@ -30211,6 +30355,7 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
           <details class="collap" style="margin-top:4px">
             <summary class="field-label" style="font-weight:400">${t('iap.otherMemos',{n:injectableMemos.length})}</summary>
             ${injectableMemos.length===0 && html`<div class="meta" style="padding:4px 0 0 18px">${t('iap.noOtherMemos')}</div>`}
+            ${memosModelo.fora>0 && html`<div class="meta" style="padding:4px 0 0 18px">${t('iap.redactedMemosOut',{n:memosModelo.fora})}</div>`}
             ${injectableMemos.map(m=>html`<label key=${memoKey(m)} class="row" style="gap:7px;font-size:12px;cursor:pointer;align-items:center;padding:2px 0 2px 18px">
               <input type="checkbox" checked=${injectSel.has(memoKey(m))} onChange=${()=>toggleInject(memoKey(m))} />
               <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${memoName(m)}</span>
@@ -30360,8 +30505,11 @@ function IAOrganizarPanel({ onLog, onSnapshot, project, docs, codes, codeById, c
     : m.scope==='document' ? `Documento: ${(docs.find(d=>d.id===m.target_id)||{}).name||'(sem nome)'}`
     : m.scope==='code' ? `Código: ${(codePath?codePath(m.target_id):[]).join(' ▸ ')}`
     : m.scope==='coding' ? 'Nota de trecho' : m.scope;
-  const injectableMemos = (memos||[]).filter(m=> ['project','document','code','coding'].includes(m.scope) && m.content && m.content.trim());
-  const injectedMemos = (memos||[]).filter(m=> injectSel.has(memoKey(m)) && m.content && m.content.trim());
+  // REDACTION: a memo ON redaction (the code's definition, a note on the coding) never goes to the
+  // model; single source with the MCP list_memos. It leaves the pick list, and the screen says how many.
+  const memosModelo = useMemo(()=> memosForModel(memos, codes, allCodings), [memos, codes, allCodings]);
+  const injectableMemos = memosModelo.memos.filter(m=> ['project','document','code','coding'].includes(m.scope) && m.content && m.content.trim());
+  const injectedMemos = memosModelo.memos.filter(m=> injectSel.has(memoKey(m)) && m.content && m.content.trim());
 
   // ids curtos estaveis (#c1..) <-> uuid real. Recalcula quando a lista de codigos muda.
   const { shortToId, idToShort } = useMemo(()=>{
@@ -30579,12 +30727,15 @@ function IAOrganizarPanel({ onLog, onSnapshot, project, docs, codes, codeById, c
   // ---- APLICAR operacoes aprovadas (reusa a logica de SchemaCodesView, sobre um modelo de
   // trabalho local pra nao depender de re-render entre operacoes; reload/loadAll no fim) ----
   async function applyApproved(turnIdx){
-    await onSnapshot?.('bulk_coding');   // ESPELHAR BASE: o lote mescla/reparenta/exclui codigos — retrato de antes
     if(!isAdmin){ setErr(t('org.adminOnly')); return; }
     const turn = history[turnIdx]; if(!turn) return;
     const ops = turn.ops || [];
     const approved = ops.filter((o,i)=>decided[dkey(turnIdx,i,o.op)]);
     if(!approved.length){ setErr(t('org.noApproved')); return; }
+    // ESPELHAR BASE: the batch merges/reparents/deletes codes, so take the before-picture. After the
+    // guards: before them the snapshot was born with nothing to apply and, coalesced and pruned, pushed
+    // out a useful automatic one (and for a non-admin it failed against the cloud bucket).
+    await onSnapshot?.('bulk_coding');
     setErr(''); setApplyMsg(''); setBusy(true);
     // modelo de trabalho: copia mutavel dos codigos (intermediarios refletem aqui; o store e a
     // fonte da verdade so depois do reload). _deleted marca codigos ja mesclados/excluidos.
@@ -30598,9 +30749,9 @@ function IAOrganizarPanel({ onLog, onSnapshot, project, docs, codes, codeById, c
       const patch = { parent_id:newParentId, depth:newDepth };
       if(adoptColor){ patch.hue=adoptColor.hue; patch.hue_deg=adoptColor.hue_deg ?? null; patch.sat=adoptColor.sat ?? null; }
       await store.updateCode(codeId, patch); Object.assign(node, patch);
-      const stack=[{id:codeId,depth:newDepth}];
+      const stack=[{id:codeId,depth:newDepth}], vistos=new Set([codeId]);   // S05: a parent_id cycle from a file does not hang the loop
       while(stack.length){ const {id,depth}=stack.pop();
-        for(const ch of childrenOf(id)){ const cd=depth+1; const cp={depth:cd};
+        for(const ch of childrenOf(id)){ if(vistos.has(ch.id)) continue; vistos.add(ch.id); const cd=depth+1; const cp={depth:cd};
           if(adoptColor){ cp.hue=adoptColor.hue; cp.hue_deg=adoptColor.hue_deg ?? null; cp.sat=adoptColor.sat ?? null; }
           await store.updateCode(ch.id, cp); Object.assign(ch, cp); stack.push({id:ch.id,depth:cd}); }
       }
@@ -30622,6 +30773,11 @@ function IAOrganizarPanel({ onLog, onSnapshot, project, docs, codes, codeById, c
             const survivor = byId(o.survivor);
             const merged = o.merged.filter(id=>byId(id) && !byId(id)._deleted);
             if(!survivor || survivor._deleted || !merged.length){ skipped++; continue; }
+            // survivor INSIDE the subtree of a merged code: the merged code's children would be
+            // reparented onto the survivor itself, making it its own parent (endless loop in draft/file;
+            // in the cloud, codings already moved and the code refused). Same check as group/reparent
+            // below, and BEFORE moveCodings, which cannot be undone.
+            if(merged.some(mid=>isDescendantOf(o.survivor, mid))){ skipped++; continue; }
             // moveCodings preserva o id de cada coding (e a nota de trecho junto). O `failed` nao
             // pode ser ignorado: o deleteCode logo abaixo apaga em cascata, entao seguir com
             // linhas que nao migraram as destruiria. O throw cai no catch por-operacao
@@ -30805,6 +30961,7 @@ function IAOrganizarPanel({ onLog, onSnapshot, project, docs, codes, codeById, c
           <details class="collap" style="margin-top:4px">
             <summary class="field-label" style="font-weight:400">${t('iap.otherMemos',{n:injectableMemos.length})}</summary>
             ${injectableMemos.length===0 && html`<div class="meta" style="padding:4px 0 0 18px">${t('iap.noOtherMemos')}</div>`}
+            ${memosModelo.fora>0 && html`<div class="meta" style="padding:4px 0 0 18px">${t('iap.redactedMemosOut',{n:memosModelo.fora})}</div>`}
             ${injectableMemos.map(m=>html`<label key=${memoKey(m)} class="row" style="gap:7px;font-size:12px;cursor:pointer;align-items:center;padding:2px 0 2px 18px">
               <input type="checkbox" checked=${injectSel.has(memoKey(m))} onChange=${()=>toggleInject(memoKey(m))} />
               <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${memoName(m)}</span>
@@ -31281,8 +31438,11 @@ function IACategorizarPanel({ onLog, project, docs, cats, codePath, allValues, s
     : m.scope==='document' ? `Documento: ${(docs.find(d=>d.id===m.target_id)||{}).name||'(sem nome)'}`
     : m.scope==='code' ? `Código: ${(codePath?codePath(m.target_id):[]).join(' ▸ ')}`
     : m.scope==='coding' ? 'Nota de trecho' : m.scope;
-  const injectableMemos = (memos||[]).filter(m=> ['project','document','code','coding'].includes(m.scope) && m.content && m.content.trim());
-  const injectedMemos = (memos||[]).filter(m=> injectSel.has(memoKey(m)) && m.content && m.content.trim());
+  // REDACTION: a memo ON redaction (the code's definition, a note on the coding) never goes to the
+  // model; single source with the MCP list_memos. It leaves the pick list, and the screen says how many.
+  const memosModelo = useMemo(()=> memosForModel(memos, codes, allCodings), [memos, codes, allCodings]);
+  const injectableMemos = memosModelo.memos.filter(m=> ['project','document','code','coding'].includes(m.scope) && m.content && m.content.trim());
+  const injectedMemos = memosModelo.memos.filter(m=> injectSel.has(memoKey(m)) && m.content && m.content.trim());
 
   const patchTurn = (idx,patch)=> setHistory(h=>h.map((t,i)=>i===idx?{...t,...patch}:t));
   const lastAssistantIdx = (()=>{ for(let i=history.length-1;i>=0;i--){ if(history[i].role==='assistant') return i; } return -1; })();
@@ -31766,6 +31926,7 @@ function IACategorizarPanel({ onLog, project, docs, cats, codePath, allValues, s
           <details class="collap" style="margin-top:4px">
             <summary class="field-label" style="font-weight:400">${t('iap.otherMemos',{n:injectableMemos.length})}</summary>
             ${injectableMemos.length===0 && html`<div class="meta" style="padding:4px 0 0 18px">${t('iap.noOtherMemos')}</div>`}
+            ${memosModelo.fora>0 && html`<div class="meta" style="padding:4px 0 0 18px">${t('iap.redactedMemosOut',{n:memosModelo.fora})}</div>`}
             ${injectableMemos.map(m=>html`<label key=${memoKey(m)} class="row" style="gap:7px;font-size:12px;cursor:pointer;align-items:center;padding:2px 0 2px 18px">
               <input type="checkbox" checked=${injectSel.has(memoKey(m))} onChange=${()=>toggleInject(memoKey(m))} />
               <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${memoName(m)}</span>
@@ -32082,6 +32243,12 @@ function IADefinirPanel({ project, docs, cats, allValues, store, isAdmin, user, 
       .filter(n=> n>0);
     return { loc, inducao: provChars() };
   }, [previa, docById, cat, allCodings, redactionIds, ocrT.maskByDoc, ocrT.note, memos, project, regras]);
+  // M6: the per-document cut WARNS ON SCREEN (the marker inside the prompt only tells the model). It
+  // counts the two passes that send full text: the training localization and the held-out test. Its
+  // own memo, outside `chamadas`: that one depends on the rules and would re-mask on every keystroke.
+  const docsCortados = useMemo(()=> [...previa.treino.filter(p=> !isNoInfoAnswer(p.value)), ...previa.holdout]
+    .filter(p=> docById[p.docId] && (docText(docById[p.docId])||'').length > IA_DOC_CHAR_LIMIT).length,
+    [previa, docById, allCodings, redactionIds, ocrT.maskByDoc]); // eslint-disable-line
 
   const buildProv = ()=>{
     // a INDUCAO e uma chamada como as outras, e entra na mesma lista: o que se paga e o conjunto.
@@ -32322,6 +32489,7 @@ function IADefinirPanel({ project, docs, cats, allValues, store, isAdmin, user, 
           </div>`}
         </div>
         ${ocrT.card}
+        ${docsCortados>0 && html`<div class="banner warn" style="margin-top:8px">${iaCutDocMsg(docsCortados)}</div>`}
       </div>
     </div>
 
@@ -32503,8 +32671,11 @@ function IACodificacaoPanel({ onLog, project, docs, codes, codeById, codePath, s
     : m.scope==='document' ? `Documento: ${(docs.find(d=>d.id===m.target_id)||{}).name||'(sem nome)'}`
     : m.scope==='code' ? `Código: ${codePath(m.target_id).join(' ▸ ')}`
     : m.scope==='coding' ? 'Nota de trecho' : m.scope;
-  const injectableMemos = (memos||[]).filter(m=> ['project','document','code','coding'].includes(m.scope) && m.content && m.content.trim());
-  const injectedMemos = (memos||[]).filter(m=> injectSel.has(memoKey(m)) && m.content && m.content.trim());
+  // REDACTION: a memo ON redaction (the code's definition, a note on the coding) never goes to the
+  // model; single source with the MCP list_memos. It leaves the pick list, and the screen says how many.
+  const memosModelo = useMemo(()=> memosForModel(memos, codes, allCodings), [memos, codes, allCodings]);
+  const injectableMemos = memosModelo.memos.filter(m=> ['project','document','code','coding'].includes(m.scope) && m.content && m.content.trim());
+  const injectedMemos = memosModelo.memos.filter(m=> injectSel.has(memoKey(m)) && m.content && m.content.trim());
 
   const patchTurn = (idx,patch)=> setHistory(h=>h.map((t,i)=>i===idx?{...t,...patch}:t));
   const lastAssistantIdx = (()=>{ for(let i=history.length-1;i>=0;i--){ if(history[i].role==='assistant') return i; } return -1; })();
@@ -32820,6 +32991,7 @@ function IACodificacaoPanel({ onLog, project, docs, codes, codeById, codePath, s
           <details class="collap" style="margin-top:4px">
             <summary class="field-label" style="font-weight:400">${t('iap.otherMemos',{n:injectableMemos.length})}</summary>
             ${injectableMemos.length===0 && html`<div class="meta" style="padding:4px 0 0 18px">${t('iap.noOtherMemos')}</div>`}
+            ${memosModelo.fora>0 && html`<div class="meta" style="padding:4px 0 0 18px">${t('iap.redactedMemosOut',{n:memosModelo.fora})}</div>`}
             ${injectableMemos.map(m=>html`<label key=${memoKey(m)} class="row" style="gap:7px;font-size:12px;cursor:pointer;align-items:center;padding:2px 0 2px 18px">
               <input type="checkbox" checked=${injectSel.has(memoKey(m))} onChange=${()=>toggleInject(memoKey(m))} />
               <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${memoName(m)}</span>
@@ -33282,6 +33454,10 @@ function makeQlToolRunner(ctx){
         let list = docs.slice();
         const notes = [];
         if(a.query){ const q = qlNorm(a.query); list = list.filter(d=>qlNorm(d.name).includes(q)); }
+        // value only filters TOGETHER with category_id. On its own it was ignored and the page came back
+        // with the whole corpus, which the model read as "all of these hold the value".
+        if(a.value != null && String(a.value).trim() && !a.category_id)
+          return { error:'value sem category_id', hint:'value só filtra junto de category_id; os ids de categoria vêm de get_project' };
         if(a.category_id){
           const cat = (cats||[]).find(c=>c.id===a.category_id);
           if(!cat) return { error:'category_id desconhecido', hint:'as categorias e seus ids vêm de get_project' };
@@ -33492,14 +33668,22 @@ function makeQlToolRunner(ctx){
         const alvo = (!a.scope || a.scope==='all') ? escopos : [a.scope];
         if(alvo.some(s=>!escopos.includes(s))) return { error:'scope inválido', hint:'use project, document, code, coding ou all' };
         let rows = (memos||[]).filter(m=>alvo.includes(m.scope));
+        // A target_id that is not an id (a document NAME, typically) matched nothing and came back as an
+        // empty page, read as "no memo here". Same rule the other tools follow since the 23/set pass.
+        // Known = the id of something, OR a target some memo already carries: a project memo exported
+        // from the draft keeps target 'local' while the file's project is 'file-project', and refusing
+        // the id list_memos itself just returned would send the model looking for one that get_project
+        // does not have (it has no id field).
+        if(a.target_id && a.target_id!==project?.id && !docById[a.target_id] && !codeById[a.target_id] && !codingById[a.target_id]
+           && !(memos||[]).some(m=>m.target_id===a.target_id))
+          return { error:'target_id desconhecido', hint:'os ids vêm de list_documents, list_codes, list_codings ou do próprio list_memos; são identificadores, não nomes' };
         if(a.target_id) rows = rows.filter(m=>m.target_id===a.target_id);
         // codigos de censura: o nome do codigo ja e informacao sobre o que foi removido, mas a
         // DEFINICAO dele costuma descrever exatamente o dado sensivel — fica de fora, como os trechos.
         // The same holds for a note written ON a censored excerpt ("the speaker here is ..."): it was
         // served in full. The transparency artifacts already skip it (their annotations drop
         // censorship codings before looking up notes); this surface is the one that did not.
-        const censurado = m => (m.scope==='code' && redIds.has(m.target_id))
-          || (m.scope==='coding' && redIds.has(codingById[m.target_id]?.code_id));
+        const censurado = m => memoOnRedaction(m, redIds, id=>codingById[id]?.code_id);   // single source with the four AI panels
         const fora = rows.filter(censurado).length;
         rows = rows.filter(m=>!censurado(m));
         // a note on an excerpt names the code as well as the document (M12c): without it the model got

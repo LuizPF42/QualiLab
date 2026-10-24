@@ -591,6 +591,11 @@ create or replace function public.join_project(p_code text, p_display text)
 returns public.projects language plpgsql security definer set search_path = public as $$
 declare v_proj public.projects; v_recent int; v_inv public.project_invites; v_existed boolean; v_who text; v_res uuid;
 begin
+  -- Without a session auth.uid() is NULL, and the two outcomes broke a not-null column on DIFFERENT
+  -- tables (join_attempts for an unknown code, members for a valid one): the table named in the error
+  -- answered "does this code exist?" to anyone holding the public key, and the throttle never
+  -- recorded. Same class as SEG-1 (remove_member) and S02 (set_memory_active); one message for all.
+  if auth.uid() is null then raise exception 'E preciso estar autenticado para entrar num projeto'; end if;
   v_who := coalesce(nullif(p_display,''),'anonimo');
   delete from public.join_attempts where attempted_at < now() - interval '1 day';
   select count(*) into v_recent from public.join_attempts
@@ -1428,8 +1433,8 @@ create trigger trg_links_gc_categories after delete on public.categories
   for each row execute function public.links_gc('category');
 
 -- SEG-2 nas duas tabelas novas: o projeto de uma linha nao muda depois de criada. O trigger e
--- criado JUNTO com os das outras tabelas, no bloco UNICO do project_id_guard (mais abaixo, logo
--- depois da funcao). Aqui ele vinha ~120 linhas ANTES de a funcao existir, e com isso o
+-- criado JUNTO com os das outras tabelas, no bloco UNICO do project_id_guard (mais abaixo, depois
+-- de ia_memory, a ultima tabela que ele cobre). Aqui ele vinha ~120 linhas ANTES de a funcao existir, e com isso o
 -- schema.sql deixou de ser aplicavel de cima a baixo num banco NOVO (achado pelo pgTAP em
 -- 07/set/2026; nos dois Supabase no ar nao apareceu porque la a funcao ja existia de antes).
 
@@ -1624,16 +1629,8 @@ begin
   return new;
 end; $$;
 revoke execute on function public.project_id_guard() from public, anon, authenticated;
-
-do $$
-declare tb text;
-begin
-  foreach tb in array array['documents','codes','codings','doc_values','memos','links','link_relations','coding_disagreements'] loop
-    execute format('drop trigger if exists trg_project_id_guard on public.%I;', tb);
-    execute format('create trigger trg_project_id_guard before update on public.%I '
-                   'for each row execute function public.project_id_guard();', tb);
-  end loop;
-end $$;
+-- The ONE table list that wires this trigger lives further down, after ia_memory: it covers
+-- ia_results and ia_memory, created below, and a trigger before its table breaks a fresh apply.
 
 -- ---------- S7: quem pode usar a IA, e a trava de uma via ----------
 -- can_use_ai responde a MESMA pergunta que a UI responde ao esconder os paineis, e existe para
@@ -1706,9 +1703,12 @@ create policy ia_results_select on public.ia_results for select using (public.is
 create policy ia_results_insert on public.ia_results for insert
   with check (public.role_can(project_id, 'use_ai') and (created_by = auth.uid() or created_by is null)
               and public.can_use_ai(project_id));
+-- can_use_ai in the WITH CHECK too, as in the INSERT: without it, a project declared without AI
+-- still let the author overwrite an old conversation with a new one made elsewhere (audit, Oct/2026)
 create policy ia_results_update on public.ia_results for update
   using (public.role_can(project_id, 'use_ai') and (created_by = auth.uid() or public.is_admin(project_id)))
-  with check (public.role_can(project_id, 'use_ai') and (created_by = auth.uid() or public.is_admin(project_id)));
+  with check (public.role_can(project_id, 'use_ai') and (created_by = auth.uid() or public.is_admin(project_id))
+              and public.can_use_ai(project_id));
 create policy ia_results_delete on public.ia_results for delete
   using (public.role_can(project_id, 'use_ai') and (created_by = auth.uid() or public.is_admin(project_id)));
 
@@ -1747,7 +1747,8 @@ create policy ia_memory_insert on public.ia_memory for insert
               and public.can_use_ai(project_id));
 create policy ia_memory_update on public.ia_memory for update
   using (public.role_can(project_id, 'use_ai') and (created_by = auth.uid() or public.is_admin(project_id)))
-  with check (public.role_can(project_id, 'use_ai') and (created_by = auth.uid() or public.is_admin(project_id)));
+  with check (public.role_can(project_id, 'use_ai') and (created_by = auth.uid() or public.is_admin(project_id))
+              and public.can_use_ai(project_id));
 create policy ia_memory_delete on public.ia_memory for delete
   using (public.role_can(project_id, 'use_ai'));
 
@@ -1769,6 +1770,22 @@ begin
   update public.ia_memory set active = p_active where id = p_id;
 end; $$;
 grant execute on function public.set_memory_active(uuid, boolean) to anon, authenticated;
+
+-- SEG-2, the wiring: ONE list of every table whose rows carry a project_id and accept UPDATE. It
+-- sits here, after the last table it covers (ia_memory), because the schema must apply top to
+-- bottom on a NEW database (M14). The audit of Oct/2026 added ia_results, ia_memory, assignments
+-- and categories, which had been left out; 001 now checks the PROPERTY, so a new table cannot
+-- quietly fall into the gap again.
+do $$
+declare tb text;
+begin
+  foreach tb in array array['documents','codes','codings','doc_values','memos','links','link_relations','coding_disagreements',
+                            'ia_results','ia_memory','assignments','categories'] loop
+    execute format('drop trigger if exists trg_project_id_guard on public.%I;', tb);
+    execute format('create trigger trg_project_id_guard before update on public.%I '
+                   'for each row execute function public.project_id_guard();', tb);
+  end loop;
+end $$;
 
 -- ---------- ai_prices (referencia de preco por modelo — "calculadora de custo" da IA) ----------
 -- Preco de LISTA por 1M de tokens, so pra estimar o custo das chamadas de IA em US$/R$. Leitura
