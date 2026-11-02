@@ -214,25 +214,31 @@ El archivo único se abre directamente en el navegador (`file://`), sin servidor
 
 ### 2.2. La pantalla de entrada
 
-![La pantalla de entrada de QualiLab: los tres caminos (Nuevo en archivo, Entrar en la nube y Solo probar), con Abrir archivo existente y Conectar a mi Supabase debajo.](manual-img/01-welcome.png)
+![La pantalla de entrada de QualiLab en una primera visita: los tres caminos (Nuevo en archivo, Crear mi nube y Solo probar), con ¿Ya tienes una? Conectar a una nube privada, Abrir archivo existente y Conectar a la nube pública (obsoleta) debajo.](manual-img/01-welcome.png)
 
 La primera pantalla ofrece tres caminos:
 
-1. **Nuevo en archivo**: crea un proyecto guardado como `.qualilab` en disco (Chrome/Edge): portátil, sin conexión y sin nube. Ideal para datos sensibles.
-2. **Entrar en la nube**: abre el **inicio de sesión** (**Continuar con Google**, o correo y contraseña; también puedes **Crear cuenta**, con **nombre para mostrar**, correo y contraseña de al menos 6 caracteres), para trabajo colaborativo y sincronizado. **Olvidé mi contraseña** permite restablecerla por correo. **← Volver** regresa a la entrada. Un aviso recuerda que, en el servidor estándar, el contenido es **visible para quien administra la base de datos**: lee la [sección 16](#16-guardado-copias-de-seguridad-y-modos-de-almacenamiento) antes de subir material sensible.
+1. **Nuevo en archivo**: crea un proyecto guardado como `.qualilab` en disco (Chrome/Edge): portátil, sin conexión y sin nube. Ideal para datos sensibles. La primera vez, un consejo explica cómo usar el mismo archivo en más de una computadora; **Elegir dónde guardar** continúa.
+2. **Crear mi nube**: abre un asistente que monta **un servidor solo de tu grupo**, en una cuenta gratuita de Supabase que es de ustedes, para trabajo colaborativo y sincronizado. Una vez que autorizas en supabase.com, el asistente hace el montaje solo, y la nube recibe un **nombre corto** que los colegas escriben para encontrarla. Después de **Conectar a este servidor**, la pantalla de entrada ofrece **Crear mi cuenta**: la cuenta vive en ese servidor y es con la que entras desde entonces. Quien prefiere montarlo a mano elige **Ya tengo un servidor, o prefiero configurarlo a mano**: son cinco pasos guiados (**Crear**, **Dirección y clave**, **Base de datos**, **Inicio de sesión** y **Verificar**), hechos en parte en el panel de Supabase, y el último comprueba que todo haya salido bien.
 3. **Solo probar (borrador)**: abre inmediatamente un proyecto de **borrador** en este navegador, sin configuración. Es efímero (desaparece al borrar los datos del sitio), adecuado para probar; puedes migrar a archivo o nube desde la gestión del proyecto.
 
-**¿Creaste una cuenta? El siguiente paso es un código.** QualiLab envía un **código por correo** y abre **Confirma tu registro**: escribe **todos sus números** y pulsa **Confirmar y entrar**. No hay enlace en el correo: los filtros de seguridad corporativos suelen abrirlos automáticamente e invalidarlos antes de que los uses. El código **dura una hora**. Si no llega, revisa el **spam** y usa **Reenviar código**; después solo vale el del correo **más reciente**. Si ya confirmaste la cuenta, **Ya confirmé — quiero entrar** vuelve al inicio de sesión.
+**¿Creaste una cuenta? El siguiente paso es un código.** QualiLab envía un **código por correo** y abre **Confirma tu registro**: escribe **todos sus números** y pulsa **Confirmar y entrar**. No hay enlace en el correo: los filtros de seguridad corporativos suelen abrirlos automáticamente e invalidarlos antes de que los uses. El código **dura una hora**. Si no llega, revisa el **spam** y usa **Reenviar código**; después solo vale el del correo **más reciente**. Si ya confirmaste la cuenta, **Ya confirmé: quiero entrar** vuelve al inicio de sesión. En una nube privada esto depende de cómo se configuró: sin confirmación por correo, la cuenta entra directamente, sin código.
 
 Al crear un proyecto (borrador, archivo o nube), QualiLab pregunta por los **recursos de IA**: **Sin IA** (predeterminado: las pantallas de IA no aparecen y Autocodificación conserva solo Repetir Codificación, que no usa IA) o **Activar IA**. Puedes cambiarlo después ([17.7](#177-desactivar-la-ia-en-este-proyecto)).
 
-Cuando el navegador permite instalar, aparece **Instalar QualiLab** (en Windows con Chrome se destaca **Instalar con Edge**): consulta [Instalar como aplicación](#instalar-como-aplicación-y-abrir-sin-internet).
+Cuando el navegador permite instalar, aparece **Instalar QualiLab** (en Windows con Chrome se destaca **Instalar desde Edge**): consulta [Instalar como aplicación](#instalar-como-aplicación-y-abrir-sin-internet).
 
 La interfaz sigue el idioma compatible preferido del navegador: portugués, español o inglés; cuando no encuentra uno compatible, usa inglés. Puedes cambiarlo en **Mi cuenta ▸ Idioma** ([sección 14](#idioma-de-la-interfaz)).
 
-El botón violeta **Conectar a mi Supabase** (en la entrada y el inicio de sesión) conecta el app a **tu propio servidor Supabase** antes de iniciar sesión: allí quedarán tus proyectos colectivos.
+Debajo de las tarjetas hay tres salidas más:
 
-> Un proyecto en nube o archivo ya abierto **se vuelve a abrir la próxima vez**; si el navegador solicita de nuevo permiso para el archivo, aparece **Reabrir *nombre*.qualilab**. Si el app no tiene nube configurada, **Entrar en la nube** no aparece y empiezas en archivo/borrador.
+- **¿Ya tienes una? Conectar a una nube privada**: para cuando alguien del grupo ya creó la nube. Abre el mismo asistente, en el paso **Dirección y clave**. El camino más corto es el **Enlace para el equipo**: quien creó la nube lo copia en la pantalla de entrada y lo envía a sus colegas, y quien abre el enlace confirma el servidor en **Verificar y conectar**. El enlace de una invitación (**copiar enlace**, en la [sección 13](#13-colaboración)) lleva el servidor consigo.
+- **Abrir archivo existente**: vuelve a abrir un `.qualilab` de tu disco.
+- **Conectar a la nube pública (obsoleta)**: abre el **inicio de sesión** en la nube pública de QualiLab (**Continuar con Google**, o correo y contraseña; también puedes **Crear cuenta**, con **nombre visible**, correo y contraseña de al menos 6 caracteres). **Olvidé mi contraseña** permite restablecerla por correo, **Conectar a una nube privada** lleva al asistente y **← Volver** regresa a la entrada. Esa nube sigue funcionando, pero dejó de ser el camino recomendado: justo debajo del botón, el enlace **Datos visibles para el desarrollador** recuerda que allí el contenido es **visible para quien administra la base de datos**. Lee la [sección 16](#16-guardado-copias-de-seguridad-y-modos-de-almacenamiento) antes de subir material sensible.
+
+**La tarjeta Entrar.** Después de que este navegador usa una nube privada, la pantalla de entrada gana, arriba, la tarjeta **Entrar**: elige la **Nube** en la lista, escribe el correo y la contraseña de tu cuenta allí y pulsa **Entrar**. Justo debajo están **¿Primera vez en esta nube? Crear cuenta** y **Olvidé mi contraseña**. **Otra nube…** sirve para llegar a una nube que no está en la lista, y la **×** junto a una nube la olvida en este navegador. La lista guarda solo la dirección, la clave pública y el nombre corto, nunca tu correo ni tu contraseña. En una primera visita la tarjeta no existe, y por eso no aparece en la imagen de arriba. Conectado a una nube privada, el final de la pantalla muestra **Verificar servidor** y **Enlace para el equipo**.
+
+> Un proyecto en nube o archivo ya abierto **se vuelve a abrir la próxima vez**; si el navegador solicita de nuevo permiso para el archivo, aparece **Reabrir *nombre*.qualilab**.
 
 ### 2.3. Elegir o crear un proyecto
 
@@ -240,7 +246,7 @@ Después de iniciar sesión aparece **Mis proyectos**:
 
 - **Abrir uno existente**: haz clic en él o en **abrir**.
 - **Crear proyecto**:
-  1. Confirma tu **nombre para mostrar**.
+  1. Confirma tu **nombre visible**.
   2. Escribe el **nombre del proyecto**.
   3. Elige **Proyecto Individual** (todo va a la referencia, sin reconciliación) o **Proyecto Colectivo** (varios investigadores, con reconciliación).
   4. Decide los **Recursos de IA**: comienza **Sin IA** ([17.7](#177-desactivar-la-ia-en-este-proyecto)).
@@ -825,7 +831,7 @@ Abre el **indicador del proyecto** y comparte el **código de acceso**. Se usa e
 
 - **Correo opcional**: restringe el código a esa cuenta. Otra cuenta recibe «código inválido» sin revelar el destinatario.
 - La tarjeta muestra los permisos del rol, derivados de la [matriz](#qué-puede-hacer-cada-rol-se-decide-al-crear); son los mismos incluidos en el mensaje.
-- **QualiLab no envía correos de invitación.** Tú compartes el código. **abrir correo** prepara un mensaje con código y rol en **tu programa de correo**; no lo envía por el servidor.
+- **QualiLab no envía correos de invitación.** Tú compartes el código. **abrir correo** prepara un mensaje con código y rol en **tu programa de correo**; no lo envía por el servidor. El botón **copiar enlace** da un enlace que ya lleva el código; en una nube privada lleva también el servidor, y quien lo abre solo verifica y confirma.
 - Por defecto es de **un solo uso**. **Reutilizable** permite varias personas con el mismo rol.
 - La lista muestra rol, destinatario y usos. **Revocar** invalida el código para quienes aún no entraron.
 
@@ -861,10 +867,10 @@ Desde un **borrador** o **archivo**, **Enviar a la nube** crea un nuevo proyecto
 
 ## 14. Mi cuenta
 
-![Mi cuenta: nombre para mostrar y configuración de IA con proveedor, clave de API y modelo.](manual-img/11-conta.png)
+![Mi cuenta: nombre visible y configuración de IA con proveedor, clave de API y modelo.](manual-img/11-conta.png)
 
 Pulsa **tu nombre** en cualquier modo para abrir **Mi cuenta**:
-- Cambiar el **nombre para mostrar** en codificaciones.
+- Cambiar el **nombre visible** en codificaciones.
 - Cambiar la **contraseña**, solo para cuentas por correo; no aparece en borrador/archivo.
 - Ver **todos tus proyectos**, abrirlos, renombrarlos (admin), salir o eliminarlos (admin).
 - Configurar **clave/modelo de IA** (BYOK), incluido **Ollama local** ([17](#17-codificar-y-analizar-con-ia)).
@@ -1022,7 +1028,7 @@ QualiLab **guarda automáticamente** después de cada acción. El lugar depende 
 - **Continúa actualizándose**: `nueva versión disponible · recargar` aplica la actualización sin perder lo guardado.
 - **Desinstalar** desde el menú ⋯ no elimina tus archivos `.qualilab`.
 
-**Cómo instalar.** Usa **Instalar QualiLab** en la entrada. En Chrome para Windows, **Instalar con Edge** abre la misma dirección en Edge; **Instalar aquí** permite seguir en Chrome. La franja solo aparece cuando el navegador ofrece esa instalación y desaparece tras instalar. También puedes usar el icono de instalación junto a la URL o, en Edge, **⋯ → Aplicaciones → Instalar este sitio como una aplicación**. Edge registra el tipo e icono de `.qualilab`; Chrome en Windows puede dejar el icono genérico. En macOS no se espera ese mismo problema. Puedes seguir navegando normalmente con Chrome aunque instales QualiLab mediante Edge; sus almacenamientos de navegador son separados.
+**Cómo instalar.** Usa **Instalar QualiLab** en la entrada. En Chrome para Windows, **Instalar desde Edge** abre la misma dirección en Edge; **Instalar aquí** permite seguir en Chrome. La franja solo aparece cuando el navegador ofrece esa instalación y desaparece tras instalar. También puedes usar el icono de instalación junto a la URL o, en Edge, **⋯ → Aplicaciones → Instalar este sitio como una aplicación**. Edge registra el tipo e icono de `.qualilab`; Chrome en Windows puede dejar el icono genérico. En macOS no se espera ese mismo problema. Puedes seguir navegando normalmente con Chrome aunque instales QualiLab mediante Edge; sus almacenamientos de navegador son separados.
 
 Instalar **no cambia el modo de almacenamiento**. Archivo continúa en disco y nube continúa en Supabase. **No es obligatorio**: las funciones del manual también se usan en una pestaña.
 
@@ -1054,8 +1060,8 @@ La nube guarda el proyecto en una base en línea para **sincronizar** personas y
 
 La pregunta central es **quién administra ese Supabase**:
 
-- **Servidor estándar**: el Supabase del autor. El propietario **tiene acceso técnico** al contenido. Usarlo implica confiar en un proyecto personal sin garantía institucional ([aviso legal](#0-la-idea-de-qualilab)). No es el destino recomendado para datos sensibles.
-- **Tu Supabase**, indicador violeta **nube personal**: conectas tu propio proyecto (puede crearse en el plan gratuito). Tú administras sus claves y permisos, aunque Supabase sigue alojándolo. Configura **Conectar a mi Supabase** en la entrada/inicio de sesión o **Conexión (Supabase)** desde la gestión de un proyecto local.
+- **Nube pública de QualiLab**, el *servidor estándar* (botón **Conectar a la nube pública (obsoleta)**): el Supabase del autor. El propietario **tiene acceso técnico** al contenido. Usarlo implica confiar en un proyecto personal sin garantía institucional ([aviso legal](#0-la-idea-de-qualilab)). No es el destino recomendado para datos sensibles.
+- **Nube privada, tu propio Supabase**, indicador violeta **nube personal**: conectas tu propio proyecto (puede crearse en el plan gratuito). Tú administras sus claves y permisos, aunque Supabase sigue alojándolo. Crea una en la pantalla de entrada, en **Crear mi nube**, o conecta a una existente en **¿Ya tienes una? Conectar a una nube privada** (en el inicio de sesión de la nube pública, **Conectar a una nube privada**); también desde la gestión de un proyecto local, en **Conexión (Supabase)**.
 
 **Protecciones:**
 - **Inicio de sesión** por correo/contraseña o Google mediante Supabase Auth.
@@ -1387,7 +1393,7 @@ REFI-QDA no conserva la autoría de atributos, solo la de fragmentos. Usa `.qual
 Busca una instantánea previa en **Proyecto → Copias espejo del proyecto** y **Restaura**; los PDF eliminados no vuelven. Si no hay, recupera un `.qualilab` externo. Ctrl+Z solo deshace codificaciones de fragmentos.
 
 **No puedo confirmar la cuenta o se rechaza el código.**
-Escribe **todos los números** del correo en **Confirma tu registro**. El código dura una hora; tras reenviar, solo sirve el **último**. Revisa spam. Si ya confirmaste, usa **Ya confirmé — quiero entrar**.
+Escribe **todos los números** del correo en **Confirma tu registro**. El código dura una hora; tras reenviar, solo sirve el **último**. Revisa spam. Si ya confirmaste, usa **Ya confirmé: quiero entrar**.
 
 **Olvidé la contraseña.**
 En el acceso a nube, pulsa **Olvidé mi contraseña**, indica correo y envía. El enlace abre la pantalla de **nueva contraseña**; después inicia sesión. Es temporal y de un solo uso: si caducó, solicita otro. Revisa spam. La respuesta en pantalla es igual exista o no esa cuenta.

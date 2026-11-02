@@ -14,6 +14,25 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.81 (02/11/2026)
+
+### "Criar minha nuvem" agora cria a nuvem
+
+- **O app monta o servidor do grupo.** Em **Criar minha nuvem**, você dá um nome curto, escolhe a
+  região e autoriza no supabase.com. O app cria o servidor numa conta Supabase de vocês, monta o
+  banco e o login, e devolve o link para a equipe. Quem nunca usou o Supabase recebe um guia, tela
+  por tela, para criar a conta e a organização antes de autorizar. Montar à mão continua possível:
+  **Já tenho um servidor, ou prefiro configurar à mão**.
+- **Achar a nuvem pelo nome.** Em **Entrar**, um colega digita o nome curto em vez do endereço e da
+  chave. Na primeira vez em que um nome leva a uma nuvem desconhecida, o app mostra o endereço antes
+  de pedir a senha. O nome fica num cadastro aberto, com o endereço e a chave pública da nuvem: use
+  o nome do grupo, não o de uma pessoa.
+- **Quem vê o quê.** A autorização passa por uma função do QualiLab, que faz as chamadas ao Supabase
+  em seu nome enquanto o servidor é criado e não guarda nada. Os dados de pesquisa nunca passam por
+  ela: vão do navegador direto para o servidor do grupo.
+- **Cadastro sem confirmação por e-mail.** A nuvem criada assim deixa quem tem o endereço criar conta
+  na hora, o que serve bem a um grupo fechado. Ninguém vê um projeto sem o código de convite.
+
 ## 1.4.80 (02/11/2026)
 
 ### Um projeto em mais de um computador, sem nuvem

@@ -34,6 +34,8 @@ Since v1.4.48 the **application interface exists in English**, and it follows yo
 
 </details>
 
+> **The public cloud will be shut down on December 31, 2026.** Cloud mode now works with **your group's cloud**: a server just for you, on a Supabase account of your own. This new format puts first the **privacy and ownership of each user's research data**. If you have a project on the public cloud, you need to move it before that date; the path is in [Cloud mode: the cloud belongs to your group](#cloud-mode-the-cloud-belongs-to-your-group).
+
 > **Before using it with real data.** QualiLab is a personal project under active development, distributed under the MIT license without warranty of any kind, and it has not yet undergone an independent security audit. It also does **not anonymize** your material: redaction masks only what you marked by hand, and only in some outputs. For where each mode of use sends your data, see [Where your data lives](#where-your-data-lives); what the tool does not do for you is covered in [Limits and responsibility](#limits-and-responsibility).
 >
 > **Disclaimer.** QualiLab is a personal project by [Luiz Pimenta Filho](https://orcid.org/0000-0002-5165-6232), within [LabDados / FGV Direito SP](https://direitosp.fgv.br/nucleos-de-pesquisa/laboratorio-dados-pesquisa-empirica-direito-labdados). It does not represent the position of, nor imply any responsibility of, any institution (including FGV). The author accepts no liability for data loss, leakage, misuse or other consequences of using the software; it is up to users to take the ethical and legal precautions their research requires.
@@ -66,7 +68,7 @@ A direct comparison with the findings of Küster & Wolf (2025) on 28 qualitative
 | Windows · macOS · Linux · Web | 13 · 12 · 7 · 18 | ✅ all four |
 | Full REFI-QDA interoperability | 9 (7 of them proprietary) | ✅ QDPX + QDC, validated against the official `Project.xsd` |
 | Real-time collaboration | 5 | ✅ |
-| No mandatory server | 20 offer some form of *on-premise* | ✅ File mode has no server at all; the cloud can be your own |
+| No mandatory server | 20 offer some form of *on-premise* | ✅ File mode has no server at all; the cloud is your group's, on an account of your own |
 | Lossless export for review | "data loss on export makes reproduction impossible" | ✅ the `.qualilab` file is a complete *round-trip* |
 | **AI `system prompt` visible to the user** | **0** | ✅ the entire prompt is shown before sending |
 | **Editable `system prompt`** | 0 | ✅ stance, instructions, and injected memos |
@@ -143,8 +145,8 @@ One line per feature: this is the inventory. The **step by step** for each one i
 | **Locked definitions** | optional: when on, only admins edit what each code means, so the instrument does not change mid-round in a calibration study. Reading stays open |
 | **Project types** | individual (everything goes straight to the reference layer) or collective |
 | **Real time** | codings and attribute answers sync live; the code scheme and attributes require a reload |
-| **Where the data lives** | a file on disk, a draft in the browser, or the cloud — switching between them is one click in the project hub, no manual export/import |
-| **Your own cloud** | point the app at a **Supabase project of yours**, from the entry screen or the hub |
+| **Where the data lives** | a file on disk, a draft in the browser, or your group's cloud — switching between them is one click in the project hub, no manual export/import |
+| **Your group's cloud** | a server just for you, on a **Supabase project of your own**: **Create my cloud**, on the entry screen, creates the server once you authorize it on supabase.com and gives you the link for the team |
 
 ### AI: off by default, and with your own key
 
@@ -152,7 +154,7 @@ One line per feature: this is the inventory. The **step by step** for each one i
 
 An **AI** badge in the header shows the state at all times — a **green** ring when enabled, **struck through in red** when off or restricted to admins — and it is also how you change it. With AI off the AI screens disappear (Auto-coding stays, with only Repeat Coding, which uses no AI); with it on, **nothing is sent to any model unless you ask**: every call is a click of yours.
 
-**The default is the browser calling the provider directly**: with your key (stored only in the browser), **no QualiLab server sees the material** under analysis. The `ai-ask` Edge Function covers only two cases: a *Custom*/*Azure* endpoint that does not allow browser calls (CORS) and an eventual server key — which the public instance does not have.
+**The default is the browser calling the provider directly**: with your key (stored only in the browser), **no QualiLab server sees the material** under analysis. The `ai-ask` Edge Function covers only two cases: a *Custom*/*Azure* endpoint that does not allow browser calls (CORS) and an eventual server key, which exists only if whoever runs the group's cloud sets one up.
 
 | Feature | What it is |
 |---|---|
@@ -205,7 +207,7 @@ You point it at a **folder**, not a file: the assistant lists the projects in it
 This is the question that decides how much of the tool you can use, and the answer depends on the mode. The golden rule: **the material only leaves your device if you let it.**
 
 - **File / Draft**: they stay **on your device** and do not leave it.
-- **Cloud**: they are sent to a **third-party server** (Supabase), become subject to that provider's terms and leave your direct control.
+- **Cloud**: they stay on **your group's server**, in a Supabase project of your own. The company Supabase is a third party that hosts this database, under its terms, and whoever administers the project can read the content. QualiLab's author has no access to it. The exception is the **public cloud**, which sits on the author's Supabase and will be shut down on December 31, 2026.
 - **AI**: it **ships off** — every project is born without it, and enabling it is a deliberate act ([above](#ai-off-by-default-and-with-your-own-key)). Once enabled, the passages you **ask** to have analyzed are sent to the **AI provider** you use (Gemini/OpenAI/Anthropic/Azure…), under its policy; **local Ollama** is the exception (it runs on your machine, nothing leaves it). Redaction is masked before sending; only in Analyze with AI can you include, code by code, a redacted passage as context.
 - **Publication** (Interactive Report / Web Annotation): whatever you publish becomes **public**.
 
@@ -214,7 +216,7 @@ QualiLab operates in three modes, chosen on the **entry screen** (or reopened au
 | Mode | Storage | Indicator | When to use |
 |---|---|---|---|
 | **File** | a `.qualilab` file on disk | `arquivo ·` | Serious solo work, sensitive data, offline use |
-| **Cloud** | Supabase (Postgres + Auth) | `nuvem ·` | Collaborative teams, multiple devices |
+| **Cloud** | Your group's Supabase (Postgres + Auth) | `nuvem ·` | Collaborative teams, multiple devices |
 | **Draft** | the browser's `localStorage` | `rascunho ·` | Quick trials, no commitment (ephemeral) |
 
 File and cloud are the real working options; the **draft** is the frictionless entrance (one click, zero configuration), but **ephemeral**: the data stays only in that browser and vanishes if you clear the site data. That is why a discreet notice below the header suggests, at any time, **saving as a file** or **connecting to the cloud** (the migration is one click in the project hub, no export/import). A file once opened **reopens by itself** in the next session (with the browser's permission); "Leave this file" ("Sair deste arquivo") in the hub returns to the entry screen.
@@ -234,6 +236,26 @@ In draft mode (`localStorage`, a ~5 MB limit), you can enable an **automatic bac
 
 - Enable it via **project pill → Automatic folder backup → Choose folder…** (available in Chrome and Edge).
 - If the app fails to actually save (`localStorage` full, unsupported browser), a red warning appears on screen with a shortcut to download the project right away; this does not depend on the automatic backup being on.
+
+### Cloud mode: the cloud belongs to your group
+
+QualiLab's cloud has changed format: instead of a single server for everyone, **each group has its own**, in a Supabase project on an account of your own. **This format puts first the privacy and ownership of each user's research data.** The database belongs to the people doing the research, the keys stay with whoever you authorize, and the material neither passes through QualiLab's author nor stays with them.
+
+- **Create.** **Create my cloud**, on the entry screen, sets up the server on a free Supabase account: you give it a short name, pick the region and authorize on supabase.com, and the app hands back the **link for the team**. If you have never used Supabase, you get a guide, screen by screen. The authorization goes through a QualiLab function that makes the calls to Supabase on your behalf while the server is created, and keeps nothing; research data never goes through it. If you prefer to set it up by hand, the wizard offers that path, and there is a [guide with screenshots](docs/GUIA-SUPABASE.md) *(in Portuguese)*.
+- **Sign in.** **Sign in** asks for the cloud, the email and the password on a single screen, and remembers the clouds already used in this browser (address and public key only, never the email). A colleague can also find the cloud by its **short name**, which sits in an open registry with the address and the public key: use the group's name, not a person's. Each person's account lives on the group's server.
+- **Invite.** The team link never switches servers on its own: the app shows where it points, asks for confirmation and refuses a link carrying a server's secret key. A project's invitation link already carries the code.
+- **Keep it up to date.** When you sign in, the app checks the database version, and the status bar warns you if the server is behind this version of QualiLab. To update, run [`supabase/schema.sql`](supabase/schema.sql) again in the SQL Editor: it does not delete projects or data.
+
+**What this format does not change.** The company Supabase still hosts the database, and there is **no end-to-end encryption**: whoever administers the project can read the content. A cloud created by the wizard does not confirm emails at sign-up: anyone with the address can create an account at once, but sees no project without the invitation code. Maintenance also becomes the group's job, including backups and plan limits ([Maintenance and free plan limits](docs/GUIA-SUPABASE.md#9-manutenção-e-limites-do-plano-gratuito), in Portuguese). For sensitive material, the recommendation is still File mode.
+
+**The public cloud will be shut down on December 31, 2026.** Until then it stays available as **Connect to the public cloud (deprecated)**. To move a project from it to your group's cloud:
+
+1. On the public cloud, download the project as a `.qualilab`.
+2. Create your group's cloud, or connect to it through **Already have one? Connect to a private cloud**.
+3. Open the `.qualilab` and use **Send to the cloud**, in the project hub: the new project is created on the connected cloud.
+4. Ask each team member to create an account on the new cloud and join through the invitation link.
+
+Document distribution and blind coding do not travel in the `.qualilab`: set both up again in the new project before the team goes back to coding.
 
 ### Cloud mode: connection status
 
@@ -270,11 +292,11 @@ The **front-end core (Preact + htm) comes embedded** in the `index.html` itself,
 
 ## Cloud setup (Supabase)
 
-Enabling collective mode requires a free **Supabase** project.
+Enabling collective mode requires a **Supabase** project of your group's, which can be a free one. The normal path is **Create my cloud**, on the entry screen: the app does these steps for you, with no file to edit. There is also a [step-by-step guide with screenshots](docs/GUIA-SUPABASE.md) *(in Portuguese)*, from creating the account to connecting the app. This section is the reference for those who prefer to do it by hand or who publish their own copy of QualiLab.
 
 ### 1. Credentials
 
-At the top of the `index.html`, fill in:
+If you use the published app, there is nothing to edit: just enter the address and the key in **Already have one? Connect to a private cloud**, or open the team link. If you publish your own copy, you can set the credentials at the top of the `index.html`:
 
 ```js
 let SUPABASE_URL  = "https://YOUR-PROJECT.supabase.co";
@@ -471,7 +493,7 @@ The [Sustainability](#limits-and-responsibility) section says there is verificat
 
 The rest of the battery runs in the development repository, on every push, over the modular source: pure-function tests (redaction, passage anchors, offsets, format parsing), **40 browser suites** verifying that every screen renders and that the rules which fail **silently** still hold (blind mode not leaking the reference layer, induction not seeing the held-out documents, the confirmation code not dropping digits, **zero external requests at boot**), and **pgTAP** over the RLS policies (roles, blind coding, assignment, AI access). The round-trip harness that validates the generated `.qdpx` against the official `Project.xsd` also lives there, but is run by hand, outside CI.
 
-In addition, the code is periodically put through **adversarial review by language models that take no part in its development**, looking for security flaws and bugs; what is confirmed gets fixed, or is recorded as a pending item in the changelog. The reviewers are currently ChatGPT 5.6 Astra and Google Gemini 3.1 Pro. This does not replace an independent security audit, which the project has not had yet (see [Sustainability, frankly](#limits-and-responsibility)).
+In addition, the code is periodically put through **adversarial review by language models that take no part in its development**, looking for security flaws and bugs; what is confirmed gets fixed, or is recorded as a pending item in the changelog. The most recent review was done on November 1, 2026 by Kimi K3.1 Pro, ChatGPT 6 Astra and Gemini Argon. This does not replace an independent security audit, which the project has not had yet (see [Sustainability, frankly](#limits-and-responsibility)).
 
 ---
 
@@ -482,7 +504,7 @@ A project under active development. Know the limits before adopting it for impor
 - **Local File mode only in Chromium.** The File System Access API behind it only exists in Chrome and Edge; Firefox and Safari fall back to the draft (`localStorage`, ~5 MB).
 - **Not everything syncs live.** Only codings and attribute answers. Changing the code scheme, the attributes or the document assignment requires reloading the page.
 - **The write queue is not an offline mode.** It stores and resends what you *write* when the cloud fails, but **reading** still requires a network: with no connection, opening a not-yet-loaded document or switching projects does not work. To work without a network, use File mode.
-- **Cloud capacity.** The public instance runs on a paid Supabase plan, with *Micro* compute (1 GB of RAM, shared CPU, a database of up to ~10 GB), shared among all the projects that use it. If you set up your own Supabase on the free plan, the ceiling is on the order of 500 MB of database (subject to change — check [supabase.com/pricing](https://supabase.com/pricing)). Very large projects may require a larger instance or File mode, which has no such ceiling.
+- **Cloud capacity.** Each cloud has the limits of the Supabase plan it was created on. On the free plan, the ceiling is on the order of 500 MB of database (subject to change — check [supabase.com/pricing](https://supabase.com/pricing)), and the project is paused after a period without use. Very large projects may require a larger plan or File mode, which has no such ceiling.
 - **QualiLab does NOT anonymize.** Redaction masks **only the passages you marked by hand**, and only in what leaves your hands: the Report outputs and what goes to the AI, the external assistant included (except when you yourself include a redaction code in an analysis, and with the caveat about agentic clients, above). It does not detect what is sensitive (Repeat Coding only finds **identical** repetitions of what you already marked, see above), hides nothing on your own screen, does not cover the work exports (`.qualilab`, QDPX, QDC, CSV and JSON come out raw) and does not reach **document titles, attribute values or memos**. The manual carries the [publication workflow](docs/MANUAL.en.md) that takes care of those three.
 - **The audit trail records operations, not rows, and does not undo.** The project history (Memos ▸ History) lists imports, code merges and splits, deletions, text edits, bulk applications, consolidations and exports, with author and date, but keeps no content of what was deleted: **Ctrl+Z** still undoes only the session's last coding. What brings content back is the **mirror** (since 1.4.52): a snapshot of the whole project, taken by hand or on its own before clearing, deleting, merging, splitting, editing text or restoring, restored from the project pill — without the original PDFs and without the history, which records the restoration instead of going back. It starts at the first event after 1.4.51 (nothing is rebuilt backwards), and in the cloud it is append-only through the API, not forensic proof: whoever operates the server, or owns the file, can always alter it.
 - **QDPX loses what the format does not model**: individual layers and per-researcher attribute authorship (a REFI-QDA limit, not ours). And the type of attributes coming from another tool is **inferred** when that tool does not declare it — the import summary says how many, and it is worth reviewing them in the scheme.
@@ -505,7 +527,6 @@ The risk of abandonment is mitigated by design, not by a promise: an MIT license
 
 The full backlog is kept in the development repository, with the reasoning behind each item and also what was **considered and discarded**, with the why. Today's declared priorities:
 
-- **Backend without a buried credential**: a named cloud catalog in the configuration, "use my own cloud" as a first-class path, and invitation links with a confirmation screen.
 - **Links between passages**, created in the reader: connecting one passage to another ("this claim contradicts that one"). Today's links connect codes and attributes, and are created in the Scheme.
 - **Bulk undo**: reverting a single operation (an import, an application of suggestions) without restoring the whole project. The operation history and the mirrors already exist ([Audit trail and mirrors](#audit-trail-and-mirrors)), but a mirror takes the whole project back to a moment.
 - **Assistant-proposed writing with approval**: the external assistant proposes codings into a box you review inside the app; nothing is applied on its own.

@@ -37,6 +37,8 @@ Desde la v1.4.70 la **interfaz de la aplicación existe en español**, y sigue a
 
 </details>
 
+> **La nube pública se desactivará el 31/12/2026.** El modo nube ahora funciona con la **nube de tu grupo**: un servidor solo para ustedes, en una cuenta de Supabase propia. Este nuevo formato prioriza la **privacidad y la propiedad de los datos de investigación** de cada usuario. Quien tenga un proyecto en la nube pública debe llevárselo antes de esa fecha; el camino está en [Modo nube: la nube es de tu grupo](#modo-nube-la-nube-es-de-tu-grupo).
+
 > **Antes de usarlo con datos reales.** QualiLab es un proyecto personal, en desarrollo activo, distribuido bajo licencia MIT, sin garantía de ningún tipo, y todavía no ha pasado por una auditoría de seguridad independiente. Tampoco **anonimiza** tu material: la censura enmascara solo lo que marcaste a mano, y solo en algunas salidas. Adónde lleva tus datos cada modo de uso está en [Dónde quedan tus datos](#dónde-quedan-tus-datos); lo que la herramienta no hace por ti está en [Límites y responsabilidad](#límites-y-responsabilidad).
 >
 > **Exención.** QualiLab es un proyecto personal de [Luiz Pimenta Filho](https://orcid.org/0000-0002-5165-6232), en el ámbito del [LabDados / FGV Direito SP](https://direitosp.fgv.br/nucleos-de-pesquisa/laboratorio-dados-pesquisa-empirica-direito-labdados). No representa la posición ni implica la responsabilidad de ninguna institución (incluida la FGV). El autor no se responsabiliza por pérdida de datos, filtraciones, uso indebido ni otras consecuencias del uso del software; corresponde a quien lo usa adoptar las precauciones éticas y legales que su investigación exige.
@@ -69,7 +71,7 @@ Comparación directa con los hallazgos de Küster & Wolf (2025) sobre 28 herrami
 | Windows · macOS · Linux · Web | 13 · 12 · 7 · 18 | ✅ los cuatro |
 | Interoperabilidad REFI-QDA completa | 9 (7 de ellas propietarias) | ✅ QDPX + QDC, validados contra el `Project.xsd` oficial |
 | Colaboración en tiempo real | 5 | ✅ |
-| Sin servidor obligatorio | 20 ofrecen alguna forma de *on-premise* | ✅ el modo Archivo no tiene servidor alguno; la nube puede ser la tuya |
+| Sin servidor obligatorio | 20 ofrecen alguna forma de *on-premise* | ✅ el modo Archivo no tiene servidor alguno; la nube es la de tu grupo, en una cuenta propia |
 | Exportación sin pérdida para revisión | "la pérdida de datos en la exportación imposibilita la reproducción" | ✅ el `.qualilab` es *round-trip* completo |
 | **`system prompt` de la IA visible al usuario** | **0** | ✅ el prompt entero se muestra antes de enviar |
 | **`system prompt` editable** | 0 | ✅ postura, instrucciones y memos inyectados |
@@ -146,8 +148,8 @@ Una línea por recurso: esto es el inventario. El **paso a paso** de cada uno es
 | **Definición bloqueada** | opcional: activada, solo la administración edita la definición de los códigos, para que el instrumento no cambie en medio de una ronda de calibración. Leerla sigue siendo libre |
 | **Tipos de proyecto** | individual (todo va directo a la referencia) o colectivo |
 | **Tiempo real** | las codificaciones y las respuestas de categoría se sincronizan en vivo; el esquema de códigos y las categorías exigen recargar |
-| **Dónde quedan los datos** | archivo en el disco, borrador en el navegador o nube — cambiar entre ellos es un clic en el panel del proyecto, sin exportar e importar a mano |
-| **Tu propia nube** | apuntar la aplicación a un proyecto **Supabase tuyo**, desde la pantalla de entrada o desde el panel del proyecto |
+| **Dónde quedan los datos** | archivo en el disco, borrador en el navegador o nube del grupo — cambiar entre ellos es un clic en el panel del proyecto, sin exportar e importar a mano |
+| **Nube del grupo** | un servidor solo para ustedes, en un proyecto **Supabase propio**: **Crear mi nube**, en la pantalla de entrada, crea el servidor después de que autorizas en supabase.com y da el enlace para el equipo |
 
 ### IA: apagada por defecto, y con tu clave
 
@@ -155,7 +157,7 @@ Una línea por recurso: esto es el inventario. El **paso a paso** de cada uno es
 
 Un sello **IA** en el encabezado muestra el estado todo el tiempo — anillo **verde** cuando está activada, **tachado en rojo** cuando está apagada o restringida a los administradores — y es desde ahí que se cambia. Con la IA apagada, las pantallas de IA desaparecen (la Autocodificación queda, solo con Repetir Codificación, que no usa IA); con ella activada, **no se envía nada a ningún modelo sin que lo pidas**: toda llamada es un clic tuyo.
 
-**Lo normal es que el navegador llame directo al proveedor**: con tu clave (guardada solo en el navegador), **ningún servidor de QualiLab ve el material** del análisis. La Edge Function `ai-ask` cubre solo dos casos: un endpoint *Personalizado*/*Azure* que no permita llamadas desde el navegador (CORS) y una eventual clave de servidor — que la instancia pública no tiene.
+**Lo normal es que el navegador llame directo al proveedor**: con tu clave (guardada solo en el navegador), **ningún servidor de QualiLab ve el material** del análisis. La Edge Function `ai-ask` cubre solo dos casos: un endpoint *Personalizado*/*Azure* que no permita llamadas desde el navegador (CORS) y una eventual clave de servidor, que solo existe si quien administra la nube del grupo la configura.
 
 | Recurso | Qué es |
 |---|---|
@@ -208,7 +210,7 @@ Le indicas una **carpeta**, no un archivo: el asistente lista los proyectos que 
 Es la pregunta que decide cuánto de la herramienta puedes usar, y la respuesta depende del modo. La regla de oro: **el material solo sale de tu dispositivo si tú lo permites.**
 
 - **Archivo / Borrador**: quedan **en tu dispositivo** y no salen de él.
-- **Nube**: se envían a un **servidor de terceros** (Supabase), quedan sujetos a los términos de ese proveedor y salen de tu control directo.
+- **Nube**: quedan en el **servidor de tu grupo**, en un proyecto Supabase propio. La empresa Supabase es un tercero que aloja esa base de datos, bajo sus términos, y quien administra el proyecto puede leer el contenido. El autor de QualiLab no tiene acceso a él. La excepción es la **nube pública**, que está en el Supabase del autor y se desactivará el 31/12/2026.
 - **IA**: **viene apagada** — todo proyecto nace sin ella, y activarla es un acto ([abajo](#ia-apagada-por-defecto-y-con-tu-clave)). Una vez activada, los fragmentos que **pidas** analizar se envían al **proveedor de IA** que uses (Gemini/OpenAI/Anthropic/Azure…), bajo su política; **Ollama local** es la excepción (corre en tu máquina, nada sale de ella). La censura se enmascara antes del envío; solo en Analizar con IA puedes incluir, código por código, un fragmento censurado como contexto.
 - **Publicación** (Informe Interactivo / Web Annotation): lo que divulgues queda **público**.
 
@@ -217,7 +219,7 @@ QualiLab funciona en tres modos, elegidos en la **pantalla de entrada** (o reabi
 | Modo | Almacenamiento | Indicador | Cuándo usarlo |
 |---|---|---|---|
 | **Archivo** | Archivo `.qualilab` en el disco | `archivo ·` | Trabajo individual serio, datos sensibles, uso sin conexión |
-| **Nube** | Supabase (Postgres + Auth) | `nube ·` | Equipos que colaboran, varios dispositivos |
+| **Nube** | El Supabase de tu grupo (Postgres + Auth) | `nube ·` | Equipos que colaboran, varios dispositivos |
 | **Borrador** | `localStorage` del navegador | `borrador ·` | Solo probar rápido, sin compromiso (efímero) |
 
 Archivo y nube son las opciones de trabajo de verdad; el **borrador** es la entrada sin fricción (un clic, cero configuración), pero **efímero**: los datos quedan solo en ese navegador y desaparecen si borras los datos del sitio. Por eso un aviso discreto debajo del encabezado sugiere, en cualquier momento, **guardar como archivo** o **conectarse a la nube** (la migración es de un clic en el panel del proyecto, sin exportar/importar). Un archivo ya abierto **se reabre solo** en la sesión siguiente (con el permiso del navegador); "Salir de este archivo", en el panel del proyecto, vuelve a la pantalla de entrada.
@@ -237,6 +239,26 @@ En el modo borrador (`localStorage`, límite de ~5 MB), puedes activar una **cop
 
 - Actívala en **píldora del proyecto → Copia de seguridad automática en carpeta → Elegir carpeta…** (disponible en Chrome y Edge).
 - Si la aplicación no logra guardar de verdad (`localStorage` lleno, navegador sin soporte), aparece un aviso rojo en la pantalla con un atajo para descargar el proyecto en el momento; eso no depende de que la copia de seguridad automática esté activada.
+
+### Modo nube: la nube es de tu grupo
+
+La nube de QualiLab cambió de formato: en lugar de un servidor único para todo el mundo, **cada grupo tiene el suyo**, en un proyecto Supabase de una cuenta propia. **Este formato prioriza la privacidad y la propiedad de los datos de investigación de cada usuario.** La base de datos pertenece a quien investiga, las claves quedan con quien ustedes autoricen, y el material no pasa por el autor de QualiLab ni queda con él.
+
+- **Crear.** **Crear mi nube**, en la pantalla de entrada, monta el servidor en una cuenta gratuita de Supabase: das un nombre corto, eliges la región y autorizas en supabase.com, y la aplicación devuelve el **enlace para el equipo**. Quien nunca usó Supabase recibe una guía, pantalla por pantalla. La autorización pasa por una función de QualiLab, que hace las llamadas a Supabase en tu nombre mientras se crea el servidor y no guarda nada; los datos de investigación nunca pasan por ella. Quien prefiere montarlo a mano encuentra ese camino en el propio asistente y en una [guía con capturas de pantalla](docs/GUIA-SUPABASE.md) *(en portugués)*.
+- **Entrar.** **Entrar** pide la nube, el correo y la contraseña en una sola pantalla, y recuerda las nubes ya usadas en este navegador (solo dirección y clave pública, nunca el correo). Un colega también encuentra la nube por su **nombre corto**, que queda en un registro abierto, con la dirección y la clave pública: usa el nombre del grupo, no el de una persona. La cuenta de cada persona vive en el servidor del grupo.
+- **Invitar.** El enlace del equipo nunca cambia de servidor por sí solo: la aplicación muestra adónde apunta, pide confirmación y rechaza un enlace que traiga la clave secreta de un servidor. El enlace de invitación de un proyecto ya lleva el código.
+- **Mantener al día.** Al entrar, la aplicación comprueba la versión de la base de datos, y la barra de estado avisa si el servidor está por detrás de esta versión de QualiLab. Para actualizar, ejecuta de nuevo [`supabase/schema.sql`](supabase/schema.sql) en el SQL Editor: no borra proyectos ni datos.
+
+**Lo que este formato no cambia.** La empresa Supabase sigue alojando la base de datos, y **no hay cifrado de extremo a extremo**: quien administra el proyecto puede leer el contenido. La nube creada por el asistente no confirma el correo al registrarse: quien tiene la dirección crea una cuenta al instante, pero no ve ningún proyecto sin el código de invitación. El mantenimiento también pasa a ser del grupo, incluidas las copias de seguridad y los límites del plan ([Mantenimiento y límites del plan gratuito](docs/GUIA-SUPABASE.md#9-manutenção-e-limites-do-plano-gratuito), en portugués). Para material sensible, la recomendación sigue siendo el modo Archivo.
+
+**La nube pública se desactivará el 31/12/2026.** Hasta entonces sigue disponible, como **Conectar a la nube pública (obsoleta)**. Para llevar un proyecto de ella a la nube del grupo:
+
+1. En la nube pública, descarga el proyecto como `.qualilab`.
+2. Crea la nube del grupo, o conéctate a ella con **¿Ya tienes una? Conectar a una nube privada**.
+3. Abre el `.qualilab` y usa **Enviar a la nube**, en el panel del proyecto: el proyecto nuevo se crea en la nube conectada.
+4. Pide a cada persona del equipo que cree una cuenta en la nube nueva y entre por el enlace de invitación.
+
+La distribución de documentos y la codificación ciega no viajan en el `.qualilab`: vuelve a configurar ambas en el proyecto nuevo, antes de que el equipo retome la codificación.
 
 ### Modo nube: estado de la conexión
 
@@ -273,11 +295,11 @@ El **núcleo del front-end (Preact + htm) viene incorporado** en el propio `inde
 
 ## Configuración de la nube (Supabase)
 
-Para activar el modo colectivo hace falta un proyecto **Supabase** gratuito.
+Para activar el modo colectivo hace falta un proyecto **Supabase** de tu grupo, que puede ser gratuito. El camino normal es **Crear mi nube**, en la pantalla de entrada: la aplicación hace estos pasos por ti, sin editar ningún archivo. También hay un [paso a paso con capturas de pantalla](docs/GUIA-SUPABASE.md) *(en portugués)*, desde la creación de la cuenta hasta la conexión de la aplicación. Esta sección es la referencia para quien prefiere hacerlo a mano o publica su propia copia de QualiLab.
 
 ### 1. Credenciales
 
-En la parte superior del `index.html`, completa:
+Quien usa la aplicación publicada no edita nada: basta con indicar la dirección y la clave en **¿Ya tienes una? Conectar a una nube privada**, o abrir el enlace del equipo. Quien publica su propia copia puede fijar las credenciales en la parte superior del `index.html`:
 
 ```js
 let SUPABASE_URL  = "https://TU-PROYECTO.supabase.co";
@@ -471,7 +493,7 @@ La sección [Sostenibilidad](#límites-y-responsabilidad) dice que hay verificac
 
 El resto de la batería corre en el repositorio de desarrollo, a cada push, sobre la fuente modular: pruebas de funciones puras (censura, anclas de fragmentos, posiciones, lectura de los formatos), **40 suites de navegador** que verifican que cada pantalla se muestra y que las reglas que fallan **en silencio** siguen valiendo (que el modo ciego no filtre la referencia, que la inducción no vea los documentos reservados, que el código de confirmación no pierda dígitos, **cero solicitudes externas al arrancar**), y **pgTAP** sobre las políticas de RLS (roles, codificación ciega, distribución, acceso a la IA). El banco de pruebas de ida y vuelta, que valida el `.qdpx` generado contra el `Project.xsd` oficial, también vive allí, pero se ejecuta a mano, fuera del CI.
 
-Además, el código pasa periódicamente por una **revisión adversarial de modelos de lenguaje que no participan en el desarrollo**, en busca de fallas de seguridad y errores; lo que se confirma se corrige, o queda registrado como pendiente en el changelog. Actualmente, los revisores son ChatGPT 5.6 Astra y Google Gemini 3.1 Pro. Esto no reemplaza una auditoría de seguridad independiente, que el proyecto todavía no tuvo (mira [Sostenibilidad, con franqueza](#límites-y-responsabilidad)).
+Además, el código pasa periódicamente por una **revisión adversarial de modelos de lenguaje que no participan en el desarrollo**, en busca de fallas de seguridad y errores; lo que se confirma se corrige, o queda registrado como pendiente en el changelog. La revisión más reciente se hizo el 01/11/2026, a cargo de Kimi K3.1 Pro, ChatGPT 6 Astra y Gemini Argon. Esto no reemplaza una auditoría de seguridad independiente, que el proyecto todavía no tuvo (mira [Sostenibilidad, con franqueza](#límites-y-responsabilidad)).
 
 ---
 
@@ -482,7 +504,7 @@ Proyecto en desarrollo activo. Conviene conocer los límites antes de adoptarlo 
 - **Modo Archivo local solo en Chromium.** La File System Access API que lo sostiene solo existe en Chrome y Edge; Firefox y Safari pasan al borrador (`localStorage`, ~5 MB).
 - **No todo se sincroniza en vivo.** Solo las codificaciones y las respuestas de categoría. Cambiar el esquema de códigos, las categorías o la distribución de documentos exige recargar la página.
 - **La cola de escritura no es un modo sin conexión.** Guarda y reenvía lo que *escribes* cuando la nube falla, pero **leer** sigue exigiendo red: sin conexión, abrir un documento todavía no cargado o cambiar de proyecto no funciona. Para trabajar sin red, usa el modo Archivo.
-- **Capacidad de la nube.** La instancia pública corre en un plan pago de Supabase, con cómputo *Micro* (1 GB de RAM, CPU compartida, base de datos de hasta ~10 GB), repartido entre todos los proyectos que la usan. Quien configura su propio Supabase en el plan gratuito tiene un tope del orden de 500 MB de base de datos (sujeto a cambios — consulta [supabase.com/pricing](https://supabase.com/pricing)). Los proyectos muy grandes pueden exigir una instancia mayor o el modo Archivo, que no tiene ese tope.
+- **Capacidad de la nube.** Cada nube tiene los límites del plan de Supabase en que fue creada. En el plan gratuito, el tope es del orden de 500 MB de base de datos (sujeto a cambios — consulta [supabase.com/pricing](https://supabase.com/pricing)), y el proyecto se pausa después de un período sin uso. Los proyectos muy grandes pueden exigir un plan mayor o el modo Archivo, que no tiene ese tope.
 - **QualiLab NO anonimiza.** La censura enmascara **solo los fragmentos que marcaste a mano**, y solo en lo que sale de tus manos: las salidas del Informe y lo que va a la IA, incluido el asistente externo (salvo cuando tú mismo incluyes un código de censura en un análisis, y con la salvedad de los clientes agénticos, arriba). No detecta lo que es sensible (Repetir Codificación encuentra solo las repeticiones **idénticas** de lo que ya marcaste, mira arriba), no esconde nada en tu propia pantalla, no cubre las exportaciones de trabajo (`.qualilab`, QDPX, QDC, CSV y JSON salen sin enmascarar) y no alcanza **el título del documento, los valores de categoría ni los memos**. El manual trae el [flujo de publicación](docs/MANUAL.es.md#124-antes-de-publicar-trabaja-en-el-laboratorio-publica-desde-una-copia) que se ocupa de esos tres.
 - **El registro de auditoría registra operaciones, no filas, y no deshace.** El historial del proyecto (Memos ▸ Historial del proyecto) lista importaciones, fusiones y divisiones de código, eliminaciones, ediciones de texto, aplicaciones en lote, consolidaciones y exportaciones, con autor y fecha, pero no guarda el contenido de lo que se borró: **Ctrl+Z** sigue deshaciendo solo la última codificación de la sesión. Lo que devuelve el contenido es la **copia espejo** (desde la 1.4.52): un retrato del proyecto entero, creado a mano o solo antes de vaciar, eliminar, fusionar, dividir, editar texto o restaurar, que se restaura desde la píldora del proyecto — sin los PDF originales y sin el historial, que registra la restauración en lugar de volver atrás. El historial empieza en el primer evento después de la 1.4.51 (nada se reconstruye hacia atrás), y en la nube es de solo agregado por la API, no una prueba forense: quien opera el servidor, o el dueño del archivo, siempre puede alterarlo.
 - **El QDPX pierde lo que el formato no modela**: las capas individuales y la autoría de atributos por investigador (un límite de REFI-QDA, no nuestro). Y el tipo de las categorías que vienen de otra herramienta se **infiere** cuando ella no lo declara — el resumen de la importación dice cuántas fueron, y conviene revisarlas en el esquema.
@@ -505,7 +527,6 @@ El riesgo de abandono se mitiga con el diseño, no con una promesa: licencia MIT
 
 La lista completa de pendientes se mantiene en el repositorio de desarrollo, con el razonamiento de cada ítem y también lo que se **evaluó y descartó**, con el porqué. Las prioridades declaradas hoy:
 
-- **Backend sin credencial escondida**: catálogo de nubes con nombre en la configuración, "usar mi propia nube" como camino de primera clase y enlace de invitación con pantalla de confirmación.
 - **Conexiones entre fragmentos**, creadas en el lector: ligar un fragmento a otro ("esta afirmación contradice aquella"). Las conexiones de hoy ligan códigos y categorías, y se crean en el Esquema.
 - **Deshacer en lote**: revertir una única operación (una importación, una aplicación de sugerencias) sin restaurar el proyecto entero. El historial de operaciones y las copias espejo ya existen ([Registro de auditoría y copias espejo](#registro-de-auditoría-y-copias-espejo)), pero la copia espejo devuelve el proyecto entero a un instante.
 - **Escritura con aprobación por el asistente externo**: propone codificaciones en una bandeja que revisas dentro de la aplicación; nada se aplica solo.

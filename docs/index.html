@@ -961,7 +961,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.80';
+const QUALILAB_VERSION = '1.4.81';
 // QUALILAB_SCHEMA_VERSION — a versao do BANCO que este app espera. Nao e a do app: muda so quando o
 // app passa a PRECISAR de algo novo no servidor (tabela, coluna, funcao que ele chama). O assistente
 // do servidor compara com o que a qualilab_server_check() do banco responde e, se o servidor estiver
@@ -971,15 +971,12 @@ const QUALILAB_SCHEMA_VERSION = 3;
 // CRIACAO AUTOMATICA DA NUVEM DO GRUPO: onde mora a funcao server-setup e qual aplicativo OAuth do
 // Supabase ela representa. Os dois sao PUBLICOS (o client id viaja na URL de autorizacao; a senha do
 // aplicativo fica so na funcao). A URL vem do servidor EMBUTIDO, porque a funcao mora no projeto que
-// o app traz de fabrica: e por isso que a troca de credenciais do scripts/estavel_core.py ja aponta
-// o publico para a funcao DELE, sem regra nova (o mesmo app OAuth serve os dois). No PUBLICO a
-// criacao sai DESLIGADA enquanto a funcao nao existir la: o estavel_core.py esvazia o client id
-// (CRIACAO_AUTOMATICA_NO_PUBLICO). Vazio, o assistente oferece so o caminho manual.
+// o app traz de fabrica. Com o client id vazio, o assistente oferece so o caminho manual.
 // Em host local (localhost, 127.0.0.1), localStorage 'qualilab:setup' vence as duas, para os testes:
 // {"fn":"<url>","clientId":"<id>","key":"<chave>"} liga outra funcao (`key` = a chave publica do projeto
 // dela). {"off":true} desliga em qualquer host. Ver serverSetupFrom (base/diagnostico-do-servidor.js).
 const SETUP_FN_URL = EMBEDDED_SUPABASE_URL ? EMBEDDED_SUPABASE_URL.replace(/\/+$/, '') + '/functions/v1/server-setup' : '';
-const SETUP_OAUTH_CLIENT_ID = '';
+const SETUP_OAUTH_CLIENT_ID = '978eaaef-972f-4bb5-a934-8d3d93966daa';
 
 // RECOVERY_INTENT — o usuario chegou aqui clicando no link de "esqueci minha senha"?
 // PRECISA ser capturado AGORA, no carregamento do modulo: o supabase-js (detectSessionInUrl,
