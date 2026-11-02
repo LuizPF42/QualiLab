@@ -473,7 +473,8 @@ QualiLab/
 ├── scripts/          # las verificaciones que corren aquí (invariantes, SRI)
 ├── supabase/
 │   ├── schema.sql              # backend: tablas, RPC, políticas de RLS, realtime
-│   └── functions/ai-ask/       # Edge Function: proxy de respaldo (clave de servidor / CORS)
+│   ├── functions/ai-ask/       # Edge Function: proxy de respaldo (clave de servidor / CORS)
+│   └── functions/server-setup/ # Edge Function: crea la nube del grupo y registra su nombre corto
 ├── examples/         # proyectos de ejemplo (.qualilab, .qdpx)
 ├── CHANGELOG.md      # lo que cambió en cada versión
 ├── CITATION.cff      # cómo citar

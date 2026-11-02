@@ -470,7 +470,8 @@ QualiLab/
 ├── scripts/          # the checks that run here (invariants, SRI)
 ├── supabase/
 │   ├── schema.sql              # backend: tables, RPCs, RLS policies, realtime
-│   └── functions/ai-ask/       # Edge Function: fallback proxy (server key / CORS)
+│   ├── functions/ai-ask/       # Edge Function: fallback proxy (server key / CORS)
+│   └── functions/server-setup/ # Edge Function: creates the group's cloud and registers its short name
 ├── examples/         # sample projects (.qualilab, .qdpx)
 ├── CHANGELOG.md      # what changed in each version
 ├── CITATION.cff      # how to cite it

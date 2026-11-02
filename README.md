@@ -464,7 +464,8 @@ QualiLab/
 ├── scripts/          # as verificações que rodam aqui (invariantes, SRI)
 ├── supabase/
 │   ├── schema.sql              # backend: tabelas, RPCs, políticas de RLS, realtime
-│   └── functions/ai-ask/       # Edge Function: proxy de reserva (chave de servidor / CORS)
+│   ├── functions/ai-ask/       # Edge Function: proxy de reserva (chave de servidor / CORS)
+│   └── functions/server-setup/ # Edge Function: cria a nuvem do grupo e registra o nome curto dela
 ├── examples/         # projetos de exemplo (.qualilab, .qdpx)
 ├── CHANGELOG.md      # o que mudou em cada versão
 ├── CITATION.cff      # como citar
