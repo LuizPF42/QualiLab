@@ -238,6 +238,41 @@ create index if not exists assignments_doc_idx     on public.assignments (docume
 create index if not exists assignments_user_idx    on public.assignments (user_id);
 create index if not exists assignments_project_idx on public.assignments (project_id);
 
+-- SAME PROJECT, AS A CONSTRAINT (audits of 31/out/2026). The insert policies authorize the project a
+-- row DECLARES, and the single-column foreign keys only say that the referenced row EXISTS, so the
+-- admin of one project could write rows there pointing at the documents, codes and attributes of
+-- another: can_see_doc answers true as soon as distribution is off, without asking whose document
+-- that is. The pgTAP 012 measured it, "caught: no exception". What knows the answer is a composite
+-- foreign key, the lesson of SEG-4 again. The single-column ones stay: they do no harm, and dropping
+-- them would be one more thing to get wrong in a live migration.
+-- `codes.parent_id` needs none: codes_acyclic_guard already refuses a parent from another project.
+-- Applying this on a database with a violating row FAILS, and that is information, not an accident
+-- (the migration lists the query that finds them).
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'codes_id_project_key') then
+    alter table public.codes add constraint codes_id_project_key unique (id, project_id);
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'categories_id_project_key') then
+    alter table public.categories add constraint categories_id_project_key unique (id, project_id);
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'codings_doc_project_fkey') then
+    alter table public.codings add constraint codings_doc_project_fkey
+      foreign key (document_id, project_id) references public.documents (id, project_id) on delete cascade;
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'codings_code_project_fkey') then
+    alter table public.codings add constraint codings_code_project_fkey
+      foreign key (code_id, project_id) references public.codes (id, project_id) on delete cascade;
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'doc_values_doc_project_fkey') then
+    alter table public.doc_values add constraint doc_values_doc_project_fkey
+      foreign key (document_id, project_id) references public.documents (id, project_id) on delete cascade;
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'doc_values_cat_project_fkey') then
+    alter table public.doc_values add constraint doc_values_cat_project_fkey
+      foreign key (category_id, project_id) references public.categories (id, project_id) on delete cascade;
+  end if;
+end $$;
+
 -- ---------- funções de pertencimento ----------
 create or replace function public.is_member(p uuid)
 returns boolean language sql security definer stable set search_path = public as $$
@@ -376,6 +411,7 @@ returns boolean language sql security definer stable set search_path = public as
     when p_scope = 'coding'   then exists (
       select 1 from public.codings c
        where c.id = p_target
+         and c.project_id = p_project
          and public.can_see_doc(p_project, c.document_id)
          and public.can_see_authored(p_project, c.created_by))
     else true
@@ -1047,7 +1083,21 @@ drop policy if exists codings_delete on public.codings;
    OS HELPERS ANTIGOS FICAM: `is_member`/`can_see_doc`/`can_see_authored`/`can_see_value` seguem
    servindo `memo_visible`, `activity_select`, `documents_*` e o bucket `pdfs`. So estas DUAS
    policies mudam -- as unicas em que a mesma expressao roda dezenas de milhares de vezes. */
-create or replace function public.can_read_coding(p_project uuid, p_doc uuid, p_owner uuid)
+/* REDACTION UNDER BLIND CODING (out/2026). The mask of every output (AI prompt, ATI, W3C, MCP) is
+   built from the redaction rows of `codings`, and the blind clause hid them like any colleague's
+   work: the member's client had no span to mask, and the text went out raw. No anchor check could
+   fire, because there was no row to check. So whoever reads the document reads its redaction rows,
+   under blind too: marking what must not leave the project is not an analytic judgement, and the
+   blind design has nothing to protect there. What stays hidden: the analytic codings of others and
+   the notes (memo_visible still goes through can_see_authored, so a note ON a redacted span too).
+   Seeing a row gives no right over it (the write policies were not touched).
+   One function, on purpose (the cost of RLS is the call, see above): the extra lookup runs only for
+   a row that is not the reader's, under blind.
+   Discarded: an RPC that hands out only the spans. It would hide who marked them, at the price of a
+   second source of rows in every output; this way the mask works by construction, in every output
+   that exists and in the next one.
+   can_read_coding is the same rule with no exception (p_code null), for the disagreements policy. */
+create or replace function public.can_read_coding_span(p_project uuid, p_doc uuid, p_owner uuid, p_code uuid)
 returns boolean language sql security definer stable set search_path = public as $$
   select exists (
     select 1 from public.members m join public.projects pr on pr.id = m.project_id
@@ -1057,8 +1107,14 @@ returns boolean language sql security definer stable set search_path = public as
                 or exists (select 1 from public.assignments a
                             where a.project_id = p_project and a.document_id = p_doc
                               and a.user_id = auth.uid()))
-               and (not coalesce(pr.blind,false) or p_owner = auth.uid())))
+               and (not coalesce(pr.blind,false) or p_owner = auth.uid()
+                    or exists (select 1 from public.codes k
+                                where k.id = p_code and k.project_id = p_project and k.is_redaction))))
   );
+$$;
+create or replace function public.can_read_coding(p_project uuid, p_doc uuid, p_owner uuid)
+returns boolean language sql security definer stable set search_path = public as $$
+  select public.can_read_coding_span(p_project, p_doc, p_owner, null);
 $$;
 -- a diferenca para a de cima e o `cats_are_metadata`, a excecao declarada do projeto: o gabarito
 -- de CATEGORIA pode ficar visivel sob cego quando as categorias sao configuracao do estudo, e nao
@@ -1078,7 +1134,7 @@ returns boolean language sql security definer stable set search_path = public as
   );
 $$;
 create policy codings_select on public.codings for select using (
-  public.can_read_coding(project_id, document_id, created_by)
+  public.can_read_coding_span(project_id, document_id, created_by, code_id)
 );
 create policy codings_insert on public.codings for insert with check (
   public.role_can(project_id, 'code')
@@ -1319,6 +1375,11 @@ create table if not exists public.link_relations (
   created_at  timestamptz not null default now(),
   unique (project_id, name)
 );
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'link_relations_id_project_key') then
+    alter table public.link_relations add constraint link_relations_id_project_key unique (id, project_id);
+  end if;
+end $$;
 -- as pontas sao POLIMORFICAS (kind + id), entao nao ha FK possivel nelas: a integridade vem do
 -- trigger links_gc, abaixo. A evidencia, essa, TEM FK — e `on delete set null`, nao cascade:
 -- apagar o grifo que sustentava uma afirmacao nao pode apagar a afirmacao de alguem.
@@ -1391,6 +1452,15 @@ create policy link_relations_update on public.link_relations for update
   using ( public.is_admin(project_id) ) with check ( public.is_admin(project_id) );
 drop policy if exists link_relations_delete on public.link_relations;
 create policy link_relations_delete on public.link_relations for delete using ( public.is_admin(project_id) );
+
+-- a relacao e do mesmo projeto do link; ver "SAME PROJECT" acima. Em `no action` como a FK simples,
+-- pelo mesmo motivo que ela: a exclusao do projeto cascateia para as duas tabelas
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'links_relation_project_fkey') then
+    alter table public.links add constraint links_relation_project_fkey
+      foreign key (relation_id, project_id) references public.link_relations (id, project_id) on delete no action;
+  end if;
+end $$;
 
 -- created_by nulo ou alheio = ADMIN: e o import em coletivo, o mesmo contrato de `codings`
 drop policy if exists links_insert on public.links;
@@ -1500,7 +1570,8 @@ create policy coding_disagreements_update on public.coding_disagreements for upd
 -- DESFAZER: o dono da discordancia, ou o admin
 drop policy if exists coding_disagreements_delete on public.coding_disagreements;
 create policy coding_disagreements_delete on public.coding_disagreements for delete
-  using ( public.role_can(project_id, 'code') and (created_by = auth.uid() or public.is_admin(project_id)) );
+  using ( public.role_can(project_id, 'code') and public.can_see_doc(project_id, document_id)
+          and (created_by = auth.uid() or public.is_admin(project_id)) );
 -- SEG-2 (o projeto de uma linha nao muda) entra no bloco UNICO do project_id_guard, mais abaixo.
 -- NAO entra na publicacao do realtime, de proposito: a Leitura relê as discordancias do documento
 -- aberto ao montar e depois de cada gesto proprio (regra de ouro #11: evento por linha e avalanche).
@@ -1520,6 +1591,11 @@ alter table public.codes add column if not exists sat int;
 
 create or replace function public.codes_color_guard()
 returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  -- with no session (service_role, SQL Editor, the fixtures) this guard has no one to judge
+  v_member boolean := auth.uid() is not null and not public.is_admin(new.project_id);
+  v_parent_redacted boolean := new.parent_id is not null and exists (
+    select 1 from public.codes p where p.id = new.parent_id and p.project_id = new.project_id and p.is_redaction);
 begin
   -- so trava a cor de codigos de nivel 0 (familia); subcodigos sempre herdam, nunca escolhem
   if new.parent_id is null and not public.is_admin(new.project_id) then
@@ -1534,6 +1610,27 @@ begin
   if TG_OP = 'UPDATE' and new.is_redaction is distinct from old.is_redaction
      and not public.is_admin(new.project_id) then
     raise exception 'Apenas administradores podem alterar a censura de um código';
+  end if;
+  -- CHILD OF REDACTION IS REDACTION, for whoever talks to the API (audits of 31/out/2026). Only the
+  -- client kept this (addCode, reparentPatch), and a code that LOOKS covered inside a redaction family
+  -- and is not is the worst of both worlds: its spans go out in full. The value is DERIVED from the
+  -- parent, so a member's child is FORCED, not refused: that is the path of the app's addCode and it
+  -- has to stay open, the projects_ai_guard move. Refused are the two things that have no derivation:
+  -- minting a redaction code at the root and moving a code into the family.
+  -- THE ADMIN STAYS OUT ON PURPOSE: importing and restoring a snapshot write what the file says, and a
+  -- child the admin unmarked is an explicit act (setCodeRedaction). Forcing there would change data.
+  -- Moving OUT of a family stays open to the member: is_redaction does not change, so nothing uncovers.
+  if v_member then
+    if TG_OP = 'INSERT' then
+      if v_parent_redacted then
+        new.is_redaction := true;
+        new.hue_deg := -2;
+      elsif new.is_redaction then
+        raise exception 'Apenas administradores podem criar um código de censura';
+      end if;
+    elsif new.parent_id is distinct from old.parent_id and v_parent_redacted and not new.is_redaction then
+      raise exception 'Apenas administradores podem mover um código para dentro de uma família de censura';
+    end if;
   end if;
   return new;
 end; $$;
@@ -1911,6 +2008,34 @@ revoke execute on function public.assignments_gc() from public, anon, authentica
 drop trigger if exists trg_assignments_gc on public.members;
 create trigger trg_assignments_gc after delete on public.members
   for each row execute function public.assignments_gc();
+
+-- ---------- DIAGNOSTICO DO SERVIDOR (assistente "Conectar ao meu servidor", out/2026) ----------
+-- O assistente chama esta funcao com a chave PUBLICA, antes de qualquer login, para dizer a quem
+-- montou o proprio Supabase se o banco esta completo. Devolve so FORMA, nunca dado: a versao do
+-- schema, se os dois buckets existem e se as duas tabelas estao na publicacao do realtime.
+-- A VERSAO e o numero que o app compara com QUALILAB_SCHEMA_VERSION (src/base/config.js). Mudou o
+-- banco de um jeito que o app novo PRECISA (tabela, coluna, funcao que ele chama)? Suba os dois no
+-- mesmo commit; tests/diagnostico_servidor.test.mjs confere que o numero daqui, o da migracao e o
+-- do app batem. Sem isso, com varios servidores de instituicao, cada versao nova do app quebraria
+-- em silencio os que ninguem atualizou; com isso o app diz "seu servidor precisa de atualizacao",
+-- e atualizar e rodar este arquivo de novo (ele e idempotente).
+-- security definer: storage.buckets nao e legivel pela chave publica, e o que sai daqui e booleano.
+create or replace function public.qualilab_server_check()
+returns jsonb language sql stable security definer set search_path = public as $$
+  select jsonb_build_object(
+    'schema_version', 3,
+    'buckets', jsonb_build_object(
+      'pdfs',      exists (select 1 from storage.buckets where id = 'pdfs'),
+      'snapshots', exists (select 1 from storage.buckets where id = 'snapshots')),
+    'realtime', jsonb_build_object(
+      'codings',    exists (select 1 from pg_publication_tables
+                            where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'codings'),
+      'doc_values', exists (select 1 from pg_publication_tables
+                            where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'doc_values'))
+  );
+$$;
+revoke execute on function public.qualilab_server_check() from public;
+grant execute on function public.qualilab_server_check() to anon, authenticated;
 
 -- ---------- GRANTS de tabela (issue #7 — portabilidade/autocontencao) ----------
 -- FICAM NO FIM DE PROPOSITO: referenciam TODAS as tabelas (memos/ia_results/ia_memory/

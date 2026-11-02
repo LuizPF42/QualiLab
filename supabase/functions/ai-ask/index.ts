@@ -17,17 +17,24 @@
 //
 // CONTROLE DE ACESSO (jul/2026 — antes a funcao era aberta a qualquer um com a
 // anon key publica, o que permitia queimar a cota de uma chave do servidor):
-//   - BYOK (body.apiKey presente, ou provider custom/azure, que so existem como
-//     BYOK): passa SEM exigir sessao — o custo e da chave do proprio pesquisador,
-//     e o modo local/arquivo do app nao tem sessao Supabase nenhuma (bloquear
-//     aqui quebraria o BYOK offline do app). Este e o caminho
-//     PADRAO: o app e BYOK — cada pesquisador traz a propria chave.
+//   - BYOK nos provedores do catalogo (body.apiKey presente): passa SEM exigir
+//     sessao — o custo e da chave do proprio pesquisador, o destino e fixo, e o
+//     modo local/arquivo do app nao tem sessao Supabase nenhuma (bloquear aqui
+//     quebraria o BYOK offline do app). Este e o caminho PADRAO: o app e BYOK.
+//   - custom/azure EXIGEM SESSAO desde out/2026: o DESTINO vem do corpo, e sem
+//     sessao esta funcao seria um retransmissor HTTPS aberto a quem tem a anon
+//     key, que e publica. A chave nao serve de criterio (`apiKey:'x'` passa).
+//     Quem paga e quem fica sem o fallback e o modo local com endpoint sem CORS,
+//     e o erro diz o que fazer; o caminho normal do custom e direto do navegador.
 //   - Chave DO SERVIDOR (sem body.apiKey): so existe se um secret de provedor
 //     (GEMINI_API_KEY etc.) estiver configurado. Sem secret, a funcao responde
 //     "informe sua propria chave (BYOK)" e nada mais. Havendo secret, o acesso
 //     e restrito a sessoes validas de dominios autorizados (SHARED_KEY_DOMAINS,
 //     tambem por secret; vazio por padrao = ninguem usa a chave do servidor).
-//   - baseUrl (custom/azure) e validada contra SSRF: so https + dominio publico.
+//   - baseUrl (custom/azure) e validada contra SSRF: so https + dominio publico, e
+//     o nome tem de RESOLVER para endereco publico, em cada salto. fetch nao aceita
+//     endereco fixado, entao um DNS que mude entre a checagem e a conexao ainda
+//     passa: isto fecha o registro estatico, nao o rebinding.
 //   - Corpo limitado a MAX_BODY_CHARS; entrada acima disso e recusada com 413.
 //
 // Recebe { prompt } ou { messages }, mais opcionalmente { provider, apiKey,
@@ -108,21 +115,84 @@ function sharedKeyAllowed(user: { email?: string | null } | null) {
   return SHARED_KEY_DOMAINS.some(d => domain === d || domain.endsWith('.' + d));
 }
 
+// ---- NETWORK RULES. No type annotations on purpose: tests/ai_ask_rede.test.mjs cuts this block out
+// of the file and runs it on Node, because this function stays one file (people paste it in the
+// dashboard) and these are the rules that must not fail in silence.
 // anti-SSRF: a funcao faz POST pra baseUrl vinda do corpo (custom/azure) — sem
 // isso ela vira um proxy aberto contra a rede interna da edge runtime. Exige
 // https + dominio publico (tuneis tipo ngrok/cloudflared ja dao os dois).
-function assertPublicBaseUrl(raw: unknown) {
-  let u: URL;
+function assertPublicBaseUrl(raw) {
+  let u;
   try { u = new URL(String(raw)); } catch { throw new HttpError(400, 'URL base inválida'); }
   if (u.protocol !== 'https:') {
     throw new HttpError(400, 'A URL base precisa usar https:// (túneis como ngrok/cloudflared já fornecem HTTPS)');
   }
-  const h = u.hostname.toLowerCase();
+  // the trailing dot of an absolute name (`interno.local.`) resolves the same and passed every comparison
+  const h = u.hostname.toLowerCase().replace(/\.+$/, '');
   const ipV4 = /^\d{1,3}(\.\d{1,3}){3}$/.test(h);
   const ipV6 = h.includes(':');
-  if (ipV4 || ipV6 || h === 'localhost' || h.endsWith('.localhost') || h.endsWith('.local') || h.endsWith('.internal')) {
+  if (!h || ipV4 || ipV6 || h === 'localhost' || h.endsWith('.localhost') || h.endsWith('.local') || h.endsWith('.internal')) {
     throw new HttpError(400, 'A URL base precisa ser um domínio público (IPs e endereços internos não são aceitos)');
   }
+  return h;
+}
+
+// private, loopback, link-local (the cloud metadata address lives there), shared, documentation and
+// reserved space. What cannot be read as an address counts as internal: this is a door, it fails shut.
+function ipv4Interno([a, b, c]) {
+  return a === 0 || a === 10 || a === 127 || a >= 224
+    || (a === 100 && b >= 64 && b <= 127) || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31)
+    || (a === 192 && b === 168) || (a === 192 && b === 0 && (c === 0 || c === 2))
+    || (a === 198 && (b === 18 || b === 19)) || (a === 198 && b === 51 && c === 100) || (a === 203 && b === 0 && c === 113);
+}
+function ipv4Partes(s) {
+  const p = s.split('.');
+  if (p.length !== 4 || !p.every(n => /^\d{1,3}$/.test(n) && Number(n) <= 255)) return null;
+  return p.map(Number);
+}
+function ipv6Grupos(s) {
+  let txt = s;
+  const m = txt.match(/^(.*:)(\d+\.\d+\.\d+\.\d+)$/);        // a dotted tail: ::ffff:127.0.0.1
+  if (m) {
+    const p = ipv4Partes(m[2]);
+    if (!p) return null;
+    txt = m[1] + ((p[0] << 8) | p[1]).toString(16) + ':' + ((p[2] << 8) | p[3]).toString(16);
+  }
+  const lados = txt.split('::');
+  if (lados.length > 2) return null;
+  const parte = (x) => (x ? x.split(':') : []);
+  const esq = parte(lados[0]), dir = lados.length === 2 ? parte(lados[1]) : [];
+  const falta = 8 - esq.length - dir.length;
+  if (lados.length === 1 ? falta !== 0 : falta < 1) return null;
+  const g = [...esq, ...Array(lados.length === 2 ? falta : 0).fill('0'), ...dir];
+  if (!g.every(x => /^[0-9a-f]{1,4}$/.test(x))) return null;
+  return g.map(x => parseInt(x, 16));
+}
+function enderecoInterno(ip) {
+  const s = String(ip).toLowerCase().split('%')[0];
+  if (!s.includes(':')) { const p = ipv4Partes(s); return p ? ipv4Interno(p) : true; }
+  const g = ipv6Grupos(s);
+  if (!g) return true;
+  const v4 = (x, y) => [x >> 8, x & 255, y >> 8, y & 255];
+  const zeros = (n) => g.slice(0, n).every(x => x === 0);
+  // the addresses that carry an IPv4 inside say nothing of their own: judge the one they carry
+  if (zeros(5) && g[5] === 0xffff) return ipv4Interno(v4(g[6], g[7]));                // mapped
+  if (zeros(6)) return ipv4Interno(v4(g[6], g[7]));                                   // ::, ::1, compatible
+  if (g[0] === 0x64 && g[1] === 0xff9b && g.slice(2, 6).every(x => x === 0)) return ipv4Interno(v4(g[6], g[7]));   // NAT64
+  if (g[0] === 0x2002) return ipv4Interno(v4(g[1], g[2]));                            // 6to4
+  return (g[0] & 0xfe00) === 0xfc00 || (g[0] & 0xffc0) === 0xfe80 || (g[0] & 0xffc0) === 0xfec0 || (g[0] & 0xff00) === 0xff00
+    || (g[0] === 0x2001 && g[1] === 0xdb8) || (g[0] === 0x100 && g[1] === 0 && g[2] === 0 && g[3] === 0);
+}
+/* THE NAME HAS TO RESOLVE TO A PUBLIC ADDRESS, all of its answers: one internal among several would
+   pass whenever the runtime happened to pick it. No answer refuses too. It cannot be proved public,
+   and a resolver that is not allowed here would otherwise turn this check off without a word.
+   THE LIMIT, stated: fetch takes no pinned address, so a record that changes between this check and
+   the connection still gets through. This closes the static record, the case that needs no timing. */
+async function assertResolvesPublic(host, resolver) {
+  const r = await Promise.allSettled([resolver(host, 'A'), resolver(host, 'AAAA')]);
+  const ips = r.flatMap(x => (x.status === 'fulfilled' ? x.value : []));
+  if (!ips.length) throw new HttpError(400, 'Não consegui confirmar o endereço da URL base');
+  if (ips.some(enderecoInterno)) throw new HttpError(400, 'A URL base aponta para um endereço interno');
 }
 
 // anti-SSRF parte 2 (issue #9): assertPublicBaseUrl valida so a URL INICIAL. Se o fetch seguisse
@@ -130,14 +200,15 @@ function assertPublicBaseUrl(raw: unknown) {
 // 302 -> http://localhost / IP privado / 169.254.169.254 (metadata) e o runtime emitiria o POST
 // pro alvo interno SEM revalidar. Aqui seguimos os redirects MANUALMENTE, revalidando CADA hop com
 // a mesma checagem, ate MAX_REDIRECTS. Se o runtime devolver status opaco (0), loc fica null e
-// retornamos a resposta (o call* trata como erro) — falha SEGURO. Nao fecha DNS rebinding (hostname
-// publico com registro A apontando pra IP interno passa ja no hop 0; fechar exigiria resolver o IP).
+// retornamos a resposta (o call* trata como erro) — falha SEGURO. `resolver` so vem de custom/azure,
+// cuja URL e do corpo: os provedores do catalogo tem destino fixo e nao pagam a consulta de DNS.
 const MAX_REDIRECTS = 5;
 const SENSITIVE_HEADER = /^(authorization|api-key|x-api-key|x-goog-api-key)$/i;
-async function fetchSsrfSafe(url: string, init: RequestInit): Promise<Response> {
+async function fetchSsrfSafe(url, init, resolver) {
   let current = url;
-  let headers: Record<string, string> = { ...(init.headers as Record<string, string> || {}) };
+  let headers = { ...(init.headers || {}) };
   for (let hop = 0; ; hop++) {
+    if (resolver) await assertResolvesPublic(assertPublicBaseUrl(current), resolver);   // cada salto, ANTES de o pedido sair
     const res = await fetch(current, { ...init, headers, redirect: 'manual' });
     const loc = res.status >= 300 && res.status < 400 ? res.headers.get('location') : null;
     if (!loc) return res;                 // nao e redirect (ou status opaco): resposta final
@@ -159,17 +230,16 @@ async function fetchSsrfSafe(url: string, init: RequestInit): Promise<Response> 
 // 400 request ruim) NAO sao reentados. Cada tentativa tem timeout proprio, E o conjunto
 // respeita WALL_CLOCK_BUDGET_MS pra nunca ser morto com 546 pela plataforma (ver acima).
 const TRANSIENT = new Set([429, 500, 502, 503, 504]);
-const isTimeoutErr = (e: any) => !!e && (e.name === 'TimeoutError' || e.name === 'AbortError');
-async function fetchRetry(url: string, init: RequestInit, attempts = 3): Promise<Response> {
-  const deadline = Date.now() + WALL_CLOCK_BUDGET_MS;
-  let last: Response | undefined;
-  let lastErr: unknown;
+const isTimeoutErr = (e) => !!e && (e.name === 'TimeoutError' || e.name === 'AbortError');
+async function fetchRetry(url, init, { deadline = Date.now() + WALL_CLOCK_BUDGET_MS, resolver, attempts = 3 } = {}) {
+  let last;
+  let lastErr;
   for (let i = 0; i < attempts; i++) {
     const remaining = deadline - Date.now();
     if (remaining < MIN_ATTEMPT_MS) break;  // sem orcamento pra outra tentativa util — para ANTES do 546
     try {
       // o timeout da tentativa nunca passa do que resta do prazo global
-      const res = await fetchSsrfSafe(url, { ...init, signal: AbortSignal.timeout(Math.min(FETCH_TIMEOUT_MS, remaining)) });
+      const res = await fetchSsrfSafe(url, { ...init, signal: AbortSignal.timeout(Math.min(FETCH_TIMEOUT_MS, remaining)) }, resolver);
       if (!TRANSIENT.has(res.status)) return res;
       last = res;  // transitorio: guarda e tenta de novo (vira erro do provedor se as tentativas acabarem)
     } catch (e) {
@@ -193,16 +263,21 @@ async function fetchRetry(url: string, init: RequestInit, attempts = 3): Promise
 // servido por um endpoint custom/azure. Este helper faz a chamada e, se vier 400
 // mencionando "temperature", REFAZ sem o parametro. `post(withTemp)` monta a request;
 // `tempOK` = ja mandamos temperature (heuristico) — quando false nem tentamos com ela.
-async function postWithTempFallback(post: (withTemp: boolean) => Promise<Response>, tempOK: boolean, label: string): Promise<Response> {
-  let res = await post(tempOK);
+// O PRAZO E UM SO para as duas chamadas: cada fetchRetry nascia com 135s novos, e a segunda passava
+// do teto de ~150s da plataforma, que mata com 546 sem rodar o catch.
+async function postWithTempFallback(post, tempOK, label) {
+  const deadline = Date.now() + WALL_CLOCK_BUDGET_MS;
+  let res = await post(tempOK, deadline);
   // so cai aqui quando MANDAMOS temperature; um 400 citando o parametro = recusa -> refaz sem ele
   if (res.status === 400 && tempOK) {
     const errText = await res.text();
-    if (/temperature/i.test(errText)) res = await post(false);
+    if (/temperature/i.test(errText)) res = await post(false, deadline);
     else throw new Error(`${label} (400): ${trunc(errText)}`);
   }
   return res;
 }
+// ---- END OF THE NETWORK RULES ----
+const resolverDns = (host: string, tipo: 'A' | 'AAAA') => Deno.resolveDns(host, tipo);
 
 // chave no HEADER (x-goog-api-key), nunca na query string: uma URL invalida ou
 // erro de rede poderia ecoar a URL inteira (com a chave) na mensagem de erro.
@@ -254,11 +329,11 @@ async function callOpenAI(apiKey: string, model: string, systemParts: string[], 
     max_output_tokens: Math.min(opts.max_tokens || MAX_TOKENS, MAX_TOKENS),
   };
   const temp = opts.temperature ?? 0.3;
-  const post = (withTemp: boolean) => fetchRetry('https://api.openai.com/v1/responses', {
+  const post = (withTemp: boolean, deadline: number) => fetchRetry('https://api.openai.com/v1/responses', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify(withTemp ? { ...base, temperature: temp } : base),
-  });
+  }, { deadline });
 
   // heuristico omite temperature pra familia de raciocinio; postWithTempFallback e a rede
   // de seguranca (BYOK aceita qualquer id de modelo) — refaz sem temperature num 400 do tipo.
@@ -290,11 +365,11 @@ async function callCustom(baseUrl: string, apiKey: string, model: string, system
   ];
   const temp = opts.temperature ?? 0.3;
   const base = { model, messages, max_tokens: Math.min(opts.max_tokens || MAX_TOKENS, MAX_TOKENS) };
-  const post = (withTemp: boolean) => fetchRetry(url, {
+  const post = (withTemp: boolean, deadline: number) => fetchRetry(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}) },
     body: JSON.stringify(withTemp ? { ...base, temperature: temp } : base),
-  });
+  }, { deadline, resolver: resolverDns });
   // sem heuristico (o modelo custom e livre): tenta com temperature e cai na rede de
   // seguranca se um modelo de raciocinio atras do endpoint recusar o parametro.
   const res = await postWithTempFallback(post, true, 'API personalizada');
@@ -320,11 +395,11 @@ async function callAzure(baseUrl: string, apiKey: string, model: string, systemP
   ];
   const temp = opts.temperature ?? 0.3;
   const base = { model, messages, max_tokens: Math.min(opts.max_tokens || MAX_TOKENS, MAX_TOKENS) };
-  const post = (withTemp: boolean) => fetchRetry(url, {
+  const post = (withTemp: boolean, deadline: number) => fetchRetry(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'api-key': apiKey },
     body: JSON.stringify(withTemp ? { ...base, temperature: temp } : base),
-  });
+  }, { deadline, resolver: resolverDns });
   // Azure serve modelos OpenAI, inclusive os de raciocinio (o*/gpt-5) que recusam
   // temperature — mesma rede de seguranca do custom (sem heuristico, deployment e livre).
   const res = await postWithTempFallback(post, true, 'Azure OpenAI');
@@ -354,11 +429,11 @@ async function callAnthropic(apiKey: string, model: string, systemParts: string[
     ...(systemParts.length ? { system: systemParts.join('\n') } : {}),
     messages: contents.map(m => ({ role: m.role, content: m.content })),
   };
-  const post = (withTemp: boolean) => fetchRetry('https://api.anthropic.com/v1/messages', {
+  const post = (withTemp: boolean, deadline: number) => fetchRetry('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
     body: JSON.stringify(withTemp ? { ...base, temperature: temp } : base),
-  });
+  }, { deadline });
   const res = await postWithTempFallback(post, anthropicTemperatureOK(model), 'Anthropic API');
   if (!res.ok) throw new Error(`Anthropic API (${res.status}): ${trunc(await res.text())}`);
   const data = await res.json();
@@ -420,6 +495,11 @@ Deno.serve(async (req: Request) => {
       // Azure sempre exige chave; no custom ela e opcional (servidores locais podem nao exigir).
       if (provider === 'azure' && !body.apiKey) throw new HttpError(400, 'Parâmetro "apiKey" é obrigatório para o Azure OpenAI');
       assertPublicBaseUrl(body.baseUrl);
+      // the DESTINATION comes from the body, so this path needs a session. A check on the key would
+      // stop nobody: `apiKey:'x'` goes through it, and the anon key is public by design.
+      if (!(await getCaller(req))) {
+        throw new HttpError(401, 'Este endpoint não respondeu direto ao navegador, e o caminho pelo servidor exige entrar numa conta. Entre na sua conta, ou libere este site no endpoint (CORS).');
+      }
       apiKey = body.apiKey || '';
       model = body.model;
     } else if (body.apiKey) {

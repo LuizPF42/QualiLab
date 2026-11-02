@@ -14,6 +14,124 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.80 (02/11/2026)
+
+### Um projeto em mais de um computador, sem nuvem
+
+- **Na primeira vez em "Novo em arquivo", uma dica:** salvar o `.qualilab` na pasta do Google Drive
+  ou do OneDrive do computador mantém o arquivo sincronizado entre os seus computadores. A dica diz
+  o que é preciso (o programa instalado nos dois), o cuidado que importa (fechar em um e esperar
+  sincronizar antes de abrir no outro) e o que muda para material sensível, que nessa pasta vai para
+  a nuvem do serviço.
+
+## 1.4.79 (02/11/2026)
+
+### Um passo a mais de clareza ao montar a própria nuvem
+
+- No primeiro passo de **Criar minha nuvem**, o texto agora diz que o Supabase pede uma organização
+  no plano Free antes do primeiro projeto. Nada mais muda neste app.
+
+## 1.4.78 (31/10/2026)
+
+### Consertos de auditoria: excluir sem poder, o que cada papel vê, e escrita que não valeu
+
+- **Excluir sem permissão não apaga mais as suas notas.** Na nuvem, um membro ou um leitor via
+  "Excluir documento" e o ✕ da árvore de códigos. O servidor recusava em silêncio: o documento (ou
+  o código) ficava, mas o memo dele, as notas dos trechos ou o verbete do código eram apagados, e o
+  Histórico registrava uma exclusão que não aconteceu. Agora os botões só aparecem para quem pode, e
+  a exclusão recusada avisa e não apaga nada.
+- **O que não foi gravado não parece gravado.** Renomear documento, editar código ou categoria,
+  mexer numa conexão: quando o servidor não aplicava a mudança, a tela mostrava como feita até o
+  próximo F5. Agora aparece a mensagem "Nada foi alterado".
+- **Cada papel vê os gestos que pode fazer.** Quem só lê não vê mais "Concordo", "Sua resposta",
+  a edição do Esquema e do Mapa, nem a lista de aplicar código no menu do botão direito. A
+  Reconciliação continua aberta para leitura. Num projeto com o instrumento congelado, o Esquema
+  fica em leitura também para o membro.
+- **As setas ↑ ↓ voltaram a funcionar na busca do menu de aplicar código.** Estavam quebradas desde
+  agosto.
+- **Dividir um código guarda a origem de cada trecho.** Ao copiar um trecho para mais de um
+  subcódigo, a cópia virava "manual" mesmo quando vinha de sugestão da IA ou de concordância.
+- **Escrita recusada não some mais no F5.** O aviso das operações que o servidor recusou, com o
+  conteúdo delas, agora sobrevive a recarregar a página e só sai quando você descarta.
+- **Apagar um memo que ainda estava na fila agora apaga de verdade.** Antes ele voltava quando a
+  conexão retornava.
+- **CSV.** A proteção contra células que viram fórmula na planilha cobre também o valor que começa
+  com espaço ou quebra de linha.
+
+**Do lado do servidor**, o banco passa a recusar que uma linha aponte para documento, código ou
+categoria de outro projeto, e quem não é administrador não cria nem esconde código de censura
+falando direto com o servidor. O servidor padrão do QualiLab já tem essa atualização. **Para quem
+mantém a própria nuvem:** o app avisa, e basta rodar de novo o `supabase/schema.sql` deste
+repositório no SQL Editor.
+
+## 1.4.77 (31/10/2026)
+
+### Acabamento visual: botões centralizados, Relatório no lugar e leitura melhor nos dois temas
+
+Uma passada por todas as telas, nos temas claro e escuro, em português, inglês e espanhol. Nada
+muda no que é gravado.
+
+- **Relatório.** No Relatório Padrão, a janela inteira rolava, levando o cabeçalho junto, e o texto
+  passava por baixo da barra de status. Agora só o painel rola. A impressão continua igual.
+- **Tema escuro.** O texto dos botões principais e dos botões de recusar e excluir era branco sobre
+  fundo claro, difícil de ler. Agora é escuro. O vermelho de avisos e de exclusão também ficou mais
+  legível.
+- **Botões largos.** Mais de vinte botões de largura total traziam o texto encostado à esquerda.
+  Agora ficam centralizados.
+- **Listas de documentos das telas de IA.** O nome do documento estava justificado, com as palavras
+  espalhadas pela linha. Agora é alinhado à esquerda.
+- **Texto pequeno.** O cinza de legendas e contadores e o âmbar dos avisos ficaram um pouco mais
+  escuros, para continuar legíveis sobre os fundos coloridos.
+- **Gráficos.** O conteúdo não encosta mais na borda esquerda, e o rótulo da última coluna de
+  Co-ocorrência e Código × atributo não sai mais cortado.
+- **Ajustes menores.** Em Memos, o nome do código termina em reticências em vez de ser cortado. Em
+  Nova conexão, o tipo fica na mesma linha do nome. Na importação de planilha, as caixas de seleção
+  têm o estilo do app. No Mapa em tema escuro, o número das famílias e o símbolo de censura aparecem.
+  Na tela de projetos, os cartões não encostam um no outro.
+
+## 1.4.76 (31/10/2026)
+
+### Censura sob codificação cega, e duas portas que confiavam demais
+
+- **Sob codificação cega, a censura agora vale para quem codifica às cegas.** O membro cego não
+  recebia as marcas de censura feitas por outra pessoa, então o texto marcado saía **sem máscara** das
+  análises com IA, do Relatório interativo, da exportação W3C e do que ele levasse ao assistente pelo
+  arquivo. Agora todo membro recebe as marcas de censura dos documentos que vê. Elas mostram onde há
+  censura e quem marcou; as codificações e as notas dos colegas continuam escondidas. O servidor
+  padrão do QualiLab já tem essa atualização. **Quem tem nuvem própria precisa atualizar o servidor**
+  (o app avisa), porque essa regra mora no banco.
+- **O Relatório interativo e a exportação W3C não saem mais vazios** quando a única coisa na camada
+  final é censura: uma marca de censura consolidada fazia o app escolher a camada final e descartar
+  todo o trabalho individual, sem aviso.
+- **Importar um arquivo sempre pergunta pelas memórias de IA**, seja qual for o nome dele. Um arquivo
+  chamado `corpus-de-exemplo.qualilab` passava por exemplo do próprio app, e as memórias entravam
+  ligadas, sem pergunta. Quem dispensa a pergunta agora é só o botão do corpus de exemplo.
+
+## 1.4.75 (26/10/2026)
+
+### Sem mudança neste app
+
+- Esta versão só altera a versão experimental do QualiLab. O número sobe porque a versão é uma só.
+
+## 1.4.74 (25/10/2026)
+
+### A nuvem própria de cada grupo: montar, manter em dia e entrar por uma tela só
+
+- **Criar a nuvem do seu grupo.** A tela de entrada ganhou **Criar minha nuvem**: um assistente guia,
+  em cinco passos, a montagem de um servidor só do seu grupo, numa conta grátis do Supabase que é de
+  vocês, e os dados da pesquisa ficam nele, e não com o autor do QualiLab. O último passo confere se
+  o servidor está completo e dá o **link para a equipe**.
+- **O link nunca troca de servidor sozinho:** o app mostra para onde ele aponta e pede confirmação,
+  e recusa link que traga a chave secreta de um servidor.
+- **Entrar por uma tela só.** **Entrar** pede a nuvem, o e-mail e a senha juntos, e lembra as
+  nuvens já usadas neste navegador (só endereço e chave pública, nunca e-mail). A nuvem pública
+  continua disponível, como **Conectar à nuvem pública (deprecado)**.
+- **Servidor do grupo desatualizado.** Ao entrar numa nuvem privada, o app confere a versão do
+  banco e, se o servidor estiver atrás desta versão do QualiLab, a barra de status avisa. Para
+  atualizar, rode o `supabase/schema.sql` desta versão no SQL Editor: ele não apaga projetos nem dados.
+- **Convite com o código no link.** O link de convite do projeto já leva o código: quem o abre cai
+  direto em **Entrar no projeto**.
+
 ## 1.4.73 (24/10/2026)
 
 ### Conversas e memórias de IA isoladas sob codificação cega, e duas perguntas que protegem quem divide o computador
