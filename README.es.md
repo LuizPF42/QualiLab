@@ -167,7 +167,7 @@ Un sello **IA** en el encabezado muestra el estado todo el tiempo — anillo **v
 | **Prompt visible y editable** | **⚙ Configurar Prompt** muestra lo que se va a enviar, sección por sección, con el modelo activo, la estimación de tokens y el **costo** — antes de enviar |
 | **Modo ciego** | la IA responde **sin ver** tu referencia y el panel devuelve un marcador de concordancia: deja de ser revisora y se vuelve vara de medir |
 | **Memoria del proyecto** | diario de hallazgos entre sesiones; la IA propone, tú apruebas, y cada entrada tiene un interruptor de uso. Con codificación ciega o distribución, las entradas de cada persona son suyas hasta que el administrador las consolida |
-| **Proveedores** | Gemini, OpenAI, Anthropic, Azure OpenAI, cualquier API en el formato clásico de OpenAI (DeepSeek, Mistral, Qwen, vLLM) y **Ollama local** — el único en el que nada sale de tu máquina |
+| **Proveedores** | Gemini, OpenAI, Anthropic, Azure OpenAI, cualquier API en el formato clásico de OpenAI (DeepSeek, Mistral, Qwen, vLLM), **OpenRouter** (una clave para cientos de modelos; es un intermediario, y el material pasa por su servidor) y **Ollama local** — el único en el que nada sale de tu máquina |
 | **Recorte de material avisado** | hay un tope por documento y por envío; siempre que algo se recorta, una franja dice **cuántos documentos quedaron fuera** y cuántos entraron solo por el comienzo |
 
 > **Advertencia honesta:** apagar la IA **no es un bloqueo técnico** — cualquiera copia un fragmento y lo pega en otra herramienta. Lo que la opción le quita a la aplicación es el trabajo **en masa**, que es lo que de verdad desplaza un análisis. Por eso el Informe **relata** lo que pasó por QualiLab, en lugar de prometer que nada pasó por fuera.
@@ -254,7 +254,7 @@ La nube de QualiLab cambió de formato: en lugar de un servidor único para todo
 **La nube pública se desactivará el 31/12/2026.** Hasta entonces sigue disponible, como **Conectar a la nube pública (obsoleta)**. Para llevar un proyecto de ella a la nube del grupo:
 
 1. En la nube pública, descarga el proyecto como `.qualilab`.
-2. Crea la nube del grupo, o conéctate a ella con **¿Ya tienes una? Conectar a una nube privada**.
+2. Crea la nube del grupo, o conéctate a ella con **Con mi grupo → Entrar → Conectar con dirección y clave**.
 3. Abre el `.qualilab` y usa **Enviar a la nube**, en el panel del proyecto: el proyecto nuevo se crea en la nube conectada.
 4. Pide a cada persona del equipo que cree una cuenta en la nube nueva y entre por el enlace de invitación.
 
@@ -299,7 +299,7 @@ Para activar el modo colectivo hace falta un proyecto **Supabase** de tu grupo, 
 
 ### 1. Credenciales
 
-Quien usa la aplicación publicada no edita nada: basta con indicar la dirección y la clave en **¿Ya tienes una? Conectar a una nube privada**, o abrir el enlace del equipo. Quien publica su propia copia puede fijar las credenciales en la parte superior del `index.html`:
+Quien usa la aplicación publicada no edita nada: basta con indicar la dirección y la clave en **Con mi grupo → Entrar → Conectar con dirección y clave**, o abrir el enlace del equipo. Quien publica su propia copia puede fijar las credenciales en la parte superior del `index.html`:
 
 ```js
 let SUPABASE_URL  = "https://TU-PROYECTO.supabase.co";
@@ -325,7 +325,7 @@ En **Authentication → Providers**:
 **Lo normal es BYOK**: cada investigador trae su clave y el **navegador llama directo al proveedor**, sin pasar por ningún servidor. En ese camino la función **no se usa**. Despliégala si vas a (a) ofrecer una **clave de servidor** (guardada fuera del HTML público) o (b) dar soporte a endpoints *Personalizado*/*Azure* que no permitan llamadas desde el navegador (CORS) — ahí la función hace de proxy. **Ollama local** nunca la usa (el servidor de Supabase no alcanza el `localhost` del investigador).
 
 1. **(Opcional, solo si vas a ofrecer una clave de servidor)** Genera una clave del proveedor: [Gemini](https://aistudio.google.com/apikey) (gratuito), [OpenAI](https://platform.openai.com/api-keys) o [Anthropic](https://console.anthropic.com/settings/keys). Omite este paso si cada investigador va a usar su propia clave (BYOK).
-2. **Secrets** → en *Edge Functions → Secrets*, agrega `GEMINI_API_KEY` y/o `OPENAI_API_KEY` y/o `ANTHROPIC_API_KEY` (configura solo el o los que vayas a usar). Opcional: `GEMINI_MODEL`/`OPENAI_MODEL`/`ANTHROPIC_MODEL` para cambiar el modelo por defecto de cada uno (`gemini-3.1-flash-lite`/`gpt-5.4`/`claude-sonnet-4-6`) sin reeditar el código.
+2. **Secrets** → en *Edge Functions → Secrets*, agrega `GEMINI_API_KEY` y/o `OPENAI_API_KEY` y/o `ANTHROPIC_API_KEY` (configura solo el o los que vayas a usar). Opcional: `GEMINI_MODEL`/`OPENAI_MODEL`/`ANTHROPIC_MODEL` para cambiar el modelo por defecto de cada uno (`gemini-3.6-flash`/`gpt-6.1-terra`/`claude-sonnet-5-5`) sin reeditar el código.
 3. **Deploy** → en *Edge Functions*, crea/edita la función `ai-ask`, pega el contenido de [`supabase/functions/ai-ask/index.ts`](supabase/functions/ai-ask/index.ts) y haz clic en **Deploy**. (No hace falta la CLI.)
 
 Sin ninguna clave configurada, las pantallas de IA devuelven un error claro; el resto de la aplicación funciona normalmente.

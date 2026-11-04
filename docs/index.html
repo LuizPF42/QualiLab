@@ -335,6 +335,22 @@
   .wicon{flex:none;}
   .wtitle{font-size:.9375rem;font-weight:600;}
   .wdesc{font-size:.75rem;color:var(--ink-soft);line-height:1.45;}
+  /* 1.4.82: secoes "continuar" e "comecar", as duas portas (cartao com duas acoes, sem o hover de
+     clique do .wcard) e a linha do rascunho */
+  .wel-sec{font-size:.75rem;font-weight:600;color:var(--ink-soft);margin:16px 2px 8px;}
+  .wel-cont-list{display:flex;flex-direction:column;gap:6px;}
+  .wcard.wel-cont{padding:10px 14px;}
+  .wel-cont-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;}
+  .wel-cont-txt .wtitle{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .wel-doors{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;}
+  .wcard.wdoor{cursor:default;}
+  .wcard.wdoor:hover{transform:none;box-shadow:none;background:var(--surface);border-color:var(--line);}
+  .wdoor-act{display:flex;flex-direction:column;gap:6px;width:100%;margin-top:auto;padding-top:8px;}
+  .wdoor-act .btn{width:100%;}
+  .wel-draft-line{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:2px 6px;text-align:center;margin:12px 0 0;font-size:.71875rem;}
+  .wel-group{margin-top:14px;}
+  .wel-back{margin:0 0 8px -6px;}
+  .wel-group-alt{text-align:center;margin:6px 0 0;font-size:.71875rem;}
   .btn{font-size:.8125rem;font-weight:500;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:7px 12px;display:inline-flex;align-items:center;justify-content:center;gap:7px;white-space:nowrap;transition:background var(--ease),border-color var(--ease);}
   .btn:hover{background:var(--paper);}
   .btn.primary{background:var(--teal);color:var(--on-fill);border:none;font-weight:600;}
@@ -788,7 +804,7 @@
 // minor/patch a cada publish do preact — um minor quebrado derrubava o app pra todos os
 // usuarios sem nenhum deploy nosso. Ao atualizar, troque o pin conscientemente e teste.
 const { h, render } = window.preact;
-const { useState, useEffect, useRef, useMemo, useCallback, useReducer } = window.preactHooks;
+const { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback, useReducer } = window.preactHooks;
 const htm = window.htm;
 
 const html = htm.bind(h);
@@ -917,6 +933,10 @@ const ICONS = {
   install:()=>html`<path d="M12 3v11"/><path d="M8 11l4 4 4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>`,
   command:()=>html`<path d="M9 9h6v6H9z"/><path d="M9 9H7a2 2 0 1 1 2-2v2zM15 9h2a2 2 0 1 0-2-2v2zM15 15h2a2 2 0 1 1-2 2v-2zM9 15H7a2 2 0 1 0 2 2v-2z"/>`,
   keyboard:()=>html`<rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M6 14h.01M18 14h.01M9 14h6"/>`,
+  /* cloud, flask: the drawings the welcome screen always had inline (group cloud, draft) */
+  cloud:  ()=>html`<path d="M6.5 19a4.5 4.5 0 0 1 0-9 5 5 0 0 1 9.6-1.3A3.5 3.5 0 0 1 18 19z"/>`,
+  flask:  ()=>html`<path d="M9 3h6"/><path d="M14 3v5l4.8 9.6A1.5 1.5 0 0 1 17.5 20H6.5a1.5 1.5 0 0 1-1.3-2.4L10 8V3"/>`,
+  back:   ()=>html`<path d="M15 18l-6-6 6-6"/>`,
 };
 function icon(name, size=16){
   const draw = ICONS[name];
@@ -961,7 +981,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.81';
+const QUALILAB_VERSION = '1.4.83';
 // QUALILAB_SCHEMA_VERSION — a versao do BANCO que este app espera. Nao e a do app: muda so quando o
 // app passa a PRECISAR de algo novo no servidor (tabela, coluna, funcao que ele chama). O assistente
 // do servidor compara com o que a qualilab_server_check() do banco responde e, se o servidor estiver
@@ -2174,6 +2194,7 @@ const MSG_PT = {
   'stance.custom': 'Personalizado',
   'price.own': 'sua tarifa',
   'price.ref': 'referência',
+  'price.live': 'preço do provedor',
   'insp.stanceMeta': 'postura: {name}',
   'insp.sec.memo': 'Memo(s) para a IA',
   'insp.memoMeta': '{n} injetado(s)',
@@ -2211,20 +2232,31 @@ const MSG_PT = {
   'model.balanced': 'padrão, equilíbrio',
   'model.capable': 'mais capaz, mais lento e caro',
   'wel.tag': 'laboratório de pesquisa qualitativa',
-  'wel.how': 'Como você quer começar?',
   'wel.reopen': 'Reabrir {name}',
-  'wel.reopen.hint': 'Continuar de onde parou. O navegador vai pedir permissão pra acessar o arquivo. É só permitir.',
+  'wel.reopen.hint': 'Arquivo neste computador. O navegador vai pedir permissão para abrir.',
+  'wel.reopen.go': 'Reabrir',
+  'wel.cont': 'Continuar de onde parou',
+  'wel.cloud.row': 'nuvem do grupo',
+  'wel.cloud.go': 'Entrar',
+  'wel.cloud.aria': 'Entrar na nuvem {cloud}',
+  'wel.start.first': 'Com quem você vai trabalhar?',
+  'wel.start.more': 'Ou comece algo novo',
+  'wel.solo': 'Sozinho, neste computador',
+  'wel.solo.desc': 'Um arquivo .qualilab numa pasta que você escolhe. Funciona sem internet e sem servidor.',
+  'wel.group': 'Com meu grupo',
+  'wel.group.desc': 'A nuvem do grupo, num servidor de vocês: todos trabalham no mesmo projeto, de qualquer computador.',
+  'wel.group.in': 'Entrar',
+  'wel.back': 'Voltar',
+  'wel.group.byAddr': 'Sem o nome curto?',
+  'wel.group.none': 'O grupo ainda não tem nuvem?',
   'filetip.title': 'Dica: use em mais de um computador',
   'filetip.a': 'Salve o .qualilab na pasta do **Google Drive** ou do **OneDrive** do seu computador. O programa deles mantém o arquivo sincronizado, e no outro computador você usa **Abrir arquivo existente**.',
   'filetip.b': 'O programa do Drive ou do OneDrive precisa estar instalado nos dois computadores. Feche o projeto em um e espere sincronizar antes de abrir no outro: com os dois abertos, um pode sobrescrever o trabalho do outro.',
   'filetip.c': 'Nessa pasta, o arquivo vai para a nuvem desse serviço. Se o material for sensível, confira antes se a sua instituição permite. Você também pode salvar em qualquer outra pasta.',
   'filetip.cancel': 'Cancelar',
   'filetip.go': 'Escolher onde salvar',
-  'wel.file': 'Novo em arquivo',
-  'wel.file.desc': 'Um arquivo .qualilab no seu computador (você escolhe a pasta). Offline, portátil, sem nuvem.',
+  'wel.file': 'Novo arquivo',
   'wel.private': 'Criar minha nuvem',
-  'wel.private.desc': 'Um servidor só do seu grupo, numa conta grátis do Supabase: sincroniza entre aparelhos, permite colaborar, e os dados ficam com vocês.',
-  'wel.private.connect': 'Já tem uma? Conectar a uma nuvem privada',
   'signin.title': 'Entrar',
   'signin.p': 'Na nuvem do seu grupo, com o e-mail e a senha da sua conta lá.',
   'signin.cloud': 'Nuvem',
@@ -2246,16 +2278,14 @@ const MSG_PT = {
   'wel.jc.member.p': 'Crie a sua conta nele ({host}), ou entre se já tiver uma. Ela vale só para este servidor.',
   'wel.jc.go': 'Criar minha conta',
   'wel.devSees': 'Dados visíveis para o desenvolvedor',
-  'wel.draft': 'Só testar',
-  'wel.draft.tag': 'rascunho',
-  'wel.draft.desc': 'Fica só neste navegador (temporário). Rápido pra experimentar, mas some se você limpar os dados. Dá pra migrar pra arquivo ou nuvem depois.',
+  'wel.draft': 'Só testar (rascunho)',
+  'wel.draft.desc': 'fica só neste navegador, e dá para levar para um arquivo ou uma nuvem depois',
   'wel.install': 'Instalar o QualiLab',
   'wel.install.desc': 'Janela própria, abre sem internet e o duplo clique num .qualilab passa a abrir aqui.',
   'wel.install.edgeNote': ' No Windows, instalando aqui pelo Chrome o ícone do .qualilab fica quebrado; pelo Edge, não.',
   'wel.install.edge': 'Instalar pelo Edge',
   'wel.install.here': 'Instalar aqui',
   'wel.install.only': 'Instalar',
-  'wel.hasFile': 'Já tem um arquivo?',
   'wel.openFile': 'Abrir arquivo existente',
   'wel.noFileApi': 'No Firefox/Safari o modo arquivo não está disponível. Use nuvem ou rascunho.',
   'wel.by': 'licença MIT · por Luiz Pimenta Filho · LabDados / FGV Direito SP',
@@ -2461,19 +2491,19 @@ const MSG_PT = {
   'wiz.done.title': '✓ A nuvem do seu grupo está pronta',
   'wiz.done.addr.title': 'Guarde o endereço da sua nuvem',
   'wiz.done.addr.p': 'Este navegador já vai lembrar dela. Em outro computador, ou se os dados do navegador forem limpos, é por este link que você volta à nuvem do grupo (e é por ele que a equipe chega ao servidor):',
-  'wiz.done.name.p': 'Este navegador já vai lembrar dela. Em outro computador, você e os colegas a acham por este nome, em "Já tem uma? Conectar a uma nuvem privada", na tela de entrada:',
+  'wiz.done.name.p': 'Este navegador já vai lembrar dela. Em outro computador, você e os colegas a acham por este nome: na tela de entrada, em "Com meu grupo", clique em "Entrar" e digite o nome em "Outra nuvem…":',
   'wiz.done.addr.pName': 'Ou por este link, que leva direto a ela:',
   'wiz.done.addr.mail': 'Mandar para o meu e-mail',
   'wiz.done.addr.mailSubject': 'Endereço da nuvem do grupo no QualiLab',
   'wiz.done.addr.mailBody': 'Para entrar na nuvem do grupo no QualiLab, abra este link:\n\n{link}\n\nO link leva só o endereço do servidor e a chave pública dele. A senha de cada pessoa não vai nele.',
-  'wiz.done.addr.mailBodyName': 'Para entrar na nuvem do grupo no QualiLab, em qualquer computador: na tela de entrada, clique em "Já tem uma? Conectar a uma nuvem privada" e digite o nome\n\n{name}\n\nOu abra este link, que leva direto a ela:\n\n{link}\n\nO nome e o link levam só ao endereço do servidor e à chave pública dele. A senha de cada pessoa não vai neles.',
+  'wiz.done.addr.mailBodyName': 'Para entrar na nuvem do grupo no QualiLab, em qualquer computador: na tela de entrada, em "Com meu grupo", clique em "Entrar", escolha "Outra nuvem…" e digite o nome\n\n{name}\n\nOu abra este link, que leva direto a ela:\n\n{link}\n\nO nome e o link levam só ao endereço do servidor e à chave pública dele. A senha de cada pessoa não vai neles.',
   'wiz.done.addr.dl': 'Baixar arquivo com o endereço',
   'wiz.done.p': 'Falta um passo: criar a sua conta nela. A primeira conta é a sua, de quem coordena. Depois crie o projeto e, em Projeto → Convites, mande o link de convite para a equipe.',
   'wiz.done.go': 'Entrar e criar minha conta',
   'wiz.done.checkFail': 'A conferência do servidor novo acusou um problema. Abra a "Conferência técnica" abaixo para ver qual.',
   'wiz.done.pass.sum': 'Senha de emergência do banco',
   'wiz.done.pass.file': 'Nuvem QualiLab do grupo\n\nPara entrar (neste ou em outro computador), abra:\n{link}\n\nServidor: {url}\nProjeto no Supabase: {ref}\nSenha de emergência do banco (Postgres): {pass}\n\nO QualiLab não usa a senha do banco. Ela serve para emergências e para quem administrar o banco diretamente. Guarde este arquivo num lugar seguro.',
-  'wiz.done.pass.fileName': 'Nuvem QualiLab do grupo\n\nNome curto: {name}\n(na tela de entrada do QualiLab, em "Já tem uma? Conectar a uma nuvem privada")\n\nOu abra:\n{link}\n\nServidor: {url}\nProjeto no Supabase: {ref}\nSenha de emergência do banco (Postgres): {pass}\n\nO QualiLab não usa a senha do banco. Ela serve para emergências e para quem administrar o banco diretamente. Guarde este arquivo num lugar seguro.',
+  'wiz.done.pass.fileName': 'Nuvem QualiLab do grupo\n\nNome curto: {name}\n(na tela de entrada do QualiLab, em "Com meu grupo" → "Entrar" → "Outra nuvem…")\n\nOu abra:\n{link}\n\nServidor: {url}\nProjeto no Supabase: {ref}\nSenha de emergência do banco (Postgres): {pass}\n\nO QualiLab não usa a senha do banco. Ela serve para emergências e para quem administrar o banco diretamente. Guarde este arquivo num lugar seguro.',
   'wiz.done.check.sum': 'Conferência técnica',
   'srv.connect': 'Conectar a uma nuvem privada',
   'srv.public': 'Conectar à nuvem pública (deprecado)',
@@ -2636,6 +2666,7 @@ const MSG_PT = {
   'acc.err.customUrl': 'Informe a URL base da API personalizada.',
   'acc.err.azureDep': 'Informe o deployment do Azure OpenAI.',
   'acc.err.customModel': 'Informe o modelo da API personalizada.',
+  'acc.err.orModel': 'Escolha ou digite o modelo do OpenRouter.',
   'acc.err.azureKey': 'A chave de API é obrigatória para o Azure OpenAI.',
   'acc.err.key': 'A chave de IA é obrigatória para este provedor: informe a sua chave (BYOK) ou use o Ollama local.',
   'acc.title': 'Minha conta',
@@ -2661,6 +2692,7 @@ const MSG_PT = {
   'acc.route.proxy': '**Sem a sua chave aqui**, a chamada passa por uma função no servidor deste projeto (`ai-ask`), que enxerga o material do envio.',
   'acc.route.cors': '**Exceção:** se este endpoint não liberar chamadas do navegador (CORS), a chamada é refeita pela função no servidor deste projeto (`ai-ask`), que então enxerga o material daquele envio. Os demais provedores não usam esse caminho.',
   'acc.route.direct': 'A chamada não passa por nenhum servidor do QualiLab.',
+  'acc.route.broker': 'A chamada não passa por servidor do QualiLab, **mas passa pelo OpenRouter**, um intermediário: o material atravessa o servidor dele antes de chegar a quem roda o modelo. Fica registrado como `OpenRouter: modelo` (manual, §17.5).',
   'acc.provider': 'Provedor',
   'acc.url.azure': 'URL base (endpoint do recurso)',
   'acc.url.local': 'URL do servidor local',
@@ -2682,17 +2714,22 @@ const MSG_PT = {
   'acc.model.azure.ph': 'ex.: gpt-4.1-mini (nome do deployment)',
   'acc.model.local.ph': 'ex.: llama3.1 (ou qwen2.5, mistral…)',
   'acc.model.custom.ph': 'ex.: deepseek-chat',
+  'acc.model.or.ph': 'ex.: anthropic/claude-haiku-5.5',
   'acc.default': 'padrão',
   'acc.howPick': 'como escolher',
   'acc.model.azure.hint': 'Obrigatório: use o nome do deployment criado no portal do Azure (não o nome do modelo base, ex.: o deployment de um gpt-4.1-mini pode ter qualquer nome).',
   'acc.model.local.hint': 'Obrigatório: escolha uma sugestão ou digite **qualquer** modelo que você tenha baixado, com o nome exato (`ollama pull llama3.1`; confira com `ollama list`, incluindo tags como `llama3.1:70b`).',
   'acc.model.custom.hint': 'Obrigatório para o provedor personalizado: use o id de modelo exatamente como o servidor espera.',
+  'acc.model.or.hint': 'Digite parte do nome (ex.: `claude`, `gemini`, `llama`) para ver sugestões da lista do OpenRouter, ou o id exato, na forma `empresa/modelo`. A lista e os preços vêm da API deles, então não ficam velhos.',
+  'acc.or.noTools': 'Este modelo **não anuncia suporte a ferramentas** (*tools*). Ele serve para Analisar com IA e para a Auto-codificação, mas o **Definir Categoria** e o **Explorar com IA** dependem de ferramentas e vão falhar com ele.',
+  'acc.or.listFail': 'Não consegui buscar a lista de modelos do OpenRouter agora. Você ainda pode digitar o id do modelo à mão; sem a lista, a calculadora fica sem o preço dele e mostra só a contagem de tokens.',
   'acc.model.hint': 'Modelo "vazio" usa o padrão do projeto pra esse provedor. Em geral, modelos maiores/mais capazes (à direita) são mais lentos e mais caros por uso do que os menores (à esquerda). Escolha conforme a complexidade da tarefa.',
   'acc.cost': 'Custo estimado (calculadora)',
   'acc.cost.local': 'Servidor local não tem custo por token: as telas de IA mostram "grátis (local)".',
   'acc.cost.custom': 'Este provedor não tem preço de referência. Informe a tarifa do seu provedor (US$ por 1M de tokens) para ver a estimativa de custo.',
   'acc.cost.ref': 'Referência para **{model}**: **US$ {in}** entrada / **US$ {out}** saída por 1M tokens (preço de lista; confira com o provedor se mudar).',
   'acc.cost.noRef': 'Sem preço de referência cadastrado para **{model}** ainda.',
+  'acc.cost.liveRef': 'Preço de **{model}** publicado pelo OpenRouter: **US$ {in}** entrada / **US$ {out}** saída por 1M tokens. Vem da API deles, não de uma tabela mantida à mão — e por isso não envelhece. Prompt muito longo pode cair numa faixa mais cara do que esta.',
   'acc.cost.thisModel': 'este modelo',
   'acc.cost.in': 'US$ / 1M entrada',
   'acc.cost.out': 'US$ / 1M saída',
@@ -4874,6 +4911,7 @@ const MSG_EN = {
   'stance.custom': 'Custom',
   'price.own': 'your own rate',
   'price.ref': 'reference',
+  'price.live': 'provider price',
   'insp.stanceMeta': 'stance: {name}',
   'insp.sec.memo': 'Memo(s) for the AI',
   'insp.memoMeta': '{n} injected',
@@ -4911,20 +4949,31 @@ const MSG_EN = {
   'model.balanced': 'default, balanced',
   'model.capable': 'more capable, slower and dearer',
   'wel.tag': 'a qualitative research lab',
-  'wel.how': 'How do you want to start?',
   'wel.reopen': 'Reopen {name}',
-  'wel.reopen.hint': 'Carry on where you left off. The browser will ask for permission to reach the file. Just allow it.',
+  'wel.reopen.hint': 'A file on this computer. The browser will ask for permission to open it.',
+  'wel.reopen.go': 'Reopen',
+  'wel.cont': 'Carry on where you left off',
+  'wel.cloud.row': 'group cloud',
+  'wel.cloud.go': 'Sign in',
+  'wel.cloud.aria': 'Sign in to the cloud {cloud}',
+  'wel.start.first': 'Who will you be working with?',
+  'wel.start.more': 'Or start something new',
+  'wel.solo': 'On my own, on this computer',
+  'wel.solo.desc': 'A .qualilab file in a folder you choose. Works without internet and without a server.',
+  'wel.group': 'With my group',
+  'wel.group.desc': 'The group cloud, on a server of your own: everyone works on the same project, from any computer.',
+  'wel.group.in': 'Sign in',
+  'wel.back': 'Back',
+  'wel.group.byAddr': 'No short name?',
+  'wel.group.none': 'Your group has no cloud yet?',
   'filetip.title': 'Tip: use it on more than one computer',
   'filetip.a': 'Save the .qualilab in the **Google Drive** or **OneDrive** folder on your computer. Their program keeps the file in sync, and on the other computer you use **Open an existing file**.',
   'filetip.b': 'The Drive or OneDrive program must be installed on both computers. Close the project on one and wait for it to sync before opening it on the other: with both open, one can overwrite the other\'s work.',
   'filetip.c': 'In that folder, the file goes to that service\'s cloud. If the material is sensitive, first check that your institution allows it. You can also save to any other folder.',
   'filetip.cancel': 'Cancel',
   'filetip.go': 'Choose where to save',
-  'wel.file': 'New in a file',
-  'wel.file.desc': 'A .qualilab file on your own computer (you choose the folder). Offline, portable, no cloud.',
+  'wel.file': 'New file',
   'wel.private': 'Create my cloud',
-  'wel.private.desc': 'A server just for your group, on a free Supabase account: it syncs across devices, lets you collaborate, and the data stays with you.',
-  'wel.private.connect': 'Already have one? Connect to a private cloud',
   'signin.title': 'Sign in',
   'signin.p': 'To your group’s cloud, with the e-mail and password of your account there.',
   'signin.cloud': 'Cloud',
@@ -4946,16 +4995,14 @@ const MSG_EN = {
   'wel.jc.member.p': 'Create your account on it ({host}), or sign in if you already have one. It is valid only for this server.',
   'wel.jc.go': 'Create my account',
   'wel.devSees': 'Data visible to the developer',
-  'wel.draft': 'Just try it',
-  'wel.draft.tag': 'draft',
-  'wel.draft.desc': 'It stays in this browser only (temporary). Quick to try out, but it vanishes if you clear site data. You can move it to a file or the cloud later.',
+  'wel.draft': 'Just try it (draft)',
+  'wel.draft.desc': 'stays in this browser only, and you can move it to a file or a cloud later',
   'wel.install': 'Install QualiLab',
   'wel.install.desc': 'Its own window, it opens without internet, and double-clicking a .qualilab starts opening it here.',
   'wel.install.edgeNote': ' On Windows, installing here through Chrome leaves the .qualilab icon broken; through Edge it does not.',
   'wel.install.edge': 'Install through Edge',
   'wel.install.here': 'Install here',
   'wel.install.only': 'Install',
-  'wel.hasFile': 'Already have a file?',
   'wel.openFile': 'Open an existing file',
   'wel.noFileApi': 'File mode is not available in Firefox/Safari. Use the cloud or a draft.',
   'wel.by': 'MIT licence · by Luiz Pimenta Filho · LabDados / FGV Direito SP',
@@ -5161,19 +5208,19 @@ const MSG_EN = {
   'wiz.done.title': '✓ Your group cloud is ready',
   'wiz.done.addr.title': 'Keep the address of your cloud',
   'wiz.done.addr.p': 'This browser will remember it. On another computer, or if the browser data is cleared, this link is how you get back to the group cloud (and how the team reaches the server):',
-  'wiz.done.name.p': 'This browser will remember it. On another computer, you and your colleagues find it by this name, under "Already have one? Connect to a private cloud" on the welcome screen:',
+  'wiz.done.name.p': 'This browser will remember it. On another computer, you and your colleagues find it by this name: on the welcome screen, under "With my group", click "Sign in" and type the name under "Another cloud…":',
   'wiz.done.addr.pName': 'Or by this link, which goes straight to it:',
   'wiz.done.addr.mail': 'Send to my email',
   'wiz.done.addr.mailSubject': 'Address of the group cloud on QualiLab',
   'wiz.done.addr.mailBody': 'To enter the group cloud on QualiLab, open this link:\n\n{link}\n\nThe link carries only the server address and its public key. No personal password goes in it.',
-  'wiz.done.addr.mailBodyName': 'To enter the group cloud on QualiLab, on any computer: on the welcome screen, click "Already have one? Connect to a private cloud" and type the name\n\n{name}\n\nOr open this link, which goes straight to it:\n\n{link}\n\nThe name and the link lead only to the server address and its public key. No personal password goes in them.',
+  'wiz.done.addr.mailBodyName': 'To enter the group cloud on QualiLab, on any computer: on the welcome screen, under "With my group", click "Sign in", choose "Another cloud…" and type the name\n\n{name}\n\nOr open this link, which goes straight to it:\n\n{link}\n\nThe name and the link lead only to the server address and its public key. No personal password goes in them.',
   'wiz.done.addr.dl': 'Download a file with the address',
   'wiz.done.p': 'One step left: create your account on it. The first account is yours, as the coordinator. Then create the project and, under Project → Invitations, send the invitation link to the team.',
   'wiz.done.go': 'Enter and create my account',
   'wiz.done.checkFail': 'The check of the new server found a problem. Open "Technical check" below to see which.',
   'wiz.done.pass.sum': 'Emergency database password',
   'wiz.done.pass.file': 'QualiLab group cloud\n\nTo enter (on this or another computer), open:\n{link}\n\nServer: {url}\nSupabase project: {ref}\nEmergency database password (Postgres): {pass}\n\nQualiLab does not use the database password. It is for emergencies and for whoever manages the database directly. Keep this file somewhere safe.',
-  'wiz.done.pass.fileName': 'QualiLab group cloud\n\nShort name: {name}\n(on the QualiLab welcome screen, under "Already have one? Connect to a private cloud")\n\nOr open:\n{link}\n\nServer: {url}\nSupabase project: {ref}\nEmergency database password (Postgres): {pass}\n\nQualiLab does not use the database password. It is for emergencies and for whoever manages the database directly. Keep this file somewhere safe.',
+  'wiz.done.pass.fileName': 'QualiLab group cloud\n\nShort name: {name}\n(on the QualiLab welcome screen, under "With my group" → "Sign in" → "Another cloud…")\n\nOr open:\n{link}\n\nServer: {url}\nSupabase project: {ref}\nEmergency database password (Postgres): {pass}\n\nQualiLab does not use the database password. It is for emergencies and for whoever manages the database directly. Keep this file somewhere safe.',
   'wiz.done.check.sum': 'Technical check',
   'srv.connect': 'Connect to a private cloud',
   'srv.public': 'Connect to the public cloud (deprecated)',
@@ -5336,6 +5383,7 @@ const MSG_EN = {
   'acc.err.customUrl': 'Enter the base URL of the custom API.',
   'acc.err.azureDep': 'Enter the Azure OpenAI deployment.',
   'acc.err.customModel': 'Enter the model of the custom API.',
+  'acc.err.orModel': 'Pick or type the OpenRouter model.',
   'acc.err.azureKey': 'The API key is required for Azure OpenAI.',
   'acc.err.key': 'An AI key is required for this provider: enter your own key (BYOK) or use local Ollama.',
   'acc.title': 'My account',
@@ -5361,6 +5409,7 @@ const MSG_EN = {
   'acc.route.proxy': '**Without your key here**, the call goes through a function on this project’s server (`ai-ask`), which sees the material being sent.',
   'acc.route.cors': '**Exception:** if this endpoint does not allow browser calls (CORS), the call is retried through the function on this project’s server (`ai-ask`), which then sees the material of that request. The other providers do not use this path.',
   'acc.route.direct': 'The call goes through no QualiLab server at all.',
+  'acc.route.broker': 'The call goes through no QualiLab server, **but it does go through OpenRouter**, a broker: the material crosses their server before reaching whoever runs the model. It is recorded as `OpenRouter: model` (manual, §17.5).',
   'acc.provider': 'Provider',
   'acc.url.azure': 'Base URL (the resource endpoint)',
   'acc.url.local': 'Local server URL',
@@ -5382,17 +5431,22 @@ const MSG_EN = {
   'acc.model.azure.ph': 'e.g. gpt-4.1-mini (the deployment name)',
   'acc.model.local.ph': 'e.g. llama3.1 (or qwen2.5, mistral…)',
   'acc.model.custom.ph': 'e.g. deepseek-chat',
+  'acc.model.or.ph': 'e.g. anthropic/claude-haiku-5.5',
   'acc.default': 'default',
   'acc.howPick': 'how to choose',
   'acc.model.azure.hint': 'Required: use the name of the deployment created in the Azure portal (not the base model name — a gpt-4.1-mini deployment can be called anything).',
   'acc.model.local.hint': 'Required: pick a suggestion or type **any** model you have pulled, with its exact name (`ollama pull llama3.1`; check with `ollama list`, including tags such as `llama3.1:70b`).',
   'acc.model.custom.hint': 'Required for the custom provider: use the model id exactly as the server expects it.',
+  'acc.model.or.hint': 'Type part of the name (e.g. `claude`, `gemini`, `llama`) to see suggestions from the OpenRouter list, or the exact id, in the form `company/model`. The list and the prices come from their API, so they do not go stale.',
+  'acc.or.noTools': 'This model **does not advertise tool support**. It works for Analyse with AI and for Auto-coding, but **Define Category** and **Explore with AI** rely on tools and will fail with it.',
+  'acc.or.listFail': 'I could not fetch the OpenRouter model list right now. You can still type the model id by hand; without the list, the calculator has no price for it and shows only the token count.',
   'acc.model.hint': 'An “empty” model uses the project default for that provider. In general the larger/more capable models (on the right) are slower and cost more per use than the smaller ones (on the left). Choose according to how complex the task is.',
   'acc.cost': 'Estimated cost (calculator)',
   'acc.cost.local': 'A local server has no per-token cost: the AI screens show “free (local)”.',
   'acc.cost.custom': 'This provider has no reference price. Enter your provider’s rate (US$ per 1M tokens) to see the cost estimate.',
   'acc.cost.ref': 'Reference for **{model}**: **US$ {in}** input / **US$ {out}** output per 1M tokens (list price; check with the provider if it changes).',
   'acc.cost.noRef': 'No reference price recorded for **{model}** yet.',
+  'acc.cost.liveRef': 'Price for **{model}** as published by OpenRouter: **US$ {in}** input / **US$ {out}** output per 1M tokens. It comes from their API, not from a hand-maintained table — which is why it does not go stale. A very long prompt may fall into a more expensive tier than this one.',
   'acc.cost.thisModel': 'this model',
   'acc.cost.in': 'US$ / 1M input',
   'acc.cost.out': 'US$ / 1M output',
@@ -7541,6 +7595,7 @@ const MSG_ES = {
   'stance.custom': 'Personalizado',
   'price.own': 'tu tarifa',
   'price.ref': 'referencia',
+  'price.live': 'precio del proveedor',
   'insp.stanceMeta': 'postura: {name}',
   'insp.sec.memo': 'Memo(s) para la IA',
   'insp.memoMeta': '{n} inyectado(s)',
@@ -7578,20 +7633,31 @@ const MSG_ES = {
   'model.balanced': 'estándar, equilibrio',
   'model.capable': 'más capaz, más lento y caro',
   'wel.tag': 'laboratorio de investigación cualitativa',
-  'wel.how': '¿Cómo quieres empezar?',
   'wel.reopen': 'Reabrir {name}',
-  'wel.reopen.hint': 'Continúa donde lo dejaste. El navegador va a pedir permiso para acceder al archivo. Solo tienes que permitirlo.',
+  'wel.reopen.hint': 'Archivo en esta computadora. El navegador va a pedir permiso para abrirlo.',
+  'wel.reopen.go': 'Reabrir',
+  'wel.cont': 'Continuar donde lo dejaste',
+  'wel.cloud.row': 'nube del grupo',
+  'wel.cloud.go': 'Entrar',
+  'wel.cloud.aria': 'Entrar en la nube {cloud}',
+  'wel.start.first': '¿Con quién vas a trabajar?',
+  'wel.start.more': 'O empieza algo nuevo',
+  'wel.solo': 'Solo, en esta computadora',
+  'wel.solo.desc': 'Un archivo .qualilab en una carpeta que tú eliges. Funciona sin internet y sin servidor.',
+  'wel.group': 'Con mi grupo',
+  'wel.group.desc': 'La nube del grupo, en un servidor de ustedes: todos trabajan en el mismo proyecto, desde cualquier computadora.',
+  'wel.group.in': 'Entrar',
+  'wel.back': 'Volver',
+  'wel.group.byAddr': '¿Sin el nombre corto?',
+  'wel.group.none': '¿Tu grupo todavía no tiene nube?',
   'filetip.title': 'Consejo: úsalo en más de una computadora',
   'filetip.a': 'Guarda el .qualilab en la carpeta de **Google Drive** o de **OneDrive** de tu computadora. Su programa mantiene el archivo sincronizado, y en la otra computadora usas **Abrir archivo existente**.',
   'filetip.b': 'El programa de Drive o de OneDrive debe estar instalado en las dos computadoras. Cierra el proyecto en una y espera a que se sincronice antes de abrirlo en la otra: con las dos abiertas, una puede sobrescribir el trabajo de la otra.',
   'filetip.c': 'En esa carpeta, el archivo va a la nube de ese servicio. Si el material es sensible, comprueba antes si tu institución lo permite. También puedes guardar en cualquier otra carpeta.',
   'filetip.cancel': 'Cancelar',
   'filetip.go': 'Elegir dónde guardar',
-  'wel.file': 'Nuevo en archivo',
-  'wel.file.desc': 'Un archivo .qualilab en tu computadora (tú eliges la carpeta). Sin conexión, portátil, sin nube.',
+  'wel.file': 'Nuevo archivo',
   'wel.private': 'Crear mi nube',
-  'wel.private.desc': 'Un servidor solo de tu grupo, en una cuenta gratuita de Supabase: sincroniza entre dispositivos, permite colaborar y los datos quedan con ustedes.',
-  'wel.private.connect': '¿Ya tienes una? Conectar a una nube privada',
   'signin.title': 'Entrar',
   'signin.p': 'En la nube de tu grupo, con el correo y la contraseña de tu cuenta allí.',
   'signin.cloud': 'Nube',
@@ -7613,16 +7679,14 @@ const MSG_ES = {
   'wel.jc.member.p': 'Crea tu cuenta en él ({host}), o entra si ya tienes una. Vale solo para este servidor.',
   'wel.jc.go': 'Crear mi cuenta',
   'wel.devSees': 'Datos visibles para el desarrollador',
-  'wel.draft': 'Solo probar',
-  'wel.draft.tag': 'borrador',
-  'wel.draft.desc': 'Queda solo en este navegador (temporal). Rápido para experimentar, pero desaparece si borras los datos. Se puede migrar a archivo o a la nube después.',
+  'wel.draft': 'Solo probar (borrador)',
+  'wel.draft.desc': 'queda solo en este navegador, y se puede llevar a un archivo o a una nube después',
   'wel.install': 'Instalar QualiLab',
   'wel.install.desc': 'Ventana propia, abre sin internet y el doble clic en un .qualilab pasa a abrirlo aquí.',
   'wel.install.edgeNote': ' En Windows, si lo instalas aquí desde Chrome el ícono del .qualilab queda roto; desde Edge, no.',
   'wel.install.edge': 'Instalar desde Edge',
   'wel.install.here': 'Instalar aquí',
   'wel.install.only': 'Instalar',
-  'wel.hasFile': '¿Ya tienes un archivo?',
   'wel.openFile': 'Abrir archivo existente',
   'wel.noFileApi': 'En Firefox/Safari el modo archivo no está disponible. Usa la nube o el borrador.',
   'wel.by': 'licencia MIT · por Luiz Pimenta Filho · LabDados / FGV Direito SP',
@@ -7828,19 +7892,19 @@ const MSG_ES = {
   'wiz.done.title': '✓ La nube de tu grupo está lista',
   'wiz.done.addr.title': 'Guarda la dirección de tu nube',
   'wiz.done.addr.p': 'Este navegador ya la va a recordar. En otra computadora, o si se borran los datos del navegador, es con este enlace que vuelves a la nube del grupo (y es con él que el equipo llega al servidor):',
-  'wiz.done.name.p': 'Este navegador ya la va a recordar. En otra computadora, tú y tus colegas la encuentran por este nombre, en "¿Ya tienes una? Conectar a una nube privada", en la pantalla de inicio:',
+  'wiz.done.name.p': 'Este navegador ya la va a recordar. En otra computadora, tú y tus colegas la encuentran por este nombre: en la pantalla de inicio, en "Con mi grupo", haz clic en "Entrar" y escribe el nombre en "Otra nube…":',
   'wiz.done.addr.pName': 'O con este enlace, que lleva directo a ella:',
   'wiz.done.addr.mail': 'Enviar a mi correo',
   'wiz.done.addr.mailSubject': 'Dirección de la nube del grupo en QualiLab',
   'wiz.done.addr.mailBody': 'Para entrar en la nube del grupo en QualiLab, abre este enlace:\n\n{link}\n\nEl enlace lleva solo la dirección del servidor y su clave pública. La contraseña de cada persona no va en él.',
-  'wiz.done.addr.mailBodyName': 'Para entrar en la nube del grupo en QualiLab, en cualquier computadora: en la pantalla de inicio, haz clic en "¿Ya tienes una? Conectar a una nube privada" y escribe el nombre\n\n{name}\n\nO abre este enlace, que lleva directo a ella:\n\n{link}\n\nEl nombre y el enlace llevan solo a la dirección del servidor y a su clave pública. La contraseña de cada persona no va en ellos.',
+  'wiz.done.addr.mailBodyName': 'Para entrar en la nube del grupo en QualiLab, en cualquier computadora: en la pantalla de inicio, en "Con mi grupo", haz clic en "Entrar", elige "Otra nube…" y escribe el nombre\n\n{name}\n\nO abre este enlace, que lleva directo a ella:\n\n{link}\n\nEl nombre y el enlace llevan solo a la dirección del servidor y a su clave pública. La contraseña de cada persona no va en ellos.',
   'wiz.done.addr.dl': 'Descargar archivo con la dirección',
   'wiz.done.p': 'Falta un paso: crear tu cuenta en ella. La primera cuenta es la tuya, la de quien coordina. Después crea el proyecto y, en Proyecto → Invitaciones, envía el enlace de invitación al equipo.',
   'wiz.done.go': 'Entrar y crear mi cuenta',
   'wiz.done.checkFail': 'La verificación del servidor nuevo encontró un problema. Abre la "Verificación técnica" de abajo para ver cuál.',
   'wiz.done.pass.sum': 'Contraseña de emergencia de la base de datos',
   'wiz.done.pass.file': 'Nube QualiLab del grupo\n\nPara entrar (en esta u otra computadora), abre:\n{link}\n\nServidor: {url}\nProyecto en Supabase: {ref}\nContraseña de emergencia de la base de datos (Postgres): {pass}\n\nQualiLab no usa la contraseña de la base de datos. Sirve para emergencias y para quien administre la base de datos directamente. Guarda este archivo en un lugar seguro.',
-  'wiz.done.pass.fileName': 'Nube QualiLab del grupo\n\nNombre corto: {name}\n(en la pantalla de inicio de QualiLab, en "¿Ya tienes una? Conectar a una nube privada")\n\nO abre:\n{link}\n\nServidor: {url}\nProyecto en Supabase: {ref}\nContraseña de emergencia de la base de datos (Postgres): {pass}\n\nQualiLab no usa la contraseña de la base de datos. Sirve para emergencias y para quien administre la base de datos directamente. Guarda este archivo en un lugar seguro.',
+  'wiz.done.pass.fileName': 'Nube QualiLab del grupo\n\nNombre corto: {name}\n(en la pantalla de inicio de QualiLab, en "Con mi grupo" → "Entrar" → "Otra nube…")\n\nO abre:\n{link}\n\nServidor: {url}\nProyecto en Supabase: {ref}\nContraseña de emergencia de la base de datos (Postgres): {pass}\n\nQualiLab no usa la contraseña de la base de datos. Sirve para emergencias y para quien administre la base de datos directamente. Guarda este archivo en un lugar seguro.',
   'wiz.done.check.sum': 'Verificación técnica',
   'srv.connect': 'Conectar a una nube privada',
   'srv.public': 'Conectar a la nube pública (obsoleta)',
@@ -8003,6 +8067,7 @@ const MSG_ES = {
   'acc.err.customUrl': 'Indica la URL base de la API personalizada.',
   'acc.err.azureDep': 'Indica el deployment de Azure OpenAI.',
   'acc.err.customModel': 'Indica el modelo de la API personalizada.',
+  'acc.err.orModel': 'Elige o escribe el modelo de OpenRouter.',
   'acc.err.azureKey': 'La clave de API es obligatoria para Azure OpenAI.',
   'acc.err.key': 'La clave de IA es obligatoria para este proveedor: indica tu clave (BYOK) o usa Ollama local.',
   'acc.title': 'Mi cuenta',
@@ -8028,6 +8093,7 @@ const MSG_ES = {
   'acc.route.proxy': '**Sin tu clave aquí**, la llamada pasa por una función en el servidor de este proyecto (`ai-ask`), que ve el material del envío.',
   'acc.route.cors': '**Excepción:** si este endpoint no permite llamadas desde el navegador (CORS), la llamada se rehace a través de la función en el servidor de este proyecto (`ai-ask`), que entonces ve el material de ese envío. Los demás proveedores no usan ese camino.',
   'acc.route.direct': 'La llamada no pasa por ningún servidor de QualiLab.',
+  'acc.route.broker': 'La llamada no pasa por ningún servidor de QualiLab, **pero sí pasa por OpenRouter**, un intermediario: el material atraviesa su servidor antes de llegar a quien ejecuta el modelo. Queda registrado como `OpenRouter: modelo` (manual, §17.5).',
   'acc.provider': 'Proveedor',
   'acc.url.azure': 'URL base (endpoint del recurso)',
   'acc.url.local': 'URL del servidor local',
@@ -8049,17 +8115,22 @@ const MSG_ES = {
   'acc.model.azure.ph': 'ej.: gpt-4.1-mini (nombre del deployment)',
   'acc.model.local.ph': 'ej.: llama3.1 (o qwen2.5, mistral…)',
   'acc.model.custom.ph': 'ej.: deepseek-chat',
+  'acc.model.or.ph': 'ej.: anthropic/claude-haiku-5.5',
   'acc.default': 'estándar',
   'acc.howPick': 'cómo elegir',
   'acc.model.azure.hint': 'Obligatorio: usa el nombre del deployment creado en el portal de Azure (no el nombre del modelo base; ej.: el deployment de un gpt-4.1-mini puede tener cualquier nombre).',
   'acc.model.local.hint': 'Obligatorio: elige una sugerencia o escribe **cualquier** modelo que hayas descargado, con el nombre exacto (`ollama pull llama3.1`; revísalo con `ollama list`, incluidas etiquetas como `llama3.1:70b`).',
   'acc.model.custom.hint': 'Obligatorio para el proveedor personalizado: usa el id de modelo exactamente como lo espera el servidor.',
+  'acc.model.or.hint': 'Escribe parte del nombre (ej.: `claude`, `gemini`, `llama`) para ver sugerencias de la lista de OpenRouter, o el id exacto, con la forma `empresa/modelo`. La lista y los precios vienen de su API, así que no envejecen.',
+  'acc.or.noTools': 'Este modelo **no anuncia compatibilidad con herramientas** (*tools*). Sirve para Analizar con IA y para la Autocodificación, pero **Definir Categoría** y **Explorar con IA** dependen de herramientas y fallarán con él.',
+  'acc.or.listFail': 'No pude consultar la lista de modelos de OpenRouter ahora. Aún puedes escribir el id del modelo a mano; sin la lista, la calculadora se queda sin su precio y solo muestra el recuento de tokens.',
   'acc.model.hint': 'Un modelo "vacío" usa el estándar del proyecto para ese proveedor. En general, los modelos más grandes/capaces (a la derecha) son más lentos y más caros por uso que los más pequeños (a la izquierda). Elige según la complejidad de la tarea.',
   'acc.cost': 'Costo estimado (calculadora)',
   'acc.cost.local': 'Un servidor local no tiene costo por token: las pantallas de IA muestran "gratis (local)".',
   'acc.cost.custom': 'Este proveedor no tiene precio de referencia. Indica la tarifa de tu proveedor (US$ por 1M de tokens) para ver la estimación de costo.',
   'acc.cost.ref': 'Referencia para **{model}**: **US$ {in}** entrada / **US$ {out}** salida por 1M tokens (precio de lista; confírmalo con el proveedor si cambia).',
   'acc.cost.noRef': 'Todavía no hay precio de referencia registrado para **{model}**.',
+  'acc.cost.liveRef': 'Precio de **{model}** publicado por OpenRouter: **US$ {in}** entrada / **US$ {out}** salida por 1M tokens. Viene de su API, no de una tabla mantenida a mano, y por eso no envejece. Un prompt muy largo puede caer en un tramo más caro que este.',
   'acc.cost.thisModel': 'este modelo',
   'acc.cost.in': 'US$ / 1M entrada',
   'acc.cost.out': 'US$ / 1M salida',
@@ -22648,9 +22719,20 @@ function App(){
   `;
 }
 
-/* ============ WELCOME (tela de entrada: arquivo / nuvem / rascunho) ============
-   Primeira tela do usuario novo (fresh, sem sessao). Arquivo e nuvem sao PARES (sem
-   hierarquia entre eles), rascunho fica como opcao secundaria "so testar" abaixo. */
+/* ============ WELCOME (tela de entrada: continuar / sozinho / com meu grupo) ============
+   Redesenhada na 1.4.82 (decisao do autor, nov/2026). A tela antiga abria com o formulario de
+   login inteiro no topo (lista de nuvens, nome curto, e-mail, senha) para TODO MUNDO, inclusive
+   quem chegava pela primeira vez e nao tinha nuvem nenhuma, e embaixo dele mais seis portas. Ela
+   perguntava "como voce quer comecar?" e respondia com o MECANISMO (arquivo, nuvem, rascunho).
+   Agora a pergunta e a que a pessoa sabe responder:
+   - CONTINUAR (so com historico neste navegador): o arquivo a reabrir e as nuvens ja usadas, uma
+     linha cada, a um clique. Quem volta todo dia nao atravessa nada.
+   - DUAS PORTAS: "Sozinho, neste computador" (novo arquivo, abrir) e "Com meu grupo" (entrar,
+     criar a nuvem). O login so aparece depois de "Entrar", num painel que substitui as portas, com
+     as saidas para quem nao tem o nome curto e para quem ainda nao tem nuvem.
+   - O RASCUNHO vira uma linha ("Só testar (rascunho)"): e para experimentar, nao um modo de trabalho.
+   Descartadas, nesta rodada: abas Comecar/Entrar (aba esconde, e quem chega pela primeira vez nao
+   ve a outra) e um assistente de uma pergunta por vez (dois passos ate qualquer coisa acontecer). */
 /* The tip of "new file", shown the first time: the file saved in the folder of Drive or OneDrive is how
    ONE person works on several computers, with no server of ours. It is a hook of the two entry screens,
    not of App(): no new state there, and the check_structure ratchet does not move. The picker only opens
@@ -22679,6 +22761,9 @@ function useNewFileTip(onNewFile){
   return { ask, modal };
 }
 
+// how many clouds of this browser get a "continuar" row; the rest stay one click away, on the sign-in panel
+const WEL_CLOUD_ROWS = 3;
+
 function Welcome({ onNewFile, onOpenFile, onCloud, onRascunho, onServer, onResetServer, err, pendingFile, onReopenFile }){
   /* the hook is called HERE rather than passed as a prop: App() does not need to know this
      exists (no new state there, and the check_structure ratchet does not move). */
@@ -22691,68 +22776,108 @@ function Welcome({ onNewFile, onOpenFile, onCloud, onRascunho, onServer, onReset
   // e a tela diz isso no topo em vez de esperar que a pessoa adivinhe "Entrar na nuvem" + "Criar conta"
   const jc = CUSTOM_SUPABASE ? justConnectedGet() : null;
   const host = serverHostOf(SUPABASE_URL);
-  // the PRIVATE cloud is the main card: it opens the wizard that lives in ServerConnect (below),
-  // through this ref. Signing in is the "Entrar" card above it (CloudSignIn), connected or not
+  // the cloud wizard lives in ServerConnect (bottom of the screen, always mounted: it also holds the
+  // team-link dialog); the doors and the panel open it through this ref. 0 = create, 1 = connect by hand
   const wizOpen = useRef(null);
   const abrirAssistente = (passo)=>{ if(wizOpen.current) wizOpen.current(passo); };
-  // "Criar conta" / "Esqueci a senha" on the "Entrar" card reloaded the page on the chosen cloud:
+  // null = the doors; { url } = the group's sign-in panel, with the cloud of the row clicked ('' = none)
+  const [grupo, setGrupo] = useState(null);
+  // read on every render, not once: forgetting a cloud on the panel must take its row away on the way back
+  const clouds = cloudListRead();
+  const recentes = clouds.slice(0, WEL_CLOUD_ROWS);
+  // CloudSignIn shows nothing without a cloud to pick and without the short-name lookup: then
+  // "Entrar" goes where a cloud is connected by hand, which is the only way in that is left
+  const podeEntrar = clouds.length > 0 || !!SERVER_SETUP;
+  const entrar = (url)=>{ if(podeEntrar) setGrupo({ url: url || '' }); else abrirAssistente(1); };
+  const historico = !!pendingFile || recentes.length > 0;
+  // "Criar conta" / "Esqueci a senha" on the sign-in panel reloaded the page on the chosen cloud:
   // go straight to its sign-in dialog, which opens on the tab that errand asked for (authIntentTake)
   useEffect(()=>{ if(CUSTOM_SUPABASE && authIntentPeek()) onCloud(); }, []);
-  return html`<div class="modal-bg"><div class="modal" style="max-width:540px">
-    <div style="text-align:center;margin-bottom:14px">
+  const cloudLabel = c=> c.name || serverHostOf(c.url);
+
+  const continuar = historico && html`<div class="wel-sec">${t('wel.cont')}</div>
+    <div class="wel-cont-list">
+      ${pendingFile && html`<button class="wcard wrow wel-cont" aria-label=${t('wel.reopen',{name:pendingFile.name})} onClick=${onReopenFile}>
+        <span class="wicon" style="color:var(--ok);display:flex">${icon('file', 22)}</span>
+        <span class="wel-cont-txt">
+          <span class="wtitle">${pendingFile.name}</span>
+          <span class="wdesc">${t('wel.reopen.hint')}</span>
+        </span>
+        <span class="btn sm primary" aria-hidden="true">${t('wel.reopen.go')}</span>
+      </button>`}
+      ${recentes.map(c=>html`<button key=${c.url} class="wcard wrow wel-cont" aria-label=${t('wel.cloud.aria',{cloud:cloudLabel(c)})} onClick=${()=>entrar(c.url)}>
+        <span class="wicon" style="color:var(--teal);display:flex">${icon('cloud', 22)}</span>
+        <span class="wel-cont-txt">
+          <span class="wtitle">${cloudLabel(c)}</span>
+          <span class="wdesc">${c.name ? serverHostOf(c.url) + ' · ' : ''}${t('wel.cloud.row')}</span>
+        </span>
+        <span class="btn sm" aria-hidden="true">${t('wel.cloud.go')}</span>
+      </button>`)}
+    </div>`;
+
+  /* The two doors are not buttons (each has two actions), so the card hover that says "click me"
+     is off on them (.wdoor). Without the File System Access API (Firefox/Safari) the first door
+     stays, saying why it has no buttons: hiding it made the screen look like there was no way to
+     work alone, and the draft line right below is the way that is left. */
+  const portas = html`<div class="wel-sec">${historico ? t('wel.start.more') : t('wel.start.first')}</div>
+    <div class="wel-doors">
+      <div class="wcard wdoor">
+        <span class="wicon" style="color:var(--ok);display:flex">${icon('file', 26)}</span>
+        <span class="wtitle">${t('wel.solo')}</span>
+        <span class="wdesc">${t('wel.solo.desc')}</span>
+        ${supportsFileAPI
+          ? html`<span class="wdoor-act">
+              <button class="btn primary" onClick=${fileTip.ask}>${t('wel.file')}</button>
+              <button class="btn" onClick=${onOpenFile}>${t('wel.openFile')}</button>
+            </span>`
+          : html`<span class="wdesc wdoor-act" style="color:var(--ink-faint)">${t('wel.noFileApi')}</span>`}
+      </div>
+      <div class="wcard wdoor">
+        <span class="wicon" style="color:var(--teal);display:flex">${icon('cloud', 26)}</span>
+        <span class="wtitle">${t('wel.group')}</span>
+        <span class="wdesc">${t('wel.group.desc')}</span>
+        <span class="wdoor-act">
+          <button class="btn primary" onClick=${()=>entrar('')}>${t('wel.group.in')}</button>
+          <button class="btn" onClick=${()=>abrirAssistente(0)}>${t('wel.private')}</button>
+        </span>
+      </div>
+    </div>
+    <p class="meta wel-draft-line">
+      <button class="btn sm ghost wel-draft" onClick=${onRascunho}>${icon('flask', 14)}${t('wel.draft')}</button>
+      <span>${t('wel.draft.desc')}</span>
+    </p>`;
+
+  /* The group's sign-in panel takes the place of the doors (not a dialog on top of the welcome
+     dialog): one thing on screen at a time, and "Voltar" brings the doors back. The `key` remounts
+     CloudSignIn when another row is clicked, so the cloud chosen is the one of that row. */
+  const painel = grupo && html`<div class="wel-group">
+    <button class="btn sm ghost wel-back" onClick=${()=>setGrupo(null)}>${icon('back', 14)}${t('wel.back')}</button>
+    <${CloudSignIn} key=${grupo.url} initial=${grupo.url} onOther=${()=>abrirAssistente(1)} />
+    ${SERVER_SETUP && html`<p class="meta wel-group-alt">${t('wel.group.byAddr')}
+      <button class="btn sm ghost" onClick=${()=>abrirAssistente(1)}>${t('signin.byAddress')}</button></p>`}
+    <p class="meta wel-group-alt">${t('wel.group.none')}
+      <button class="btn sm ghost" onClick=${()=>abrirAssistente(0)}>${t('srv.createGroup')}</button></p>
+  </div>`;
+
+  return html`<div class="modal-bg"><div class="modal welcome" style="max-width:560px">
+    <div style="text-align:center;margin-bottom:6px">
       <h2 aria-label="QualiLab" style="display:inline-flex;align-items:center;gap:3px;margin:0">
         <svg width="58" height="58" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#00427A"/><text x="16.02" y="23.13" font-family="Georgia,serif" font-size="26" font-weight="700" fill="#fff" text-anchor="middle">Q</text></svg>
         <span class="brand" style="font-size:44px;line-height:1;color:var(--teal)" aria-hidden="true">ualiLab</span>
       </h2>
       <p class="tag" style="margin:3px 0 0">${t('wel.tag')}</p>
-      <p class="hint" style="margin:7px 0 0">${t('wel.how')}</p>
     </div>
-    ${err && html`<div class="banner err" style="margin:0 0 12px">${humanizeError(err)||err}</div>`}
-    ${jc && html`<div class="wel-jc" style="margin:0 0 12px;padding:14px;border:2px solid var(--teal);border-radius:var(--r-lg)">
+    ${err && html`<div class="banner err" style="margin:10px 0 0">${humanizeError(err)||err}</div>`}
+    ${jc && html`<div class="wel-jc" style="margin:12px 0 0;padding:14px;border:2px solid var(--teal);border-radius:var(--r-lg)">
       <div class="wtitle" style="margin:0 0 4px">${jc==='owner' ? t('wel.jc.owner.title') : t('wel.jc.member.title')}</div>
       <p class="wdesc" style="margin:0 0 10px">${jc==='owner' ? t('wel.jc.owner.p',{host}) : t('wel.jc.member.p',{host})}</p>
-      <button class="btn primary" style="width:100%;justify-content:center" onClick=${onCloud}>${t('wel.jc.go')}</button>
+      <button class="btn primary" style="width:100%" onClick=${onCloud}>${t('wel.jc.go')}</button>
     </div>`}
     ${CUSTOM_SUPABASE && html`<${ServerUpdateNotice} variant="card" />`}
-    <${CloudSignIn} onOther=${()=>abrirAssistente(1)} />
-    ${pendingFile && html`<button class="wcard wrow" style="margin:0 0 12px;border-color:var(--ok);border-width:2px" onClick=${onReopenFile}>
-      <svg class="wicon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--ok)"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/></svg>
-      <span style="flex:1">
-        <span class="wtitle">${t('wel.reopen',{name:pendingFile.name})}</span>
-        <span class="wdesc" style="display:block;margin-top:2px">${t('wel.reopen.hint')}</span>
-      </span>
-    </button>`}
-    <div style="display:grid;grid-template-columns:${supportsFileAPI?'1fr 1fr':'1fr'};gap:12px">
-      ${supportsFileAPI && html`<button class="wcard" onClick=${fileTip.ask}>
-        <svg class="wicon" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--ok)"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/></svg>
-        <span class="wtitle">${t('wel.file')}</span>
-        <span class="wdesc">${t('wel.file.desc')}</span>
-      </button>`}
-      <button class="wcard" onClick=${()=>abrirAssistente(0)}>
-        <svg class="wicon" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--teal)"><path d="M6.5 19a4.5 4.5 0 0 1 0-9 5 5 0 0 1 9.6-1.3A3.5 3.5 0 0 1 18 19z"/></svg>
-        <span class="wtitle">${t('wel.private')}</span>
-        <span class="wdesc">${t('wel.private.desc')}</span>
-      </button>
-      ${/* A SECOND ROW of the same grid, under the cloud column: the other way into a private cloud,
-            for whoever already has one (connect by address and key). It cannot live inside the card
-            (a control nested in a <button> is invalid HTML, and the card's onClick would swallow the
-            click), and wrapping the card in a column made the two cards different heights
-            (measured: 165 x 142). The notice of who sees the data went down with the PUBLIC cloud
-            button (ServerConnect): it is about that server, not this one. */''}
-      ${html`<p class="meta" style="grid-column:${supportsFileAPI?2:1};margin:-4px 2px 0;font-size:11px;line-height:1.45">
-        <button class="btn sm ghost" style="font-size:11px;padding:2px 6px" onClick=${()=>abrirAssistente(1)}>${t('wel.private.connect')}</button>
-      </p>`}
-    </div>
-    <button class="wcard wrow" style="margin-top:12px" onClick=${onRascunho}>
-      <svg class="wicon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--ink-faint)"><path d="M9 3h6"/><path d="M14 3v5l4.8 9.6A1.5 1.5 0 0 1 17.5 20H6.5a1.5 1.5 0 0 1-1.3-2.4L10 8V3"/></svg>
-      <span style="flex:1">
-        <span class="wtitle">${t('wel.draft')}</span> <span class="meta">${t('wel.draft.tag')}</span>
-        <span class="wdesc" style="display:block;margin-top:2px">${t('wel.draft.desc')}</span>
-      </span>
-    </button>
+    ${grupo ? painel : html`${continuar}${portas}`}
     ${/* INSTALL INVITE. Only shows once the browser HAS offered to install (see
           useInstallPrompt): outside Chromium, or with the app already installed, it disappears
-          entirely instead of becoming a button that does nothing. It sits BELOW the cards on
+          entirely instead of becoming a button that does nothing. It sits BELOW the doors on
           purpose — the screen asks "how do you want to start?", and installing is not an answer
           to that; it is about the app itself. On the windows-chrome branch BOTH exits appear,
           with the difference stated in one line — but Edge is the PRIMARY one: the README and
@@ -22761,22 +22886,19 @@ function Welcome({ onNewFile, onOpenFile, onCloud, onRascunho, onServer, onReset
           stays one click away, so nobody is forced through Edge — the icon may not matter to
           whoever is reading. Ranking is a recommendation; removing the Chrome exit would be
           choosing for them. */''}
-    ${canInstall && html`<div style="margin-top:12px;display:flex;align-items:center;gap:11px;padding:11px 14px;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface)">
+    ${canInstall && !grupo && html`<div style="margin-top:14px;display:flex;align-items:center;gap:11px;padding:11px 14px;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface)">
       <span style="color:var(--teal);display:flex;flex:0 0 auto">${icon('install', 22)}</span>
       <span style="flex:1;min-width:0">
         <span class="wtitle" style="font-size:.875rem">${t('wel.install')}</span>
         <span class="wdesc" style="display:block;margin-top:2px">${t('wel.install.desc')}${edgeUrl ? t('wel.install.edgeNote') : ''}</span>
       </span>
       <span style="display:flex;flex-direction:column;gap:5px;flex:0 0 auto">
-        ${edgeUrl && html`<a class="btn sm primary" href=${edgeUrl} style="justify-content:center;text-decoration:none">${t('wel.install.edge')}</a>`}
+        ${edgeUrl && html`<a class="btn sm primary" href=${edgeUrl} style="text-decoration:none">${t('wel.install.edge')}</a>`}
         <button class=${'btn sm' + (edgeUrl ? '' : ' primary')} onClick=${install}>${edgeUrl ? t('wel.install.here') : t('wel.install.only')}</button>
       </span>
     </div>`}
-    ${supportsFileAPI
-      ? html`<p class="meta" style="text-align:center;margin:14px 0 0;font-size:11.5px">${t('wel.hasFile')} <button class="btn sm ghost" style="font-size:11.5px" onClick=${onOpenFile}>${t('wel.openFile')}</button></p>`
-      : html`<p class="meta" style="text-align:center;margin:14px 0 0;font-size:11px">${t('wel.noFileApi')}</p>`}
     ${onServer && html`<${ServerConnect} onConnect=${onServer} onReset=${onResetServer} onPublic=${onCloud} openRef=${wizOpen} />`}
-    <div style="text-align:center;margin-top:18px;padding-top:12px;border-top:1px solid var(--line-soft)">
+    <div style="text-align:center;margin-top:16px;padding-top:12px;border-top:1px solid var(--line-soft)">
       <p class="meta" style="margin:0;font-size:11.5px;line-height:1.6">
         <a href="https://github.com/LuizPF42/QualiLab" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:underline;text-underline-offset:2px">GitHub</a> · ${t('wel.by')} · v${QUALILAB_VERSION}${QL_LANG !== 'pt' ? ` · ${t('wel.aiTranslated')}` : ''}
       </p>
@@ -23678,11 +23800,13 @@ function ServerUpdateModal({ ret, onClose }){
    address BEFORE a password or an account goes there. One on the list was accepted before.
    Discarded: an account layer in front of every cloud (Clerk): it would hold every researcher's
    e-mail and which cloud each is in, and one outage there would lock every group out. */
-function CloudSignIn({ onOther }){
+function CloudSignIn({ onOther, initial }){
   const [list, setList] = useState(()=> cloudListRead());
   const byNameOk = !!SERVER_SETUP;
+  // `initial`: the cloud of the "continuar" row clicked on the welcome screen
   const [sel, setSel] = useState(()=>{
     if(!list.length) return 'other';
+    if(initial && list.some(c=>c.url === initial)) return initial;
     return (CUSTOM_SUPABASE && list.some(c=>c.url === SUPABASE_URL)) ? SUPABASE_URL : list[0].url;
   });
   const [nm, setNm] = useState('');
@@ -23691,6 +23815,16 @@ function CloudSignIn({ onOther }){
   const [busy, setBusy] = useState(null);   // null | in | up | forgot
   const [err, setErr] = useState(null);
   const [ask, setAsk] = useState(null);     // null | { cloud, tab }: a name found, waiting for the person to accept where it points
+  /* The form now opens from a click ("Entrar" on the welcome screen), so the first field to fill
+     gets the focus: the short name when there is no cloud to pick, the e-mail otherwise. A ref, not
+     autoFocus (Chrome does not honour it on an element inserted after load), and a LAYOUT effect,
+     not useEffect: the click removes the button that had the focus, and App's modal-focus observer
+     (a MutationObserver) then puts it on the first button of the dialog ("Voltar"). useEffect runs
+     after paint, so for a moment the focus sat on "Voltar", and a slow machine read it there
+     (the CI did, 04/nov/2026). The layout effect runs in the same task as the mount, before the
+     observer, which then leaves alone a focus already inside the dialog. */
+  const nmRef = useRef(null), emailRef = useRef(null);
+  useLayoutEffect(()=>{ const el = sel === 'other' ? nmRef.current : emailRef.current; if(el) el.focus(); }, []);
   // nothing to pick from and no way to look a name up: the doors below (the wizard) are the way in
   if(!list.length && !byNameOk) return null;
   const chosen = sel === 'other' ? null : (list.find(c=>c.url === sel) || null);
@@ -23763,10 +23897,10 @@ function CloudSignIn({ onOther }){
         style=${'justify-content:' + (list.length ? 'flex-start' : 'center')} onClick=${()=>{ setSel('other'); setErr(null); setAsk(null); }}>${t('signin.other')}</button>
     </div>
     ${sel === 'other' && (byNameOk
-      ? html`<div class="field"><input class="txtin" value=${nm} placeholder=${t('wiz.auto.name.ph')} aria-label=${t('wiz.auto.name')}
+      ? html`<div class="field"><input class="txtin" ref=${nmRef} value=${nm} placeholder=${t('wiz.auto.name.ph')} aria-label=${t('wiz.auto.name')}
           onInput=${e=>{ const v = cloudNameTyping(e.target.value); e.target.value = v; setNm(v); setErr(null); setAsk(null); }} /></div>`
       : html`<p class="hint" style="margin:0 0 8px">${t('signin.noLookup')} <button type="button" class="btn sm ghost" onClick=${onOther}>${t('signin.byAddress')}</button></p>`)}
-    <div class="field"><input class="txtin" type="email" autocomplete="username" value=${email} placeholder=${t('auth.email.ph')} aria-label=${t('auth.email')}
+    <div class="field"><input class="txtin" ref=${emailRef} type="email" autocomplete="username" value=${email} placeholder=${t('auth.email.ph')} aria-label=${t('auth.email')}
       onInput=${e=>{ setEmail(e.target.value); setErr(null); }} /></div>
     <div class="field"><input class="txtin" type="password" autocomplete="current-password" value=${pw} placeholder=${t('auth.pw')} aria-label=${t('auth.pw')}
       onInput=${e=>{ setPw(e.target.value); setErr(null); }} /></div>
@@ -24794,9 +24928,39 @@ function aiConfigError(provDef, { apiKey, model, baseUrl }, sharedKey){
   if(azure && !k)   return t('acc.err.azureKey');
   // provedores hospedados (gemini/openai/anthropic) exigem chave quando nao ha chave de servidor.
   // O Ollama local NAO cai aqui porque `custom` e verdadeiro nele (tem URL base), e a chave e
-  // opcional de propósito: o modelo roda na maquina do pesquisador.
+  // opcional de propósito: o modelo roda na maquina do pesquisador. O OpenRouter cai aqui (nao e
+  // `custom`): a chave e dele e obrigatoria, nao ha como chamar sem conta.
   if(!temBase && !sharedKey && !k) return t('acc.err.key');
+  // Provedor de modelo em TEXTO LIVRE nao tem botao marcado nem `def:true`, entao modelo vazio nao
+  // cai em padrao nenhum: a chamada iria sem modelo e o provedor recusaria, longe desta tela. Vem
+  // DEPOIS da chave porque e essa a ordem dos campos — o primeiro erro aponta o primeiro vazio.
+  if(!!provDef?.freeModel && !m) return t('acc.err.orModel');
   return '';
+}
+
+// Sugestoes do campo de modelo do OpenRouter (pedido do autor, nov/2026: a tela nao pode virar uma
+// lista enorme). A lista viva tem centenas de ids, e um <datalist> com todos eles faz o Chrome
+// abrir a lista INTEIRA ao clicar no campo vazio. Por isso: nada antes de 2 letras, so o que casa
+// com o que foi digitado (no id ou no nome), no maximo `cap`, e nada quando o campo ja e um id
+// exato (o menu repetiria o proprio valor). Ordem: o que COMECA pelo digitado (no id inteiro, na
+// parte depois da barra ou no nome) antes do que so o contem; dentro de cada grupo, pelo nome, com
+// as VARIANTES (`:batch`, `:free`, o id com dois-pontos) no fim — senao cada modelo aparece duas
+// vezes seguidas e o teto mostra metade dos modelos.
+function orSuggest(list, query, cap=20){
+  const q = String(query||'').trim().toLowerCase();
+  if(q.length < 2) return [];
+  const items = Array.isArray(list) ? list : [];
+  if(items.some(m=>String(m.id).toLowerCase()===q)) return [];
+  const comeca = [], contem = [];
+  for(const m of items){
+    const id = String(m.id||'').toLowerCase(), nome = String(m.name||'').toLowerCase();
+    const curto = id.slice(id.indexOf('/')+1);
+    if(id.startsWith(q) || curto.startsWith(q) || nome.startsWith(q)) comeca.push(m);
+    else if(id.includes(q) || nome.includes(q)) contem.push(m);
+  }
+  const variante = m=>String(m.id).includes(':') ? 1 : 0;
+  const porNome = (a,b)=>(variante(a)-variante(b)) || String(a.name||a.id).localeCompare(String(b.name||b.id));
+  return [...comeca.sort(porNome), ...contem.sort(porNome)].slice(0, cap);
 }
 
 function AccountModal({ user, projects, onClose, onChangePassword, onChangeName, onOpen, onRename, onDelete, onLeave, onLogout }){
@@ -24819,7 +24983,20 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
   const [priceIn,setPriceIn]=useState(()=>{ try{return localStorage.getItem('qualilab:ai_price_in')||'';}catch(e){return '';} });
   const [priceOut,setPriceOut]=useState(()=>{ try{return localStorage.getItem('qualilab:ai_price_out')||'';}catch(e){return '';} });
   const [aiPrices,setAiPrices]=useState(null); // tabela de referencia (pra exibir o preco do modelo)
-  useEffect(()=>{ loadAiPrices().then(setAiPrices); }, []);
+  // CÓPIA, e deps no provedor: o loadAiPrices devolve SEMPRE o mesmo objeto global (ele o muta
+  // ao mesclar o preço vivo do OpenRouter), e setState com a mesma referência não re-renderiza —
+  // os preços do provedor recém-escolhido entrariam no mapa e a tela seguiria mostrando o de antes.
+  useEffect(()=>{ loadAiPrices(aiProvider).then(m=>setAiPrices({ ...m })); }, [aiProvider]);
+  // Lista viva de modelos do OpenRouter (id, nome, se aceita tools). Buscada SÓ quando o provedor
+  // ativo é um de preço publicado: é requisição a um terceiro, e o app não faz nenhuma no boot.
+  // `{}` significa "tentei e falhou" (a tela avisa e deixa digitar à mão); null é "ainda não".
+  const [orModels,setOrModels]=useState(null);
+  useEffect(()=>{
+    if(!aiProviderHasLivePrices(aiProvider)) return;
+    let vivo = true;
+    loadOpenRouterModels().then(m=>{ if(vivo) setOrModels(m || {}); });
+    return ()=>{ vivo = false; };
+  }, [aiProvider]);
   // CONFIG DE IA SALVA (o que esta no localStorage neste instante). Existe porque trocar de
   // provedor LIMPA os campos — chave/modelo/URL sao credenciais DE UM provedor, e carregar a
   // chave antiga pro provedor novo so produz um 401 la na frente, com a chave ecoada no erro.
@@ -24841,8 +25018,26 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
   const needsBaseUrl = !!provDef?.custom;
   const isAzure = !!provDef?.azure;
   const isLocal = !!provDef?.local;
+  // modelo em texto livre com lista viva (OpenRouter): centenas de ids, nao cabem em botoes
+  const freeModel = !!provDef?.freeModel;
+  const orList = useMemo(()=>Object.entries(orModels||{})
+    .map(([id,m])=>({ id, name:m.name }))
+    .sort((a,b)=>a.name.localeCompare(b.name)), [orModels]);
+  // o que o <datalist> recebe: so as que casam com o digitado (ver orSuggest), nunca a lista toda
+  const orSugest = useMemo(()=>freeModel ? orSuggest(orList, aiModel) : [], [freeModel, orList, aiModel]);
+  // o modelo escolhido aceita tools? quem responde e o proprio provedor (supported_parameters),
+  // nao uma heuristica nossa. So avisa quando o modelo FOI achado na lista: id que o pesquisador
+  // ainda esta digitando nao e um modelo sem tools, e acusar nele seria guarda que grita a toa.
+  const orPick = freeModel ? (orModels||{})[aiModel.trim()] : null;
+  const orNoTools = !!orPick && !orPick.tools;
+  const orFail = freeModel && !!orModels && !Object.keys(orModels).length;
   // por onde a chamada vai (direto do navegador x função do servidor): espelha canAskDirect, a
   // FONTE UNICA da decisão — a UI descreve o que o código faz, não uma promessa paralela.
+  // ORDEM DO TERNÁRIO ABAIXO: o ramo do `freeModel` (OpenRouter) vem ANTES do `!aiDirect` de
+  // propósito. A ai-ask não tem adaptador para ele, então "sem chave, passa pelo servidor deste
+  // projeto" é FALSO ali: sem chave ele simplesmente não funciona, e quem diz isso é o
+  // aiConfigError. Deixar o ramo do proxy na frente fazia a tela prometer um caminho que não
+  // existe — e prometer trânsito de material que não acontece é o pior tipo de erro desta tela.
   const aiDirect = canAskDirect({ provider:aiProvider, apiKey:aiKey.trim(), baseUrl:aiBaseUrl.trim() });
   // aviso (não bloqueia) quando a chave colada tem cara de outro provedor. O pickProvider já
   // impede o caso comum (trocar de provedor levando a chave antiga); isto cobre o resto: colar
@@ -24945,6 +25140,7 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
       </details>
       <p class="hint" style="margin:-4px 0 8px" dangerouslySetInnerHTML=${{__html: mdLite(isLocal ? t('acc.route.local')
         : needsBaseUrl && !aiBaseUrl.trim() ? t('acc.route.needUrl')
+        : freeModel ? t('acc.route.broker')
         : !aiDirect ? t('acc.route.proxy')
         : needsBaseUrl ? t('acc.route.cors')
         : t('acc.route.direct'))}}></p>
@@ -24966,24 +25162,31 @@ function AccountModal({ user, projects, onClose, onChangePassword, onChangeName,
         <input class="txtin" type="password" value=${aiKey} onInput=${e=>setAiKey(e.target.value)} placeholder=${isAzure?t('acc.key.azure.ph'):isLocal?t('acc.key.local.ph'):needsBaseUrl?t('acc.key.custom.ph'):(AI_SHARED_KEY?t('acc.key.shared.ph'):t('acc.key.ph'))} />
         ${keyHint && html`<p class="hint" style="margin:6px 0 0;color:var(--danger)">⚠ ${keyHint}</p>`}</div>
       <div class="field" style="margin-bottom:4px"><div class="field-label">${isAzure?t('acc.deployment'):t('acc.model')}</div>
-        ${needsBaseUrl
-          ? html`<input class="txtin" value=${aiModel} onInput=${e=>setAiModel(e.target.value)} list=${isLocal?'ollama-model-suggestions':undefined} placeholder=${isAzure?t('acc.model.azure.ph'):isLocal?t('acc.model.local.ph'):t('acc.model.custom.ph')} />
+        ${needsBaseUrl || freeModel
+          ? html`<input class="txtin" value=${aiModel} onInput=${e=>setAiModel(e.target.value)} list=${isLocal?'ollama-model-suggestions':freeModel?'or-model-suggestions':undefined} placeholder=${isAzure?t('acc.model.azure.ph'):isLocal?t('acc.model.local.ph'):freeModel?t('acc.model.or.ph'):t('acc.model.custom.ph')} />
             ${isLocal && html`<datalist id="ollama-model-suggestions">
               ${OLLAMA_MODEL_SUGGESTIONS.map(m=>html`<option key=${m} value=${m}></option>`)}
-            </datalist>`}`
+            </datalist>`}
+            ${freeModel && html`<datalist id="or-model-suggestions">
+              ${orSugest.map(m=>html`<option key=${m.id} value=${m.id}>${m.name}</option>`)}
+            </datalist>`}
+            ${orFail && html`<p class="hint" style="margin:6px 0 0">⚠ ${t('acc.or.listFail')}</p>`}
+            ${orNoTools && html`<p class="hint" style="margin:6px 0 0;color:var(--danger)" dangerouslySetInnerHTML=${{__html: mdLite(t('acc.or.noTools'))}}></p>`}`
           : html`<div class="row" style="gap:6px;flex-wrap:wrap">
               ${(provDef?.models||[]).map(m=>html`<button key=${m.id} class="opt ${aiModel===m.id || (!aiModel && m.def) ? 'on':''}"
                 title=${m.note} onClick=${()=>setAiModel(m.id)}>${m.label}${m.def?html`<span style="opacity:.85;font-size:10px;margin-left:5px">${t('acc.default')}</span>`:''}</button>`)}
             </div>`}
         <details class="collap"><summary class="hint" style="display:flex;align-items:center;gap:6px;cursor:pointer;margin:0 0 6px">${t('acc.howPick')}</summary>
-        <p class="hint" style="margin:6px 0 0" dangerouslySetInnerHTML=${{__html: mdLite(isAzure ? t('acc.model.azure.hint') : isLocal ? t('acc.model.local.hint') : needsBaseUrl ? t('acc.model.custom.hint') : t('acc.model.hint'))}}></p>
+        <p class="hint" style="margin:6px 0 0" dangerouslySetInnerHTML=${{__html: mdLite(isAzure ? t('acc.model.azure.hint') : isLocal ? t('acc.model.local.hint') : freeModel ? t('acc.model.or.hint') : needsBaseUrl ? t('acc.model.custom.hint') : t('acc.model.hint'))}}></p>
         </details>
       </div>
       <div class="field" style="border-top:1px solid var(--line-soft);padding-top:10px;margin-top:2px">
         <details class="collap"><summary class="field-label" style="display:flex;align-items:center;gap:6px;cursor:pointer;margin:0 0 6px">${t('acc.cost')}</summary>
         <p class="hint" style="margin:0 0 8px" dangerouslySetInnerHTML=${{__html: mdLite(isLocal ? t('acc.cost.local')
           : provDef?.custom ? t('acc.cost.custom')
-          : refRow ? t('acc.cost.ref',{model:refModelId, 'in':Number(refRow.input).toFixed(2), out:Number(refRow.output).toFixed(2)})
+          : refRow ? (provDef?.livePrices
+            ? t('acc.cost.liveRef',{model:refModelId, 'in':Number(refRow.input).toFixed(2), out:Number(refRow.output).toFixed(2)})
+            : t('acc.cost.ref',{model:refModelId, 'in':Number(refRow.input).toFixed(2), out:Number(refRow.output).toFixed(2)}))
           : t('acc.cost.noRef',{model:refModelId||t('acc.cost.thisModel')}))}}></p>
         ${provDef?.custom && !isLocal && html`<div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:8px">
           <label style="flex:1;min-width:120px"><div class="field-label" style="font-weight:400">${t('acc.cost.in')}</div>
@@ -31165,22 +31368,41 @@ function ZoteroImportModal({ pending, localMode, onCancel, onConfirm }){
 // catalogo de modelos por provedor pro seletor de botoes em "Minha Conta" — ordenados do
 // mais rapido/barato pro mais capaz/lento/caro (mesmo padrao "tamanho" nos tres provedores).
 // O array tambem decide a ordem dos botoes de provedor.
+// OpenRouter: base FIXA (o pesquisador nao digita, e nao deve poder trocar) e o endpoint PUBLICO
+// que lista modelo, preco e parametros aceitos. Sem chave: da pra buscar a lista antes de ter conta.
+const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
+const OPENROUTER_MODELS_URL = OPENROUTER_BASE_URL + '/models';
 const AI_PROVIDERS = [
   { id:'gemini', label:'Google Gemini', models:[
-    { id:'gemini-3.1-flash-lite',  label:'3.1 Flash Lite', note:t('model.fast') },
-    { id:'gemini-3.5-flash',       label:'3.5 Flash',      note:t('model.balanced'), def:true },
-    { id:'gemini-3.1-pro-preview', label:'3.1 Pro',        note:t('model.capable') },
+    { id:'gemini-3.1-flash-lite', label:'3.1 Flash Lite', note:t('model.fast') },
+    { id:'gemini-3.6-flash',      label:'3.6 Flash',      note:t('model.balanced'), def:true },
+    { id:'gemini-4-argon',        label:'4 Argon',        note:t('model.capable') },
   ]},
   { id:'openai', label:'OpenAI', models:[
-    { id:'gpt-5.6-luna',  label:'GPT-5.6 Luna',  note:t('model.fast') },
-    { id:'gpt-5.6-terra', label:'GPT-5.6 Terra', note:t('model.balanced'), def:true },
-    { id:'gpt-5.6-sol',   label:'GPT-5.6 Sol',   note:t('model.capable') },
+    { id:'gpt-6-luna',    label:'GPT-6 Luna',    note:t('model.fast') },
+    { id:'gpt-6.1-terra', label:'GPT-6.1 Terra', note:t('model.balanced'), def:true },
+    { id:'gpt-6.1-sol',   label:'GPT-6.1 Sol',   note:t('model.capable') },
   ]},
   { id:'anthropic', label:'Anthropic', models:[
-    { id:'claude-haiku-4-5-20251001', label:'Haiku',    note:t('model.fast') },
-    { id:'claude-sonnet-5',           label:'Sonnet 5', note:t('model.balanced'), def:true },
-    { id:'claude-opus-4-8',           label:'Opus',     note:t('model.capable') },
+    { id:'claude-haiku-5-5',  label:'Haiku',  note:t('model.fast') },
+    { id:'claude-sonnet-5-5', label:'Sonnet', note:t('model.balanced'), def:true },
+    { id:'claude-opus-5-5',   label:'Opus',   note:t('model.capable') },
   ]},
+  // OpenRouter: um INTERMEDIARIO, nao quem roda o modelo — uma chave dele alcanca centenas de
+  // modelos de dezenas de empresas, e o material de cada envio atravessa o servidor DELE antes de
+  // chegar a quem roda o modelo. Isso contraria a premissa dos tres de cima ("o navegador fala
+  // DIRETO com o provedor"), entao a escolha e declarada na tela (acc.route.broker) e no manual, e
+  // o currentModelLabel carimba "OpenRouter: <modelo>" na conversa salva e na memoria do projeto —
+  // quem le o Relatorio enxerga que houve corretora no caminho. Nao e fronteira tecnica nenhuma: e
+  // informacao pra decisao metodologica de quem publica.
+  // TRES flags novas, e nenhuma delas `custom`, DE PROPOSITO: `custom:true` significa quatro coisas
+  // de uma vez (pede URL base, modelo em texto livre, tarifa do usuario e FALLBACK de CORS pela
+  // ai-ask) e so a segunda se aplica aqui — herdar as outras daria um fallback mandando baseUrl
+  // vazia pro proxy, e tiraria o preco vivo do ar em favor de "tarifa propria".
+  //   baseUrl    — fixa, do catalogo: nao aparece campo de URL na tela
+  //   freeModel  — campo de texto livre + datalist, porque sao centenas (nao cabem em 3 botoes)
+  //   livePrices — preco vem da API deles (ver loadAiPrices), nao da tabela ai_prices
+  { id:'openrouter', label:'OpenRouter', baseUrl:OPENROUTER_BASE_URL, freeModel:true, livePrices:true, models:[] },
   // Azure OpenAI: como o "custom" (URL base + modelo em texto livre, custom:true), mas
   // autenticacao por header "api-key" e chave obrigatoria.
   // baseUrl = endpoint "v1" do recurso (https://SEU-RECURSO.openai.azure.com/openai/v1);
@@ -31239,7 +31461,7 @@ function aiKeyProviderHint(provider, key){
   if(!achou || achou.id===provider) return null;
   return t('ai.keyMismatch', { who: achou.nome });
 }
-// rótulo do modelo ativo, pra proveniência da memória (ex.: "anthropic:claude-opus-4-8",
+// rótulo do modelo ativo, pra proveniência da memória (ex.: "anthropic:claude-opus-5-5",
 // ou "gemini:(padrão)" quando o modelo é o default do provedor). Auditoria em projeto coletivo.
 function currentModelLabel(){
   const c = getAIConfig();
@@ -31251,7 +31473,7 @@ function currentModelLabel(){
   let mLabel;
   if(mObj){
     mLabel = mObj.label; // ex.: "Sonnet"
-    // acrescenta a versao vinda do id quando o rotulo nao a traz ("Sonnet" + "claude-sonnet-4-6" -> "Sonnet 4.6")
+    // acrescenta a versao vinda do id quando o rotulo nao a traz ("Sonnet" + "claude-sonnet-5-5" -> "Sonnet 5.5")
     if(!/\d/.test(mLabel)){ const v=(mid.match(/(\d+)[.\-](\d+)/)||[])[0]; if(v) mLabel += ' '+v.replace('-','.'); }
   } else {
     mLabel = c.model || t('model.default'); // custom/azure/ollama: modelo em texto livre
@@ -31264,6 +31486,11 @@ function currentModelLabel(){
 // (ver canAskDirect); esta flag e o que torna o direto OBRIGATORIO.
 function isLocalProvider(provider){
   return !!AI_PROVIDERS.find(p=>p.id===provider)?.local;
+}
+// Provedor que PUBLICA a propria tarifa por modelo (hoje so o OpenRouter): o preco nao vem da
+// tabela ai_prices mantida a mao, vem da API dele. E por isso que loadAiPrices tem duas fontes.
+function aiProviderHasLivePrices(provider){
+  return !!AI_PROVIDERS.find(p=>p.id===provider)?.livePrices;
 }
 // --- CALCULADORA DE CUSTO DA IA (jul/2026) — helpers de preco/custo logo apos askAIChat ---
 // LAST_AI_USAGE guarda o { input, output, cached } (tokens REAIS) da ULTIMA chamada de IA — a
@@ -31340,7 +31567,7 @@ async function aiFetchRetry(url, init, signal, attempts=3){
 function openaiTemperatureOK(model){
   const m = String(model).toLowerCase();
   if(/^o\d/.test(m)) return false;    // o1, o3, o4-mini... (raciocinio)
-  if(/^gpt-5/.test(m)) return false;  // gpt-5, gpt-5.6-*... (raciocinio)
+  if(/^gpt-[56]/.test(m)) return false;  // gpt-5, gpt-5.6-*, gpt-6-*... (raciocinio)
   return true;
 }
 function anthropicTemperatureOK(model){
@@ -31588,7 +31815,8 @@ function aiCompatMessages(contents){
 }
 async function aiCallOpenAICompat(kind, baseUrl, apiKey, model, systemParts, contents, opts, signal){
   const url = `${String(baseUrl).replace(/\/+$/, '')}/chat/completions`;
-  const label = kind==='azure' ? 'Azure OpenAI' : kind==='ollama' ? 'Servidor local' : 'API personalizada';
+  const label = kind==='azure' ? 'Azure OpenAI' : kind==='ollama' ? 'Servidor local'
+    : kind==='openrouter' ? 'OpenRouter' : 'API personalizada';
   const base = {
     model,
     messages: [ ...(systemParts.length ? [{ role:'system', content: systemParts.join('\n') }] : []), ...aiCompatMessages(contents) ],
@@ -31667,8 +31895,11 @@ function aiProxyFallbackOK(e, cfg){
 async function askAIDirectFull(cfg, { system, messages, signal, json, tools }){
   const provider = cfg.provider;
   const model = activeModelId(cfg);
-  const baseUrl = cfg.baseUrl || (isLocalProvider(provider) ? 'http://localhost:11434/v1' : '');
-  const isCompat = provider==='custom' || provider==='azure' || isLocalProvider(provider);
+  // URL base do CATALOGO vence a do localStorage: no OpenRouter ela e fixa, e um valor velho
+  // guardado de quando o pesquisador usou "personalizado" mandaria o POST pro endpoint errado.
+  const baseUrl = AI_PROVIDERS.find(p=>p.id===provider)?.baseUrl
+    || cfg.baseUrl || (isLocalProvider(provider) ? 'http://localhost:11434/v1' : '');
+  const isCompat = provider==='custom' || provider==='azure' || provider==='openrouter' || isLocalProvider(provider);
   if(isCompat && !model) throw new Error('Informe o modelo em "Minha conta" antes de usar a IA com este provedor.');
   const all = [ ...(system ? [{ role:'system', content: system }] : []), ...(messages || []) ];
   const systemParts = all.filter(m=>m.role==='system').map(m=>String(m.content||''));
@@ -31768,16 +31999,88 @@ async function askAI(prompt){
 }
 
 function lastAiUsage(){ return LAST_AI_USAGE; }
+// MAPA DE MODELOS DO OPENROUTER, a partir do JSON publico deles. Puro de proposito: a conversao
+// de unidade e o que erra em silencio. `pricing.prompt`/`completion` vem em STRING de US$ por
+// TOKEN e o resto do app fala US$ por 1M — dai o x1e6. Ignora `pricing.overrides` (a faixa de
+// contexto longo) pelo mesmo motivo que a tabela ai_prices usa o tier curto: a estimativa e por
+// chamada e nao sabe de antemao o tamanho do prompt; a tela diz que prompt longo pode custar mais.
+// Linha sem preco NUMERICO e descartada, nunca zerada: preco 0 inventado anunciaria "gratis" num
+// modelo pago, que e o lado ruim do erro (o app ja erra pra cima de proposito na estimativa).
+// Leva tambem `tools` e `temperature` de supported_parameters — o proprio provedor diz o que o
+// modelo aceita, o que e melhor que a heuristica por NOME usada nos provedores de catalogo.
+function orPriceMap(json){
+  const out = {};
+  for(const m of (Array.isArray(json?.data) ? json.data : [])){
+    const id = String(m?.id || '').trim();
+    if(!id) continue;
+    const i = parseFloat(m?.pricing?.prompt), o = parseFloat(m?.pricing?.completion);
+    if(!isFinite(i) || !isFinite(o) || i < 0 || o < 0) continue;
+    const par = m?.supported_parameters || [];
+    out[id] = {
+      input: i * 1e6, output: o * 1e6,
+      name: String(m?.name || id),
+      tools: par.includes('tools'),
+      temp: par.includes('temperature'),
+    };
+  }
+  return out;
+}
+const OR_CACHE_KEY = 'qualilab:or_models';
+const OR_CACHE_TTL_MS = 24 * 60 * 60 * 1000;   // 1 dia: preco de modelo muda, mas nao de hora em hora
+let AI_PRICES_OR = null;                        // mapa do OpenRouter nesta sessao (null = nao buscado)
+// Busca (e cacheia) a lista do OpenRouter. TOLERANTE A FALHA por desenho: qualquer problema
+// devolve null, a calculadora fica sem preco e a tela mostra so os tokens — que e exatamente o
+// que ela ja faz para modelo sem preco cadastrado. O cache em localStorage guarda o mapa DESTILADO
+// (algumas dezenas de KB), nunca o JSON cru de ~800 KB. Nao manda HTTP-Referer nem X-Title (eles
+// aceitam, pra ranking): nao ha por que oferecer a identidade do app a um terceiro.
+async function loadOpenRouterModels(){
+  if(AI_PRICES_OR) return AI_PRICES_OR;
+  try{
+    const c = JSON.parse(localStorage.getItem(OR_CACHE_KEY) || 'null');
+    if(c && c.map && Object.keys(c.map).length && Date.now() - Number(c.at||0) < OR_CACHE_TTL_MS){
+      AI_PRICES_OR = c.map;
+      return AI_PRICES_OR;
+    }
+  }catch(e){}
+  try{
+    const r = await fetch(OPENROUTER_MODELS_URL, { headers:{ Accept:'application/json' } });
+    if(!r.ok) return null;
+    const mapa = orPriceMap(await r.json());
+    if(!Object.keys(mapa).length) return null;
+    AI_PRICES_OR = mapa;
+    try{ localStorage.setItem(OR_CACHE_KEY, JSON.stringify({ at:Date.now(), map:mapa })); }catch(e){}
+    return AI_PRICES_OR;
+  }catch(e){ return null; }
+}
 // carrega (uma vez, cacheado) a tabela ai_prices por REST com a anon key (leitura publica).
 // Funciona em qualquer modo (nuvem/arquivo/rascunho): as chamadas de IA ja usam SUPABASE_URL/ANON.
-async function loadAiPrices(){
-  if(AI_PRICES) return AI_PRICES;
-  try{
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/ai_prices?select=provider,model,input_usd_1m,output_usd_1m`, {
-      headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
-    });
-    if(r.ok){ const rows = await r.json(); const m = {}; (rows||[]).forEach(x=>{ m[`${x.provider}|${x.model}`] = { input:+x.input_usd_1m, output:+x.output_usd_1m }; }); AI_PRICES = m; }
-  }catch(e){}
+// DUAS FONTES, UM MAPA: o preco publicado pelo OpenRouter entra com a mesma chave
+// "provider|model", e por isso o aiUnitPrice (e a calculadora toda: estimativa de antes, custo por
+// turno, rotulo do balao) nao ganha ramo nenhum. A segunda fonte e LAZY e condicionada ao provedor
+// ATIVO: o app promete nao fazer requisicao externa no boot em arquivo/rascunho, e esta e uma
+// chamada a um terceiro — buscar a lista de quem nao usa OpenRouter quebraria essa promessa.
+// `provider` e PARAMETRO, nao leitura de getAIConfig(), porque os dois nao sao a mesma coisa: a
+// config salva esta no localStorage, mas a tela de Minha conta tem o provedor que o pesquisador
+// acabou de CLICAR, e so grava no "Salvar". Lendo o salvo, o preco vivo nao entrava no mapa e o
+// cartao anunciava "sem preco cadastrado" para um modelo que tem preco (achado no boot da tela).
+// Omitido, vale o salvo — que e o certo para os paineis de IA, que chamam pela config efetiva.
+async function loadAiPrices(provider){
+  if(!AI_PRICES){
+    try{
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/ai_prices?select=provider,model,input_usd_1m,output_usd_1m`, {
+        headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
+      });
+      if(r.ok){ const rows = await r.json(); const m = {}; (rows||[]).forEach(x=>{ m[`${x.provider}|${x.model}`] = { input:+x.input_usd_1m, output:+x.output_usd_1m }; }); AI_PRICES = m; }
+    }catch(e){}
+  }
+  if(aiProviderHasLivePrices(provider || getAIConfig().provider)){
+    const vivo = await loadOpenRouterModels();
+    // fontes INDEPENDENTES: a tabela do Supabase fora do ar nao tira o preco do OpenRouter do ar
+    if(vivo){
+      AI_PRICES = AI_PRICES || {};
+      for(const id in vivo) AI_PRICES[`openrouter|${id}`] = { input:vivo[id].input, output:vivo[id].output };
+    }
+  }
   return AI_PRICES || {};
 }
 // cambio US$->R$ ajustavel (Minha Conta); default provisorio, o pesquisador acerta.
@@ -31805,7 +32108,11 @@ function aiUnitPrice(provider, model, prices){
   const map = prices || AI_PRICES;
   const norm = String(model||'').replace(/-\d{8}$/,'');
   const row = map && (map[`${provider}|${model}`] || map[`${provider}|${norm}`]);
-  return row ? { input: row.input, output: row.output, src:t('price.ref') } : null;
+  // "referencia" e honesto pra tabela mantida a mao; preco vindo da API do proprio provedor merece
+  // rotulo proprio, senao a tela chama de estimativa nossa um numero que e dele.
+  if(!row) return null;
+  return { input: row.input, output: row.output,
+    src: provDef?.livePrices ? t('price.live') : t('price.ref') };
 }
 // estimativa de custo de UMA chamada dado o usage (tokens). Ignora desconto de cache (=teto
 // conservador). Retorna { usd, brl, src } ou null (sem preco). provider/model default = config ativo.

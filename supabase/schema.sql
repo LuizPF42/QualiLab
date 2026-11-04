@@ -1939,8 +1939,11 @@ end $$;
 -- Preco de LISTA por 1M de tokens, so pra estimar o custo das chamadas de IA em US$/R$. Leitura
 -- PUBLICA (preco de lista nao e segredo; o front le pra estimar antes/depois da chamada); escrita
 -- so por service_role via SQL (anon/authenticated NAO alteram — sem policy de insert/update/delete).
--- Fonte dos valores: paginas oficiais de pricing (Anthropic jun/2026; OpenAI e Gemini jul/2026,
--- tier padrao/short-context <=200k). Confira periodicamente e ajuste com UPDATE.
+-- Fonte dos valores: paginas oficiais de pricing dos tres provedores, conferidas em out/2026
+-- (tier padrao/short-context <=200k). Confira periodicamente e ajuste com UPDATE: cinco dos nove
+-- precos daqui ficaram ERRADOS, todos para cima, por tres meses sem ninguem notar — nao ha guarda
+-- que pegue isso, e um deles so estava errado porque o comentario APOSTAVA num aumento futuro que
+-- nao veio (ver supabase/migrations/2026-10-catalogo-de-modelos-e-precos.sql).
 -- Atualizar preco = UPDATE aqui (nao mexe no codigo, nao precisa deploy). BYOK: o pesquisador pode
 -- sobrescrever com a tarifa dele em "Minha Conta" (localStorage), e isso vence esta referencia.
 create table if not exists public.ai_prices (
@@ -1957,17 +1960,26 @@ create policy ai_prices_read on public.ai_prices for select using (true);
 -- seed inicial (idempotente: on conflict DO NOTHING preserva correcoes feitas depois via UPDATE).
 insert into public.ai_prices (provider, model, input_usd_1m, output_usd_1m) values
   -- catálogo atual (bate com AI_PROVIDERS no front)
-  ('anthropic', 'claude-haiku-4-5',        1.00,  5.00),   -- Anthropic oficial (jun/2026)
-  ('anthropic', 'claude-sonnet-5',         3.00, 15.00),   -- padrão (standard; intro $2/$10 até 31/08/2026)
-  ('anthropic', 'claude-opus-4-8',         5.00, 25.00),
-  ('openai',    'gpt-5.6-luna',            1.00,  6.00),   -- OpenAI short-context (jul/2026)
-  ('openai',    'gpt-5.6-terra',           2.50, 15.00),   -- padrão
-  ('openai',    'gpt-5.6-sol',             5.00, 30.00),
-  ('gemini',    'gemini-3.1-flash-lite',   0.25,  1.50),   -- Gemini paid, prompts <=200k (jul/2026)
-  ('gemini',    'gemini-3.5-flash',        1.50,  9.00),   -- padrão
-  ('gemini',    'gemini-3.1-pro-preview',  2.00, 12.00),
+  ('anthropic', 'claude-haiku-5-5',        0.10,  0.50),
+  ('anthropic', 'claude-sonnet-5-5',       2.00, 10.00),   -- padrão
+  ('anthropic', 'claude-opus-5-5',         4.00, 20.00),
+  ('openai',    'gpt-6-luna',              0.10,  0.50),
+  ('openai',    'gpt-6.1-terra',           1.00,  5.00),   -- padrão
+  ('openai',    'gpt-6.1-sol',             2.00, 10.00),
+  ('gemini',    'gemini-3.1-flash-lite',   0.25,  1.50),   -- o mais barato da linha Gemini
+  ('gemini',    'gemini-3.6-flash',        0.75,  3.75),   -- padrão (sobe p/ 1.50/7.50 em 01/01/2027)
+  ('gemini',    'gemini-4-argon',          2.00, 10.00),   -- (sobe p/ 4.00/20.00 em 01/12/2026)
   -- legado (fora do catálogo do front, mantidos p/ configs antigas salvas no navegador)
+  ('gemini',    'gemini-3.5-flash',        0.75,  3.75),   -- depreciado 08/10/2026: roteia p/ 3.6-flash
+  ('gemini',    'gemini-3.8-flash',        0.75,  3.75),   -- próximo Flash, já precificado
+  ('gemini',    'gemini-3.1-pro-preview',  2.00, 12.00),
+  ('anthropic', 'claude-haiku-4-5',        1.00,  5.00),
+  ('anthropic', 'claude-sonnet-5',         2.00, 10.00),
   ('anthropic', 'claude-sonnet-4-6',       3.00, 15.00),
+  ('anthropic', 'claude-opus-4-8',         5.00, 25.00),
+  ('openai',    'gpt-5.6-luna',            0.20,  1.20),
+  ('openai',    'gpt-5.6-terra',           2.00, 12.00),
+  ('openai',    'gpt-5.6-sol',             4.00, 20.00),
   ('openai',    'gpt-5.4-mini',            0.75,  4.50),
   ('openai',    'gpt-5.4',                 2.50, 15.00),
   ('openai',    'gpt-5.5',                 5.00, 30.00)

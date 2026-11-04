@@ -164,7 +164,7 @@ An **AI** badge in the header shows the state at all times — a **green** ring 
 | **Visible, editable prompt** | **⚙ Configure Prompt** ("Configurar Prompt") shows what will be sent, section by section, with the active model, the token estimate and the **cost** — before sending |
 | **Blind mode** | the AI answers **without seeing** your reference layer and the panel returns an agreement score: it stops being a checker and becomes a measuring stick |
 | **Project memory** | an insights journal across sessions; the AI proposes, you approve, and each entry has a usage switch. Under blind coding or distribution, each person’s entries are their own until the administrator consolidates them |
-| **Providers** | Gemini, OpenAI, Anthropic, Azure OpenAI, any API in the classic OpenAI format (DeepSeek, Mistral, Qwen, vLLM) and **local Ollama** — the only one where nothing leaves your machine |
+| **Providers** | Gemini, OpenAI, Anthropic, Azure OpenAI, any API in the classic OpenAI format (DeepSeek, Mistral, Qwen, vLLM), **OpenRouter** (one key for hundreds of models; it is a broker, and the material passes through its server) and **local Ollama** — the only one where nothing leaves your machine |
 | **Material cuts are announced** | there is a cap per document and per send; whenever something is cut, a banner says **how many documents were left out** and how many made it in only partially |
 
 > **Honest caveat:** turning AI off is **not a technical barrier** — anyone can copy a passage and paste it into another tool. What the switch removes from the application is **bulk** work, which is what actually shifts an analysis. That is why the Report **reports** what went through QualiLab, instead of promising that nothing went around it.
@@ -251,7 +251,7 @@ QualiLab's cloud has changed format: instead of a single server for everyone, **
 **The public cloud will be shut down on December 31, 2026.** Until then it stays available as **Connect to the public cloud (deprecated)**. To move a project from it to your group's cloud:
 
 1. On the public cloud, download the project as a `.qualilab`.
-2. Create your group's cloud, or connect to it through **Already have one? Connect to a private cloud**.
+2. Create your group's cloud, or connect to it through **With my group → Sign in → Connect by address and key**.
 3. Open the `.qualilab` and use **Send to the cloud**, in the project hub: the new project is created on the connected cloud.
 4. Ask each team member to create an account on the new cloud and join through the invitation link.
 
@@ -296,7 +296,7 @@ Enabling collective mode requires a **Supabase** project of your group's, which 
 
 ### 1. Credentials
 
-If you use the published app, there is nothing to edit: just enter the address and the key in **Already have one? Connect to a private cloud**, or open the team link. If you publish your own copy, you can set the credentials at the top of the `index.html`:
+If you use the published app, there is nothing to edit: just enter the address and the key in **With my group → Sign in → Connect by address and key**, or open the team link. If you publish your own copy, you can set the credentials at the top of the `index.html`:
 
 ```js
 let SUPABASE_URL  = "https://YOUR-PROJECT.supabase.co";
@@ -322,7 +322,7 @@ Under **Authentication → Providers**:
 The **default is BYOK**: each researcher brings their own key and the **browser calls the provider directly**, passing through no server at all. On that path the function **is not used**. Deploy it only if you are going to (a) offer a **server key** (kept out of the public HTML) or (b) support *Custom*/*Azure* endpoints that do not allow browser calls (CORS) — in which case the function acts as the proxy. **Local Ollama** never uses it (Supabase's server cannot reach the researcher's `localhost`).
 
 1. **(Optional, only if offering a server key)** Generate a provider key: [Gemini](https://aistudio.google.com/apikey) (free), [OpenAI](https://platform.openai.com/api-keys) or [Anthropic](https://console.anthropic.com/settings/keys). Skip this step if each researcher will use their own key (BYOK).
-2. **Secrets** → under *Edge Functions → Secrets*, add `GEMINI_API_KEY` and/or `OPENAI_API_KEY` and/or `ANTHROPIC_API_KEY` (configure only the one(s) you will use). Optional: `GEMINI_MODEL`/`OPENAI_MODEL`/`ANTHROPIC_MODEL` to change each one's default model (`gemini-3.1-flash-lite`/`gpt-5.4`/`claude-sonnet-4-6`) without re-editing the code.
+2. **Secrets** → under *Edge Functions → Secrets*, add `GEMINI_API_KEY` and/or `OPENAI_API_KEY` and/or `ANTHROPIC_API_KEY` (configure only the one(s) you will use). Optional: `GEMINI_MODEL`/`OPENAI_MODEL`/`ANTHROPIC_MODEL` to change each one's default model (`gemini-3.6-flash`/`gpt-6.1-terra`/`claude-sonnet-5-5`) without re-editing the code.
 3. **Deploy** → under *Edge Functions*, create/edit the `ai-ask` function, paste the contents of [`supabase/functions/ai-ask/index.ts`](supabase/functions/ai-ask/index.ts) and click **Deploy**. (No CLI needed.)
 
 With no key configured, the AI screens return a clear error; the rest of the app works normally.

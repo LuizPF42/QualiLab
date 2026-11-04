@@ -56,9 +56,9 @@ const SHARED_KEYS: Record<string, string | undefined> = {
   anthropic: Deno.env.get('ANTHROPIC_API_KEY'),
 };
 const DEFAULT_MODELS: Record<string, string> = {
-  gemini: Deno.env.get('GEMINI_MODEL') || 'gemini-3.1-flash-lite',
-  openai: Deno.env.get('OPENAI_MODEL') || 'gpt-5.4',
-  anthropic: Deno.env.get('ANTHROPIC_MODEL') || 'claude-sonnet-4-6',
+  gemini: Deno.env.get('GEMINI_MODEL') || 'gemini-3.6-flash',
+  openai: Deno.env.get('OPENAI_MODEL') || 'gpt-6.1-terra',
+  anthropic: Deno.env.get('ANTHROPIC_MODEL') || 'claude-sonnet-5-5',
 };
 const MAX_TOKENS = 8192;            // trava de seguranca da SAIDA, independente do que o front pedir
 const MAX_BODY_CHARS = 2_000_000;   // trava da ENTRADA (o app respeita IA_TOTAL_CHAR_LIMIT, bem menor)
@@ -314,7 +314,7 @@ async function callGemini(apiKey: string, model: string, systemParts: string[], 
 function openaiTemperatureOK(model: string) {
   const m = String(model).toLowerCase();
   if (/^o\d/.test(m)) return false;    // o1, o3, o4-mini... (raciocinio)
-  if (/^gpt-5/.test(m)) return false;  // gpt-5, gpt-5.4, gpt-5.6-*... (raciocinio)
+  if (/^gpt-[56]/.test(m)) return false;  // gpt-5, gpt-5.4, gpt-5.6-*, gpt-6-*... (raciocinio)
   return true;
 }
 

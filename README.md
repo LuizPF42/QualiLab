@@ -158,7 +158,7 @@ Um selo **IA** no cabeçalho mostra o estado o tempo todo — anel **verde** qua
 | **Prompt visível e editável** | o **⚙ Configurar Prompt** mostra o que será enviado, seção por seção, com o modelo ativo, a estimativa de tokens e o **custo em R$** — antes de enviar |
 | **Modo cego** | a IA responde **sem ver** o seu gabarito e o painel devolve um placar de concordância: deixa de ser conferente e vira régua |
 | **Memória do projeto** | diário de insights entre sessões; a IA propõe, você aprova, e cada entrada tem interruptor de uso |
-| **Provedores** | Gemini, OpenAI, Anthropic, Azure OpenAI, qualquer API no formato clássico da OpenAI (DeepSeek, Mistral, Qwen, vLLM) e **Ollama local** — o único em que nada sai da sua máquina |
+| **Provedores** | Gemini, OpenAI, Anthropic, Azure OpenAI, qualquer API no formato clássico da OpenAI (DeepSeek, Mistral, Qwen, vLLM), **OpenRouter** (uma chave para centenas de modelos; é um intermediário, e o material passa pelo servidor dele) e **Ollama local** — o único em que nada sai da sua máquina |
 | **Corte de material avisado** | há teto por documento e por envio; sempre que algo é cortado, uma faixa diz **quantos documentos ficaram de fora** e quantos entraram só pelo começo |
 
 > **Ressalva honesta:** desligar a IA **não é bloqueio técnico** — qualquer pessoa copia um trecho e cola noutra ferramenta. O que a chave tira do aplicativo é o trabalho **em massa**, que é o que de fato desloca uma análise. Por isso o Relatório **relata** o que passou pelo QualiLab, em vez de prometer que nada passou por fora.
@@ -245,7 +245,7 @@ A nuvem do QualiLab mudou de formato: em vez de um servidor único para todo mun
 **A nuvem pública será desativada em 31/12/2026.** Até lá ela continua disponível, como **Conectar à nuvem pública (deprecado)**. Para levar um projeto dela para a nuvem do grupo:
 
 1. Na nuvem pública, baixe o projeto como `.qualilab`.
-2. Crie a nuvem do grupo, ou conecte-se a ela por **Já tem uma? Conectar a uma nuvem privada**.
+2. Crie a nuvem do grupo, ou conecte-se a ela por **Com meu grupo → Entrar → Conectar pelo endereço e chave**.
 3. Abra o `.qualilab` e use **Enviar para a nuvem**, no hub do projeto: o projeto novo é criado na nuvem conectada.
 4. Peça a cada pessoa da equipe que crie uma conta na nova nuvem e entre pelo link de convite.
 
@@ -290,7 +290,7 @@ Para ativar o modo coletivo é necessário um projeto **Supabase** do seu grupo,
 
 ### 1. Credenciais
 
-Quem usa o app publicado não edita nada: basta informar o endereço e a chave em **Já tem uma? Conectar a uma nuvem privada**, ou abrir o link da equipe. Quem publica a própria cópia pode fixar as credenciais no topo do `index.html`:
+Quem usa o app publicado não edita nada: basta informar o endereço e a chave em **Com meu grupo → Entrar → Conectar pelo endereço e chave**, ou abrir o link da equipe. Quem publica a própria cópia pode fixar as credenciais no topo do `index.html`:
 
 ```js
 let SUPABASE_URL  = "https://SEU-PROJETO.supabase.co";
@@ -316,7 +316,7 @@ Em **Authentication → Providers**:
 O **padrão é BYOK**: cada pesquisador traz a sua chave e o **navegador chama o provedor direto**, sem passar por servidor nenhum. Nesse caminho a função **não é usada**. Faça o deploy dela se você for (a) oferecer uma **chave de servidor** (mantida fora do HTML público) ou (b) dar suporte a endpoints *Personalizado*/*Azure* que não liberem chamadas de navegador (CORS) — aí a função faz o proxy. O **Ollama local** nunca a usa (o servidor do Supabase não alcança o `localhost` do pesquisador).
 
 1. **(Opcional, só se for oferecer uma chave de servidor)** Gere uma chave do provedor: [Gemini](https://aistudio.google.com/apikey) (gratuito), [OpenAI](https://platform.openai.com/api-keys) ou [Anthropic](https://console.anthropic.com/settings/keys). Pule este passo se cada pesquisador for usar a própria chave (BYOK).
-2. **Secrets** → em *Edge Functions → Secrets*, adicione `GEMINI_API_KEY` e/ou `OPENAI_API_KEY` e/ou `ANTHROPIC_API_KEY` (configure só o(s) que for usar). Opcional: `GEMINI_MODEL`/`OPENAI_MODEL`/`ANTHROPIC_MODEL` pra trocar o modelo padrão de cada um (`gemini-3.1-flash-lite`/`gpt-5.4`/`claude-sonnet-4-6`) sem reeditar o código.
+2. **Secrets** → em *Edge Functions → Secrets*, adicione `GEMINI_API_KEY` e/ou `OPENAI_API_KEY` e/ou `ANTHROPIC_API_KEY` (configure só o(s) que for usar). Opcional: `GEMINI_MODEL`/`OPENAI_MODEL`/`ANTHROPIC_MODEL` pra trocar o modelo padrão de cada um (`gemini-3.6-flash`/`gpt-6.1-terra`/`claude-sonnet-5-5`) sem reeditar o código.
 3. **Deploy** → em *Edge Functions*, crie/edite a função `ai-ask`, cole o conteúdo de [`supabase/functions/ai-ask/index.ts`](supabase/functions/ai-ask/index.ts) e clique em **Deploy**. (Sem CLI necessária.)
 
 Sem nenhuma chave configurada, as telas de IA retornam um erro claro; o restante do app funciona normalmente.

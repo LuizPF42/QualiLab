@@ -14,6 +14,59 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.83 (04/11/2026)
+
+### Modelos de IA da geração atual, e a estimativa de custo deixa de exagerar
+
+- **O seletor de modelo em Minha conta oferece a geração atual:** Google Gemini 3.1 Flash Lite,
+  **3.6 Flash** (padrão) e 4 Argon; OpenAI GPT-6 Luna, **GPT-6.1 Terra** (padrão) e GPT-6.1 Sol;
+  Anthropic Haiku, **Sonnet** (padrão) e Opus, da família 5.5. Se você escolheu um modelo à mão, ele
+  continua valendo: nada foi mexido na sua configuração.
+- **A estimativa de custo estava errada, sempre para cima.** Cinco dos nove preços de referência
+  exageravam o custo, os três modelos padrão entre eles; o pior caso, cinco vezes, no modelo mais
+  barato da OpenAI. Os preços foram conferidos nas páginas oficiais dos três provedores e corrigidos.
+  A estimativa continua sendo um teto (ignora o desconto de cache), agora um teto honesto.
+- **O Gemini padrão vinha sendo trocado em silêncio.** O `gemini-3.5-flash` foi descontinuado pelo
+  Google em 08/10, que passou a atender as chamadas com o `gemini-3.6-flash` sem avisar. O catálogo
+  agora nomeia o 3.6 Flash, que é o modelo que de fato responde.
+- **Para quem mantém a própria nuvem (Supabase):** a calculadora lê os preços da tabela do seu
+  servidor. Para ela conhecer os modelos novos, rode de novo o `supabase/schema.sql` deste
+  repositório no SQL Editor; ele não apaga projetos nem dados. Os preços dos modelos antigos que já
+  estavam lá não mudam com isso.
+
+### OpenRouter: uma chave para centenas de modelos
+
+- **Sétimo provedor em Minha conta.** Com uma chave do OpenRouter você alcança modelos de dezenas de
+  empresas, escolhidos pelo nome na forma `empresa/modelo`. Digite parte do nome no campo de modelo
+  (por exemplo `claude`) e ele sugere os que casam.
+- **O preço vem do próprio OpenRouter**, junto com a lista de modelos, então a estimativa de custo
+  desse provedor não envelhece.
+- **Ele é um intermediário.** Os outros provedores são quem roda o modelo; no OpenRouter o material
+  atravessa o servidor dele antes de chegar a quem responde, e passam a ser duas políticas de
+  retenção para confiar em vez de uma. A tela diz isso antes de você salvar, e o que foi usado fica
+  registrado como `OpenRouter: modelo` nas conversas salvas e na declaração de IA do Relatório
+  (manual, §17.5).
+- **A tela avisa** quando o modelo escolhido não aceita ferramentas (ele serve para Analisar com IA e
+  para a Auto-codificação, mas falha no Definir Categoria e no Explorar com IA) e quando a lista de
+  modelos não pôde ser buscada.
+
+## 1.4.82 (04/11/2026)
+
+### Uma tela de entrada mais simples
+
+- **A tela de entrada pergunta "Com quem você vai trabalhar?" e oferece duas portas.** **Sozinho,
+  neste computador** reúne **Novo arquivo** e **Abrir arquivo existente**. **Com meu grupo** reúne
+  **Entrar** e **Criar minha nuvem**.
+- **O login aparece ao clicar em Entrar**, no lugar das portas, em vez de ficar aberto o tempo todo.
+  Ali ficam a lista de nuvens, a busca pelo nome curto, **Criar conta** e **Esqueci a senha**.
+  **Voltar** traz as portas de volta.
+- **Quem volta encontra "Continuar de onde parou" no topo:** o arquivo da última sessão e as nuvens
+  que o navegador já usou, a um clique.
+- **O rascunho virou uma linha discreta**, **Só testar (rascunho)**, embaixo das portas. Ele continua
+  igual.
+- **"Já tem uma? Conectar a uma nuvem privada" mudou de lugar.** Agora é **Com meu grupo → Entrar →
+  Conectar pelo endereço e chave**.
+
 ## 1.4.81 (02/11/2026)
 
 ### "Criar minha nuvem" agora cria a nuvem
