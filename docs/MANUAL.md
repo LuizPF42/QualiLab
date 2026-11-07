@@ -752,7 +752,7 @@ Codificar cria **conjuntos**: "estes trechos falam de X". A conexão registra o 
 
 **As relações são o vocabulário do seu estudo.** O projeto já vem com seis prontas — *está associado a*, *é parte de*, *é causa de*, *contradiz*, *é um(a)*, *é propriedade de* —, as mesmas de outras ferramentas de análise qualitativa. Você cria as suas escolhendo **nova relação…** no seletor: dê o nome (*depende de*, *precede*, *justifica*) e diga se ela tem sentido (daqui para lá), vale nos dois ou não tem sentido nenhum. O administrador renomeia ou exclui as relações guardadas no projeto em **gerenciar relações…**, logo abaixo de **+ conectar**: renomear vale para todas as conexões que usam a relação (e recusa um nome que já existe), e excluir só é possível quando nenhuma conexão a usa. As seis prontas aparecem sempre no seletor, mesmo quando não estão nessa lista, porque só entram nela no primeiro uso.
 
-> ⚠️ **Uma conexão é uma anotação, não uma medida.** Ela registra o que **você** observa ou supõe, com o seu nome. Ela não conta nada no corpus e não prova associação nenhuma. Quem mede associação nos seus dados é a **Co-ocorrência** e o **Código × atributo**, em [Gráficos](#10-gráficos). As duas leituras convivem, e é bom que convivam: a conexão diz o que você sustenta, o gráfico diz o que o material mostra — e a divergência entre as duas costuma ser o achado.
+> ⚠️ **Uma conexão é uma anotação, não uma medida.** Ela registra o que **você** observa ou supõe, com o seu nome. Ela não conta nada no corpus e não prova associação nenhuma. Quem mede associação nos seus dados é a **Co-ocorrência** e o **Código × Categoria**, em [Gráficos](#10-gráficos). As duas leituras convivem, e é bom que convivam: a conexão diz o que você sustenta, o gráfico diz o que o material mostra — e a divergência entre as duas costuma ser o achado.
 
 **O que o QualiLab não deixa fazer, e por quê.** Um código não se conecta a si mesmo. A mesma conexão não entra duas vezes (numa relação sem sentido, A→B e B→A são a mesma afirmação). **Código de censura não entra numa conexão**: ele marca o que fica oculto, não é categoria de análise.
 
@@ -881,8 +881,8 @@ A aba **Gráficos** é um explorador: filtros à esquerda, um gráfico por vez �
 | **Frequência** | Quantas vezes cada código foi usado |
 | **Nuvem** | Nuvem de palavras dos trechos codificados (cor do código predominante) |
 | **Co-ocorrência** | Matriz de pares de códigos que se sobrepõem |
+| **Código × Categoria** | Cruzamento de um código com uma categoria (heatmap) |
 | **Cobertura** | % do corpus coberto por cada código |
-| **Código × atributo** | Cruzamento de um código com uma categoria (heatmap) |
 | **Tempo** | *(se houver categoria de data)* distribuição ao longo do tempo |
 | **Codificadores** | *(só coletivo)* produção e concordância entre pesquisadores |
 
@@ -896,7 +896,7 @@ A aba **Gráficos** é um explorador: filtros à esquerda, um gráfico por vez �
 
 No alto, ao lado das abas, ficam **Ver:** e **Top:** (10/25/50/Todos; na Nuvem, **Palavras:**), que refinam o recorte.
 
-> **Do gráfico para os trechos.** Clique numa **barra** (Frequência, Cobertura, Concordância) ou numa **célula** (Co-ocorrência, Código × atributo) para abrir a **Leitura** já naquele código: o filtro de categorias e o recorte "Ver:" viajam junto, então os trechos exibidos batem com o número do gráfico.
+> **Do gráfico para os trechos.** Clique numa **barra** (Frequência, Cobertura, Concordância) ou numa **célula** (Co-ocorrência, Código × Categoria) para abrir a **Leitura** já naquele código: o filtro de categorias e o recorte "Ver:" viajam junto, então os trechos exibidos batem com o número do gráfico.
 
 ### Palavras ignoradas na nuvem
 
@@ -1447,9 +1447,9 @@ A IA do QualiLab não "codifica sozinha" nem escreve no seu projeto sem permiss�
 
 ### 17.2 Auto-codificação: cinco assistentes em abas
 
-![Auto-codificação: os assistentes em abas, no topo. À esquerda, a seleção de documentos e códigos; no topo, o botão "Configurar Prompt" com a estimativa de tokens e de custo (≈ R$) do envio.](manual-img/09-ia-codificar.png)
+![Auto-codificação, na aba Sugerir Codificação: os assistentes em abas, no topo. À esquerda, a seleção de documentos e códigos; no topo, o botão "Configurar Prompt" com a estimativa de tokens e de custo (≈ R$) do envio.](manual-img/09-ia-codificar.png)
 
-A tela **Auto-codificação** reúne **cinco assistentes** em abas, no topo: **Sugerir Codificação** (que abre por padrão), **Repetir Codificação**, **Sugerir Categorização**, **Definir Categoria** e **Organizar Códigos**. Todos seguem o mesmo padrão: o assistente **propõe**, você **aprova ou recusa item a item**, e **nada é gravado sem a sua confirmação**.
+A tela **Auto-codificação** reúne **cinco assistentes** em abas, no topo: **Repetir Codificação** (que abre por padrão), **Sugerir Codificação**, **Sugerir Categorização**, **Definir Categoria** e **Organizar Códigos**. Todos seguem o mesmo padrão: o assistente **propõe**, você **aprova ou recusa item a item**, e **nada é gravado sem a sua confirmação**.
 
 > **Uma das cinco não usa IA.** A **Repetir Codificação** ([17.2.5](#1725-repetir-codificação-sem-ia)) é mecânica: não precisa de chave, não manda nada para fora, funciona offline e continua disponível com a IA desligada no projeto (a tela fica só com ela). É por isso que a tela se chama "Auto-codificação" e não "Codificar com IA". (Até a v1.4.37 ela se chamava "Codificar Automaticamente".) As outras quatro são as que conversam com o provedor, e o que segue abaixo (prompt, custo, censura) vale para elas. O **Memo para a IA** e a memória do projeto entram como contexto ([seção 11](#11-memos)), a censura é mascarada, e o botão **⚙ Configurar Prompt** mostra o prompt inteiro e deixa ajustar as *instruções próprias à IA*, os *memos injetados* e a *memória do projeto* (veja [17.1](#171-como-a-ia-funciona-aqui)). Se a resposta for muito longa e vier cortada, o QualiLab aproveita os itens completos e descarta só o último (incompleto).
 

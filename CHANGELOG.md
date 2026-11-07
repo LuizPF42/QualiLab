@@ -14,6 +14,44 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.85 (07/11/2026)
+
+### Abrir um projeto grande não parece mais abrir um projeto vazio
+
+Ao abrir um projeto, o QualiLab baixa o texto de todos os documentos. Num corpus grande da nuvem
+(centenas de documentos longos) isso leva alguns segundos, e até agora a tela passava esse tempo
+idêntica à de um projeto vazio: o Esquema dizia "0 código(s)", a lista de documentos dizia
+"Nenhum documento no projeto" e a Codificação oferecia enviar arquivos ou experimentar o corpus de
+exemplo, que seria importado dentro do projeto de verdade.
+
+- **Os códigos e as categorias aparecem assim que chegam**, sem esperar o texto dos documentos.
+- **Enquanto os documentos não chegam, a tela diz que está carregando:** a Codificação mostra
+  **Carregando o projeto…**, a lista de documentos diz **carregando os documentos…**, e a Leitura e
+  os Gráficos mostram o esqueleto de carregamento. O aviso de projeto vazio, com os botões de enviar
+  arquivo e de corpus de exemplo, só aparece quando o projeto está de fato vazio.
+- **Trocar de projeto não deixa mais na tela**, por alguns segundos, os documentos e os códigos do
+  projeto anterior. E se a lista do projeto anterior chegar atrasada, ela é descartada em vez de
+  cobrir a do projeto novo.
+
+## 1.4.84 (07/11/2026)
+
+### A Auto-codificação abre na Repetir Codificação
+
+- **A aba Repetir Codificação passa a ser a primeira** da tela **Auto-codificação**, e é nela que a
+  tela abre. As outras quatro vêm na mesma ordem de antes: Sugerir Codificação, Sugerir
+  Categorização, Definir Categoria e Organizar Códigos.
+- **Ela é a única das cinco que não usa IA** (não precisa de chave e não manda nada para fora), a
+  única que fica com a IA desligada no projeto, e é a que o manual indica para estender uma censura
+  às outras menções do mesmo termo. Para usar um dos assistentes de IA, basta clicar na aba dele.
+
+### Gráficos: a aba "Código × atributo" agora se chama "Código × Categoria"
+
+- **O nome antigo usava "atributo"**, mas no QualiLab esse campo do documento se chama
+  **categoria** em todas as outras telas.
+- **A aba também mudou de lugar:** vem logo depois da **Co-ocorrência**, que é o outro gráfico que
+  cruza dados. A ordem agora é Frequência, Nuvem, Co-ocorrência, Código × Categoria, Cobertura,
+  Tempo e Codificadores. O gráfico em si não mudou.
+
 ## 1.4.83 (04/11/2026)
 
 ### Modelos de IA da geração atual, e a estimativa de custo deixa de exagerar

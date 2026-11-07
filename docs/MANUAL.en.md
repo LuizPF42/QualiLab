@@ -756,7 +756,7 @@ Coding creates **sets**: "these passages are about X". A link records what the c
 
 **Relations are your study's vocabulary.** The project already comes with six — *is associated with*, *is part of*, *is cause of*, *contradicts*, *is a*, *is property of* —, the same ones other qualitative analysis tools use. You create your own by picking **new relation…** in the selector: give it a name (*depends on*, *precedes*, *justifies*) and say whether it has a direction (from here to there), holds both ways, or has no direction at all. The admin renames or deletes the relations stored in the project under **manage relations…** ("gerenciar relações…"), right below **+ connect**: renaming applies to every link that uses the relation (and refuses a name that already exists), and deleting is only possible when no link uses it. The six built-in ones always appear in the selector, even when they are not on that list, because they only enter it on first use.
 
-> ⚠️ **A link is an annotation, not a measurement.** It records what **you** observe or suppose, under your name. It counts nothing in the corpus and proves no association. What measures association in your data is **Co-occurrence** and **Code × attribute**, in [Charts](#10-charts). Both readings coexist, and it is good that they do: the link says what you claim, the chart says what the material shows — and the gap between them is often the finding.
+> ⚠️ **A link is an annotation, not a measurement.** It records what **you** observe or suppose, under your name. It counts nothing in the corpus and proves no association. What measures association in your data is **Co-occurrence** and **Code × Attribute**, in [Charts](#10-charts). Both readings coexist, and it is good that they do: the link says what you claim, the chart says what the material shows — and the gap between them is often the finding.
 
 **What QualiLab will not let you do, and why.** A code does not connect to itself. The same link does not go in twice (in a relation with no direction, A→B and B→A are the same claim). **A redaction code does not go into a link**: it marks what stays hidden, it is not an analytic category.
 
@@ -886,8 +886,8 @@ The **Charts** tab ("Gráficos") is an explorer: filters on the left, one chart 
 | **Frequency** ("Frequência") | How many times each code was used |
 | **Cloud** ("Nuvem") | Word cloud of the coded passages (colored by the predominant code) |
 | **Co-occurrence** ("Co-ocorrência") | Matrix of code pairs that overlap |
+| **Code × Attribute** ("Código × Categoria") | A code crossed with an attribute (heatmap) |
 | **Coverage** ("Cobertura") | % of the corpus covered by each code |
-| **Code × attribute** ("Código × atributo") | A code crossed with a attribute (heatmap) |
 | **Time** ("Tempo") | *(if there is a date attribute)* distribution over time |
 | **Coders** ("Codificadores") | *(collective only)* researchers' output and agreement |
 
@@ -901,7 +901,7 @@ The **Charts** tab ("Gráficos") is an explorer: filters on the left, one chart 
 
 At the top, next to the tabs, are **View:** and **Top:** (10/25/50/All; in the Cloud, **Words:**), which refine the cut.
 
-> **From the chart to the passages.** Click a **bar** (Frequency, Coverage, Agreement) or a **cell** (Co-occurrence, Code × attribute) to open **Reading** right at that code: the attribute filter and the "Ver:" cut travel along, so the passages shown match the chart's number.
+> **From the chart to the passages.** Click a **bar** (Frequency, Coverage, Agreement) or a **cell** (Co-occurrence, Code × Attribute) to open **Reading** right at that code: the attribute filter and the "Ver:" cut travel along, so the passages shown match the chart's number.
 
 ### Ignored words in the cloud
 
@@ -1449,9 +1449,9 @@ It is the longest chapter of the manual, so here is the map:
 
 ### 17.2 Auto-coding: five assistants in tabs
 
-![Auto-coding: the assistants in tabs, at the top. On the left, the document and code selection; at the top, the "Configure Prompt" button with the send's token and cost estimate (≈ R$).](manual-img/09-ia-codificar.png)
+![Auto-coding, on the Suggest Coding tab: the assistants in tabs, at the top. On the left, the document and code selection; at the top, the "Configure Prompt" button with the send's token and cost estimate (≈ R$).](manual-img/09-ia-codificar.png)
 
-The **Auto-coding** screen ("Auto-codificação") gathers **five assistants** in tabs, at the top: **Suggest Coding** ("Sugerir Codificação", which opens by default), **Repeat Coding** ("Repetir Codificação"), **Suggest Attributes** ("Sugerir Categorização"), **Define Attribute** ("Definir Categoria") and **Organize Codes** ("Organizar Códigos"). All follow the same pattern: the assistant **proposes**, you **approve or reject item by item**, and **nothing is written without your confirmation**.
+The **Auto-coding** screen ("Auto-codificação") gathers **five assistants** in tabs, at the top: **Repeat Coding** ("Repetir Codificação", which opens by default), **Suggest Coding** ("Sugerir Codificação"), **Suggest Attributes** ("Sugerir Categorização"), **Define Attribute** ("Definir Categoria") and **Organize Codes** ("Organizar Códigos"). All follow the same pattern: the assistant **proposes**, you **approve or reject item by item**, and **nothing is written without your confirmation**.
 
 > **One of the five uses no AI.** **Repeat Coding** ([17.2.5](#1725-repeat-coding-no-ai)) is mechanical: it needs no key, sends nothing out, works offline and stays available with AI turned off in the project (the screen then keeps only it). That is why the screen is called "Auto-coding" and not "Code with AI". (Until v1.4.37 it was called "Codificar Automaticamente".) The other four are the ones that talk to the provider, and what follows below (prompt, cost, redaction) applies to them. The **Memo for the AI** and the project memory enter as context ([section 11](#11-memos)), redaction is masked, and the **⚙ Configure Prompt** button shows the whole prompt and lets you adjust the *AI-specific instructions*, the *injected memos* and the *project memory* (see [17.1](#171-how-the-ai-works-here)). If the response is too long and comes truncated, QualiLab keeps the complete items and discards only the last (incomplete) one.
 

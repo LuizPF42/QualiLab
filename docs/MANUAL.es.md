@@ -713,7 +713,7 @@ La codificación crea **conjuntos** de fragmentos. Una conexión registra una af
 
 **Las relaciones son el vocabulario del estudio.** Hay seis iniciales: *está asociado a*, *es parte de*, *es causa de*, *contradice*, *es un(a)*, *es propiedad de*. Puedes crear otras con **nueva relación…**, darles nombre (*depende de*, *precede*, *justifica*) y definir si tienen una dirección, ambas o ninguna. En **gestionar relaciones…**, debajo de **+ conectar**, el admin renombra (afecta a todas las conexiones; rechaza nombres repetidos) o elimina relaciones sin uso. Las seis iniciales aparecen siempre en el selector; se incorporan a la lista guardada al primer uso. Sus nombres canónicos pueden conservar el idioma del proyecto original.
 
-> ⚠️ **Una conexión es una anotación, no una medida.** Registra lo que **tú** observas o supones, con tu nombre; no cuenta ni prueba asociación. **Coocurrencia** y **Código × atributo** en [Gráficos](#10-gráficos) miden patrones. La divergencia entre tu afirmación y los datos puede ser un hallazgo.
+> ⚠️ **Una conexión es una anotación, no una medida.** Registra lo que **tú** observas o supones, con tu nombre; no cuenta ni prueba asociación. **Coocurrencia** y **Código × Categoría** en [Gráficos](#10-gráficos) miden patrones. La divergencia entre tu afirmación y los datos puede ser un hallazgo.
 
 **Límites.** Un código no se conecta consigo mismo; una conexión no se duplica (sin dirección, A→B y B→A son equivalentes). Los **códigos de censura no pueden conectarse**: ocultan información y no son categorías analíticas.
 
@@ -803,8 +803,8 @@ Funciones:
 | **Frecuencia** | Cuántas veces se usó cada código |
 | **Nube** | Palabras de fragmentos codificados, con el color del código predominante |
 | **Coocurrencia** | Matriz de pares de códigos superpuestos |
+| **Código × Categoría** | Cruce con una categoría, como mapa de calor |
 | **Cobertura** | Porcentaje del corpus cubierto por cada código |
-| **Código × atributo** | Cruce con una categoría, como mapa de calor |
 | **Tiempo** | Distribución temporal, si hay categoría de fecha |
 | **Codificadores** | Producción y concordancia, solo en colectivos |
 
@@ -817,7 +817,7 @@ Funciones:
 
 Arriba están **Ver:** y **Top:** (10/25/50/Todos; en Nube, **Palabras:**).
 
-> **Del gráfico al texto.** Pulsa una **barra** (Frecuencia, Cobertura, Concordancia) o **celda** (Coocurrencia, Código × atributo) para abrir Lectura en ese código. Se conservan los filtros de categorías y **Ver:**, de modo que los fragmentos correspondan al conteo.
+> **Del gráfico al texto.** Pulsa una **barra** (Frecuencia, Cobertura, Concordancia) o **celda** (Coocurrencia, Código × Categoría) para abrir Lectura en ese código. Se conservan los filtros de categorías y **Ver:**, de modo que los fragmentos correspondan al conteo.
 
 ### Palabras ignoradas en la nube
 
@@ -1271,9 +1271,9 @@ Mapa del capítulo:
 
 ### 17.2 Autocodificación: cinco asistentes en pestañas
 
-![Autocodificación: asistentes arriba, selección de documentos y códigos a la izquierda, Configurar Prompt con tokens y costo estimado.](manual-img/09-ia-codificar.png)
+![Autocodificación, en la pestaña Sugerir Codificación: asistentes arriba, selección de documentos y códigos a la izquierda, Configurar Prompt con tokens y costo estimado.](manual-img/09-ia-codificar.png)
 
-Incluye **Sugerir Codificación** (inicial), **Repetir Codificación**, **Sugerir Categorización**, **Definir Categoría** y **Organizar Códigos**. El asistente **propone**, tú **apruebas/rechazas por elemento** y **confirmas antes de guardar**.
+Incluye **Repetir Codificación** (inicial), **Sugerir Codificación**, **Sugerir Categorización**, **Definir Categoría** y **Organizar Códigos**. El asistente **propone**, tú **apruebas/rechazas por elemento** y **confirmas antes de guardar**.
 
 > **Repetir Codificación no usa IA** ([17.2.5](#1725-repetir-codificación-sin-ia)): es mecánica, funciona sin clave ni conexión y permanece con IA desactivada. Por eso la pantalla se llama Autocodificación (antes de 1.4.37, Codificar Automáticamente). Las otras cuatro usan proveedor, memos/memoria como contexto y censura enmascarada. Si la respuesta llega truncada, se recuperan los elementos completos y se descarta el último incompleto.
 

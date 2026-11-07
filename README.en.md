@@ -129,7 +129,7 @@ One line per feature: this is the inventory. The **step by step** for each one i
 | **Coding** ("Codificação") | the reader with the highlights, plus the attribute and code panels |
 | **Reconciliation** ("Reconciliação") | *(collective)* groups overlapping codings, shows who agrees and consolidates the reference layer |
 | **Reading** ("Leitura") | re-read the result: the whole document with highlights in context, or every passage of one code |
-| **Charts** ("Gráficos") | frequency, word cloud, co-occurrence, coverage, code × attribute, time, and inter-coder agreement. Clicking a bar opens Reading at that code. Optional **bar textures** (hatching) to tell similar colors apart — useful for color blindness, and exported along in the SVG/PNG |
+| **Charts** ("Gráficos") | frequency, word cloud, co-occurrence, code × attribute, coverage, time, and inter-coder agreement. Clicking a bar opens Reading at that code. Optional **bar textures** (hatching) to tell similar colors apart — useful for color blindness, and exported along in the SVG/PNG |
 | **Memos** | analytic note per project, document, code **or passage**, shared and co-editable |
 | **Scheme** ("Esquema") | organize codes and attributes in bulk |
 | **Report** ("Relatório") | the publication hub (below) |
@@ -158,7 +158,7 @@ An **AI** badge in the header shows the state at all times — a **green** ring 
 
 | Feature | What it is |
 |---|---|
-| **Auto-coding** ("Auto-codificação") | five assistants: **Suggest Coding** (a second coder, recall) · **Suggest Attributes** (fills existing attributes) · **Define Attribute** (writes the instruction from the answers you already gave) · **Organize Codes** · **Repeat Coding** (this one **without AI**: finds exact occurrences). In all of them you approve or reject **item by item** and nothing is saved without confirmation; in the four AI ones, the model is what **proposes**. With AI off, the screen keeps only Repeat Coding |
+| **Auto-coding** ("Auto-codificação") | five assistants: **Repeat Coding** (this one **without AI**: finds exact occurrences; the screen opens on it) · **Suggest Coding** (a second coder, recall) · **Suggest Attributes** (fills existing attributes) · **Define Attribute** (writes the instruction from the answers you already gave) · **Organize Codes**. In all of them you approve or reject **item by item** and nothing is saved without confirmation; in the four AI ones, the model is what **proposes**. With AI off, the screen keeps only Repeat Coding |
 | **Analyze with AI** ("Analisar com IA") | a conversation about the material you select (documents, passages by code, or both), citing sources, with a selectable methodological stance and saved prompts |
 | **Explore with AI** ("Explorar com IA") *(experimental)* | the AI **asks for** the material instead of receiving a pre-cut selection, through read-only tools; **each call is shown on screen**, read from the data and not from the model's narration |
 | **Visible, editable prompt** | **⚙ Configure Prompt** ("Configurar Prompt") shows what will be sent, section by section, with the active model, the token estimate and the **cost** — before sending |

@@ -981,7 +981,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.83';
+const QUALILAB_VERSION = '1.4.85';
 // QUALILAB_SCHEMA_VERSION — a versao do BANCO que este app espera. Nao e a do app: muda so quando o
 // app passa a PRECISAR de algo novo no servidor (tabela, coluna, funcao que ele chama). O assistente
 // do servidor compara com o que a qualilab_server_check() do banco responde e, se o servidor estiver
@@ -3236,6 +3236,7 @@ const MSG_PT = {
   'docs.group.none': '(nenhum)',
   'docs.group.loading': 'carregando as categorias…',
   'docs.empty': 'Nenhum documento no projeto.',
+  'docs.loading': 'carregando os documentos…',
   'docs.noMatch': 'Nenhum documento com esse nome.',
   'docs.total': '{n} documento(s)',
   'docs.some': '{n} de {total} documentos',
@@ -3399,6 +3400,7 @@ const MSG_PT = {
   'codes.apply.noSel': '"{name}": selecione um trecho no texto para aplicar',
   'codes.aria': 'Códigos hierárquicos',
   'codes.empty': 'Nenhum código ainda. Comece por uma família.',
+  'codes.loading': 'Carregando os códigos…',
   'codes.keys': 'Botão direito num código: editar ou criar subcódigo, inclusive com um trecho selecionado. Pelo teclado: ↑↓ percorre, ←→ fecha/abre, Enter seleciona ou aplica.',
   'codes.memo': 'Verbete do código',
   'codes.memo.edit': 'Em leitura. Para editar, abra a aba ▤ Memos deste painel.',
@@ -3699,7 +3701,7 @@ const MSG_PT = {
   'chart.tab.cloud': 'Nuvem',
   'chart.tab.cooc': 'Co-ocorrência',
   'chart.tab.coverage': 'Cobertura',
-  'chart.tab.cross': 'Código × atributo',
+  'chart.tab.cross': 'Código × Categoria',
   'chart.tab.time': 'Tempo',
   'chart.tab.coders': 'Codificadores',
   'chart.hint.freq': 'Nº de trechos codificados com cada código.',
@@ -3964,6 +3966,8 @@ const MSG_PT = {
   // -- estado vazio da Codificacao --
   'empty.noDoc': 'Nenhum documento',
   'empty.noDoc.hint': 'Envie arquivos (.txt, .md, .docx, .pdf) ou cole um texto. O conteúdo é extraído e exibido aqui para codificação.',
+  'empty.loading': 'Carregando o projeto…',
+  'empty.loading.hint': 'Os documentos ainda estão chegando. Num corpus grande isso pode levar alguns segundos.',
   'empty.upload': 'enviar arquivo(s)…',
   'empty.example': 'experimentar com um corpus de exemplo',
   'empty.example.tip': 'Importa um corpus sintético pequeno para experimentar as telas. Dá para limpar depois em projeto → Limpar conteúdo.',
@@ -5953,6 +5957,7 @@ const MSG_EN = {
   'docs.group.none': '(none)',
   'docs.group.loading': 'loading attributes…',
   'docs.empty': 'No documents in this project.',
+  'docs.loading': 'loading documents…',
   'docs.noMatch': 'No document with that name.',
   'docs.total': '{n} document(s)',
   'docs.some': '{n} of {total} documents',
@@ -6116,6 +6121,7 @@ const MSG_EN = {
   'codes.apply.noSel': '“{name}”: select a passage in the text to apply it',
   'codes.aria': 'Hierarchical codes',
   'codes.empty': 'No codes yet. Start with a family.',
+  'codes.loading': 'Loading codes…',
   'codes.keys': 'Right-click a code: edit it or create a subcode, including with a passage selected. From the keyboard: ↑↓ moves, ←→ closes/opens, Enter selects or applies.',
   'codes.memo': 'Code definition',
   'codes.memo.edit': 'Read-only here. To edit it, open the ▤ Memos tab of this panel.',
@@ -6416,7 +6422,7 @@ const MSG_EN = {
   'chart.tab.cloud': 'Word cloud',
   'chart.tab.cooc': 'Co-occurrence',
   'chart.tab.coverage': 'Coverage',
-  'chart.tab.cross': 'Code × attribute',
+  'chart.tab.cross': 'Code × Attribute',
   'chart.tab.time': 'Time',
   'chart.tab.coders': 'Coders',
   'chart.hint.freq': 'Number of codings for each code.',
@@ -6681,6 +6687,8 @@ const MSG_EN = {
   // -- empty state of the Coding screen --
   'empty.noDoc': 'No document',
   'empty.noDoc.hint': 'Upload files (.txt, .md, .docx, .pdf) or paste some text. The content is extracted and shown here for coding.',
+  'empty.loading': 'Loading the project…',
+  'empty.loading.hint': 'The documents are still arriving. With a large corpus this can take a few seconds.',
   'empty.upload': 'upload file(s)…',
   'empty.example': 'try it with an example corpus',
   'empty.example.tip': 'Imports a small synthetic corpus so you can try the screens out. You can clear it later under project → Clear content.',
@@ -8637,6 +8645,7 @@ const MSG_ES = {
   'docs.group.none': '(ninguno)',
   'docs.group.loading': 'cargando las categorías…',
   'docs.empty': 'No hay ningún documento en el proyecto.',
+  'docs.loading': 'cargando los documentos…',
   'docs.noMatch': 'Ningún documento con ese nombre.',
   'docs.total': '{n} documento(s)',
   'docs.some': '{n} de {total} documentos',
@@ -8800,6 +8809,7 @@ const MSG_ES = {
   'codes.apply.noSel': '"{name}": selecciona un fragmento del texto para aplicarlo',
   'codes.aria': 'Códigos jerárquicos',
   'codes.empty': 'Todavía no hay códigos. Empieza por una familia.',
+  'codes.loading': 'Cargando los códigos…',
   'codes.keys': 'Botón derecho sobre un código: editar o crear subcódigo, incluso con un fragmento seleccionado. Con el teclado: ↑↓ recorre, ←→ cierra/abre, Enter selecciona o aplica.',
   'codes.memo': 'Definición del código',
   'codes.memo.edit': 'En lectura. Para editar, abre la pestaña ▤ Memos de este panel.',
@@ -9100,7 +9110,7 @@ const MSG_ES = {
   'chart.tab.cloud': 'Nube',
   'chart.tab.cooc': 'Coocurrencia',
   'chart.tab.coverage': 'Cobertura',
-  'chart.tab.cross': 'Código × atributo',
+  'chart.tab.cross': 'Código × Categoría',
   'chart.tab.time': 'Tiempo',
   'chart.tab.coders': 'Codificadores',
   'chart.hint.freq': 'N.º de fragmentos codificados con cada código.',
@@ -9365,6 +9375,8 @@ const MSG_ES = {
   // -- Coding empty state --
   'empty.noDoc': 'Ningún documento',
   'empty.noDoc.hint': 'Sube archivos (.txt, .md, .docx, .pdf) o pega un texto. El contenido se extrae y se muestra aquí para codificarlo.',
+  'empty.loading': 'Cargando el proyecto…',
+  'empty.loading.hint': 'Los documentos todavía están llegando. Con un corpus grande esto puede tardar unos segundos.',
   'empty.upload': 'subir archivo(s)…',
   'empty.example': 'probar con un corpus de ejemplo',
   'empty.example.tip': 'Importa un corpus sintético pequeño para probar las pantallas. Se puede vaciar después en proyecto → Vaciar contenido.',
@@ -18875,8 +18887,10 @@ const CTXNEW_INITIAL = { criando: false, nome: '', pai: null, query: '', hi: 0, 
    razao das outras — e porque a catraca do check_structure conta useState, e estado de
    conveniencia nao deve consumi-la.
    `codeFilter` (set/2026) e o filtro de codigo dos dois leitores, {pid, ids}: o `pid` e o que o faz
-   valer so no projeto em que foi escolhido, sem um efeito de "zerar ao trocar de projeto". */
-const UI_INITIAL = { paleta: false, atalhos: false, toast: null, aggBusy: false, codeFilter: null };
+   valer so no projeto em que foi escolhido, sem um efeito de "zerar ao trocar de projeto".
+   `carga` (1.4.85) e {docs, codes}: o id do projeto cuja lista ja chegou, pela mesma razao do
+   `pid` acima (ver `loadProjectLists`, em hooks.js). */
+const UI_INITIAL = { paleta: false, atalhos: false, toast: null, aggBusy: false, codeFilter: null, carga: { docs: null, codes: null } };
 
 /* DUAS AREAS QUE NAO VIRARAM REDUCER, e o motivo e o mesmo nas duas: elas nao AGRUPAM campos,
    elas ESCOLHEM entre alternativas. Um `useState` com um discriminante ja torna o estado
@@ -19593,6 +19607,45 @@ function useActivity({ store, project, phase, mainView }){
   }, [store, project, visible, loadActivity]);
   return { activity, activityError, loadActivity, logActivity };
 }
+
+/* ABRIR O PROJETO: CADA LISTA ENTRA NA TELA QUANDO CHEGA (1.4.85). Era um Promise.all das tres
+   (documentos, categorias, codigos), e a tela so mudava quando a ULTIMA chegava. A ultima e
+   sempre a de documentos, porque ela traz o TEXTO de cada um: medido num projeto real da nuvem,
+   141 documentos sao 16,8 MB de JSON contra 20 KB de codigos, e o banco responde as duas em
+   ~50 ms -- a espera e toda de rede. Enquanto ela durava, o Esquema dizia "0 codigo(s)" e a
+   Codificacao mostrava o convite de projeto VAZIO, com "experimentar com um corpus de exemplo"
+   a um clique de importar o corpus sintetico dentro do projeto real. Carregando e vazio tinham
+   a mesma cara (M6) -- o defeito que o `aggBusy` ja tinha resolvido nas telas agregadas.
+   `ui.carga` guarda DE QUE PROJETO cada lista ja chegou: o id, e nao um booleano, para o
+   primeiro quadro (antes de o efeito rodar) e a troca de projeto tambem contarem como
+   carregando, sem efeito de "zerar" (a mesma razao do `codeFilter` e do `aggCarregadoRef`).
+   O vazio so e afirmado depois que a lista do projeto ABERTO chegou vazia.
+   O TOKEN (`seq.proj`) descarta a resposta de uma carga que ja nao e a ultima: com megabytes em
+   transito, trocar de projeto no meio deixava a lista velha cair por cima da nova. A recarga do
+   MESMO projeto (depois de uma escrita) passa pelo mesmo token, e ali o efeito tambem e o certo:
+   vale a mais recente.
+   FALHA NAO MARCA: a tela segue "carregando" e o banner do guard global diz o que houve, em vez
+   de afirmar projeto vazio sobre uma leitura que falhou. A promessa so resolve depois das tres,
+   como antes, porque os chamadores de recarga (`reloadWrite`, troca de modo) contam com isso. */
+async function loadProjectLists(st, pid, { setDocs, setCats, setCodes, setActiveId, mudaUi, seq }){
+  const tok = ++seq.proj;
+  const vale = ()=> tok === seq.proj;
+  const marca = (k)=> mudaUi({ carga: c=>({ ...c, [k]:pid }) });
+  const cats = st.listCategories(pid).then(c=>{ if(vale()) setCats(c); });
+  const codes = st.listCodes(pid).then(k=>{ if(vale()){ setCodes(k); marca('codes'); } });
+  const docs = st.listDocuments(pid).then(d=>{
+    if(!vale()) return;
+    setDocs(d); marca('docs');
+    // ABRE O PRIMEIRO DA LISTA QUE A PESSOA VE (DocsNav ordena por nome), e nao o primeiro que
+    // o store devolveu: num projeto IMPORTADO na nuvem os documentos empatam no created_at
+    // (medido num real: 80 documentos, DOIS carimbos), entao `d[0]` era um do meio do corpus --
+    // o app abria um documento que ninguem codificou e o leitor aparecia sem grifo, o que se le
+    // como perda de dado. Limite: se a pessoa trocou a ordenacao do DocsNav, o topo e outro (a
+    // preferencia e dele, no localStorage); casar com o PADRAO cobre o caso comum.
+    setActiveId(a => a && d.find(x=>x.id===a) ? a : (docsByName(d)[0]?.id || null));
+  });
+  await Promise.all([docs, cats, codes]);
+}
 /* ============================== APP ============================== */
 function App(){
   const wantCloud = !!(SUPABASE_URL && SUPABASE_ANON_KEY) && !FORCE_LOCAL;
@@ -19996,7 +20049,7 @@ function App(){
   useEffect(()=>{ if(phase==='gate' || account) loadMyProjects(); }, [phase, account, loadMyProjects]);
 
   const openProject = (p)=>{
-    setProject(p); setMemos([]); setProjectMode(p.mode||'collective');   // memos belong to ONE project: a failed load must never leave the previous one's in place
+    setProject(p); setMemos([]); setDocs([]); setCats([]); setCodes([]); setProjectMode(p.mode||'collective');   // memos, documents, codes and categories belong to ONE project: a failed load must never leave the previous one's in place
     // recorte "Ver:" volta ao padrão (individuais de todos) ao entrar num projeto
     setViewCoder('all');
   };
@@ -20060,18 +20113,10 @@ function App(){
   const { recoverExpired, setRecoverExpired, pendingFile, setPendingFile } =
     useBoot({ wantCloud, setStore, setMode, setUser, setPhase, onError: setErr, openProject, afterAuth });
 
-  /* carregar projeto */
-  const loadProject = useCallback(async (st, pid)=>{
-    const [d,c,k] = await Promise.all([st.listDocuments(pid), st.listCategories(pid), st.listCodes(pid)]);
-    setDocs(d); setCats(c); setCodes(k);
-    // ABRE O PRIMEIRO DA LISTA QUE A PESSOA VE (DocsNav ordena por nome), e nao o primeiro que
-    // o store devolveu: num projeto IMPORTADO na nuvem os documentos empatam no created_at
-    // (medido num real: 80 documentos, DOIS carimbos), entao `d[0]` era um do meio do corpus —
-    // o app abria um documento que ninguem codificou e o leitor aparecia sem grifo, o que se le
-    // como perda de dado. Limite: se a pessoa trocou a ordenacao do DocsNav, o topo e outro (a
-    // preferencia e dele, no localStorage); casar com o PADRAO cobre o caso comum.
-    setActiveId(a => a && d.find(x=>x.id===a) ? a : (docsByName(d)[0]?.id || null));
-  }, []);
+  /* carregar projeto: cada lista entra na tela quando chega, e `carregando` diz qual ainda nao
+     chegou para o projeto aberto (o porque esta no comentario de `loadProjectLists`, em hooks.js) */
+  const loadProject = useCallback((st, pid)=> loadProjectLists(st, pid, { setDocs, setCats, setCodes, setActiveId, mudaUi, seq:reqSeqRef.current }), []);
+  const carregando = { docs: ui.carga.docs!==project?.id, codes: ui.carga.codes!==project?.id };
   useEffect(()=>{ if(store && project && phase==='work') loadProject(store, project.id); }, [store, project, phase, loadProject]);
 
   /* papel do usuário no projeto (admin/member) */
@@ -20151,7 +20196,7 @@ function App(){
      concorrente) podia fazer a resposta VELHA chegar depois e ancorar codings do doc A
      sobre o texto do doc B. Só a resposta mais recente aplica o estado; dados idênticos
      não trocam a referência (sameJson) pra não invalidar os useMemo do leitor. */
-  const reqSeqRef = useRef({ doc:0, all:0 });
+  const reqSeqRef = useRef({ doc:0, all:0, proj:0 });
   const loadDoc = useCallback(async ()=>{
     if(!store || !project || !activeId){ setValues([]); setCodings([]); return; }
     const tok = ++reqSeqRef.current.doc;
@@ -22057,7 +22102,7 @@ function App(){
               style="width:100%;max-width:520px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block"
               title=${docs.length===0?t('doc.noneInProject'):t('doc.pick.tip')}
               onClick=${()=>{ if(menu!=='docs') loadNavValues(); alternaMenu('docs'); }}>
-              ${docs.length===0 ? t('doc.none')
+              ${docs.length===0 ? (carregando.docs ? t('docs.loading') : t('doc.none'))
                 : (activeHealth && !activeHealth.ok ? '⚠︎ ' : '▤ ')+(activeDoc?.name||t('doc.pick'))+' ▾'}
             </button>
             ${(menu==='docs') && html`<div>
@@ -22065,7 +22110,7 @@ function App(){
               ${/* left:0 porque este botao fica na borda ESQUERDA da barra (mesmo caso do "＋ enviar";
                     o right:0 padrao do .exmenu faria o popover crescer pra fora da tela) */''}
               <div class="exmenu" style="left:0;right:auto;width:430px;max-width:calc(100vw - 24px);max-height:min(70vh,560px);display:flex;flex-direction:column">
-                <${DocsNav} docs=${docs} activeId=${activeId} health=${docHealth}
+                <${DocsNav} docs=${docs} activeId=${activeId} health=${docHealth} carregando=${carregando.docs}
                   cats=${cats} allValues=${navVals.rows || allValues} valuesLoading=${navVals.loading}
                   prefs=${docsNavPrefs} onPrefs=${setDocsNavPrefs}
                   autoFocus=${true} onClose=${()=>setMenu(null)}
@@ -22176,7 +22221,8 @@ function App(){
         </div>`}
         <div style="position:relative;flex:1;min-height:0;display:flex;flex-direction:column">
         <div class="pane-body scroll reader-pane theme-${readerPrefs.theme} width-${readerPrefs.width}" ref=${readerRef}>
-          ${!activeDoc ? html`<div class="empty"><div class="t">${t('empty.noDoc')}</div>
+          ${!activeDoc && carregando.docs ? html`<div class="empty"><div class="t">${t('empty.loading')}</div><div>${t('empty.loading.hint')}</div></div>`
+          : !activeDoc ? html`<div class="empty"><div class="t">${t('empty.noDoc')}</div>
             <div>${t('empty.noDoc.hint')}</div>
             ${can('add_docs') && !(projRestrict && !isAdmin) && html`<div class="row" style="justify-content:center;gap:8px;margin-top:16px;flex-wrap:wrap">
               <button class="btn sm primary" onClick=${()=>uploadInputRef.current?.click()}>${t('empty.upload')}</button>
@@ -22226,7 +22272,7 @@ function App(){
                  dragCatId=${dragCatId} setDragCatId=${setDragCatId} onReorder=${reorderCategories} />`}
           ${rtab==='codigos' && html`<${CodesPanel} codes=${codes} codeById=${codeById} count=${codingCount} sel=${sel}
                  selCode=${selCode} setSelCode=${setSelCode} codePath=${codePath}
-                 checklist=${{ docs:docs.length>0, codes:codes.length>0, coded:codings.length>0 }} memos=${memos}
+                 checklist=${!carregando.docs && !carregando.codes && { docs:docs.length>0, codes:codes.length>0, coded:codings.length>0 }} memos=${memos} carregando=${carregando.codes}
                  recentCodes=${recentCodesRef.current.map(id=>codeById[id]).filter(Boolean)}
                  onAdd=${addCodeUI} onDel=${adminUI && !readOnly ? delCode : null} onApply=${applyCode} onUpd=${updCode} onSetColor=${setCodeColor} onSetSat=${setCodeSat} onSetRedaction=${setCodeRedaction} isAdmin=${adminUI && !readOnly} readOnly=${!can('code')} canEditCodes=${can('edit_codes')}
                  onCodeContext=${(code,x,y)=>setCodeCtx({code,x,y})}
@@ -22284,7 +22330,7 @@ function App(){
     : mainView==='graficos' ? html`<div class="split">
       <!-- GRAFICOS: explorador (gráfico SVG + painel de trechos), o split vive no componente -->
       <${ChartsPanel} docs=${docs} cats=${cats} codes=${codes}
-        codeById=${codeById} codePath=${codePath} loading=${ui.aggBusy}
+        codeById=${codeById} codePath=${codePath} loading=${ui.aggBusy || carregando.docs}
         project=${project} memos=${memos} onSetMemo=${saveMemo}
         view=${viewCoder} onView=${setViewCoder} coders=${coders} userId=${user?.id} mode=${mode}
         allCodings=${allCodings} allValues=${allValues} projectMode=${projectMode}
@@ -22344,7 +22390,7 @@ function App(){
           <button class=${esquemaTab==='categorias'?'on':''} onClick=${()=>setEsquemaTab('categorias')}>⍞ ${t('tab.categories')}</button>
         </div>
       </div>
-      ${esquemaTab==='codigos' && html`<${SchemaCodesView} codes=${codes} codeById=${codeById} codePath=${codePath} count=${schemaCodingCount}
+      ${esquemaTab==='codigos' && html`<${SchemaCodesView} codes=${codes} codeById=${codeById} codePath=${codePath} count=${schemaCodingCount} carregando=${carregando.codes}
              isAdmin=${isAdmin} store=${store} project=${project} reload=${reloadWrite} loadAll=${loadAll}
              allCodings=${allCodings} cats=${cats} selCode=${selCode} setSelCode=${setSelCode} onUpd=${updCode} onSetColor=${setCodeColor} onSetSat=${setCodeSat} onSetRedaction=${setCodeRedaction}
              onAdd=${addCode} onDel=${delCode} onLog=${logAct} onSnapshot=${snapshotBefore} canEditCodes=${can('edit_codes')} />`}
@@ -22435,7 +22481,7 @@ function App(){
               sub-aba Trechos, os Gráficos, os Memos e o Relatório). AQUI vão morar as pastas por
               categoria — hoje o agrupar do DocsNav é o esboço da ideia (ver o item do to-do). */''}
         <section class="pane" style="flex:0 0 var(--pane-side);min-width:0;background:var(--surface)">
-          <${DocsNav} docs=${docs} activeId=${vizDoc?.id} onPick=${id=>setVizSelDoc(id)}
+          <${DocsNav} docs=${docs} activeId=${vizDoc?.id} onPick=${id=>setVizSelDoc(id)} carregando=${carregando.docs}
             health=${docHealth} counts=${vizCountByDoc} pageCount=${docPageCount}
             cats=${cats} allValues=${allValues} prefs=${docsNavPrefs} onPrefs=${setDocsNavPrefs} />
         </section>
@@ -22470,7 +22516,7 @@ function App(){
       <section class="pane" style="flex:1;min-width:0;background:var(--paper)">
         <div class="pane-body scroll" style="padding:0">
           <${VizExcerpts} docs=${docs} codes=${codes} codeById=${codeById} codePath=${codePath}
-            allCodings=${allCodings} allValues=${allValues} memos=${memos} loading=${ui.aggBusy}
+            allCodings=${allCodings} allValues=${allValues} memos=${memos} loading=${ui.aggBusy || carregando.docs}
             view=${viewCoder} catFilter=${vizCatFilter} selCode=${vizSelCode}
             userId=${user?.id} pageOf=${docPageOf}
             crossCodes=${vizCross} setCrossCodes=${setVizCross}
@@ -26107,7 +26153,7 @@ function ConvertToFamilyModal({ parent, childName, codings, onCancel, onConfirm 
   </div></div>`;
 }
 
-function CodesPanel({ codes, codeById, count, sel, selCode, setSelCode, codePath, onAdd, onDel, onApply, onUpd, onSetColor, onSetSat, onSetRedaction, isAdmin, readOnly, canEditCodes, store, project, reload, onCodeContext, checklist, memos, recentCodes }){
+function CodesPanel({ codes, codeById, count, sel, selCode, setSelCode, codePath, onAdd, onDel, onApply, onUpd, onSetColor, onSetSat, onSetRedaction, isAdmin, readOnly, canEditCodes, store, project, reload, onCodeContext, checklist, memos, recentCodes, carregando }){
   // REGRAS POR PAPEL: criar codigo e uma capacidade propria (edit_codes); sem a prop, cai no readOnly de antes
   const podeCriar = canEditCodes===undefined ? !readOnly : !!canEditCodes;
   const treeKeys = useTreeKeys();
@@ -26154,7 +26200,7 @@ ${podeCriar && html`<div class="row" style="gap:6px;margin-bottom:10px;flex-wrap
     </div>`}
 
     <div class="tree" role="tree" aria-label=${t('codes.aria')} ref=${treeKeys.ref} onKeyDown=${treeKeys.onKeyDown}>
-      ${tops.length===0 && html`<span class="meta">${t('codes.empty')}</span>`}
+      ${tops.length===0 && html`<span class="meta">${carregando ? t('codes.loading') : t('codes.empty')}</span>`}
       ${tops.map(n=>html`<${TreeNode} key=${n.id} code=${n} childrenOf=${childrenOf} count=${count}
           sel=${sel} selCode=${selCode} setSelCode=${setSelCode} onApply=${onApply} onDel=${onDel}
           onCodeContext=${onCodeContext}
@@ -26825,7 +26871,7 @@ function docsNavGroups(docs, opts, ctx){
    A preferência (ordenar/agrupar) mora no localStorage, como readerPrefs: é navegação do
    usuário, não decisão metodológica do estudo — não vai pro projeto. */
 function DocsNav({ docs, activeId, onPick, health, counts, pageCount, cats, allValues,
-                   prefs, onPrefs, autoFocus, onClose, valuesLoading }){
+                   prefs, onPrefs, autoFocus, onClose, valuesLoading, carregando }){
   const [q, setQ] = useState('');
   const [hi, setHi] = useState(0);              // índice destacado (setas ↑↓ + Enter)
   const [closed, setClosed] = useState(()=>new Set());
@@ -26914,7 +26960,7 @@ function DocsNav({ docs, activeId, onPick, health, counts, pageCount, cats, allV
     </div>
     <div class="tree scroll" style="flex:1;overflow-y:auto;padding:4px 6px;min-height:0">
       ${flat.length===0 && html`<span class="meta" style="padding:14px 8px;display:block">
-        ${docs.length===0 ? t('docs.empty') : t('docs.noMatch')}</span>`}
+        ${docs.length===0 ? (carregando ? t('docs.loading') : t('docs.empty')) : t('docs.noMatch')}</span>`}
       ${groups.map(g=>{
         if(g.label==null) return g.docs.map(d=>row(d, ++n));
         const shut = closed.has(g.key);
@@ -27691,7 +27737,7 @@ function OcrReviewModal({ text, img, onApply, onCancel }){
    Reaproveita RenameCode (definido mais abaixo, perto de TreeNode) mas NAO toca em
    CodesPanel/TreeNode — o painel da tela de Codificacao continua intocado de proposito. */
 function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, project, reload, loadAll,
-                            allCodings, cats, selCode, setSelCode, onUpd, onSetColor, onSetSat, onSetRedaction, onAdd, onDel, onLog, onSnapshot, canEditCodes }){
+                            allCodings, cats, selCode, setSelCode, onUpd, onSetColor, onSetSat, onSetRedaction, onAdd, onDel, onLog, onSnapshot, canEditCodes, carregando }){
   /* §9 do item R: o confirm de exclusao DIZ quantas conexoes vao junto. Nao e zelo — sem isso o
      links_gc apaga em silencio, que e o pior modo de falha do repo. A contagem e assincrona
      (le do cache do modulo, ou pergunta ao store), entao o confirm espera por ela. */
@@ -27988,7 +28034,7 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
         </div>
         ${busy && html`<div class="banner warn">${t('sch.applying')}</div>`}
         <div class="tree" role="tree" aria-label=${t('sch.aria')} ref=${treeKeys.ref} onKeyDown=${treeKeys.onKeyDown}>
-          ${tops.length===0 && html`<span class="meta">${t('codes.empty')}</span>`}
+          ${tops.length===0 && html`<span class="meta">${carregando ? t('codes.loading') : t('codes.empty')}</span>`}
           ${!filtered && tops.map(n=>html`<${SchemaTreeNode} key=${n.id} code=${n} childrenOf=${childrenOf} count=${count}
               selCode=${selCode} setSelCode=${setSelCode} selectedIds=${selectedIds} onToggleSelect=${podeEditar ? toggleSelect : null} onDel=${excluir} depthPad=${0}
               dragId=${dragId} setDragId=${setDragId} overId=${overId} setOverId=${setOverId}
@@ -28051,7 +28097,7 @@ function SchemaCodesView({ codes, codeById, codePath, count, isAdmin, store, pro
           ${podeEditar && html`<button class="btn sm ghost" onClick=${()=>mapApiRef.current.reshuffle?.()} title=${t('sch.shuffle.tip')}>${t('sch.shuffle')}</button>`}
           <button class="btn sm ghost" onClick=${()=>setMapShowLinks(v=>!v)} title=${t('sch.links.tip')}>${mapShowLinks?'☑':'☐'} ${t('sch.links')}</button>
         </div>`}
-        <span class="meta" style="margin-left:auto">${t('sch.nCodes',{n:codes.length})}</span>
+        <span class="meta" style="margin-left:auto">${carregando ? '…' : t('sch.nCodes',{n:codes.length})}</span>
       </div>
       ${notice && html`<div class="banner warn" style="margin:10px 14px 0;display:flex;gap:8px;align-items:flex-start;flex:none">
         <span style="flex:1">${notice}</span>
@@ -28473,7 +28519,7 @@ function reconcileGroups(indiv){
 
    O QUE ESTA SECCAO NAO E (vai no MANUAL, e e a distincao que importa): ela e uma ANOTACAO
    DECLARATIVA — a hipotese do pesquisador, com nome e autor. Ela NAO mede nada: quem mede
-   associacao empirica e a Co-ocorrencia e o Codigo x atributo dos Graficos. */
+   associacao empirica e a Co-ocorrencia e o Codigo x Categoria dos Graficos. */
 
 const LINKS_CACHE = new Map();   // project_id -> Promise<{ links, relations }>
 // teto do seletor de evidencia: um codigo muito usado tem centenas de trechos, e um <select>
@@ -30066,7 +30112,9 @@ function svgWordCloud(items, opt={}){
    Uma aba = um gráfico por vez (.seg), desenhado em SVG (exportável PNG/SVG),
    com painel de trechos à direita: clicar numa barra/célula abre as codificações
    daquele recorte no VizExcerpts (mesma leitura da aba Leitura). Abas:
-   freq · co-ocorrência · cobertura · código×atributo · tempo. */
+   freq · nuvem · co-ocorrência · código×categoria · cobertura · tempo · codificadores.
+   Código × Categoria vem COLADA na Co-ocorrência (pedido do autor, 1.4.84): as duas são as
+   que medem associação, e a aba do conceito se chama Categoria no resto do app. */
 function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allValues, projectMode,
                        view, onView, coders, userId, mode, isAdmin, onDelCoding, onAccept, onJump, darkMode, onOpenCode,
                        project, memos, onSetMemo, loading }){
@@ -30230,7 +30278,7 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
     return { rows: rows.map(id=>({ id, label:codeLabelOf(id) })), cols, m, max };
   }, [freqItems, codingsByDoc, coocX, coocY, codePath]);
 
-  // ---- código × atributo (heatmap): valor consolidado (gabarito) por documento
+  // ---- código × categoria (heatmap): valor consolidado (gabarito) por documento
   const finalVal = (docId,cId)=>{ const f=allValues.find(v=>v.document_id===docId && v.category_id===cId && v.layer==='final'); return f?f.value:null; };
   const splitVals = (val)=> val==null ? [t('chart.noValue')] : String(val).split(CAT_MULTI_SEP).filter(Boolean);
   const crossTab = useMemo(()=>{
@@ -30272,7 +30320,7 @@ function ChartsPanel({ docs, cats, codes, codeById, codePath, allCodings, allVal
   }, [indiv, codes, codePath]);
 
   const empty = allCodings.length===0 && (allValues||[]).length===0;
-  const TABS = [['freq',t('chart.tab.freq')],['nuvem',t('chart.tab.cloud')],['cooc',t('chart.tab.cooc')],['cobertura',t('chart.tab.coverage')],['cruz',t('chart.tab.cross')]];
+  const TABS = [['freq',t('chart.tab.freq')],['nuvem',t('chart.tab.cloud')],['cooc',t('chart.tab.cooc')],['cruz',t('chart.tab.cross')],['cobertura',t('chart.tab.coverage')]];
   if(dateCats.length) TABS.push(['tempo',t('chart.tab.time')]);
   if(!isIndividual) TABS.push(['coders',t('chart.tab.coders')]);
 
@@ -33794,9 +33842,11 @@ function IAOrganizarPanel({ onLog, onSnapshot, project, docs, codes, codeById, c
 function IACodificarPanel(props){
   // A aba "Repetir Codificação" NAO usa IA (dai o painel ter deixado de se chamar "Codificar
   // com IA"): ela e mecanica, so procura texto identico ao dos trechos que o codigo ja tem.
+  // Ela vem PRIMEIRO e e a que abre (pedido do autor, nov/2026, 1.4.84): e a unica que a tela
+  // tem em comum com a IA fechada, e a que o manual manda usar para estender a censura.
   const TODAS = [
-    { id:'codificar',   label:t('tab.suggestCoding') },
     { id:'repetir',     label:t('tab.repeatCoding') },
+    { id:'codificar',   label:t('tab.suggestCoding') },
     { id:'categorizar', label:t('tab.suggestAttrs') },
     // "Definir Categoria" fica COLADA na Categorizacao, e nao no fim, porque as duas sao o
     // mesmo laco visto de dois lados: uma escreve a instrucao a partir do que voce ja
@@ -33810,7 +33860,7 @@ function IACodificarPanel(props){
      cuidado que o gate do ternario da App tinha quando esta tela sumia inteira. O estado
      escolhido fica guardado, entao reabrir a IA devolve a aba em que a pessoa estava. */
   const TABS = props.aiLock ? TODAS.filter(ab=>ab.id==='repetir') : TODAS;
-  const [escolhida, setTab] = useState('codificar');
+  const [escolhida, setTab] = useState('repetir');
   const tab = props.aiLock ? 'repetir' : escolhida;
   // Cada sub-painel renderiza a propria barra do topo [⚙ configurar prompt][seg de abas],
   // espelhando o IAAnalisarPanel — por isso o wrapper so segura o estado das abas e repassa
