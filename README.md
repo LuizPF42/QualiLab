@@ -32,7 +32,7 @@ QualiLab é uma ferramenta **gratuita e de código aberto** para análise qualit
 
 > **Antes de usar com dados reais.** O QualiLab é um projeto pessoal, em desenvolvimento ativo, distribuído sob licença MIT, sem garantia de qualquer tipo, e ainda não passou por auditoria de segurança independente. Ele também **não anonimiza** o seu material: a censura mascara só o que você marcou à mão, e só em algumas saídas. Para onde cada modo de uso leva os seus dados, veja [Onde os seus dados ficam](#onde-os-seus-dados-ficam); o que a ferramenta não faz por você está em [Limites e responsabilidade](#limites-e-responsabilidade).
 >
-> **Isenção.** O QualiLab é um projeto pessoal de [Luiz Pimenta Filho](https://orcid.org/0000-0002-5165-6232), no âmbito do [LabDados / FGV Direito SP](https://direitosp.fgv.br/nucleos-de-pesquisa/laboratorio-dados-pesquisa-empirica-direito-labdados). Não representa posição nem implica responsabilidade de qualquer instituição (incluindo a FGV). O autor não se responsabiliza por perda de dados, vazamento, uso indevido ou outras consequências do uso do software; cabe a quem usa adotar as cautelas éticas e legais que a sua pesquisa exige.
+> **Isenção.** O QualiLab é um projeto de [Luiz Pimenta Filho](https://orcid.org/0000-0002-5165-6232), no âmbito do [LabDados / FGV Direito SP](https://direitosp.fgv.br/nucleos-de-pesquisa/laboratorio-dados-pesquisa-empirica-direito-labdados). Não representa posição nem implica responsabilidade de qualquer instituição (incluindo a FGV). O autor não se responsabiliza por perda de dados, vazamento, uso indevido ou outras consequências do uso do software; cabe a quem usa adotar as cautelas éticas e legais que a sua pesquisa exige.
 
 <sub>A **versão em uso** aparece na barra de status, no rodapé do próprio app, e na tela de entrada. Cite esse número ao relatar um problema: sem ele não há como saber qual build o seu navegador carregou.</sub>
 
@@ -215,15 +215,6 @@ O QualiLab opera em três modos, escolhidos na **tela de entrada** (ou reabertos
 
 Arquivo e nuvem são as opções de trabalho de verdade; o **rascunho** é a entrada sem fricção (um clique, zero configuração), mas **efêmero**: os dados ficam só naquele navegador e somem se você limpar os dados do site. Por isso um aviso discreto abaixo do cabeçalho sugere, a qualquer momento, **salvar como arquivo** ou **conectar à nuvem** (a migração é de um clique no hub do projeto, sem exportar/importar). Um arquivo já aberto **reabre sozinho** na próxima sessão (com a permissão do navegador); "Sair deste arquivo" no hub volta à tela de entrada.
 
-### Modo arquivo: para dados sensíveis
-
-No modo arquivo, o projeto é salvo como um arquivo `.qualilab` (JSON) **visível no sistema de arquivos**: em qualquer pasta, HD externo, volume criptografado ou servidor institucional. Nada do projeto sai pela rede (a não ser o que você mandar à IA, se ela estiver ativada), e nada fica no `localStorage`. Funciona offline; as bibliotecas de PDF, Word, OCR e planilha só precisam de rede no primeiro uso de cada uma, e no aplicativo instalado ficam guardadas depois.
-
-- Disponível em **Chrome e Edge** (File System Access API). Firefox e Safari usam o rascunho.
-- Na tela inicial, clique em **"Novo arquivo…"** ou **"Abrir arquivo…"** para começar.
-- O app reabre automaticamente o último arquivo na próxima sessão (com permissão do navegador).
-- Ideal para entrevistas clínicas, dados judiciais, pesquisas com aprovação de CEP que exijam ambiente air-gapped.
-
 ### Modo rascunho: backup automático em pasta
 
 No modo rascunho (`localStorage`, limite de ~5 MB), você pode ativar um **backup automático**: o app passa a manter um arquivo `backup-automatico.qualilab` sempre atualizado numa pasta do seu computador, por exemplo a mesma pasta onde está o `index.html`. É um espelho redundante, **não** o mesmo que o modo arquivo (que grava direto no disco como armazenamento principal): continua salvando no navegador normalmente, e também escreve esse arquivo em segundo plano a cada mudança (com uma pequena pausa antes de gravar, maior em projetos grandes, pra não travar a aba). Para virar modo arquivo de verdade (pílula verde), use **"Salvar como arquivo"** no hub do projeto.
@@ -231,14 +222,23 @@ No modo rascunho (`localStorage`, limite de ~5 MB), você pode ativar um **backu
 - Ative em **pílula do projeto → Backup automático em pasta → Escolher pasta…** (disponível em Chrome e Edge).
 - Se o app não conseguir salvar de verdade (`localStorage` cheio, navegador sem suporte), um aviso vermelho aparece na tela com um atalho pra baixar o projeto na hora; isso não depende do backup automático estar ativado.
 
+### Modo arquivo: para dados sensíveis
+
+No modo arquivo, o projeto é salvo como um arquivo `.qualilab` (JSON) **visível no sistema de arquivos**: em qualquer pasta, HD externo, volume criptografado ou servidor institucional. Nada do projeto sai pela rede (a não ser o que você mandar à IA, se ela estiver ativada), e nada fica no `localStorage`. Funciona offline; as bibliotecas de PDF, Word, OCR e planilha só precisam de rede no primeiro uso de cada uma, e no aplicativo instalado ficam guardadas depois.
+
+- Disponível em **Chrome e Edge** (File System Access API). Firefox e Safari usam o rascunho.
+- Na tela inicial, clique em **"Novo arquivo…"** ou **"Abrir arquivo…"** para começar.
+- O app reabre automaticamente o último arquivo na próxima sessão (com permissão do navegador).
+- Ideal para entrevistas clínicas, dados privados, pesquisas com aprovação de Conselho de Ética em Pesquisas com Seres Humanos que exijam ambiente air-gapped.
+
 ### Modo nuvem: a nuvem é do seu grupo
 
-A nuvem do QualiLab mudou de formato: em vez de um servidor único para todo mundo, **cada grupo tem o seu**, num projeto Supabase de uma conta de vocês. **Esse formato prioriza a privacidade e a propriedade dos dados de pesquisa de cada usuário.** O banco pertence a quem pesquisa, as chaves ficam com quem vocês autorizarem, e o material não passa pelo autor do QualiLab nem fica com ele.
+A nuvem do QualiLab mudou de formato: em vez de um servidor único para todo mundo, **cada grupo tem o seu**, num projeto Supabase de uma conta de cada grupo. **Esse formato prioriza a privacidade e a propriedade dos dados de pesquisa de cada usuário.** O banco pertence a quem pesquisa, as chaves ficam com quem for autorizado, e o material não passa pelo autor do QualiLab nem fica com ele.
 
 - **Criar.** **Criar minha nuvem**, na tela de entrada, monta o servidor numa conta grátis do Supabase: você dá um nome curto, escolhe a região e autoriza no supabase.com, e o app devolve o **link para a equipe**. Quem nunca usou o Supabase recebe um guia, tela por tela. A autorização passa por uma função do QualiLab, que faz as chamadas ao Supabase em seu nome enquanto o servidor é criado e não guarda nada; os dados de pesquisa nunca passam por ela. Quem prefere montar à mão encontra esse caminho no próprio assistente e num [guia com capturas de tela](docs/GUIA-SUPABASE.md).
-- **Entrar.** **Entrar** pede a nuvem, o e-mail e a senha numa tela só, e lembra as nuvens já usadas neste navegador (só endereço e chave pública, nunca e-mail). Um colega também acha a nuvem pelo **nome curto**, que fica num cadastro aberto, com o endereço e a chave pública: use o nome do grupo, não o de uma pessoa. A conta de cada pessoa mora no servidor do grupo.
+- **Entrar.** **Entrar** pede a nuvem, o e-mail e a senha numa tela só, e lembra as nuvens já usadas no navegador (só endereço e chave pública, nunca e-mail). Um novo pesquisador também acha a nuvem pelo **nome curto**, que fica num cadastro aberto, com o endereço e a chave pública: use o nome do grupo, não o de uma pessoa. A conta de cada pessoa mora no servidor do grupo.
 - **Convidar.** O link da equipe nunca troca de servidor sozinho: o app mostra para onde ele aponta, pede confirmação e recusa link que traga a chave secreta de um servidor. O link de convite de um projeto já leva o código.
-- **Manter em dia.** Ao entrar, o app confere a versão do banco, e a barra de status avisa se o servidor estiver atrás desta versão do QualiLab. Para atualizar, rode o [`supabase/schema.sql`](supabase/schema.sql) de novo no SQL Editor: ele não apaga projetos nem dados.
+- **Manter em dia.** Ao entrar, o app confere a versão do banco, e a barra de status avisa se o servidor estiver atrás da versão mais atualizada do QualiLab, e oferece a atualização. Para atualizar manualmente, rode o [`supabase/schema.sql`](supabase/schema.sql) de novo no SQL Editor: ele não apaga projetos nem dados.
 
 **O que esse formato não muda.** A empresa Supabase continua hospedando o banco, e **não há criptografia ponta a ponta**: quem administra o projeto consegue ler o conteúdo. A nuvem criada pelo assistente não confirma e-mail no cadastro: quem tem o endereço cria conta na hora, mas não vê projeto nenhum sem o código de convite. A manutenção também passa a ser do grupo, inclusive as cópias de segurança e os limites do plano ([Manutenção e limites do plano gratuito](docs/GUIA-SUPABASE.md#9-manutenção-e-limites-do-plano-gratuito)). Para material sensível, a recomendação segue sendo o modo Arquivo.
 
@@ -306,14 +306,21 @@ Abra o **SQL Editor** do Supabase, cole o conteúdo de [`supabase/schema.sql`](s
 ### 3. Autenticação
 
 Em **Authentication → Providers**:
-- Habilite **Email** para login por e-mail e senha. A **recuperação de senha** ("Esqueci minha senha") já funciona com isso: o app manda o link de redefinição de volta para a própria URL do app, que precisa estar em **Auth → URL Configuration → Redirect URLs** (a mesma entrada `.../**` usada pelo login com Google já serve). ⚠️ **Atenção ao SMTP embutido do Supabase: são ~2 e-mails por hora, e a cota é do projeto** (medido em jul/2026), **compartilhada entre a confirmação de cadastro e a recuperação de senha**. Ou seja: duas pessoas usando na mesma hora e a terceira não recebe nada. Para uso real, **configure um SMTP próprio** em `Authentication > Emails > SMTP Settings`: aí o limite começa em 30/hora e fica ajustável em `Authentication > Rate Limits`. Serve qualquer serviço com SMTP (Brevo, Resend, AWS SES, Postmark, SendGrid, ZeptoMail); o **Brevo** dispensa domínio próprio, pois verifica um remetente individual.
+- Habilite **Email** para login por e-mail e senha. A **recuperação de senha** ("Esqueci minha senha") já funciona com isso: o app manda o link de redefinição de volta para a própria URL do app, que precisa estar em **Auth → URL Configuration → Redirect URLs** (a mesma entrada `.../**` usada pelo login com Google já serve).
+
+- ⚠️ **Atenção ao SMTP embutido do Supabase: são ~2 e-mails por hora, e a cota é do projeto** (medido em jul/2026), **compartilhada entre a confirmação de cadastro e a recuperação de senha**. Ou seja: duas pessoas usando na mesma hora e a terceira não recebe nada. Para uso real, **configure um SMTP próprio** em `Authentication > Emails > SMTP Settings`: aí o limite começa em 30/hora e fica ajustável em `Authentication > Rate Limits`. Serve qualquer serviço com SMTP (Brevo, Resend, AWS SES, Postmark, SendGrid, ZeptoMail); o **Brevo** dispensa domínio próprio, pois verifica um remetente individual.
+
 - **Não** habilite *Allow anonymous sign-ins*: o QualiLab não usa mais modo visitante. Os três fluxos são **arquivo** (no disco), **nuvem** (com login) e **rascunho** (local, temporário).
-- **A confirmação de cadastro é por CÓDIGO DIGITADO, não por link** (v1.4.19). O app abre uma tela pedindo o número que chega por e-mail, então o template **Authentication → Emails → Confirm signup** precisa mandar `{{ .Token }}`, e **não** `{{ .ConfirmationURL }}`. Existe porque antivírus de link de caixa corporativa (Safe Links e afins) **abre o link sozinho** e o queima antes do clique da pessoa, o que dava "link inválido ou expirado" a quem nunca tinha clicado. ⚠️ **O Supabase só libera a edição de templates com SMTP próprio configurado**: sem ele vale o template padrão deles, que manda um link — ou seja, **configure o SMTP antes do template**, senão a tela do app pede um número que o e-mail não traz. O tamanho do código é do projeto (**Authentication → Providers → Email**, de 6 a 10 dígitos); o app aceita qualquer um deles e não promete quantidade.
+
+- **A confirmação de cadastro é por CÓDIGO DIGITADO, não por link** (v1.4.19). O app abre uma tela pedindo o número que chega por e-mail, então o template **Authentication → Emails → Confirm signup** precisa mandar `{{ .Token }}`, e **não** `{{ .ConfirmationURL }}`. Existe porque antivírus de link de caixa corporativa (Safe Links e afins) **abre o link sozinho** e o queima antes do clique da pessoa, o que dava "link inválido ou expirado" a quem nunca tinha clicado.
+
+- ⚠️ **O Supabase só libera a edição de templates com SMTP próprio configurado**: sem ele vale o template padrão deles, que manda um link — ou seja, **configure o SMTP antes do template**, senão a tela do app pede um número que o e-mail não traz. O tamanho do código é do projeto (**Authentication → Providers → Email**, de 6 a 10 dígitos); o app aceita qualquer um deles e não promete quantidade.
+
 - Alternativa: desative **Confirm email** e o cadastro entra direto, sem código nenhum.
 
 ### 4. IA (Edge Function `ai-ask`: opcional, só para chave de servidor e fallback de CORS)
 
-O **padrão é BYOK**: cada pesquisador traz a sua chave e o **navegador chama o provedor direto**, sem passar por servidor nenhum. Nesse caminho a função **não é usada**. Faça o deploy dela se você for (a) oferecer uma **chave de servidor** (mantida fora do HTML público) ou (b) dar suporte a endpoints *Personalizado*/*Azure* que não liberem chamadas de navegador (CORS) — aí a função faz o proxy. O **Ollama local** nunca a usa (o servidor do Supabase não alcança o `localhost` do pesquisador).
+O **padrão é BYOK**: cada pesquisador traz a sua chave e o **navegador chama o provedor direto**, sem passar por servidor nenhum. Nesse caminho a função **não é usada**. Faça o deploy dela se você for (a) oferecer uma **chave de servidor** (mantida fora do HTML público), para dar acesso a multiplos pesquisadores uma mesma chave, ou (b) dar suporte a endpoints *Personalizado*/*Azure* que não liberem chamadas de navegador (CORS) — aí a função faz o proxy. O **Ollama local** nunca a usa (o servidor do Supabase não alcança o `localhost` do pesquisador).
 
 1. **(Opcional, só se for oferecer uma chave de servidor)** Gere uma chave do provedor: [Gemini](https://aistudio.google.com/apikey) (gratuito), [OpenAI](https://platform.openai.com/api-keys) ou [Anthropic](https://console.anthropic.com/settings/keys). Pule este passo se cada pesquisador for usar a própria chave (BYOK).
 2. **Secrets** → em *Edge Functions → Secrets*, adicione `GEMINI_API_KEY` e/ou `OPENAI_API_KEY` e/ou `ANTHROPIC_API_KEY` (configure só o(s) que for usar). Opcional: `GEMINI_MODEL`/`OPENAI_MODEL`/`ANTHROPIC_MODEL` pra trocar o modelo padrão de cada um (`gemini-3.6-flash`/`gpt-6.1-terra`/`claude-sonnet-5-5`) sem reeditar o código.
@@ -350,7 +357,7 @@ O formato nativo é **deliberadamente legível por máquina**, e isso é respost
 
 São duas formas, escolhidas pelo conteúdo:
 
-- **Sem PDF: JSON puro.** Um projeto só-texto abre em qualquer editor de texto. Os arquivos em [`examples/`](examples/) são assim.
+- **Sem PDF: JSON puro.** Um projeto só-texto abre em qualquer editor de texto.
 - **Com PDF: um zip** com `project.json`, `pdfs/<docId>.pdf` (guardados sem recompressão) e `pdfindex/<docId>.json` (a correspondência trecho ↔ página ↔ retângulo, que é o que faz "ver original", o número de página e o OCR sobreviverem à ida e volta).
 
 A leitura decide pelo **primeiro byte** (`PK` = zip), então arquivos antigos, anteriores ao contêiner, continuam abrindo. O `project.json` tem estas chaves de topo: `_meta`, `documents`, `categories`, `doc_values`, `codes`, `codings`, `memos`, `ia_results`, `ia_memory`, `activity` (o histórico), `link_relations` e `links` (as conexões) e `disagreements` (as discordâncias); as quatro últimas podem faltar em arquivos anteriores a elas.
@@ -396,7 +403,7 @@ erDiagram
     }
 ```
 
-**Tudo se ancora em posição de caractere.** Cada trecho é `(document_id, span_start, span_end)` sobre o `content` do documento, que é texto puro, e o `quote` gravado é exatamente essa fatia. Nos exemplos do repositório isso vale para todos os trechos. É a mesma invariante que o servidor MCP e os testes de censura verificam, e é ela que permite reprocessar o corpus fora do app sem depender de nada nosso.
+**Tudo se ancora em posição de caractere.** Cada trecho é `(document_id, span_start, span_end)` sobre o `content` do documento, que é texto puro, e o `quote` gravado é exatamente essa fatia. Nos exemplos do repositório isso vale para todos os trechos. É a mesma invariante que o servidor MCP e os testes de censura verificam, e é ela que permite reprocessar o corpus fora do app sem depender de nada proprietário.
 
 <details>
 <summary>Ler e conferir um <code>.qualilab</code> em Python, só com a biblioteca padrão</summary>
@@ -507,9 +514,9 @@ Projeto em desenvolvimento ativo. Vale conhecer os limites antes de adotar num t
 - **E-mail da conta não pode ser trocado** no app; nome de exibição e senha, sim.
 - **Áudio, vídeo, imagem e planilha não são material codificável** — é escopo declarado, não pendência (veja acima).
 
-**A responsabilidade pelo tratamento dos dados é inteiramente sua.** Trabalhando com dados pessoais, sigilosos ou protegidos (LGPD, aprovação de comitê de ética/CEP, segredo de justiça, dados de saúde), cabe a você anonimizar, obter consentimento e escolher o modo adequado. **Para material sensível, use o modo Arquivo local, offline, e não o coloque na nuvem.**
+**A responsabilidade pelo tratamento dos dados é inteiramente do pesquisador.** Trabalhando com dados pessoais, sigilosos ou protegidos (LGPD, aprovação de comitê de ética, segredo de justiça, dados de saúde), cabe a você anonimizar, obter consentimento e escolher o modo adequado. **Para material sensível, use o modo Arquivo local, offline, e não o coloque na nuvem.**
 
-**Sustentabilidade, com franqueza.** O QualiLab é mantido por uma pessoa, sem financiamento, e **a maior parte do código foi escrita por um modelo de linguagem** ([Claude Code](https://claude.com/claude-code)), sob direção e revisão do autor. Pese isso antes de adotar a ferramenta num projeto importante. A favor: um projeto deste tamanho não existiria de outra forma; cada decisão de desenho fica registrada por escrito, porque documentá-la é parte do método de trabalho e não um extra; e há testes automatizados e verificações rodando no CI a cada mudança. Contra: o código **não** passou por revisão por pares nem por auditoria de segurança independente. Vale notar que o levantamento citado acima excluiu qualidade de código do seu escopo por exigir inspeção profunda, ou seja, esse aspecto não foi medido em nenhuma das 28 ferramentas comparadas, nem nesta.
+**Sustentabilidade, com franqueza.** O QualiLab é mantido por uma pessoa, sem financiamento, e **o código foi escrito por um modelo de linguagem** ([Claude Code](https://claude.com/claude-code)), sob direção e revisão do autor. Pese isso antes de adotar a ferramenta num projeto importante. A favor: um projeto deste tamanho não existiria de outra forma; cada decisão de desenho fica registrada por escrito, porque documentá-la é parte do método de trabalho e não um extra; e há testes automatizados e verificações rodando no CI a cada mudança. Contra: o código **não** passou por revisão por pares nem por auditoria de segurança independente. Vale notar que o levantamento citado acima excluiu qualidade de código do seu escopo por exigir inspeção profunda, ou seja, esse aspecto não foi medido em nenhuma das 28 ferramentas comparadas, nem nesta.
 
 O risco de abandono é mitigado pelo desenho, não por uma promessa: licença MIT, um arquivo HTML que roda offline, e todos os dados exportáveis a qualquer momento em formatos abertos (`.qualilab`, REFI-QDA, W3C, CSV, JSON). Se o projeto parar amanhã, o seu material não fica preso nele.
 
@@ -530,7 +537,7 @@ O backlog completo é mantido no repositório de desenvolvimento, com o raciocí
 
 O QualiLab foi desenvolvido por **[Luiz Pimenta Filho](https://orcid.org/0000-0002-5165-6232)** no âmbito do **[LabDados / FGV Direito SP](https://direitosp.fgv.br/nucleos-de-pesquisa/laboratorio-dados-pesquisa-empirica-direito-labdados)** como projeto pessoal. Não representa posição institucional da FGV, que não tem qualquer responsabilidade pelo software.
 
-A maior parte do código deste projeto foi escrita por um modelo de linguagem ([Claude Code](https://claude.com/claude-code), da Anthropic), sob direção e revisão do autor.
+O código deste projeto foi escrito por um modelo de linguagem ([Claude Code](https://claude.com/claude-code), da Anthropic), sob direção e revisão do autor.
 
 As principais inspirações foram:
 
@@ -564,7 +571,7 @@ coisas convivem sem conflito. A lista completa, com quem é quem, está em
 **[`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md)**.
 
 O que decide obrigação é uma distinção só: **o que está embutido no `docs/index.html` é
-redistribuído por nós; o que vem de CDN não é** (ali o QualiLab só aponta uma URL, e quem busca
+redistribuído pelo QualiLab; o que vem de CDN não é** (ali o QualiLab só aponta uma URL, e quem busca
 o arquivo é o navegador do pesquisador). Por isso os avisos dos componentes embutidos — o htm,
 sob Apache-2.0, e as três fontes, sob SIL Open Font License 1.1 — **viajam dentro do próprio
 arquivo**, e não apenas num arquivo do repositório: a cópia que a pessoa baixa é o `index.html`
