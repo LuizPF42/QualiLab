@@ -595,6 +595,8 @@ Clique em **🔍︎ pesquisar** (a lupa). Digite o termo: as ocorrências são d
 
 O botão **+** colado na lupa abre o **pesquisar +**: a mesma busca, mas em **todos os documentos do projeto**. Os resultados vêm agrupados por documento, cada um com o trecho em volta para você reconhecer o contexto; **clicar numa ocorrência abre aquele documento exatamente nela**, já com a busca ativa no leitor.
 
+Os mesmos dois botões estão na [Leitura](#9-leitura), na sub-aba Documentos. Lá, clicar numa ocorrência do **pesquisar +** abre o documento na própria Leitura, sem mudar o documento aberto na Codificação. A busca é uma só nas duas telas: o termo e as opções continuam valendo quando você passa de uma para a outra.
+
 As duas buscas compartilham três opções (os botõezinhos ao lado do campo):
 - **Aa**: diferencia maiúsculas de minúsculas. Desligado, `réu` e `RÉU` são a mesma coisa (acento, porém, conta: `reu` não encontra `réu`).
 - **ab⃒**: só **palavras inteiras**: procurando `reu`, ignora `reunião` e `ocorreu`.
@@ -810,6 +812,10 @@ pesquisa, disponível enquanto você trabalha — e onde você responde "o que e
   com o caminho do código, a camada (individual ou gabarito) e a **nota analítica** do trecho, mais
   um atalho para abrir aquele trecho na Codificação.
 - A caixa **grifos** desliga todos de uma vez, para ler o texto limpo.
+- **pesquisar** e **+** são a [busca](#57-buscar-no-documento-e-no-projeto-inteiro) da Codificação:
+  a lupa procura no documento que você está lendo, e o **+** em todos os documentos. Clicar num
+  resultado do **+** abre o documento aqui mesmo, na ocorrência. A busca continua funcionando com os
+  **grifos** desligados.
 - O botão **código** (o funil) mostra **só os grifos de um ou mais códigos** — o mesmo [filtro de
   código](#59-filtro-de-código-só-os-grifos-de-um-código) da Codificação, e é um só para as duas
   telas. Com ele ligado, o número de cada documento na lista à esquerda passa a contar só os

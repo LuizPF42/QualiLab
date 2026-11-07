@@ -599,6 +599,8 @@ Click **🔍︎ search** ("pesquisar", the magnifying glass). Type the term: occ
 
 The **+** button glued to the magnifying glass opens **search +** ("pesquisar +"): the same search, but across **every document in the project**. Results come grouped by document, each with the surrounding text so you can recognize the context; **clicking an occurrence opens that document exactly on it**, with the search already active in the reader.
 
+The same two buttons are in [Reading](#9-reading), on the Documents sub-tab. There, clicking an occurrence in **search +** opens the document in Reading itself, without changing the document open in Coding. It is one search for both screens: the term and the options carry over when you move from one to the other.
+
 The two searches share three options (the small buttons next to the field):
 - **Aa**: case-sensitive. Off, `réu` and `RÉU` are the same thing (accents, however, count: `reu` does not find `réu`).
 - **ab⃒**: **whole words** only: searching `reu` ignores `reunião` and `ocorreu`.
@@ -814,6 +816,10 @@ research, available while you work — and where you answer "what have I already
   with the code's path, the layer (individual or reference) and the passage's **analytic note**, plus
   a shortcut to open that passage in Coding.
 - The **highlights** checkbox ("grifos") turns them all off at once, to read the clean text.
+- **search** ("pesquisar") and **+** are the [search](#57-searching-in-the-document-and-across-the-project)
+  from Coding: the magnifying glass searches the document you are reading, and **+** every document.
+  Clicking a **+** result opens the document right here, on the occurrence. The search keeps working
+  with the **highlights** turned off.
 - The **code** button ("código", the funnel) shows **only the highlights of one or more codes** — the same [code
   filter](#59-code-filter-only-one-codes-highlights) as in Coding, and it is one filter for both
   screens. With it on, each document's number in the list on the left counts only the ticked codes,

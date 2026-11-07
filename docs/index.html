@@ -981,7 +981,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.86';
+const QUALILAB_VERSION = '1.4.87';
 // QUALILAB_SCHEMA_VERSION — a versao do BANCO que este app espera. Nao e a do app: muda so quando o
 // app passa a PRECISAR de algo novo no servidor (tabela, coluna, funcao que ele chama). O assistente
 // do servidor compara com o que a qualilab_server_check() do banco responde e, se o servidor estiver
@@ -11513,6 +11513,28 @@ function buildRuns(text, codings, extraPoints){
   return runs;
 }
 
+/* Anota em cada run o indice da ocorrencia de busca que o contem (`run.matchI`; -1 fora de
+   todas), numa passada de DOIS PONTEIROS: runs e matches vem em ordem, e o findMatches nao
+   devolve sobreposicao. Era um findIndex por run, O(runs x matches), e congelava a busca em
+   documento grande.
+   PECA UNICA dos dois leitores (Codificacao e Leitura > Documentos): e ela que liga o contador
+   "N de M" da barra ao span destacado como atual, e duas copias divergiriam (a licao do
+   codingHoverTitle). Pressupoe runs cortados nas bordas das ocorrencias (o `extraPoints` do
+   buildRuns); sem o corte, o run atravessa a borda e fica sem marca. Muta e devolve o array. */
+function markMatchRuns(runs, matches){
+  const ms = matches || [];
+  let mi = 0;
+  for(const run of runs){
+    while(mi < ms.length && ms[mi][1] <= run.start) mi++;
+    run.matchI = (mi < ms.length && run.start>=ms[mi][0] && run.end<=ms[mi][1]) ? mi : -1;
+  }
+  return runs;
+}
+/* teto de ocorrencias da busca NO DOCUMENTO, o mesmo nos dois leitores: buscar "a" num documento
+   grande gerava dezenas de milhares de spans no DOM. A busca global tem o teto proprio (GS_PER_DOC),
+   MENOR, e o salto dela continua certo porque os primeiros N achados sao os mesmos. */
+const READER_MATCH_CAP = 2000;
+
 /* MOTOR UNICO de busca textual — serve a busca do documento aberto (a search-bar do leitor) E a
    busca global ("pesquisar +"). Ser o mesmo motor nao e economia de codigo: e o que garante que
    os offsets dos dois batam, pra clicar num resultado global abrir o leitor no match exato (o
@@ -19971,10 +19993,9 @@ function App(){
   const readerRef = useRef(null);
   const vizReaderRef = useRef(null); // o MESMO papel do readerRef, na Leitura > Documentos
   const searchRes = useMemo(()=>
-    findMatches(activeDoc?.content||'', busca.query, busca.opts, 2000)
+    findMatches(activeDoc?.content||'', busca.query, busca.opts, READER_MATCH_CAP)
   , [busca.query, busca.opts, activeDoc]);
   const searchMatches = searchRes.spans;
-  useEffect(()=>{ mudaBusca({idx:0}); }, [busca.query, busca.opts, activeId]);
   useEffect(()=>{
     if(!busca.aberta || !searchMatches.length) return;
     const i = ((busca.idx % searchMatches.length) + searchMatches.length) % searchMatches.length;
@@ -20033,17 +20054,8 @@ function App(){
   // cada seleção de texto/tick de realtime re-segmentava o documento inteiro). O índice do
   // match de busca é anotado numa única passada de dois ponteiros (era findIndex linear POR
   // RUN: O(runs×matches) congelava a busca em documento grande).
-  const readerRuns = useMemo(()=>{
-    if(!activeDoc) return [];
-    const extra = searchMatches.flat();
-    const runs = buildRuns(activeDoc.content, visibleCodings, extra);
-    let mi = 0;
-    for(const run of runs){
-      while(mi < searchMatches.length && searchMatches[mi][1] <= run.start) mi++;
-      run.matchI = (mi < searchMatches.length && run.start>=searchMatches[mi][0] && run.end<=searchMatches[mi][1]) ? mi : -1;
-    }
-    return runs;
-  }, [activeDoc, visibleCodings, searchMatches]);
+  const readerRuns = useMemo(()=> activeDoc ? markMatchRuns(buildRuns(activeDoc.content, visibleCodings, searchMatches.flat()), searchMatches) : [],
+    [activeDoc, visibleCodings, searchMatches]);
 
   useEffect(()=>{ if(readerFlash==null) return; const tid=setTimeout(()=>setReaderFlash(null), 1600); return ()=>clearTimeout(tid); }, [readerFlash]);
   // PDF-BLOCK: encerra o worker do OCR de área ao desmontar (o worker fica vivo entre recortes
@@ -20061,6 +20073,10 @@ function App(){
   // o primeiro do corpus, pra tela nenhuma nascer vazia.
   const vizDoc = useMemo(()=> docs.find(d=>d.id===vizSelDoc) || docs.find(d=>d.id===activeId) || docs[0] || null,
     [docs, vizSelDoc, activeId]);
+  // a busca no documento e UMA para os dois leitores: o contador volta ao 1o achado quando muda o
+  // padrao ou o documento de QUALQUER um deles. Mora aqui, e nao junto do searchRes, porque cita o
+  // vizDoc (deps avaliadas no render: TDZ) e porque tem de rodar ANTES do efeito do pendingJump.
+  useEffect(()=>{ mudaBusca({idx:0}); }, [busca.query, busca.opts, activeId, vizDoc?.id]);
   // codificações do recorte "Ver:" — as MESMAS que o resto da tela usa
   const vizViewCodings = useMemo(()=> codingsForView(allCodings, viewCoder, user?.id, projectMode),
     [allCodings, viewCoder, user?.id, projectMode]);
@@ -22211,10 +22227,7 @@ function App(){
           </div>
           <input ref=${uploadInputRef} type="file" multiple accept=".txt,.md,.markdown,.pdf,.docx" style="display:none" onChange=${e=>{onUpload(e.target.files); e.target.value='';}} />
           <${AddPaste} open=${pasteOpen} onClose=${()=>setPasteOpen(false)} onAdd=${addPasted} />
-          ${docs.length>0 && !edicao.ativa && html`<div class="btn-join">
-            ${activeDoc && html`<button class="btn sm ghost" title=${t('search.doc.tip')} onClick=${()=>mudaBusca({aberta:o=>!o})}>${icon('search',13)} ${t('search.doc')}</button>`}
-            <button class="btn sm ghost" title=${t('search.all.tip')} onClick=${()=>setGsOpen(true)}>${activeDoc?'+':html`${icon('search',13)} ${t('search.all')}`}</button>
-          </div>`}
+          ${docs.length>0 && !edicao.ativa && html`<${SearchJoin} hasDoc=${!!activeDoc} onDoc=${()=>mudaBusca({aberta:o=>!o})} onAll=${()=>setGsOpen(true)} />`}
           ${activeDoc?.has_pdf && !edicao.ativa && html`<button class="btn sm ghost" title=${pdf.mostrando?t('pdf.backToText.tip'):t('pdf.view.tip')} onClick=${togglePdf}>${pdf.mostrando?html`${icon('lines',13)} ${t('pdf.text')}`:html`${icon('file',13)} ${t('pdf.original')}`}</button>`}
 
           ${/* acoes do documento (OCR/editar/excluir) recolhidas num menu: raras, pesadas ou
@@ -22258,23 +22271,7 @@ function App(){
           </div>`}
         </div>
 
-        ${busca.aberta && activeDoc && !edicao.ativa && html`<div class="search-bar">
-          <input class="txtin" autoFocus value=${busca.query} placeholder=${busca.opts.re?t('search.ph.re'):t('search.ph')}
-            onInput=${e=>mudaBusca({query:e.target.value})}
-            onKeyDown=${e=>{
-              if(e.key==='Enter') mudaBusca({idx:i=>e.shiftKey ? i-1 : i+1});
-              else if(e.key==='Escape') mudaBusca({aberta:false});
-            }} />
-          <${SearchOptChips} opts=${busca.opts} setOpts=${setBuscaOpts} />
-          <span class="meta" style=${searchRes.error?'color:var(--danger)':''}>${
-            searchRes.error ? t('search.badRegex')
-            : searchMatches.length ? t('search.count',{i:(busca.idx%searchMatches.length+searchMatches.length)%searchMatches.length+1, n:searchMatches.length})
-            : (busca.query.trim() ? t('search.none') : '')}</span>
-          <button class="btn sm ghost" disabled=${!searchMatches.length} onClick=${()=>mudaBusca({idx:i=>i-1})}>${t('search.prev')}</button>
-          <button class="btn sm ghost" disabled=${!searchMatches.length} onClick=${()=>mudaBusca({idx:i=>i+1})}>${t('search.next')}</button>
-          <div class="grow"></div>
-          <button class="icon-btn" title=${t('search.close')} onClick=${()=>{ mudaBusca({ aberta:false, query:'' }); }}>×</button>
-        </div>`}
+        ${busca.aberta && activeDoc && !edicao.ativa && html`<${ReaderSearchBar} busca=${busca} onBusca=${mudaBusca} count=${searchMatches.length} error=${searchRes.error} />`}
 
         ${sel && html`<div class="toolbar">
           <span style="font-weight:600;color:var(--teal-deep);font-size:12.5px">${t('sel.title')}</span>
@@ -22540,6 +22537,7 @@ function App(){
         <div class="row" style="gap:10px;flex-wrap:wrap;margin-left:auto">
           ${vizSub==='documentos' && html`
             ${vizDoc && html`<span class="meta" style="max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title=${vizDoc.name}>${vizDoc.name}</span>`}
+            ${docs.length>0 && html`<${SearchJoin} hasDoc=${!!vizDoc} onDoc=${()=>mudaBusca({aberta:o=>!o})} onAll=${()=>setGsOpen(true)} />`}
             <label class="meta" style="display:flex;gap:5px;align-items:center;cursor:pointer" title=${t('reading.plain.tip')}>
               <input type="checkbox" checked=${vizShowHl} onChange=${e=>setVizShowHl(e.target.checked)} /> ${t('reading.hl')}
             </label>
@@ -22568,7 +22566,7 @@ function App(){
         <section class="pane" style="flex:1;min-width:0">
           <${VizDocReader} doc=${vizDoc} codings=${vizDocCodings} codeById=${codeById} codePath=${codePath}
             memos=${memos} prefs=${readerPrefs} showHl=${vizShowHl} darkMode=${darkMode}
-            containerRef=${vizReaderRef} flash=${readerFlash}
+            containerRef=${vizReaderRef} flash=${readerFlash} busca=${busca} onBusca=${mudaBusca}
             agree=${projectMode==='collective' && can('code') && !blindLock ? readingAgreeActions({ store, projectId:project.id, userId:user?.id, allCodings,
               addAgreementCoding, delCoding, loadAll, onError:e=>setErr(t('err.coding.save',{e:String(e.message||e)})) }) : null}
             onJump=${(docId, span)=>{ setActiveId(docId); setMainView('codificar', { doc: docId }); if(span && span.start!=null) setPendingJump({ docId, start:span.start, end:span.end }); }} />
@@ -22763,7 +22761,11 @@ function App(){
       // abre o leitor no match: a search-bar herda o padrao E as opcoes (busca.opts ja e
       // compartilhado), entao o findMatches do leitor produz a MESMA lista -> `start` vira
       // fronteira de run e o pendingJump acha o elemento por [data-start].
-      setGsOpen(false); setMainView('codificar', { doc: docId }); setActiveId(docId);
+      // Aberto na LEITURA, o salto fica na Leitura > Documentos (a regra do clique num trecho:
+      // ler no contexto e leitura, nao codificacao) e nao mexe no documento da Codificacao.
+      setGsOpen(false);
+      if(mainView==='visualizar'){ setVizSelDoc(docId); setVizSub('documentos'); }
+      else { setMainView('codificar', { doc: docId }); setActiveId(docId); }
       mudaBusca({ query:q, aberta:true });
       setPendingJump({ docId, start, matchIdx });
     }} />`}
@@ -26513,6 +26515,41 @@ function SearchOptChips({ opts, setOpts }){
   </div>`;
 }
 
+/* "pesquisar" + "+" colados (.btn-join): a busca no documento na tela e a busca em todos os
+   documentos. Os MESMOS dois botoes nos dois leitores (Codificacao e Leitura > Documentos). Sem
+   documento na tela sobra so a busca em todos, com o rotulo inteiro: o "+" sozinho nao diria nada. */
+function SearchJoin({ hasDoc, onDoc, onAll }){
+  return html`<div class="btn-join">
+    ${hasDoc && html`<button class="btn sm ghost" title=${t('search.doc.tip')} onClick=${onDoc}>${icon('search',13)} ${t('search.doc')}</button>`}
+    <button class="btn sm ghost" title=${t('search.all.tip')} onClick=${onAll}>${hasDoc?'+':html`${icon('search',13)} ${t('search.all')}`}</button>
+  </div>`;
+}
+
+/* A BARRA DA BUSCA NO DOCUMENTO, a mesma nos dois leitores. O estado e UM so, a area `busca` da
+   App (aberta, query, idx, opts), e cada leitor calcula as ocorrencias sobre o documento que ELE
+   mostra; a barra so exibe o contador e mexe no estado. `onBusca` e o mudaBusca: no mergeArea,
+   valor funcao e UPDATER, e e assim que o idx anda e que o SearchOptChips troca as opcoes. */
+function ReaderSearchBar({ busca, onBusca, count, error }){
+  const n = count || 0;
+  return html`<div class="search-bar">
+    <input class="txtin" autoFocus value=${busca.query} placeholder=${busca.opts.re?t('search.ph.re'):t('search.ph')}
+      onInput=${e=>onBusca({query:e.target.value})}
+      onKeyDown=${e=>{
+        if(e.key==='Enter') onBusca({idx:i=>e.shiftKey ? i-1 : i+1});
+        else if(e.key==='Escape') onBusca({aberta:false});
+      }} />
+    <${SearchOptChips} opts=${busca.opts} setOpts=${o=>onBusca({opts:o})} />
+    <span class="meta" style=${error?'color:var(--danger)':''}>${
+      error ? t('search.badRegex')
+      : n ? t('search.count',{i:(busca.idx%n+n)%n+1, n})
+      : (busca.query.trim() ? t('search.none') : '')}</span>
+    <button class="btn sm ghost" disabled=${!n} onClick=${()=>onBusca({idx:i=>i-1})}>${t('search.prev')}</button>
+    <button class="btn sm ghost" disabled=${!n} onClick=${()=>onBusca({idx:i=>i+1})}>${t('search.next')}</button>
+    <div class="grow"></div>
+    <button class="icon-btn" title=${t('search.close')} onClick=${()=>onBusca({ aberta:false, query:'' })}>×</button>
+  </div>`;
+}
+
 /* "pesquisar +" — busca em TODOS os documentos do projeto. O `content` de todos ja esta em
    memoria (listDocuments faz select('*'); os stores locais guardam o array inteiro), entao a
    varredura e local: sem rede, sem metodo novo de store. Usa o MESMO findMatches da search-bar
@@ -27081,8 +27118,13 @@ function DocsNav({ docs, activeId, onPick, health, counts, pageCount, cats, allV
    DISCORDAR (v1.4.62) existe porque, sem ele, a recusa era a AUSENCIA de concordancia — e ausencia
    so e recusa se a pessoa olhou cada grifo. Com ~110 grifos de juiz por conversa, grifo esquecido
    acontece e entraria na conta como recusa. Com o veredito explicito, o grifo sem veredito e "nao
-   visto", e a barra de progresso diz quantos faltam. SEM MOTIVO, por decisao do autor. */
-function VizDocReader({ doc, codings, codeById, codePath, memos, prefs, showHl, darkMode, onJump, containerRef, flash, agree }){
+   visto", e a barra de progresso diz quantos faltam. SEM MOTIVO, por decisao do autor.
+   BUSCA NO DOCUMENTO (v1.4.87): o "pesquisar" e o "+" da Codificacao valem aqui tambem. O estado
+   e o da App (`busca`, a MESMA area da Codificacao, de proposito): o "+" aberto daqui volta para
+   ca no match clicado, e o salto so acerta se este leitor achar a MESMA lista que a busca global
+   achou (mesmo motor, mesmas opcoes). Os matches entram como fronteira de run, entao o salto acha
+   o [data-start] mesmo com a caixa "grifos" desligada. */
+function VizDocReader({ doc, codings, codeById, codePath, memos, prefs, showHl, darkMode, onJump, containerRef, flash, agree, busca, onBusca }){
   const [pick, setPick] = useState(null);   // { start, codings:[...] } do grifo clicado
   const [menu, setMenu] = useState(null);   // { x, y, start, codings } do botao direito
   // as discordancias do documento aberto: estado LOCAL (e nao da App), porque so esta tela as usa
@@ -27114,12 +27156,23 @@ function VizDocReader({ doc, codings, codeById, codePath, memos, prefs, showHl, 
     return ()=>window.removeEventListener('keydown', k);
   }, [menu]);
   const codingMemo = useMemo(()=> indexMemos(memos||[]).codingMemo, [memos]);
+  const achados = useMemo(()=> busca ? findMatches(doc?.content||'', busca.query, busca.opts, READER_MATCH_CAP) : { spans:[] },
+    [doc, busca?.query, busca?.opts]);
+  const matches = achados.spans;
   const runs = useMemo(()=>{
     const content = doc?.content || '';
     if(!content) return [];
     const dc = (codings||[]).filter(c=>c.document_id===doc.id && c.span_start>=0 && c.span_end>c.span_start);
-    return buildRuns(content, showHl ? dc : []);
-  }, [doc, codings, showHl]);
+    return markMatchRuns(buildRuns(content, showHl ? dc : [], matches.flat()), matches);
+  }, [doc, codings, showHl, matches]);
+  // rola ate a ocorrencia ATUAL: o mesmo efeito da Codificacao, sobre o container deste leitor.
+  // Declarado DEPOIS do que volta ao topo na troca de documento, para vencer quando os dois rodam.
+  useEffect(()=>{
+    if(!busca?.aberta || !matches.length) return;
+    const n = matches.length, i = ((busca.idx % n) + n) % n;
+    boxRef.current?.querySelector(`[data-match="${i}"]`)?.scrollIntoView({ block:'center' });
+  }, [busca?.idx, matches, busca?.aberta]);
+  const atual = matches.length ? (((busca?.idx|0) % matches.length) + matches.length) % matches.length : -1;
   const minhasDisc = disag.docId===doc?.id ? disag.rows : [];
   // progresso: so sobre o que o leitor MOSTRA (o recorte do "Ver:" e do filtro de codigo)
   const progresso = useMemo(()=>{
@@ -27149,6 +27202,7 @@ function VizDocReader({ doc, codings, codeById, codePath, memos, prefs, showHl, 
   </div>`;
 
   return html`<div style="display:flex;flex-direction:column;height:100%;min-height:0">
+    ${busca && busca.aberta && onBusca && html`<${ReaderSearchBar} busca=${busca} onBusca=${onBusca} count=${matches.length} error=${achados.error} />`}
     ${podeRever && progresso && (progresso.total>0 || disag.err) && html`<div class="toolbar review-bar" style="flex:none;gap:10px;flex-wrap:wrap;align-items:center">
       ${disag.err
         ? html`<span class="meta" style="color:var(--danger)">${t('review.loadErr')}</span>`
@@ -27162,8 +27216,11 @@ function VizDocReader({ doc, codings, codeById, codePath, memos, prefs, showHl, 
         ${runs.map((run,i)=>{
           // `qljump`/`qljump-par` sao as MESMAS classes do leitor da Codificacao: quem decide
           // o flash e o App, e os dois leitores vestem pela MESMA regra (jumpFlashClass).
-          const fl = jumpFlashClass(flash, run);
-          if(run.codings.length===0) return html`<span key=${i} class=${fl} data-start=${run.start}>${run.text}</span>`;
+          // a ocorrencia da busca veste o mesmo atributo e a mesma classe do leitor da Codificacao
+          // (`data-match` e `current`): o CSS do realce e um so, e e por eles que o scroll a acha
+          const mAttrs = run.matchI>=0 ? { 'data-match': run.matchI } : {};
+          const fl = [jumpFlashClass(flash, run), run.matchI>=0 && run.matchI===atual ? 'current' : ''].filter(Boolean).join(' ');
+          if(run.codings.length===0) return html`<span key=${i} class=${fl} data-start=${run.start} ...${mAttrs}>${run.text}</span>`;
           // MESMA regra do leitor da Codificação: censura na frente quando há sobreposição
           // (a caixa fechada é o sinal, e não pode ficar atrás de outro código por acaso de ordem)
           const top = run.codings.find(c=>codeById[c.code_id]?.is_redaction) || run.codings[run.codings.length-1];
@@ -27182,7 +27239,7 @@ function VizDocReader({ doc, codings, codeById, codePath, memos, prefs, showHl, 
           const border = code?.is_redaction ? `border:2px solid ${readerDark ? '#fff' : col.solid}`
             : run.codings.length>1 ? `border-bottom:2px solid ${col.solid}` : '';
           const isPick = pick && pick.start===run.start;
-          return html`<span key=${i} class=${fl} data-start=${run.start} data-c="1" data-rev=${rev||undefined} title=${title}
+          return html`<span key=${i} class=${fl} data-start=${run.start} data-c="1" data-rev=${rev||undefined} title=${title} ...${mAttrs}
             style=${`cursor:pointer;background:${fundo};${border}${isPick?';outline:2px solid var(--sky);outline-offset:-2px':''}`}
             onClick=${()=>{ if(window.getSelection && !window.getSelection().isCollapsed) return;
                             setPick(p=>p&&p.start===run.start?null:{ start:run.start, codings:run.codings }); }}

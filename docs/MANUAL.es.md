@@ -556,6 +556,8 @@ Pulsa **🔍︎ buscar** y escribe un término. Las coincidencias se destacan so
 
 El **+** junto a la lupa abre **buscar +** en **todos los documentos**. Los resultados se agrupan por documento, con contexto; pulsar uno abre el documento en esa posición con la búsqueda activa.
 
+Los mismos dos botones están en [Lectura](#9-lectura), en la subpestaña Documentos. Allí, pulsar una coincidencia de **buscar +** abre el documento en la propia Lectura, sin cambiar el documento abierto en Codificación. La búsqueda es una sola en ambas pantallas: el término y las opciones se mantienen al pasar de una a otra.
+
 Ambas búsquedas comparten tres opciones:
 - **Aa**: distingue mayúsculas. Desactivado, `réu` y `RÉU` coinciden; los acentos sí cuentan: `reu` no encuentra `réu`.
 - **ab⃒**: solo **palabras completas**; por ejemplo, `reu` no encuentra `reunião` ni `ocorreu`.
@@ -760,6 +762,7 @@ Elige un documento para leerlo **completo**, con los resaltados en contexto. Es 
 
 - **Pasar el mouse** muestra código, autor y comienzo de la nota; **hacer clic** abre una franja con ruta, capa y **nota analítica**, más un enlace a Codificación.
 - **resaltados** permite ocultarlos todos para leer el texto limpio.
+- **buscar** y **+** son la [búsqueda](#57-buscar-en-el-documento-y-en-todo-el-proyecto) de Codificación: la lupa busca en el documento que lees y **+** en todos. Pulsar un resultado de **+** abre el documento aquí mismo, en la coincidencia. La búsqueda sigue funcionando con los **resaltados** ocultos.
 - **código** (embudo) muestra solo los de **uno o varios códigos**, mediante el [filtro compartido](#59-filtro-de-código-solo-los-resaltados-de-un-código). Los conteos de la lista también se limitan a esos códigos y muestran en qué documentos aparecen.
 - La lista permite filtrar, ordenar y agrupar, y muestra el **número de fragmentos**, útil para identificar documentos pendientes. Agrupar por categoría ofrece una primera organización similar a carpetas.
 - Al entrar se muestra el documento de Codificación; elegir otro aquí no lo cambia allí. **codificar →** abre el documento actual en Codificación.

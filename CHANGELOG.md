@@ -14,6 +14,21 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.87 (07/11/2026)
+
+### Buscar também na Leitura
+
+A barra da **Leitura > Documentos** ganhou os mesmos dois botões de busca da Codificação, ao lado do
+nome do documento.
+
+- **pesquisar** (a lupa) procura no documento que você está lendo: as ocorrências ficam destacadas
+  no texto, com **‹ anterior / próxima ›**, **Enter** / **Shift+Enter** e as opções **Aa**, **ab⃒**
+  e **.\***. A busca funciona também com a caixa **grifos** desligada.
+- **+** procura em todos os documentos do projeto. Aberto na Leitura, clicar numa ocorrência abre o
+  documento **aqui mesmo, na Leitura**, já com a busca ativa e na ocorrência clicada; o documento
+  aberto na Codificação não muda. Aberto na Codificação, continua abrindo na Codificação.
+- A busca é uma só nas duas telas: o termo e as opções que você usou numa continuam valendo na outra.
+
 ## 1.4.86 (07/11/2026)
 
 ### Gravar no projeto não baixa mais o texto de todos os documentos de novo
