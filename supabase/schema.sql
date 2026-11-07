@@ -110,6 +110,16 @@ create table if not exists public.documents (
 -- Supabase Storage (bucket 'pdfs', objeto '<doc_id>.pdf') e a linha so marca has_pdf. So com
 -- CONSENTIMENTO EXPLICITO (decisao do autor) e planejado como removivel.
 alter table public.documents add column if not exists has_pdf boolean not null default false;
+-- WHEN THE TEXT LAST CHANGED (app 1.4.86). After a write that does not touch documents (codes,
+-- categories, codings) the app re-reads the document list WITHOUT the text and downloads again only
+-- the text whose stamp moved; before this, every such write pulled the whole corpus (16.8 MB on a real
+-- project of 141 documents). The stamp belongs to the SERVER: trg_documents_content_stamp (below, next
+-- to documents_guard) sets it when `content` changes and keeps it on any other update, whatever the
+-- client sends. Only the TEXT counts, on purpose: name and has_pdf already travel in the light list,
+-- so stamping a rename would only make every client download that text again for nothing.
+-- `default now()` and not clock_timestamp(): a stable default fills existing rows without rewriting
+-- the table; new rows get their value from the trigger.
+alter table public.documents add column if not exists content_updated_at timestamptz not null default now();
 -- bucket privado 'pdfs' (bytes como '<doc_id>.pdf') + RLS por MEMBRO do projeto do documento.
 -- O front so sobe o PDF pra nuvem com CONSENTIMENTO explicito (cloudPdfConsentOk no index.html).
 insert into storage.buckets (id, name, public) values ('pdfs','pdfs',false) on conflict (id) do nothing;
@@ -1031,6 +1041,25 @@ revoke execute on function public.documents_guard() from public, anon, authentic
 drop trigger if exists trg_documents_guard on public.documents;
 create trigger trg_documents_guard before update on public.documents
   for each row execute function public.documents_guard();
+
+-- content_updated_at is set HERE, never by the client (see the column, next to has_pdf).
+-- clock_timestamp() and not now(): now() is the start of the TRANSACTION, so an insert and a later
+-- update of the same text inside one transaction (a restore, a test) would share the stamp and the
+-- change would not show. Clients compare stamps by equality, so any distinct value is enough.
+create or replace function public.documents_content_stamp()
+returns trigger language plpgsql set search_path = public as $$
+begin
+  if TG_OP = 'INSERT' or new.content is distinct from old.content then
+    new.content_updated_at := clock_timestamp();
+  else
+    new.content_updated_at := old.content_updated_at;
+  end if;
+  return new;
+end; $$;
+revoke execute on function public.documents_content_stamp() from public, anon, authenticated;
+drop trigger if exists trg_documents_content_stamp on public.documents;
+create trigger trg_documents_content_stamp before insert or update on public.documents
+  for each row execute function public.documents_content_stamp();
 
 -- codes: membro cria/edita (codificacao aberta renomeia/recolore o tempo todo); EXCLUIR e
 -- admin (delete cascateia codings de todos). is_redaction protegido no trigger codes_color_guard.
@@ -2035,7 +2064,7 @@ create trigger trg_assignments_gc after delete on public.members
 create or replace function public.qualilab_server_check()
 returns jsonb language sql stable security definer set search_path = public as $$
   select jsonb_build_object(
-    'schema_version', 3,
+    'schema_version', 4,
     'buckets', jsonb_build_object(
       'pdfs',      exists (select 1 from storage.buckets where id = 'pdfs'),
       'snapshots', exists (select 1 from storage.buckets where id = 'snapshots')),

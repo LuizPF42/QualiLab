@@ -981,13 +981,13 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.85';
+const QUALILAB_VERSION = '1.4.86';
 // QUALILAB_SCHEMA_VERSION — a versao do BANCO que este app espera. Nao e a do app: muda so quando o
 // app passa a PRECISAR de algo novo no servidor (tabela, coluna, funcao que ele chama). O assistente
 // do servidor compara com o que a qualilab_server_check() do banco responde e, se o servidor estiver
 // atras, diz isso em vez de deixar o app quebrar mudo. Sobe junto com o literal da funcao no
 // supabase/schema.sql e na migracao; tests/diagnostico_servidor.test.mjs confere os tres.
-const QUALILAB_SCHEMA_VERSION = 3;
+const QUALILAB_SCHEMA_VERSION = 4;
 // CRIACAO AUTOMATICA DA NUVEM DO GRUPO: onde mora a funcao server-setup e qual aplicativo OAuth do
 // Supabase ela representa. Os dois sao PUBLICOS (o client id viaja na URL de autorizacao; a senha do
 // aplicativo fica so na funcao). A URL vem do servidor EMBUTIDO, porque a funcao mora no projeto que
@@ -17484,6 +17484,10 @@ function SupabaseStore(sb){
   }
   // acucar para os chamadores: `conta(c)` vira as opcoes do select (contagem so na 1a pagina)
   const conta = (c)=> c ? { count:'exact' } : undefined;
+  // the light document list (see listDocuments): every column but the text. docStampMissing turns
+  // true the first time this cloud says it has no content_updated_at, and then stays (one 400, once)
+  const DOC_LIGHT_COLS = 'id,project_id,name,created_at,created_by,has_pdf,content_updated_at';
+  let docStampMissing = false;
 
   /* PAGINACAO POR CHAVE, para as leituras do PROJETO INTEIRO. `range()` vira OFFSET, e com OFFSET
      a pagina k manda o Postgres varrer e DESCARTAR as k*1000 linhas anteriores -- cada uma
@@ -17917,9 +17921,30 @@ function SupabaseStore(sb){
        fora de ordem entre si, entao a lista fica em blocos (cada um ordenado por nome). Quem
        precisa de ordem previsivel na tela ordena explicitamente (DocsNav e os dois modos
        "todos os documentos" da Reconciliacao ordenam por nome). */
-    async listDocuments(pid){
-      return pageAll(c=> sb.from('documents').select('*', conta(c)).eq('project_id',pid)
-        .order('created_at').order('name').order('id'), 'documentos');
+    /* THE LIGHT LIST (1.4.86). `{withoutText:true}` brings every column but `content`, with the
+       server's content_updated_at, so a reload after a write that does not touch documents costs
+       kilobytes instead of the corpus (16.8 MB on a real project of 141 documents); `{ids}` brings
+       the full row of just those documents, the ones whose stamp moved (mergeDocList, hooks.js).
+       A CLOUD WITHOUT THE COLUMN (schema < 4, a group that has not updated its server) answers the
+       light list with 42703: from then on this store reads the whole list, text included, which is
+       exactly what it did before, and the caller cannot tell the difference (rows with `content`
+       are taken as they come). Any other error is a real failure and goes up.
+       `ids` goes in chunks so the URL stays short; one after the other because the light reload asks
+       for a handful (what a colleague added or an admin edited), and a large set would be a corpus
+       download either way. Local and file stores ignore both options: the text is in memory there. */
+    async listDocuments(pid, opts){
+      const ordered = (q)=> q.eq('project_id',pid).order('created_at').order('name').order('id');
+      if(opts && Array.isArray(opts.ids)){
+        const out = [];
+        for(let i = 0; i < opts.ids.length; i += 50)
+          out.push(...must(await ordered(sb.from('documents').select('*').in('id', opts.ids.slice(i, i+50)))));
+        return out;
+      }
+      if(opts && opts.withoutText && !docStampMissing){
+        try{ return await pageAll(c=> ordered(sb.from('documents').select(DOC_LIGHT_COLS, conta(c))), 'documentos'); }
+        catch(e){ if(String(e?.code) !== '42703') throw e; docStampMissing = true; }
+      }
+      return pageAll(c=> ordered(sb.from('documents').select('*', conta(c))), 'documentos');
     },
     async addDocument(pid,{id,name:dn,content}){ const row={project_id:pid,name:dn,content,created_by:user.id}; if(id) row.id=id; return must(await sb.from('documents').insert(row).select().single()); },
     // PERF: usado por mergeQualilabDb quando o store suporta lote (ver bulkWrite). items ja
@@ -19608,6 +19633,50 @@ function useActivity({ store, project, phase, mainView }){
   return { activity, activityError, loadActivity, logActivity };
 }
 
+/* THE LIGHT RELOAD OF THE DOCUMENT LIST (1.4.86): which text can stay in memory, and which has to
+   come again. `known` is the list in memory, `rows` what the store answered, `texts` (second pass)
+   the full rows the caller fetched for `need`.
+   A row that carries `content` (local and file stores, a cloud without content_updated_at) is taken
+   as it comes. A row without it (the light list of the cloud) keeps the text in memory ONLY when the
+   server's stamp is the one that text was read with: the stamp moves on every text change and on
+   nothing else (trg_documents_content_stamp, pgTAP 013), so equal stamp means same text. A text in
+   memory WITHOUT a stamp (read from a cloud before the column existed) is never trusted. A text that
+   cannot be kept or found goes to `need`, with a null in its place: the caller must not show that
+   list, because a document without text reads as an EMPTY document everywhere (`d.content||''`).
+   SAME OBJECTS WHEN NOTHING CHANGED is the other half of the saving: a new `docs` array makes the
+   picker's warning scan the text of every document again and throws away every useMemo that hangs
+   on `docs` (word cloud, global search, the MCP core). `same` says the result is the list in
+   memory, element by element, and then the caller does not set it at all. */
+function mergeDocList(known, rows, texts){
+  const old = new Map((known||[]).map(d=>[d.id, d]));
+  const got = new Map((texts||[]).map(d=>[d.id, d]));
+  const metaEqual = (a, b)=> a.name === b.name && !!a.has_pdf === !!b.has_pdf && a.content_updated_at === b.content_updated_at;
+  const need = [];
+  const docs = (rows||[]).map(r=>{
+    const o = old.get(r.id);
+    if(typeof r.content !== 'string'){
+      if(o && typeof o.content === 'string' && o.content_updated_at && o.content_updated_at === r.content_updated_at)
+        return metaEqual(o, r) ? o : { ...o, ...r, content:o.content };
+      const t = got.get(r.id);
+      if(t && typeof t.content === 'string') r = t;
+      else { need.push(r.id); return null; }
+    }
+    return (o && o.content === r.content && metaEqual(o, r)) ? o : r;
+  });
+  const same = !need.length && docs.length === (known||[]).length && docs.every((d, i)=> d === known[i]);
+  return { docs, need, same };
+}
+// the store side of the light reload: the list without text, then only the texts that changed. If a
+// text asked for does not come (deleted or hidden between the two reads), read the whole list:
+// rare, and correct by construction.
+async function readDocsLight(st, pid, known){
+  const rows = await st.listDocuments(pid, { withoutText:true });
+  let m = mergeDocList(known, rows);
+  if(!m.need.length) return m;
+  m = mergeDocList(known, rows, await st.listDocuments(pid, { ids:m.need }));
+  return m.need.length ? { docs: await st.listDocuments(pid), same:false } : m;
+}
+
 /* ABRIR O PROJETO: CADA LISTA ENTRA NA TELA QUANDO CHEGA (1.4.85). Era um Promise.all das tres
    (documentos, categorias, codigos), e a tela so mudava quando a ULTIMA chegava. A ultima e
    sempre a de documentos, porque ela traz o TEXTO de cada um: medido num projeto real da nuvem,
@@ -19626,15 +19695,25 @@ function useActivity({ store, project, phase, mainView }){
    vale a mais recente.
    FALHA NAO MARCA: a tela segue "carregando" e o banner do guard global diz o que houve, em vez
    de afirmar projeto vazio sobre uma leitura que falhou. A promessa so resolve depois das tres,
-   como antes, porque os chamadores de recarga (`reloadWrite`, troca de modo) contam com isso. */
-async function loadProjectLists(st, pid, { setDocs, setCats, setCodes, setActiveId, mudaUi, seq }){
+   como antes, porque os chamadores de recarga (`reloadWrite`, troca de modo) contam com isso.
+   THE LIGHT RELOAD (1.4.86): a caller that passes `known` (the list in memory) wrote something
+   that does not touch documents, and gets readDocsLight instead of the corpus. The DOCUMENTS HAVE
+   THEIR OWN TOKEN (`seq.docs`): with one token for the three lists, a write made while the text
+   was still arriving discarded the documents in flight, and the screen stayed "loading" for good.
+   And a light reload that finds the full read still on its way (`seq.docsFull`) leaves the
+   documents to it: that read started before the write, but the write did not touch documents. */
+async function loadProjectLists(st, pid, { setDocs, setCats, setCodes, setActiveId, mudaUi, seq, known }){
   const tok = ++seq.proj;
   const vale = ()=> tok === seq.proj;
   const marca = (k)=> mudaUi({ carga: c=>({ ...c, [k]:pid }) });
   const cats = st.listCategories(pid).then(c=>{ if(vale()) setCats(c); });
   const codes = st.listCodes(pid).then(k=>{ if(vale()){ setCodes(k); marca('codes'); } });
-  const docs = st.listDocuments(pid).then(d=>{
-    if(!vale()) return;
+  const tokD = (known && seq.docsFull) ? 0 : ++seq.docs;
+  if(!known) seq.docsFull = tokD;
+  const lida = !tokD ? null : known ? readDocsLight(st, pid, known)
+    : st.listDocuments(pid).then(d=>({ docs:d, same:false })).finally(()=>{ if(seq.docsFull === tokD) seq.docsFull = 0; });
+  const docs = lida && lida.then(({ docs:d, same })=>{
+    if(tokD !== seq.docs || same) return;
     setDocs(d); marca('docs');
     // ABRE O PRIMEIRO DA LISTA QUE A PESSOA VE (DocsNav ordena por nome), e nao o primeiro que
     // o store devolveu: num projeto IMPORTADO na nuvem os documentos empatam no created_at
@@ -20115,7 +20194,7 @@ function App(){
 
   /* carregar projeto: cada lista entra na tela quando chega, e `carregando` diz qual ainda nao
      chegou para o projeto aberto (o porque esta no comentario de `loadProjectLists`, em hooks.js) */
-  const loadProject = useCallback((st, pid)=> loadProjectLists(st, pid, { setDocs, setCats, setCodes, setActiveId, mudaUi, seq:reqSeqRef.current }), []);
+  const loadProject = useCallback((st, pid, known)=> loadProjectLists(st, pid, { setDocs, setCats, setCodes, setActiveId, mudaUi, seq:reqSeqRef.current, known }), []);
   const carregando = { docs: ui.carga.docs!==project?.id, codes: ui.carga.codes!==project?.id };
   useEffect(()=>{ if(store && project && phase==='work') loadProject(store, project.id); }, [store, project, phase, loadProject]);
 
@@ -20158,7 +20237,7 @@ function App(){
       setViewCoder('all');
       try{localStorage.setItem('qualilab:project',JSON.stringify(np));}catch(e){}
       if(newMode==='individual' && mainView!=='codificar') setMainView('codificar');
-      await loadProject(store, project.id); await loadDoc();
+      await loadProject(store, project.id, docs); await loadDoc();   // the mode does not change which documents anyone sees
       setProjEdit(false); setBusy(null);
     }catch(e){ setBusy(null); setErr(String(e.message||e)); }
   }
@@ -20196,7 +20275,7 @@ function App(){
      concorrente) podia fazer a resposta VELHA chegar depois e ancorar codings do doc A
      sobre o texto do doc B. Só a resposta mais recente aplica o estado; dados idênticos
      não trocam a referência (sameJson) pra não invalidar os useMemo do leitor. */
-  const reqSeqRef = useRef({ doc:0, all:0, proj:0 });
+  const reqSeqRef = useRef({ doc:0, all:0, proj:0, docs:0, docsFull:0 });
   const loadDoc = useCallback(async ()=>{
     if(!store || !project || !activeId){ setValues([]); setCodings([]); return; }
     const tok = ++reqSeqRef.current.doc;
@@ -20217,9 +20296,9 @@ function App(){
      ocorrências mostrava 1 grifo; o mesmo projeto recarregado do disco mostrava os 3. */
   const reloadWrite = useCallback(async ()=>{
     if(!store || !project) return;
-    await loadProject(store, project.id);
+    await loadProject(store, project.id, docs);   // light: these writes never touch documents (loadProjectLists)
     await loadDoc();
-  }, [store, project, loadProject, loadDoc]);
+  }, [store, project, loadProject, loadDoc, docs]);
 
   /* carregar trechos e valores de TODOS os documentos (aba de visualizacao) */
   const loadAll = useCallback(async ()=>{
@@ -20680,7 +20759,7 @@ function App(){
     while(grew){ grew=false; codes.forEach(c=>{ if(c.parent_id && sub.has(c.parent_id) && !sub.has(c.id)){ sub.add(c.id); grew=true; } }); }
     let nCod; try{ const per = await mapPool([...sub], 8, async (cid)=> ((await store.listCodingsByCode(project.id, cid))||[]).length); nCod = per.reduce((a,x)=>a+(x||0),0); }catch(e){}
     const alvo = codeById[id] ? codePath(id).join(' ▸ ') : undefined;
-    try{ await store.deleteCode(id); }catch(e){ return setErr(String(e?.message||e)); } linksInvalidate(project.id); loadProject(store,project.id); loadDoc();
+    try{ await store.deleteCode(id); }catch(e){ return setErr(String(e?.message||e)); } linksInvalidate(project.id); loadProject(store,project.id,docs); loadDoc();
     logAct({ op:'code_deleted', target_kind:'code', target_id:id, target_name:alvo, detail:{ codings:nCod, subcodes:sub.size-1 } });
   }
   function closeCtxMenu(){ setCtxMenu(null); mudaCtxNovo(CTXNEW_INITIAL); }
@@ -20732,7 +20811,7 @@ function App(){
     // loadProject exige (store, projectId); loadDoc recarrega os grifos do documento aberto, que é
     // o que mostra os trechos já sob os códigos novos. loadAll só nas telas agregadas (a de
     // Codificação não carrega o agregado do projeto de propósito).
-    await loadProject(store, project.id); await loadDoc();
+    await loadProject(store, project.id, docs); await loadDoc();
     if(AGG_VIEWS.includes(mainView)) await loadAll();
   }
   // FR-03: ações por-código no menu de contexto do leitor.

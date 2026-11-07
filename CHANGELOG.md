@@ -14,6 +14,31 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.86 (07/11/2026)
+
+### Gravar no projeto não baixa mais o texto de todos os documentos de novo
+
+Várias ações baixavam de novo o texto de todos os documentos do projeto, o mesmo volume da abertura:
+aplicar as codificações da Auto-codificação ou da Repetir Codificação, mesclar, agrupar, reordenar,
+promover, dividir ou excluir um código, mover os códigos no mapa, preencher categorias pela IA e
+trocar o modo do projeto. Num projeto da nuvem com 141 documentos longos, eram cerca de 17 MB a cada
+uma dessas ações.
+
+- **Depois dessas ações, o QualiLab relê só a lista de documentos, sem o texto**, e baixa de novo
+  apenas o texto que mudou: o de um documento que alguém da equipe acrescentou, ou cujo texto um
+  administrador editou. O resto fica como já estava na tela.
+- **Nada some do que já acontecia:** documento acrescentado, renomeado ou removido por alguém da
+  equipe continua aparecendo depois dessas ações, e o texto editado por um administrador também.
+- **Uma ação feita enquanto o projeto ainda está abrindo** não começa um segundo download do corpus
+  nem descarta o que já estava a caminho.
+- Abrir o projeto continua baixando o texto de todos os documentos, uma vez.
+
+**Quem tem a própria nuvem** verá o aviso de atualizar o servidor: a versão do banco sobe para 4. A
+economia depende de uma coluna nova, que o servidor preenche sozinho com a hora em que o texto de cada
+documento mudou pela última vez. Use o botão **Atualizar o servidor** ou rode de novo o
+`supabase/schema.sql` desta versão. Enquanto o servidor não for atualizado, tudo funciona como antes,
+só sem a economia.
+
 ## 1.4.85 (07/11/2026)
 
 ### Abrir um projeto grande não parece mais abrir um projeto vazio
