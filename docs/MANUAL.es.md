@@ -24,7 +24,7 @@ Las capturas compartidas con el manual original muestran la interfaz en portugu�
 
 0. [La idea de QualiLab](#0-la-idea-de-qualilab): para qué sirve, qué problemas aborda, cómo planificar su uso
 1. [Conceptos fundamentales](#1-conceptos-fundamentales): el modelo conceptual antes de todo
-2. [Primeros pasos](#2-primeros-pasos): acceder, elegir dónde guardar, crear un proyecto
+2. [Primeros pasos](#2-primeros-pasos): acceder, elegir dónde guardar, crear un proyecto, crear la nube del grupo
 3. [La interfaz](#3-la-interfaz): encabezado, barra de estado, paleta de comandos, paneles, teclado y accesibilidad
 4. [Documentos](#4-documentos): subir, pegar, renombrar, editar el texto, ver el PDF original y OCR
 5. [Codificación de fragmentos](#5-codificación-de-fragmentos): el centro de la herramienta
@@ -223,7 +223,7 @@ La primera pantalla pregunta **¿Con quién vas a trabajar?** y ofrece dos puert
    - **Abrir archivo existente**: vuelve a abrir un `.qualilab` de tu disco.
 2. **Con mi grupo**:
    - **Entrar**: para quien ya tiene cuenta en la nube del grupo, o recibió de sus colegas el nombre corto de ella. Consulta **El panel Entrar**, abajo.
-   - **Crear mi nube**: abre un asistente que monta **un servidor solo de tu grupo**, en una cuenta gratuita de Supabase que es de ustedes, para trabajo colaborativo y sincronizado. Una vez que autorizas en supabase.com, el asistente hace el montaje solo, y la nube recibe un **nombre corto** que los colegas escriben para encontrarla. Después de **Conectar a este servidor**, la pantalla de entrada ofrece **Crear mi cuenta**: la cuenta vive en ese servidor y es con la que entras desde entonces. Quien prefiere montarlo a mano elige **Ya tengo un servidor, o prefiero configurarlo a mano**: son cinco pasos guiados (**Crear**, **Dirección y clave**, **Base de datos**, **Inicio de sesión** y **Verificar**), hechos en parte en el panel de Supabase, y el último comprueba que todo haya salido bien.
+   - **Crear mi nube**: abre un asistente que monta **un servidor solo de tu grupo**, en una cuenta gratuita de Supabase que es de ustedes, para trabajo colaborativo y sincronizado. Una vez que autorizas en supabase.com, el asistente hace el montaje solo, y la nube recibe un **nombre corto** que los colegas escriben para encontrarla. El paso a paso, el camino a mano y el mantenimiento están en [2.4](#24-crear-la-nube-de-tu-grupo-supabase).
 
 Justo debajo de las puertas, **Solo probar (borrador)** abre inmediatamente un proyecto de **borrador** en este navegador, sin configuración. Es efímero (desaparece al borrar los datos del sitio), adecuado para probar; puedes migrar a archivo o nube desde la gestión del proyecto.
 
@@ -259,6 +259,129 @@ Después de iniciar sesión aparece **Mis proyectos**:
 - **Archivo local** (Chrome/Edge): **Nuevo archivo…** crea un `.qualilab` en disco; **Abrir archivo…** abre uno existente. Ideal para datos sensibles, sin nube ni red. **En más de una computadora:** guarda el archivo en la carpeta de Google Drive o de OneDrive, con su programa instalado en las dos computadoras. Cierra el proyecto en una y espera a que se sincronice antes de abrirlo en la otra, porque con las dos abiertas una puede sobrescribir el trabajo de la otra. En esa carpeta el archivo va a la nube de ese servicio, así que, si el material es sensible, comprueba antes si tu institución lo permite.
 
 > El admin puede cambiar el tipo después. **Colectivo → Individual es irreversible**: reúne todas las codificaciones bajo un único autor y conserva solo la referencia de las categorías.
+
+### 2.4. Crear la nube de tu grupo (Supabase)
+
+Para trabajar en equipo, QualiLab necesita un servidor donde los proyectos queden guardados y se sincronicen. Ese servidor es **de tu grupo**: un proyecto [Supabase](https://supabase.com) (base de datos con inicio de sesión) en una cuenta de alguien del grupo, en el plan gratuito. La base es de ustedes, las claves quedan con quien ustedes autoricen y el material no pasa por el autor de QualiLab. La nube pública, que servía a todos, **se desactivará el 31/12/2026** (consulta [Llevar un proyecto de la nube pública a la del grupo](#llevar-un-proyecto-de-la-nube-pública-a-la-del-grupo)).
+
+Una persona del grupo hace esto **una vez**, normalmente quien coordina; los colegas solo entran ([Traer al equipo](#traer-al-equipo)). Hay dos caminos:
+
+- **Con el asistente**, el camino normal: QualiLab crea el servidor en tu cuenta de Supabase después de que autorizas en supabase.com. Lleva unos diez minutos la primera vez, contando la creación de la cuenta.
+- **A mano**: creas el proyecto en el panel de Supabase y el asistente guía los cinco pasos. Sirve a quien ya tiene un servidor, a quien prefiere no autorizar a QualiLab en su propia cuenta y a quien usa una copia propia de la aplicación.
+
+> **La nube del grupo no cambia lo que vale para el material sensible.** El contenido queda legible para quien administra el proyecto en Supabase y para la empresa Supabase, que lo aloja; no hay cifrado de extremo a extremo ([sección 16](#modo-nube-supabase-qué-es-y-qué-protege)). Para material vedado, el modo archivo sigue siendo la respuesta.
+
+#### Crearla con el asistente
+
+1. En la pantalla de entrada, en **Con mi grupo**, pulsa **Crear mi nube**.
+
+   ![La ventana «Crear la nube de tu grupo» (en portugués, «Criar a nuvem do seu grupo»): el campo Nombre corto de la nube (con labdados-exemplo) y la Región (São Paulo), la explicación del nombre corto, la pregunta «¿Ya usas Supabase?» con los botones «No, es la primera vez» y «Sí, ya lo uso», las secciones plegadas «Qué es gratis, y qué no» y «Quién ve qué», y al pie «Ya tengo un servidor, o prefiero configurarlo a mano».](manual-img/20-nuvem-criar.png)
+
+2. Escribe un **Nombre corto de la nube** y elige la **Región**. El nombre corto es lo que tú y tus colegas escribirán para encontrar la nube en otra computadora: de 3 a 40 letras sin tilde, números o guion (las mayúsculas y los espacios se vuelven minúsculas y guiones mientras escribes). También se convierte en el nombre del proyecto en el panel de Supabase. **Usa el nombre del grupo, no el de una persona**: los nombres quedan en un registro abierto, junto a la dirección y la clave pública de cada nube. En la región, **São Paulo** queda cerca de quien usa en Brasil y mantiene los datos alojados en ese país, lo que puede pesar en la evaluación de un comité de ética; también están Virginia (EE. UU.) y Fráncfort (Alemania).
+3. Responde **¿Ya usas Supabase?**. Supabase solo deja autorizar a QualiLab en una cuenta que ya tenga una **organización** (la carpeta donde guarda los proyectos):
+   - **No, es la primera vez**: una guía de cuatro pantallas muestra, con la imagen de cada una, qué hacer en supabase.com, en **otra pestaña**: crear la cuenta (con GitHub, con ChatGPT, o con correo y contraseña, confirmando con el enlace que manda Supabase) y crear la organización (**Create organization**, con **Plan** en **Free - $0/month**, que no pide tarjeta). Cuando aparezca la pantalla **Create a new project**, detente: quien crea el proyecto es QualiLab. Cierra las pestañas de Supabase, vuelve a la de QualiLab y pulsa **Siguiente**.
+   - **Sí, ya lo uso**: va directo a la autorización.
+
+   Si el nombre corto ya pertenece a otra nube, el aviso aparece aquí, antes de ir a supabase.com.
+
+   ![La guía del asistente en el paso 3 de 5, «Crea la organización»: el texto dice qué completar en Name, Type y Plan, y la imagen de la pantalla «Create a new organization» de Supabase muestra el botón Create organization rodeado en rojo. Abajo, los botones Volver y Siguiente.](manual-img/21-nuvem-guia.png)
+
+4. Pulsa **Autorizar en supabase.com**. En la misma pestaña se abre la pantalla **Authorize QualiLab** de Supabase (si te lo pide, entra con tu cuenta de allí). Comprueba en **ORGANIZATION** la organización donde nacerá el servidor, lee en **PERMISSIONS** lo que QualiLab podrá hacer en ella y pulsa **Authorize QualiLab**. ¿Aparece **No organizations found**? La cuenta todavía no tiene organización: pulsa **Create an organization**, comprueba el plan Free, y Supabase vuelve solo a la autorización.
+
+   ![El paso 5 de 5, «Autoriza a QualiLab»: el texto explica ORGANIZATION y PERMISSIONS, la imagen muestra la pantalla «Authorize QualiLab» de Supabase con el botón de autorizar rodeado en rojo, y abajo quedan el botón «Autorizar en supabase.com» y la ayuda plegada para cuando aparece «No organizations found».](manual-img/22-nuvem-autorizar.png)
+
+5. Supabase te trae de vuelta y QualiLab hace el resto, marcando cada etapa: recibe la autorización, elige la organización (si la cuenta tiene más de una, pregunta en cuál), crea el proyecto, espera a que el servidor esté listo (unos dos minutos), monta la base de datos, configura el inicio de sesión, busca la clave pública y registra el nombre corto. Deja la pestaña abierta.
+6. La pantalla final dice **La nube de tu grupo está lista** y muestra el **nombre corto** y el **enlace** de la nube. Guarda los dos: este navegador ya recuerda la nube, pero en otra computadora es con ellos que vuelves a ella. **Enviar a mi correo** arma el mensaje en tu programa de correo; **Descargar archivo con la dirección** guarda un `.txt` con el nombre, el enlace y la **contraseña de emergencia de la base de datos**. Supabase exige esa contraseña al crear el proyecto: QualiLab la creó, la muestra solo ahora (en **Contraseña de emergencia de la base de datos**) y no guarda copia. La aplicación no la necesita; sirve para emergencias y para quien algún día administre la base directamente. Guarda el archivo en un lugar seguro. **Verificación técnica** muestra lo que la aplicación comprobó en el servidor nuevo.
+
+   ![La pantalla final de la creación: «La nube de tu grupo está lista», el recordatorio de que falta crear la cuenta, el bloque «Guarda la dirección de tu nube» con el nombre corto labdados-exemplo y el enlace de la nube (cada uno con Copiar), los botones «Enviar a mi correo» y «Descargar archivo con la dirección», el botón principal «Entrar y crear mi cuenta» y, plegadas, la contraseña de emergencia de la base de datos y la verificación técnica.](manual-img/23-nuvem-pronta.png)
+
+7. Pulsa **Entrar y crear mi cuenta**. La página se recarga ya en la nube nueva, y la pantalla de entrada ofrece **Crear mi cuenta**: la cuenta vive en ese servidor, y la primera es la tuya, la de quien coordina. Después toca crear el proyecto (como en 2.3, arriba) y llamar al equipo.
+
+**Quién ve qué.** La autorización le da a QualiLab, mientras se crea el servidor, el poder de crear y configurar un proyecto en la organización que elegiste. Las llamadas pasan por una función de QualiLab, que habla con Supabase en tu nombre y **no guarda nada**; las claves secretas del proyecto nuevo nunca salen de ella. Los datos de investigación **nunca pasan por ella**: van del navegador directo al servidor del grupo. El código de la función es abierto y está en el [repositorio](https://github.com/LuizPF42/QualiLab/tree/main/supabase/functions/server-setup).
+
+**Una consecuencia que conviene saber.** La nube creada por el asistente **no confirma el correo al registrarse**: quien tiene la dirección de la nube crea una cuenta al instante, sin código. Es a propósito: el servidor de correo integrado de Supabase envía unos dos correos por hora, y los filtros de los buzones institucionales queman los enlaces de confirmación antes de que la persona haga clic. Para un grupo cerrado eso basta, porque **nadie ve ningún proyecto sin el código de invitación**. El precio es que nadie demuestra ser dueño del correo que escribió, así que una [invitación trabada en un correo](#invitación-con-rol-fijo) protege menos de lo que parece. Para cerrar la puerta una vez que el equipo entró, consulta [Mantenimiento y límites del plan gratuito](#mantenimiento-y-límites-del-plan-gratuito).
+
+**Si algo sale mal**, la pantalla dice qué pasó y ofrece **Intentar de nuevo**, que vuelve al principio:
+
+- **No se concedió la autorización**: no se creó nada.
+- **El regreso de supabase.com llegó a otra pestaña** (suele pasar cuando la confirmación del correo de Supabase abre otra pestaña): no se creó nada, y la cuenta y la organización siguen allí. En la pestaña de QualiLab, intenta de nuevo, responde **Sí, ya lo uso** y autoriza.
+- **La cuenta gratuita ya tiene dos proyectos activos**, el máximo del plan: pausa o borra uno en el panel de Supabase e intenta de nuevo.
+- **El servidor tarda más de lo normal**: espera unos minutos e intenta de nuevo; el proyecto ya creado aparece en el panel.
+- **La creación se detuvo después de crear el proyecto**: la pantalla dice cuál es. Termina por el camino a mano, o bórralo en el panel y empieza de nuevo.
+- **Otra nube registró el nombre corto mientras tanto**: la nube está lista; elige otro nombre o sigue sin él.
+
+#### Montarla a mano
+
+En la primera pantalla del asistente, **Ya tengo un servidor, o prefiero configurarlo a mano** abre los cinco pasos (y **Volver a la creación automática** regresa). Cada paso tiene botones que abren la página correcta del panel de Supabase. El panel está en inglés, y este manual cita los nombres tal como aparecen allí; si un botón cambia de lugar, búscalo por el nombre.
+
+![El camino a mano, en el paso «4. Inicio de sesión» (en portugués, «4. Login»): arriba, las pestañas Crear, Dirección y clave, Base de datos, Inicio de sesión y Verificar; abajo, la dirección para la «Site URL» (https://luizpf42.github.io/QualiLab/) y la de las «Redirect URLs» (la misma, terminada en **), cada una con Copiar, los botones que abren las páginas del panel, la explicación de la confirmación de registro por correo y la plantilla «Confirm signup» con el código, lista para pegar.](manual-img/24-nuvem-manual.png)
+
+1. **Crear.** Crea la cuenta en Supabase, una organización en el plan **Free** y un proyecto nuevo (**New project**). En **Region**, elige **South America (São Paulo)**. Supabase pide una **Database password**: genera una y guárdala con quien administra el servidor (QualiLab no la usa). En **Security**, deja las opciones como vienen: **Enable Data API** tiene que quedar activado.
+2. **Dirección y clave.** La dirección es la **Project URL** (`https://<código>.supabase.co`), que aparece en el panel del proyecto, justo debajo del nombre. La clave está en **Project Settings → API Keys**: usa la clave **pública**, la **anon public** o la **publishable**. **Nunca** la **service_role** ni la **secret**: pasan por encima de todas las reglas de acceso, y el asistente las rechaza. La clave pública puede circular por el equipo: va en toda página que habla con el servidor, y lo que protege los datos son las cuentas y las reglas de acceso que instala la base.
+3. **Base de datos.** Pulsa **Copiar el schema.sql** y **Abrir el editor de SQL**; pega todo y pulsa **Run**. Supabase avisa **Potential issues detected**, porque el script tiene comandos de borrado: es lo esperado (existen para que el script pueda correr de nuevo sin duplicar nada, y en un proyecto nuevo no hay nada que borrar), así que pulsa **Run query**. **Success. No rows returned** es el resultado correcto.
+4. **Inicio de sesión.** En **Authentication → URL Configuration**, pon en **Site URL** y en **Redirect URLs** las dos direcciones que muestra el asistente, con **Copiar** al lado. Ahí vuelven el enlace de «olvidé mi contraseña» y el inicio de sesión con Google; sin ellas, Supabase manda a la persona a `localhost:3000`, que no abre nada. Después decide la **confirmación de registro por correo**:
+   - **Desactivarla**, lo más simple para un grupo cerrado: desactiva **Confirm email** en **Authentication → Sign In / Providers → Email**. La cuenta entra directo, sin código, con la misma consecuencia de la nube creada por el asistente.
+   - **Mantenerla**: QualiLab pide un **código escrito**, no un enlace, así que la plantilla de correo **Confirm signup** tiene que traer el código (`{{ .Token }}`; el asistente muestra una plantilla lista para pegar). Para editar la plantilla, Supabase exige un **servidor de correo propio (SMTP)**, en **Authentication → Emails → SMTP Settings**. Sirve cualquier servicio con SMTP, y Brevo no pide dominio propio. Sin SMTP propio, el proyecto entero envía unos dos correos por hora.
+
+   El inicio de sesión con Google es opcional (**Sign In / Providers → Google**, con un registro en Google Cloud).
+5. **Verificar.** **Verificar ahora** consulta el servidor con la clave pública, sin entrar en ninguna cuenta, y lista lo que encontró: si responde y acepta la clave, si la base está en la versión que la aplicación espera, si existen los depósitos de archivos (PDF e instantáneas), si las actualizaciones en vivo están activadas y cómo está el inicio de sesión. Corrige lo que venga con ✗ y verifica de nuevo. Con todo en orden, pulsa **Conectar a este servidor**; el **enlace para el equipo** aparece justo debajo.
+
+#### Traer al equipo
+
+Cada persona crea **su propia cuenta** en la nube del grupo (la cuenta de la nube pública no vale allí) y entra al proyecto con la invitación. Un colega llega al servidor de tres maneras, y ninguna lleva contraseña, solo la dirección y la clave pública:
+
+- **Por el nombre corto.** En la pantalla de entrada, en **Con mi grupo → Entrar**, elige **Otra nube…** y escribe el nombre. La primera vez que un nombre lleva a una nube que este navegador no conoce, la aplicación muestra la **dirección** antes de pedir la contraseña: compruébala con quien te pasó el nombre y pulsa **Es esta, continuar**. Un nombre corto es un atajo, no una garantía de quién es la nube, porque cualquiera puede registrar un nombre libre.
+- **Por el enlace de la nube**, el de la pantalla final o el de **Enlace para el equipo**, al final de la pantalla de entrada: quien lo abre ve a qué servidor apunta y confirma en **Verificar y conectar**. El enlace nunca cambia de servidor solo, y la aplicación rechaza un enlace que traiga la clave secreta.
+- **Por el enlace de la invitación** (**copiar enlace**, en la [sección 13](#invitación-con-rol-fijo)): lleva el servidor y el código del proyecto juntos, y después de crear la cuenta la persona cae directo en **Entrar en el proyecto**.
+
+![El panel Entrar, abierto en la pantalla de entrada: la nube labdados-exemplo elegida en la lista (con su dirección y la × para olvidarla), la opción «Otra nube…», los campos de correo y contraseña, el botón Entrar, «¿Primera vez en esta nube? Crear cuenta» y «Olvidé mi contraseña»; abajo, «Conectar con dirección y clave», «Crear la nube de mi grupo» y «Conectar a la nube pública (obsoleta)».](manual-img/25-entrar.png)
+
+Después de la primera vez, la nube queda en la lista del panel **Entrar** y en **Continuar donde lo dejaste** ([2.2](#22-la-pantalla-de-entrada)). La lista guarda solo la dirección, la clave pública y el nombre corto, nunca el correo; la **×** junto a una nube la olvida en este navegador.
+
+#### Mantener el servidor al día
+
+Algunas versiones de QualiLab cambian la base de datos, y el CHANGELOG avisa cuándo. Al entrar en una nube del grupo, la aplicación comprueba la versión de la base; si el servidor está atrás de esta versión de QualiLab, la pantalla de entrada muestra un aviso y la barra de estado muestra **servidor desactualizado**. Hasta la actualización, algunas funciones pueden fallar.
+
+![La pantalla de entrada conectada a una nube del grupo, con el aviso de que el servidor está en la versión 2 de la base y la aplicación necesita la 3, y encima la ventana «Actualizar el servidor del grupo»: qué hace la actualización, quién puede hacerla, el botón «Actualizar desde supabase.com» y, plegado, «Prefiero hacerlo a mano».](manual-img/26-servidor-desatualizado.png)
+
+**Actualizar el servidor** abre la ventana de actualización:
+
+- **Actualizar desde supabase.com** pide otra vez la autorización en Supabase e instala en el servidor la estructura de la base de esta versión (tablas, reglas de acceso y funciones). Los proyectos y los datos se quedan. La actualización corre entera o no corre: si la base la rechaza, el servidor queda como estaba. Tarda unos segundos. Solo funciona para quien tiene la cuenta de Supabase que alcanza el proyecto, normalmente quien creó la nube; para los demás, no se toca nada.
+- **Prefiero hacerlo a mano**: copia el `schema.sql` de esta versión, córrelo en el editor de SQL del proyecto, como en el paso **Base de datos**, y pulsa **Verificar de nuevo**. Correr el `schema.sql` otra vez es seguro: agrega lo que falta sin borrar proyectos ni datos.
+
+Un servidor **más nuevo** que la aplicación nunca aparece como desactualizado; en ese caso, recarga la página para obtener la versión actual de QualiLab.
+
+#### Mantenimiento y límites del plan gratuito
+
+Con la nube propia, el mantenimiento pasa a ser del grupo:
+
+- **Pausa por inactividad.** El plan gratuito pausa el proyecto después de una semana sin uso. No se pierde nada: quien tiene la cuenta lo reactiva con un clic (**Restore project**) en el panel de Supabase. Mientras el proyecto está pausado, la aplicación dice que el servidor no respondió.
+- **Tamaño.** 500 MB de base de datos y 1 GB de archivos (los PDF originales, que solo se suben cuando el equipo lo consiente). El uso aparece en la página de la organización, en Supabase. Un proyecto muy grande puede requerir un plan pago, o el modo archivo, que no tiene ese techo.
+- **Dos proyectos activos por cuenta gratuita.** Para crear un tercero, pausa o borra uno, o usa otra cuenta.
+- **Copias de seguridad.** Exporta el proyecto (`.qualilab`) de vez en cuando y usa las [instantáneas](#instantáneas-del-proyecto-punto-de-restauración) antes de operaciones grandes. Lo que el plan de Supabase incluye en copias de seguridad está en [supabase.com/pricing](https://supabase.com/pricing).
+- **Cerrar el registro.** Cuando todo el equipo tenga cuenta, puedes desactivar **Allow new users to sign up** en **Authentication → Sign In / Providers**, y volver a activarlo cuando llegue alguien nuevo. Con el registro cerrado, la verificación del servidor avisa que solo entra quien sea invitado desde el panel de Supabase.
+- **Dos personas en el panel.** En **Organization → Team**, invita a otra persona del grupo a administrar Supabase: si la única cuenta que administra desaparece, la base queda sin dueño.
+- **Guarda el archivo de la pantalla final** (dirección y contraseña de emergencia) junto con los demás papeles del grupo.
+
+#### Llevar un proyecto de la nube pública a la del grupo
+
+La nube pública de QualiLab se desactivará el **31/12/2026**. Hasta entonces sigue disponible, en **Conectar a la nube pública (obsoleta)**. Para llevar un proyecto desde ella:
+
+1. En la nube pública, descarga el proyecto como `.qualilab` (**exportar ▾ → .qualilab**).
+2. Crea la nube del grupo (arriba) o conéctate a ella por **Con mi grupo → Entrar**.
+3. Abre el `.qualilab` (**Abrir archivo existente**) y usa **Enviar a la nube**, en la gestión del proyecto ([sección 13](#enviar-a-la-nube)): el proyecto nuevo se crea en la nube conectada.
+4. Pide a cada persona del equipo que cree una cuenta en la nube nueva y entre con el enlace de invitación.
+
+La distribución de documentos y la codificación a ciegas no viajan en el `.qualilab`: configura las dos de nuevo en el proyecto nuevo antes de que el equipo vuelva a codificar. Las codificaciones traídas del archivo conservan el nombre de quien codificó, pero, como vinieron de un archivo, solo la administración las quita.
+
+#### Problemas comunes en la nube del grupo
+
+- **«El servidor no respondió».** Comprueba la dirección; si es correcta, el proyecto puede estar pausado (reactívalo en el panel de Supabase).
+- **«El servidor rechazó la clave».** La clave que pegaste no es la pública de este proyecto, o llegó incompleta.
+- **El correo de registro trae un enlace, pero QualiLab pide un código.** La plantilla **Confirm signup** sigue siendo la de Supabase: desactiva la confirmación, o configura el SMTP y la plantilla con el código (paso **Inicio de sesión**).
+- **El correo no llega.** Sin SMTP propio, el proyecto envía unos dos correos por hora, sumando registros y «olvidé mi contraseña». Revisa el spam y espera, o configura el SMTP.
+- **«Olvidé mi contraseña» abre `localhost:3000` o una página de error.** Falta la Site URL o la Redirect URL (paso **Inicio de sesión**). La nube creada por el asistente ya viene con las dos.
+- **Un colega no encuentra el proyecto.** Entró en otra nube (comprueba el nombre de la nube en el panel **Entrar**) o con otra cuenta.
 
 ---
 
@@ -824,7 +947,7 @@ Si se declara que **las categorías son metadatos del diseño** ([codificación 
 
 ## 13. Colaboración
 
-*(Proyecto colectivo, modo nube.)*
+*(Proyecto colectivo, modo nube.)* ¿Tu grupo todavía no tiene nube? Empieza por [2.4](#24-crear-la-nube-de-tu-grupo-supabase).
 
 ### Invitar personas
 Abre el **indicador del proyecto** y comparte el **código de acceso**. Se usa en **Mis proyectos → Entrar con código**. También aparece en el indicador (`nube · Proyecto · CÓDIGO · colectivo ▾`). Quien entra con él recibe siempre el rol de **miembro**.
@@ -870,7 +993,7 @@ Desde un **borrador** o **archivo**, **Enviar a la nube** crea un nuevo proyecto
 
 ## 14. Mi cuenta
 
-![Mi cuenta: nombre visible y configuración de IA con proveedor, clave de API y modelo.](manual-img/11-conta.png)
+![Mi cuenta: nombre visible, idioma de la interfaz y configuración de IA con proveedor (OpenRouter entre ellos), clave de API y modelo.](manual-img/11-conta.png)
 
 Pulsa **tu nombre** en cualquier modo para abrir **Mi cuenta**:
 - Cambiar el **nombre visible** en codificaciones.
@@ -1007,7 +1130,7 @@ Si tienes **una fila por documento** y **una columna por tema** con citas, puede
 
 ## 16. Guardado, copias de seguridad y modos de almacenamiento
 
-![Gestión del proyecto: tipo, renombrar/vaciar/eliminar y opciones de almacenamiento, copia automática en carpeta, guardar como .qualilab y enviar a la nube.](manual-img/12-projeto.png)
+![Gestión del proyecto, abierta desde la píldora del encabezado y desplazada hasta abajo: renombrar, vaciar contenido, eliminar proyecto y las opciones de almacenamiento, copia automática en carpeta, guardar como .qualilab, enviar a la nube y la conexión (Supabase). Más arriba quedan el tipo de proyecto, los recursos de IA y las instantáneas.](manual-img/12-projeto.png)
 
 QualiLab **guarda automáticamente** después de cada acción. El lugar depende del modo:
 
@@ -1063,8 +1186,8 @@ La nube guarda el proyecto en una base en línea para **sincronizar** personas y
 
 La pregunta central es **quién administra ese Supabase**:
 
-- **Nube pública de QualiLab**, el *servidor estándar* (botón **Conectar a la nube pública (obsoleta)**): el Supabase del autor. El propietario **tiene acceso técnico** al contenido. Usarlo implica confiar en un proyecto personal sin garantía institucional ([aviso legal](#0-la-idea-de-qualilab)). No es el destino recomendado para datos sensibles.
-- **Nube privada, tu propio Supabase**, indicador violeta **nube personal**: conectas tu propio proyecto (puede crearse en el plan gratuito). Tú administras sus claves y permisos, aunque Supabase sigue alojándolo. Crea una en la pantalla de entrada, en **Crear mi nube**, o conecta a una existente en **Con mi grupo → Entrar → Conectar con dirección y clave** (en el inicio de sesión de la nube pública, **Conectar a una nube privada**); también desde la gestión de un proyecto local, en **Conexión (Supabase)**.
+- **Nube pública de QualiLab**, el *servidor estándar* (botón **Conectar a la nube pública (obsoleta)**), que **se desactivará el 31/12/2026** ([cómo llevar un proyecto desde ella](#llevar-un-proyecto-de-la-nube-pública-a-la-del-grupo)): el Supabase del autor. El propietario **tiene acceso técnico** al contenido. Usarlo implica confiar en un proyecto personal sin garantía institucional ([aviso legal](#0-la-idea-de-qualilab)). No es el destino recomendado para datos sensibles.
+- **Nube privada, tu propio Supabase**, indicador violeta **nube personal**: conectas tu propio proyecto (puede crearse en el plan gratuito). Tú administras sus claves y permisos, aunque Supabase sigue alojándolo. Crea una en la pantalla de entrada, en **Crear mi nube** (paso a paso en [2.4](#24-crear-la-nube-de-tu-grupo-supabase)), o conecta a una existente en **Con mi grupo → Entrar → Conectar con dirección y clave** (en el inicio de sesión de la nube pública, **Conectar a una nube privada**); también desde la gestión de un proyecto local, en **Conexión (Supabase)**.
 
 **Protecciones:**
 - **Inicio de sesión** por correo/contraseña o Google mediante Supabase Auth.
@@ -1399,6 +1522,9 @@ Busca una instantánea previa en **Proyecto → Copias espejo del proyecto** y *
 
 **No puedo confirmar la cuenta o se rechaza el código.**
 Escribe **todos los números** del correo en **Confirma tu registro**. El código dura una hora; tras reenviar, solo sirve el **último**. Revisa spam. Si ya confirmaste, usa **Ya confirmé: quiero entrar**.
+
+**Problemas con la nube del grupo** (el servidor no responde, la clave es rechazada, el correo de registro trae un enlace en vez de un código, un colega no encuentra el proyecto).
+Consulta [Problemas comunes en la nube del grupo](#problemas-comunes-en-la-nube-del-grupo), en 2.4.
 
 **Olvidé la contraseña.**
 En el acceso a nube, pulsa **Olvidé mi contraseña**, indica correo y envía. El enlace abre la pantalla de **nueva contraseña**; después inicia sesión. Es temporal y de un solo uso: si caducó, solicita otro. Revisa spam. La respuesta en pantalla es igual exista o no esa cuenta.

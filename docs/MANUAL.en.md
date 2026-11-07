@@ -24,7 +24,7 @@ This manual teaches you to *use* QualiLab step by step. For the feature list and
 
 0. [The idea behind QualiLab](#0-the-idea-behind-qualilab): what it is for, which problems it attacks, how to plan your use
 1. [Core concepts](#1-core-concepts): the mental model before anything else
-2. [Getting started](#2-getting-started): accessing, choosing where to save, creating a project
+2. [Getting started](#2-getting-started): accessing, choosing where to save, creating a project, creating the group cloud
 3. [The interface](#3-the-interface): header, status bar, command palette, panels, keyboard and accessibility
 4. [Documents](#4-documents): uploading, pasting, renaming, editing the text, viewing the original PDF and OCR
 5. [Coding passages](#5-coding-passages): the heart of the tool
@@ -223,7 +223,7 @@ The first screen asks **Who will you be working with?** ("Com quem você vai tra
    - **Open an existing file** ("Abrir arquivo existente"): reopens a `.qualilab` from your disk.
 2. **With my group** ("Com meu grupo"):
    - **Sign in** ("Entrar"): for those who already have an account on the group cloud, or got its short name from colleagues. See **The Sign in panel**, below.
-   - **Create my cloud** ("Criar minha nuvem"): there are five guided steps (**Create**, **Address and key**, **Database**, **Sign-in** and **Check**), done partly in the Supabase dashboard, and the last one checks that everything worked.
+   - **Create my cloud** ("Criar minha nuvem"): opens a wizard that sets up **a server for your group alone**, on a free Supabase account that belongs to you, for collaborative work synced across devices. After you authorize on supabase.com, the wizard does the setup on its own, and the cloud gets a **short name** that colleagues type to find it. The step-by-step, the manual path and maintenance are in [2.4](#24-create-a-cloud-for-your-group-supabase).
 
 Right below the doors, **Just try it (draft)** ("Só testar (rascunho)") instantly opens a **draft** project in this browser, with nothing to configure. It is ephemeral (it vanishes if you clear the site data), good for experimenting; migrate to file or cloud whenever you want (one click in the project hub).
 
@@ -259,6 +259,129 @@ After login comes **"My projects"** ("Meus projetos"):
 - **Local file** (Chrome/Edge): **New file…** ("Novo arquivo…") creates a `.qualilab` on disk; **Open a file…** ("Abrir arquivo…") reopens an existing one. Ideal for sensitive data (no cloud, no network). **On more than one computer:** save the file in the Google Drive or OneDrive folder, with their program installed on both computers. Close the project on one and wait for it to sync before opening it on the other, because with both open one can overwrite the other's work. In that folder the file goes to that service's cloud, so if the material is sensitive, first check that your institution allows it.
 
 > The project type can be changed later (admin). Converting **Collective → Individual is irreversible**: it collapses all codings into a single author and keeps only the attributes' reference layer.
+
+### 2.4. Create a cloud for your group (Supabase)
+
+To work as a team, QualiLab needs a server where projects live and sync. That server belongs **to your group**: a [Supabase](https://supabase.com) project (a database with sign-in) on an account of someone in the group, on the free plan. The database is yours, the keys stay with whoever you authorize, and the material does not go through QualiLab's author. The public cloud, which served everyone, **will be shut down on 31/12/2026** (see [Moving a project from the public cloud to the group's](#moving-a-project-from-the-public-cloud-to-the-groups)).
+
+One person in the group does this **once**, usually whoever coordinates; colleagues only sign in ([Bringing in the team](#bringing-in-the-team)). There are two paths:
+
+- **With the wizard**, the normal path: QualiLab creates the server on your Supabase account after you authorize it on supabase.com. It takes about ten minutes the first time, counting the account creation.
+- **By hand**: you create the project in the Supabase dashboard and the wizard guides you through five steps. It serves those who already have a server, those who prefer not to authorize QualiLab on their own account, and those who run their own copy of the app.
+
+> **A group cloud does not change what holds for sensitive material.** The content is readable by whoever administers the project on Supabase and by the Supabase company, which hosts it; there is no end-to-end encryption ([section 16](#cloud-mode-supabase-what-it-is-and-how-the-data-is-protected-or-not)). For restricted material, file mode is still the answer.
+
+#### Creating it with the wizard
+
+1. On the entry screen, under **With my group** ("Com meu grupo"), click **Create my cloud** ("Criar minha nuvem").
+
+   ![The "Create a cloud for your group" window (in Portuguese, "Criar a nuvem do seu grupo"): the Short name of the cloud field (filled with labdados-exemplo) and the Region (São Paulo), the explanation of the short name, the question "Do you already use Supabase?" with the buttons "No, this is my first time" and "Yes, I already do", the folded sections "What is free, and what is not" and "Who sees what", and at the foot "I already have a server, or I prefer to set it up by hand".](manual-img/20-nuvem-criar.png)
+
+2. Give it a **Short name of the cloud** ("Nome curto da nuvem") and pick the **Region** ("Região"). The short name is what you and your colleagues will type to find the cloud on another computer: 3 to 40 unaccented letters, digits or hyphens (capitals and spaces turn into lower case and hyphens as you type). It also becomes the project's name in the Supabase dashboard. **Use the group's name, not a person's**: names are kept in an open registry, next to each cloud's address and public key. For the region, **São Paulo** is close to users in Brazil and keeps the data hosted in the country, which may matter in an ethics committee review; there are also Virginia (USA) and Frankfurt (Germany).
+3. Answer **Do you already use Supabase?** ("Você já usa o Supabase?"). Supabase only lets you authorize QualiLab on an account that already has an **organization** (the folder where it keeps projects):
+   - **No, this is my first time** ("Não, é a primeira vez"): a four-screen guide shows, with a picture of each, what to do on supabase.com, in **another tab**: create the account (with GitHub, with ChatGPT, or with e-mail and password, confirming through the link Supabase sends) and create the organization (**Create organization**, with **Plan** set to **Free - $0/month**, which asks for no card). When the **Create a new project** screen appears, stop: QualiLab is the one that creates the project. Close the Supabase tabs, go back to QualiLab's and click **Next** ("Próximo").
+   - **Yes, I already do** ("Sim, já uso"): goes straight to the authorization.
+
+   If the short name already belongs to another cloud, you are told here, before going to supabase.com.
+
+   ![The wizard's guide at step 3 of 5, "Create the organization": the text says what to fill in Name, Type and Plan, and the picture of Supabase's "Create a new organization" screen shows the Create organization button outlined in red. Below, the Back and Next buttons.](manual-img/21-nuvem-guia.png)
+
+4. Click **Authorize on supabase.com** ("Autorizar no supabase.com"). Supabase's **Authorize QualiLab** screen opens in the same tab (if asked, sign in with your account there). Check under **ORGANIZATION** the organization where the server will be born, read under **PERMISSIONS** what QualiLab will be able to do in it, and click **Authorize QualiLab**. Seeing **No organizations found**? The account has no organization yet: click **Create an organization**, check the Free plan, and Supabase returns to the authorization on its own.
+
+   ![Step 5 of 5, "Authorize QualiLab": the text explains ORGANIZATION and PERMISSIONS, the picture shows Supabase's "Authorize QualiLab" screen with the authorize button outlined in red, and below sit the "Authorize on supabase.com" button and the folded help for when "No organizations found" shows up.](manual-img/22-nuvem-autorizar.png)
+
+5. Supabase brings you back and QualiLab does the rest, ticking off each stage: it receives the authorization, picks the organization (if the account has more than one, it asks which), creates the project, waits for the server to be ready (about two minutes), sets up the database, configures sign-in, fetches the public key and registers the short name. Keep the tab open.
+6. The final screen says **Your group cloud is ready** ("A nuvem do seu grupo está pronta") and shows the cloud's **short name** and **link**. Keep both: this browser already remembers the cloud, but on another computer they are how you get back to it. **Send to my email** ("Mandar para o meu e-mail") composes the message in your e-mail program; **Download a file with the address** ("Baixar arquivo com o endereço") saves a `.txt` with the name, the link and the **emergency database password**. Supabase requires that password when creating the project: QualiLab created it, shows it only now (under **Emergency database password**, "Senha de emergência do banco") and keeps no copy. The app does not need it; it is for emergencies and for whoever one day administers the database directly. Keep the file somewhere safe. **Technical check** ("Conferência técnica") shows what the app checked on the new server.
+
+   ![The final creation screen: "Your group cloud is ready", the reminder that the account is still to be created, the block "Keep the address of your cloud" with the short name labdados-exemplo and the cloud's link (each with Copy), the buttons "Send to my email" and "Download a file with the address", the main button "Enter and create my account" and, folded, the emergency database password and the technical check.](manual-img/23-nuvem-pronta.png)
+
+7. Click **Enter and create my account** ("Entrar e criar minha conta"). The page reloads already on the new cloud, and the entry screen offers **Create my account** ("Criar minha conta"): the account lives on that server, and the first one is yours, the coordinator's. Then create the project (as in 2.3, above) and call in the team.
+
+**Who sees what.** The authorization gives QualiLab, while the server is being created, the power to create and configure a project in the organization you chose. The calls go through a QualiLab function, which talks to Supabase on your behalf and **keeps nothing**; the new project's secret keys never leave it. Research data **never goes through it**: it goes from the browser straight to the group's server. The function's code is open, in the [repository](https://github.com/LuizPF42/QualiLab/tree/main/supabase/functions/server-setup).
+
+**A consequence worth knowing.** A cloud created by the wizard **does not confirm e-mail at sign-up**: anyone with the cloud's address can create an account at once, with no code. That is on purpose: Supabase's built-in mail server sends about two e-mails per hour, and institutional mailbox filters burn confirmation links before the person clicks. For a closed group this is enough, because **nobody sees any project without the invitation code**. The price is that nobody proves they own the e-mail they typed, so an [invite locked to an e-mail](#role-locked-invite) protects less than it seems. To close the door once the team is in, see [Maintenance and free plan limits](#maintenance-and-free-plan-limits).
+
+**If something goes wrong**, the screen says what happened and offers **Try again** ("Tentar de novo"), which goes back to the start:
+
+- **The authorization was not granted**: nothing was created.
+- **The return from supabase.com arrived in a different tab** (it tends to happen when Supabase's e-mail confirmation opens another tab): nothing was created, and the account and the organization are still there. In QualiLab's tab, try again, answer **Yes, I already do** and authorize.
+- **The free account already has two active projects**, the plan's maximum: pause or delete one in the Supabase dashboard and try again.
+- **The server is taking longer than usual**: wait a few minutes and try again; the project already created shows up in the dashboard.
+- **Creation stopped after the project was created**: the screen says which one. Finish through the manual path, or delete it in the dashboard and start over.
+- **Another cloud registered the short name in the meantime**: the cloud is ready; pick another name, or go on without one.
+
+#### Setting it up by hand
+
+On the wizard's first screen, **I already have a server, or I prefer to set it up by hand** ("Já tenho um servidor, ou prefiro configurar à mão") opens the five steps (and **Back to automatic creation**, "Voltar à criação automática", goes back). Each step has buttons that open the right page of the Supabase dashboard. The dashboard is in English, and this manual quotes the names as they appear there; if a button moves, look for it by name.
+
+![The manual path, on the "4. Sign-in" step (in Portuguese, "4. Login"): at the top, the tabs Create, Address and key, Database, Sign-in and Check; below, the address for the "Site URL" (https://luizpf42.github.io/QualiLab/) and the one for the "Redirect URLs" (the same, ending in **), each with Copy, the buttons that open the dashboard pages, the explanation of e-mail confirmation at sign-up and the "Confirm signup" template with the code, ready to paste.](manual-img/24-nuvem-manual.png)
+
+1. **Create** ("Criar"). Create the Supabase account, an organization on the **Free** plan and a new project (**New project**). Under **Region**, choose **South America (São Paulo)**. Supabase asks for a **Database password**: generate one and keep it with whoever administers the server (QualiLab does not use it). Under **Security**, leave the options as they come: **Enable Data API** must stay on.
+2. **Address and key** ("Endereço e chave"). The address is the **Project URL** (`https://<code>.supabase.co`), shown in the project dashboard right under its name. The key is under **Project Settings → API Keys**: use the **public** key, **anon public** or **publishable**. **Never** the **service_role** or the **secret** one: they override every access rule, and the wizard refuses them. The public key may circulate among the team: it ships in every page that talks to the server, and what protects the data are the accounts and the access rules the database installs.
+3. **Database** ("Banco"). Click **Copy schema.sql** ("Copiar o schema.sql") and **Open the SQL editor** ("Abrir o editor de SQL"); paste everything and click **Run**. Supabase warns **Potential issues detected**, because the script has delete commands: that is expected (they exist so the script can run again without duplicating anything, and a new project has nothing to delete), so click **Run query**. **Success. No rows returned** is the right result.
+4. **Sign-in** ("Login"). Under **Authentication → URL Configuration**, put in **Site URL** and in **Redirect URLs** the two addresses the wizard shows, with **Copy** next to them. That is where the "forgot my password" link and the Google sign-in come back to; without them, Supabase sends the person to `localhost:3000`, which opens nothing. Then decide on **e-mail confirmation at sign-up**:
+   - **Turn it off**, the simplest for a closed group: turn off **Confirm email** under **Authentication → Sign In / Providers → Email**. The account goes straight in, with no code, with the same consequence as a cloud created by the wizard.
+   - **Keep it**: QualiLab asks for a **typed code**, not a link, so the **Confirm signup** e-mail template must carry the code (`{{ .Token }}`; the wizard shows a template ready to paste). To edit the template, Supabase requires **your own mail server (SMTP)**, under **Authentication → Emails → SMTP Settings**. Any service with SMTP will do, and Brevo needs no domain of your own. Without your own SMTP, the whole project sends about two e-mails per hour.
+
+   Google sign-in is optional (**Sign In / Providers → Google**, with a registration on Google Cloud).
+5. **Check** ("Conferir"). **Check now** ("Conferir agora") queries the server with the public key, without signing in to any account, and lists what it found: whether it answers and accepts the key, whether the database is at the version the app expects, whether the file buckets exist (PDFs and mirrors), whether live updates are on, and how sign-in is set. Fix whatever comes with ✗ and check again. When all is well, click **Connect to this server** ("Conectar a este servidor"); the **link for the team** shows right below.
+
+#### Bringing in the team
+
+Each person creates **their own account** on the group cloud (a public-cloud account does not work there) and joins the project through the invitation. A colleague reaches the server in three ways, and none of them carries a password, only the address and the public key:
+
+- **By the short name.** On the entry screen, under **With my group → Sign in**, choose **Another cloud…** ("Outra nuvem…") and type the name. The first time a name leads to a cloud this browser does not know, the app shows the **address** before asking for the password: check it with whoever gave you the name and click **This is it, go on** ("É esta, continuar"). A short name is a shortcut, not a guarantee of whose cloud it is, because anyone can register a free name.
+- **By the cloud's link**, the one on the final screen or under **Link for the team** ("Link para a equipe"), at the bottom of the entry screen: whoever opens it sees which server it points to and confirms under **Check and connect** ("Conferir e conectar"). The link never switches servers on its own, and the app refuses a link that carries the secret key.
+- **By the invitation link** (**copy link**, in [section 13](#role-locked-invite)): it carries the server and the project code together, and after creating the account the person lands right on **Join the project** ("Entrar no projeto").
+
+![The Sign in panel, open on the entry screen: the labdados-exemplo cloud chosen in the list (with its address and the × to forget it), the "Another cloud…" option, the e-mail and password fields, the Sign in button, "First time in this cloud? Create an account" and "Forgot my password"; below, "Connect by address and key", "Create a cloud for my group" and "Connect to the public cloud (deprecated)".](manual-img/25-entrar.png)
+
+After the first time, the cloud stays in the list of the **Sign in** panel and under **Carry on where you left off** ([2.2](#22-the-entry-screen)). The list keeps only the address, the public key and the short name, never the e-mail; the **×** next to a cloud forgets it in this browser.
+
+#### Keeping the server up to date
+
+Some QualiLab versions change the database, and the CHANGELOG says when. On entering a group cloud, the app checks the database version; if the server is behind this version of QualiLab, the entry screen shows a notice and the status bar shows **server out of date** ("servidor desatualizado"). Until it is updated, some features may fail.
+
+![The entry screen connected to a group cloud, with the notice that the server is at database version 2 and the app needs 3, and on top the "Update the group server" window: what the update does, who can do it, the "Update through supabase.com" button and, folded, "I prefer to do it by hand".](manual-img/26-servidor-desatualizado.png)
+
+**Update the server** ("Atualizar o servidor") opens the update window:
+
+- **Update through supabase.com** ("Atualizar pelo supabase.com") asks again for the authorization on Supabase and installs on the server this version's database structure (tables, access rules and functions). Projects and data stay. The update runs whole or not at all: if the database refuses, the server stays as it was. It takes a few seconds. It only works for whoever holds the Supabase account that reaches the project, usually whoever created the cloud; for everyone else, nothing is touched.
+- **I prefer to do it by hand** ("Prefiro fazer à mão"): copy this version's `schema.sql`, run it in the project's SQL editor, as in the **Database** step, and click **Check again** ("Conferir de novo"). Running `schema.sql` again is safe: it adds what is missing without deleting projects or data.
+
+A server **newer** than the app never shows as out of date; in that case, reload the page to get the current version of QualiLab.
+
+#### Maintenance and free plan limits
+
+With your own cloud, maintenance becomes the group's job:
+
+- **Pause for inactivity.** The free plan pauses the project after a week without use. Nothing is lost: whoever holds the account reactivates it with one click (**Restore project**) in the Supabase dashboard. While the project is paused, the app says the server did not answer.
+- **Size.** 500 MB of database and 1 GB of files (the original PDFs, which are uploaded only when the team consents). Usage shows on the organization's page in Supabase. A very large project may call for a paid plan, or for file mode, which has no such ceiling.
+- **Two active projects per free account.** To create a third, pause or delete one, or use another account.
+- **Backups.** Export the project (`.qualilab`) from time to time and use [mirrors](#project-mirrors-restore-point) before big operations. What the Supabase plan includes in backups is at [supabase.com/pricing](https://supabase.com/pricing).
+- **Closing sign-ups.** Once the whole team has an account, you can turn off **Allow new users to sign up** under **Authentication → Sign In / Providers**, and turn it back on when someone new arrives. With sign-ups closed, the server check warns that only people invited from the Supabase dashboard can get in.
+- **Two people in the dashboard.** Under **Organization → Team**, invite someone else from the group to administer Supabase: if the only administering account disappears, the database is left without an owner.
+- **Keep the file from the final screen** (address and emergency password) with the group's other papers.
+
+#### Moving a project from the public cloud to the group's
+
+QualiLab's public cloud will be shut down on **31/12/2026**. Until then it stays available, under **Connect to the public cloud (deprecated)** ("Conectar à nuvem pública (deprecado)"). To move a project out of it:
+
+1. On the public cloud, download the project as `.qualilab` (**export ▾ → .qualilab**).
+2. Create the group cloud (above) or connect to it through **With my group → Sign in**.
+3. Open the `.qualilab` (**Open an existing file**) and use **Send to the cloud** ("Enviar para a nuvem"), in the project hub ([section 13](#send-to-the-cloud)): the new project is created on the connected cloud.
+4. Ask each person on the team to create an account on the new cloud and join through the invitation link.
+
+Document assignment and blind coding do not travel in the `.qualilab`: set both up again in the new project before the team resumes coding. Codings brought from the file keep the name of whoever coded them but, since they came from a file, only the administration can remove them.
+
+#### Common problems with the group cloud
+
+- **"The server did not answer."** Check the address; if it is right, the project may be paused (reactivate it in the Supabase dashboard).
+- **"The server refused the key."** The key you pasted is not this project's public key, or it came incomplete.
+- **The sign-up e-mail brings a link, but QualiLab asks for a code.** The **Confirm signup** template is still Supabase's default: turn confirmation off, or set up SMTP and the template with the code (the **Sign-in** step).
+- **The e-mail does not arrive.** Without your own SMTP, the project sends about two e-mails per hour, counting sign-ups and "forgot my password". Check spam and wait, or set up SMTP.
+- **"Forgot my password" opens `localhost:3000` or an error page.** The Site URL or the Redirect URL is missing (the **Sign-in** step). A cloud created by the wizard already comes with both.
+- **A colleague cannot find the project.** They signed in to another cloud (check the cloud's name in the **Sign in** panel) or with another account.
 
 ---
 
@@ -908,7 +1031,7 @@ When the project declares that **attributes are study-design metadata** (see [bl
 
 ## 13. Collaboration
 
-*(Collective project, cloud mode.)*
+*(Collective project, cloud mode.)* Your group has no cloud yet? Start with [2.4](#24-create-a-cloud-for-your-group-supabase).
 
 ### Inviting people
 Open the **project pill** (header) → there is the **access code**. Share it; whoever receives it joins via **"My projects" → Join with a code** ("Entrar com código"). In cloud mode, the code also shows in the pill itself (`nuvem · Project · CODE · coletivo ▾`). Whoever joins with the access code always joins as a **member**.
@@ -954,7 +1077,7 @@ If the active project is a **draft** or a **file**, the pill shows **"Send to th
 
 ## 14. My account
 
-![My account: the display name and the "AI: your key and model" card (BYOK), with the provider choice, the API key field and the model.](manual-img/11-conta.png)
+![My account: the display name, the interface language and the "AI: your key and model" card (BYOK), with the provider choice (OpenRouter among them), the API key field and the model.](manual-img/11-conta.png)
 
 Click **your name** in the header to open **My account** ("Minha conta"; it works **in every mode**: cloud, draft and file):
 - Change your **display name** (used in codings).
@@ -1152,7 +1275,7 @@ What it does and does not do:
 
 ## 16. Saving, backup and storage modes
 
-![The project hub, opened from the header pill: the type (individual/collective), management (rename, clear, delete) and the storage options: automatic folder backup, save as a .qualilab file and send to the cloud.](manual-img/12-projeto.png)
+![The project hub, opened from the header pill and scrolled to the bottom: management (rename, clear content, delete project) and the storage options: automatic folder backup, save as a .qualilab file, send to the cloud and the connection (Supabase). Further up are the project type, the AI features and the mirrors.](manual-img/12-projeto.png)
 
 QualiLab **saves by itself** on every action. *Where* it saves depends on the mode:
 
@@ -1241,8 +1364,8 @@ The **cloud** keeps your project in an online database so it **syncs** across pe
 
 The question that matters most is **whose Supabase it is**:
 
-- **QualiLab's public cloud**, the *default server* (what you use when clicking **Connect to the public cloud (deprecated)**): the data goes to the **author's Supabase**. He keeps the service running and, owning the database, **can technically** access the content. It is convenient, but it means trusting your data to a personal project, with no institutional guarantee (re-read the *Legal notice* in [section 0](#0-the-idea-behind-qualilab)). The author does **not want** to be in that position with sensitive data — hence the recommendation at the end of this section.
-- **A private cloud, your own Supabase** (the project pill turns **violet**, "nuvem pessoal"): you point the app at a Supabase project **of yours** (creating one is free). The database becomes yours; only you and whoever you authorize hold the keys. It is still hosted by the Supabase company, but the data's owner is you. Create one on the entry screen, under **Create my cloud**, or connect to an existing one under **With my group → Sign in → Connect by address and key** (on the public cloud's login, **Connect to a private cloud**); outside cloud mode, also in the project hub, under **Connection (Supabase)**.
+- **QualiLab's public cloud**, the *default server* (what you use when clicking **Connect to the public cloud (deprecated)**), which **will be shut down on 31/12/2026** ([how to move a project out of it](#moving-a-project-from-the-public-cloud-to-the-groups)): the data goes to the **author's Supabase**. He keeps the service running and, owning the database, **can technically** access the content. It is convenient, but it means trusting your data to a personal project, with no institutional guarantee (re-read the *Legal notice* in [section 0](#0-the-idea-behind-qualilab)). The author does **not want** to be in that position with sensitive data — hence the recommendation at the end of this section.
+- **A private cloud, your own Supabase** (the project pill turns **violet**, "nuvem pessoal"): you point the app at a Supabase project **of yours** (creating one is free). The database becomes yours; only you and whoever you authorize hold the keys. It is still hosted by the Supabase company, but the data's owner is you. Create one on the entry screen, under **Create my cloud** (step by step in [2.4](#24-create-a-cloud-for-your-group-supabase)), or connect to an existing one under **With my group → Sign in → Connect by address and key** (on the public cloud's login, **Connect to a private cloud**); outside cloud mode, also in the project hub, under **Connection (Supabase)**.
 
 **What protects your data in the cloud:**
 - **Login** (e-mail and password, or a Google account, via Supabase Auth): only account holders get in.
@@ -1583,6 +1706,9 @@ Open **project pill → Project mirrors**: if the automatic mirror was on, there
 
 **I created the account and cannot sign in / the code is not accepted.**
 Signup confirmation is by **typed code**, not by link: the e-mail brings a number, and you type it on the **"Confirm your registration"** screen ("Confirme seu cadastro"). Type **all** its digits. If refused, the most common reason is that it **expired** (it lasts one hour) or that you are reading an old e-mail after asking to **Resend the code** — in that case only the **most recent** e-mail's code counts. Check **spam**. If the account is already confirmed, use **"I already confirmed — let me in"** and log in normally.
+
+**Problems with the group cloud** (the server does not answer, the key is refused, the sign-up e-mail brings a link instead of a code, a colleague cannot find the project).
+See [Common problems with the group cloud](#common-problems-with-the-group-cloud), in 2.4.
 
 **I forgot my password.**
 On the cloud access screen, click **Forgot my password** ("Esqueci minha senha"), provide the account's e-mail and send. A link arrives by e-mail that opens QualiLab straight on the **create a new password** screen. Done, you are in. The link lasts a short time and can be used once; if you get "Link expired", ask for another on the same screen. Check **spam**. For safety, the on-screen message is the same whether or not an account exists with that e-mail (the app does not confirm who is registered).
