@@ -265,14 +265,35 @@ async function fetchRetry(url, init, { deadline = Date.now() + WALL_CLOCK_BUDGET
 // `tempOK` = ja mandamos temperature (heuristico) — quando false nem tentamos com ela.
 // O PRAZO E UM SO para as duas chamadas: cada fetchRetry nascia com 135s novos, e a segunda passava
 // do teto de ~150s da plataforma, que mata com 546 sem rodar o catch.
-async function postWithTempFallback(post, tempOK, label) {
+// The output cap of the classic chat/completions has TWO names: reasoning models (o*, gpt-5 and up)
+// refuse "max_tokens" and want "max_completion_tokens"; many servers behind a free URL know only
+// "max_tokens". Azure starts with the new name, custom with the old one, and each switches ONCE when
+// the 400 names the field it sent as refused. Same rule as aiTokenFieldRefused in the app (the
+// adapters are duplicated on purpose; change both).
+function otherTokenField(field) { return field === 'max_tokens' ? 'max_completion_tokens' : 'max_tokens'; }
+// The error has to say THAT field is refused, not just mention it (the Azure refusal of max_tokens
+// also says "Use 'max_completion_tokens' instead").
+function tokenFieldRefused(errText, field) {
+  const t = String(errText || '');
+  if (field !== 'max_tokens' && field !== 'max_completion_tokens') return false;
+  // regex literals joined by .source: a backslash inside a template string would be eaten
+  const f = (field === 'max_tokens' ? /['"]?max_tokens\b['"]?/ : /['"]?max_completion_tokens\b['"]?/).source;
+  return new RegExp(/"param"\s*:\s*"/.source + field + '"').test(t)
+    || new RegExp(/(unsupported parameter|unrecognized request argument( supplied)?|unknown (parameter|field|argument)|extra (inputs|fields)( are)? not permitted)\W{0,8}/.source + f, 'i').test(t)
+    || new RegExp(f + /\s*(is|are)\s*not (supported|permitted|allowed)/.source, 'i').test(t);
+}
+// `post(withTemp, deadline, tokField)`; the providers with their own token field pass no tokField.
+// One parameter per retry (the provider names one per error), at most two retries, ONE deadline.
+async function postWithTempFallback(post, tempOK, label, tokField) {
   const deadline = Date.now() + WALL_CLOCK_BUDGET_MS;
-  let res = await post(tempOK, deadline);
-  // so cai aqui quando MANDAMOS temperature; um 400 citando o parametro = recusa -> refaz sem ele
-  if (res.status === 400 && tempOK) {
+  let temp = !!tempOK, field = tokField || null, trocou = false;
+  let res = await post(temp, deadline, field);
+  for (let i = 0; i < 2 && res.status === 400; i++) {
     const errText = await res.text();
-    if (/temperature/i.test(errText)) res = await post(false, deadline);
+    if (!trocou && tokenFieldRefused(errText, field)) { field = otherTokenField(field); trocou = true; }
+    else if (temp && /temperature/i.test(errText)) temp = false;
     else throw new Error(`${label} (400): ${trunc(errText)}`);
+    res = await post(temp, deadline, field);
   }
   return res;
 }
@@ -364,15 +385,16 @@ async function callCustom(baseUrl: string, apiKey: string, model: string, system
     ...contents.map(m => ({ role: m.role, content: m.content })),
   ];
   const temp = opts.temperature ?? 0.3;
-  const base = { model, messages, max_tokens: Math.min(opts.max_tokens || MAX_TOKENS, MAX_TOKENS) };
-  const post = (withTemp: boolean, deadline: number) => fetchRetry(url, {
+  const base = { model, messages };
+  const cap = Math.min(opts.max_tokens || MAX_TOKENS, MAX_TOKENS);
+  const post = (withTemp: boolean, deadline: number, tokField: string) => fetchRetry(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}) },
-    body: JSON.stringify(withTemp ? { ...base, temperature: temp } : base),
+    body: JSON.stringify({ ...base, [tokField]: cap, ...(withTemp ? { temperature: temp } : {}) }),
   }, { deadline, resolver: resolverDns });
   // sem heuristico (o modelo custom e livre): tenta com temperature e cai na rede de
   // seguranca se um modelo de raciocinio atras do endpoint recusar o parametro.
-  const res = await postWithTempFallback(post, true, 'API personalizada');
+  const res = await postWithTempFallback(post, true, 'API personalizada', 'max_tokens');
   if (!res.ok) throw new Error(`API personalizada (${res.status}): ${trunc(await res.text())}`);
   const data = await res.json();
   const text = data.choices?.[0]?.message?.content ?? '';
@@ -394,15 +416,18 @@ async function callAzure(baseUrl: string, apiKey: string, model: string, systemP
     ...contents.map(m => ({ role: m.role, content: m.content })),
   ];
   const temp = opts.temperature ?? 0.3;
-  const base = { model, messages, max_tokens: Math.min(opts.max_tokens || MAX_TOKENS, MAX_TOKENS) };
-  const post = (withTemp: boolean, deadline: number) => fetchRetry(url, {
+  const base = { model, messages };
+  const cap = Math.min(opts.max_tokens || MAX_TOKENS, MAX_TOKENS);
+  const post = (withTemp: boolean, deadline: number, tokField: string) => fetchRetry(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'api-key': apiKey },
-    body: JSON.stringify(withTemp ? { ...base, temperature: temp } : base),
+    body: JSON.stringify({ ...base, [tokField]: cap, ...(withTemp ? { temperature: temp } : {}) }),
   }, { deadline, resolver: resolverDns });
   // Azure serve modelos OpenAI, inclusive os de raciocinio (o*/gpt-5) que recusam
   // temperature — mesma rede de seguranca do custom (sem heuristico, deployment e livre).
-  const res = await postWithTempFallback(post, true, 'Azure OpenAI');
+  // Starts with max_completion_tokens (the reasoning models refuse max_tokens; the v1 surface
+  // takes the new name on the others) and falls back to max_tokens if a deployment refuses it.
+  const res = await postWithTempFallback(post, true, 'Azure OpenAI', 'max_completion_tokens');
   if (!res.ok) throw new Error(`Azure OpenAI (${res.status}): ${trunc(await res.text())}`);
   const data = await res.json();
   const text = data.choices?.[0]?.message?.content ?? '';

@@ -981,7 +981,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.87';
+const QUALILAB_VERSION = '1.4.88';
 // QUALILAB_SCHEMA_VERSION — a versao do BANCO que este app espera. Nao e a do app: muda so quando o
 // app passa a PRECISAR de algo novo no servidor (tabela, coluna, funcao que ele chama). O assistente
 // do servidor compara com o que a qualilab_server_check() do banco responde e, se o servidor estiver
@@ -31760,12 +31760,39 @@ function anthropicTemperatureOK(model){
   if(/claude-opus-4-[78]\b/.test(m)) return false;  // opus 4.7 / 4.8
   return true;
 }
-async function aiPostWithTempFallback(post, tempOK, label){
-  let res = await post(tempOK);
-  if(res.status === 400 && tempOK){
+// The output cap of the classic chat/completions has TWO names. Reasoning models (o*, gpt-5 and up)
+// refuse "max_tokens" with a 400 and want "max_completion_tokens"; many servers behind a free URL
+// (vLLM, older Ollama, some Azure Foundry deployments) know only "max_tokens". So each kind starts
+// with the name it most likely takes (aiCompatTokenField) and switches ONCE when the 400 names the
+// field it sent as refused. The refusal test is narrow on purpose: a context-length error that just
+// mentions "max_tokens" ("'max_tokens' is too large") is not a refusal, and the retry would only cost
+// one more request that fails the same way.
+function aiCompatTokenField(kind){ return kind === 'azure' ? 'max_completion_tokens' : 'max_tokens'; }
+function aiOtherTokenField(field){ return field === 'max_tokens' ? 'max_completion_tokens' : 'max_tokens'; }
+// The error has to say THAT field is refused, not just mention it: the Azure refusal of max_tokens
+// also says "Use 'max_completion_tokens' instead", and that must not read as refusing the new name.
+function aiTokenFieldRefused(errText, field){
+  const t = String(errText || '');
+  if(field !== 'max_tokens' && field !== 'max_completion_tokens') return false;
+  // regex literals joined by .source: a backslash inside a template string would be eaten
+  const f = (field === 'max_tokens' ? /['"]?max_tokens\b['"]?/ : /['"]?max_completion_tokens\b['"]?/).source;
+  return new RegExp(/"param"\s*:\s*"/.source + field + '"').test(t)
+    || new RegExp(/(unsupported parameter|unrecognized request argument( supplied)?|unknown (parameter|field|argument)|extra (inputs|fields)( are)? not permitted)\W{0,8}/.source + f, 'i').test(t)
+    || new RegExp(f + /\s*(is|are)\s*not (supported|permitted|allowed)/.source, 'i').test(t);
+}
+// Retries a 400 that refuses a parameter, one parameter at a time (the provider names one per error):
+// the token field switches once, temperature drops once. `post(withTemp, tokField)`; the providers
+// with their own token field (OpenAI Responses, Anthropic) pass no tokField and ignore the second
+// argument. A 400 that refuses neither throws with the provider's text, as before.
+async function aiPostWithTempFallback(post, tempOK, label, tokField){
+  let temp = !!tempOK, field = tokField || null, trocou = false;
+  let res = await post(temp, field);
+  for(let i=0; i<2 && res.status === 400; i++){
     const t = await res.text();
-    if(/temperature/i.test(t)) res = await post(false);
+    if(!trocou && aiTokenFieldRefused(t, field)){ field = aiOtherTokenField(field); trocou = true; }
+    else if(temp && /temperature/i.test(t)) temp = false;
     else throw new Error(`${label} (400): ${aiTrunc(t)}`);
+    res = await post(temp, field);
   }
   return res;
 }
@@ -32004,7 +32031,6 @@ async function aiCallOpenAICompat(kind, baseUrl, apiKey, model, systemParts, con
   const base = {
     model,
     messages: [ ...(systemParts.length ? [{ role:'system', content: systemParts.join('\n') }] : []), ...aiCompatMessages(contents) ],
-    max_tokens: AI_MAX_TOKENS,
     ...(opts.tools?.length ? { tools: opts.tools.map(t=>({ type:'function', function:{
       name: t.name, description: t.description, parameters: t.parameters,
     } })) } : {}),
@@ -32012,17 +32038,18 @@ async function aiCallOpenAICompat(kind, baseUrl, apiKey, model, systemParts, con
     // objeto, e o turno que CHAMA um tool nao e JSON nenhum.
     ...(kind==='ollama' ? { stream:false, ...((opts.json && !opts.tools?.length) ? { response_format:{ type:'json_object' } } : {}) } : {}),
   };
-  const post = (withTemp)=>aiFetchRetry(url, {
+  const post = (withTemp, tokField)=>aiFetchRetry(url, {
     method: 'POST',
     headers: {
       'Content-Type':'application/json',
       ...(kind==='azure' ? { 'api-key': apiKey } : (apiKey ? { Authorization:`Bearer ${apiKey}` } : {})),
     },
-    body: JSON.stringify(withTemp ? { ...base, temperature:0.3 } : base),
+    body: JSON.stringify({ ...base, [tokField]: AI_MAX_TOKENS, ...(withTemp ? { temperature:0.3 } : {}) }),
   }, signal);
   // sem heuristico (o modelo atras de uma URL livre pode ser qualquer um): tenta com temperature
-  // e cai na rede de seguranca se um modelo de raciocinio recusar o parametro.
-  const res = await aiPostWithTempFallback(post, true, label);
+  // e cai na rede de seguranca se um modelo de raciocinio recusar o parametro. The token field
+  // has the same safety net, in both directions (see aiTokenFieldRefused).
+  const res = await aiPostWithTempFallback(post, true, label, aiCompatTokenField(kind));
   if(!res.ok) throw new Error(`${label} (${res.status}): ${aiTrunc(await res.text().catch(()=>''))||'sem detalhe'}`);
   const data = await res.json();
   const msg = data.choices?.[0]?.message || {};

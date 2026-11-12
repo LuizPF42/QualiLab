@@ -14,6 +14,23 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.88 (12/11/2026)
+
+### Azure OpenAI com modelos de raciocínio
+
+Com a sua própria chave do **Azure OpenAI**, um deployment de modelo de raciocínio (família o* ou
+gpt-5 em diante) recusava toda pergunta com o erro
+`Unsupported parameter: 'max_tokens' is not supported with this model`. Esses modelos exigem outro
+nome para o limite de tamanho da resposta (`max_completion_tokens`).
+
+- O app agora manda ao Azure o nome novo, que os outros modelos de lá também aceitam. Se um
+  deployment recusar esse nome, o app refaz a pergunta com o nome antigo, sozinho.
+- No **provedor personalizado** (DeepSeek, vLLM e outros), o app continua mandando o nome antigo,
+  que esses servidores conhecem, e troca para o novo só quando o servidor recusa.
+- A mesma correção vale para o caminho pelo servidor da nuvem pública, usado quando o endpoint do
+  Azure recusa chamadas do navegador. Quem mantém um Supabase próprio com a função `ai-ask`
+  precisa publicá-la de novo a partir de `supabase/functions/ai-ask/index.ts`.
+
 ## 1.4.87 (07/11/2026)
 
 ### Buscar também na Leitura
