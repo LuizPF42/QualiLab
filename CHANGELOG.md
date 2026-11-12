@@ -14,6 +14,20 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.89 (12/11/2026)
+
+### Azure OpenAI: Definir Categoria e Explorar com IA com modelos de raciocínio
+
+As duas telas que deixam o modelo consultar o projeto por conta própria (**Definir Categoria** e
+**Explorar com IA**) falhavam no Azure com um deployment de modelo de raciocínio novo, como o
+`gpt-6.1-sol`, com o erro `Function tools with reasoning_effort are not supported`. Nesses modelos,
+o endereço clássico do Azure não aceita as ferramentas de consulta com o raciocínio ligado.
+
+- Quando o Azure recusa assim, o app refaz a pergunta, sozinho, no endereço mais novo do mesmo
+  recurso, que aceita as duas coisas juntas. O raciocínio do modelo continua ligado.
+- O app lembra a troca: as perguntas seguintes ao mesmo deployment já vão direto ao endereço novo.
+- As outras telas de IA e os outros deployments continuam como estavam.
+
 ## 1.4.88 (12/11/2026)
 
 ### Azure OpenAI com modelos de raciocínio

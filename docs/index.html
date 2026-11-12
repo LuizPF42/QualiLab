@@ -981,7 +981,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.88';
+const QUALILAB_VERSION = '1.4.89';
 // QUALILAB_SCHEMA_VERSION — a versao do BANCO que este app espera. Nao e a do app: muda so quando o
 // app passa a PRECISAR de algo novo no servidor (tabela, coluna, funcao que ele chama). O assistente
 // do servidor compara com o que a qualilab_server_check() do banco responde e, se o servidor estiver
@@ -31711,8 +31711,10 @@ let AI_PRICES = null;
    provider, model and endpoint stay, so next time pasting the key is enough. */
 function hasStoredAiKey(){ try{ return !!String(localStorage.getItem('qualilab:ai_key')||'').trim(); }catch(e){ return false; } }
 function clearStoredAiKey(){ try{ localStorage.removeItem('qualilab:ai_key'); }catch(e){} }
-const AI_MAX_TOKENS = 8192;                            // trava de SAIDA (mesma da ai-ask)
-const AI_TRANSIENT = new Set([429, 500, 502, 503, 504]); // erro transitorio do provedor -> reenvia
+// trava de SAIDA (mesma da ai-ask)
+const AI_MAX_TOKENS = 8192;
+// erro transitorio do provedor -> reenvia
+const AI_TRANSIENT = new Set([429, 500, 502, 503, 504]);
 const aiTrunc = (s, n=600) => (String(s).length > n ? String(s).slice(0, n) + '…' : String(s));
 // espera cancelavel (o backoff nao pode ignorar o AbortController das telas de IA)
 function aiSleep(ms, signal){
@@ -31780,6 +31782,15 @@ function aiTokenFieldRefused(errText, field){
     || new RegExp(/(unsupported parameter|unrecognized request argument( supplied)?|unknown (parameter|field|argument)|extra (inputs|fields)( are)? not permitted)\W{0,8}/.source + f, 'i').test(t)
     || new RegExp(f + /\s*(is|are)\s*not (supported|permitted|allowed)/.source, 'i').test(t);
 }
+// The 400 of a reasoning deployment that will not take function tools on chat/completions names
+// the way out itself ("use /v1/responses"). Narrow on purpose: it must mention tools AND the
+// Responses endpoint, so an unrelated 400 is never retried on another endpoint.
+function aiWantsResponsesApi(errText){
+  const t = String(errText || '');
+  return /\/v1\/responses\b|responses api/i.test(t) && /\b(function )?tools?\b/i.test(t);
+}
+// endpoint+deployment pairs that already asked for it, so the next call goes straight there
+const AI_AZURE_RESPONSES = new Set();
 // Retries a 400 that refuses a parameter, one parameter at a time (the provider names one per error):
 // the token field switches once, temperature drops once. `post(withTemp, tokField)`; the providers
 // with their own token field (OpenAI Responses, Anthropic) pass no tokField and ignore the second
@@ -31919,7 +31930,12 @@ function aiOpenAIInput(contents){
   }
   return out;
 }
-async function aiCallOpenAI(apiKey, model, systemParts, contents, opts, signal){
+// `ep` points the same adapter at another host that serves the Responses API (Azure's v1 surface,
+// see aiCallOpenAICompat); without it, OpenAI itself.
+async function aiCallOpenAI(apiKey, model, systemParts, contents, opts, signal, ep){
+  const url = ep?.url || 'https://api.openai.com/v1/responses';
+  const authHeaders = ep?.headers || { Authorization:`Bearer ${apiKey}` };
+  const label = ep?.label || 'OpenAI API';
   const base = {
     model,
     input: [ ...(systemParts.length ? [{ role:'system', content: systemParts.join('\n') }] : []), ...aiOpenAIInput(contents) ],
@@ -31931,13 +31947,13 @@ async function aiCallOpenAI(apiKey, model, systemParts, contents, opts, signal){
       type:'function', name:t.name, description:t.description, parameters:t.parameters, strict:false,
     })) } : {}),
   };
-  const post = (withTemp)=>aiFetchRetry('https://api.openai.com/v1/responses', {
+  const post = (withTemp)=>aiFetchRetry(url, {
     method: 'POST',
-    headers: { 'Content-Type':'application/json', Authorization:`Bearer ${apiKey}` },
+    headers: { 'Content-Type':'application/json', ...authHeaders },
     body: JSON.stringify(withTemp ? { ...base, temperature:0.3 } : base),
   }, signal);
-  const res = await aiPostWithTempFallback(post, openaiTemperatureOK(model), 'OpenAI API');
-  if(!res.ok) throw new Error(`OpenAI API (${res.status}): ${aiTrunc(await res.text())}`);
+  const res = await aiPostWithTempFallback(post, openaiTemperatureOK(model), label);
+  if(!res.ok) throw new Error(`${label} (${res.status}): ${aiTrunc(await res.text())}`);
   const data = await res.json();
   const text = data.output_text
     ?? (data.output || [])
@@ -32025,9 +32041,21 @@ function aiCompatMessages(contents){
   });
 }
 async function aiCallOpenAICompat(kind, baseUrl, apiKey, model, systemParts, contents, opts, signal){
-  const url = `${String(baseUrl).replace(/\/+$/, '')}/chat/completions`;
+  const root = String(baseUrl).replace(/\/+$/, '');
+  const url = `${root}/chat/completions`;
   const label = kind==='azure' ? 'Azure OpenAI' : kind==='ollama' ? 'Servidor local'
     : kind==='openrouter' ? 'OpenRouter' : 'API personalizada';
+  // AZURE + TOOLS: a reasoning deployment (gpt-6.1-sol, nov/2026) refuses function tools on
+  // chat/completions while its reasoning is on, and the error itself points to /v1/responses. The
+  // v1 surface serves the Responses API at the same root, so the OpenAI adapter runs there with the
+  // api-key header and the reasoning stays on. Turning reasoning_effort to 'none' (the other way
+  // the error offers) was rejected: it is exactly the tasks with tools (Definir Categoria, Explorar
+  // com IA) that need it. Chat/completions is still tried first, because a non-OpenAI deployment on
+  // Azure Foundry may not serve /responses; the switch is remembered per endpoint+deployment.
+  const viaResponses = ()=>aiCallOpenAI(apiKey, model, systemParts, contents, opts, signal,
+    { url:`${root}/responses`, headers:{ 'api-key': apiKey }, label });
+  const responsesKey = root + '|' + model;
+  if(kind === 'azure' && opts.tools?.length && AI_AZURE_RESPONSES.has(responsesKey)) return viaResponses();
   const base = {
     model,
     messages: [ ...(systemParts.length ? [{ role:'system', content: systemParts.join('\n') }] : []), ...aiCompatMessages(contents) ],
@@ -32049,7 +32077,16 @@ async function aiCallOpenAICompat(kind, baseUrl, apiKey, model, systemParts, con
   // sem heuristico (o modelo atras de uma URL livre pode ser qualquer um): tenta com temperature
   // e cai na rede de seguranca se um modelo de raciocinio recusar o parametro. The token field
   // has the same safety net, in both directions (see aiTokenFieldRefused).
-  const res = await aiPostWithTempFallback(post, true, label, aiCompatTokenField(kind));
+  let res;
+  try{
+    res = await aiPostWithTempFallback(post, true, label, aiCompatTokenField(kind));
+  }catch(e){
+    if(kind === 'azure' && opts.tools?.length && aiWantsResponsesApi(e?.message)){
+      AI_AZURE_RESPONSES.add(responsesKey);
+      return viaResponses();
+    }
+    throw e;
+  }
   if(!res.ok) throw new Error(`${label} (${res.status}): ${aiTrunc(await res.text().catch(()=>''))||'sem detalhe'}`);
   const data = await res.json();
   const msg = data.choices?.[0]?.message || {};
