@@ -14,6 +14,50 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.90 (15/11/2026)
+
+### Exportar QDPX: você escolhe quais codificações levar
+
+O formato QDPX não tem camada: dentro do arquivo não há como marcar o que é gabarito e o que é de
+cada pessoa. Até aqui o app decidia sozinho, e bastava **uma** codificação no gabarito para **todas**
+as individuais ficarem fora do arquivo. Duas consequências: no QualCoder chegava só o gabarito, no
+nome de quem o consolidou, sem como comparar codificadores; e os documentos que a Reconciliação ainda
+não tinha alcançado chegavam vazios.
+
+- Agora, quando o projeto tem gabarito e codificações individuais, ou codificações de mais de uma
+  pessoa, a exportação pergunta antes de gerar o arquivo:
+  - **Só o gabarito**: o consenso da equipe, como antes. A janela diz que ele chega com o nome de
+    quem consolidou cada trecho.
+  - **As codificações de cada pessoa**, com o nome de quem codificou. É o que o QualCoder, o NVivo e
+    o MAXQDA usam para comparar codificadores.
+  - **Tudo junto, sem autor**: uma codificação por trecho e código. Serve ao ATLAS.ti, que atribui
+    tudo a quem importa e mostrava uma citação repetida para cada pessoa. Nenhuma nota de trecho se
+    perde.
+- Cada opção diz quantas codificações leva e quantos documentos codificados chegariam vazios.
+- A lista do que o QDPX não carrega (o histórico, as discordâncias, as caixas de seleção…) passou a
+  aparecer na mesma janela, em vez de num aviso do navegador.
+- Quem trabalha sozinho, numa camada só, continua exportando direto, sem pergunta nova.
+
+### Explorar com IA: o modelo lê uma amostra do projeto inteiro, e acha o que ainda não foi codificado
+
+Ajustes nas ferramentas com que o modelo consulta o projeto na tela **Explorar com IA**:
+
+- **Um filtro com o nome errado não traz mais o projeto inteiro.** Quando o modelo pedia um filtro
+  com um nome que a ferramenta não conhece (por exemplo, `code` em vez de `code_id`), a ferramenta
+  ignorava o filtro e respondia com tudo, como se tivesse filtrado: o modelo analisava o projeto
+  inteiro achando que olhava um código só. Agora a chamada é recusada, e a resposta diz quais nomes
+  a ferramenta aceita, para o modelo refazer o pedido.
+- **A primeira página de trechos de um código cobre o corpus.** Antes, os trechos vinham numa ordem
+  que, na prática, era aleatória entre documentos: num código grande, a primeira página saía de
+  poucos documentos, e um panorama feito sobre ela era uma amostra torta. Agora a lista intercala os
+  documentos, um trecho de cada antes do segundo de qualquer um, em ordem alfabética de documento.
+- **Buscar dentro ou fora do que já foi codificado.** A busca pode se limitar às ocorrências que
+  caem dentro dos trechos de certos códigos, ou deixar de fora as que já caíram neles: é como
+  perguntar "onde o corpus fala disso e ninguém codificou ainda?".
+- **O texto dos documentos é dado, não ordem.** O modelo passa a ser avisado de que um documento
+  pode trazer pedidos ou um prompt escrito (comum num corpus sobre IA), e de que isso é material a
+  analisar, nunca algo a executar.
+
 ## 1.4.89 (12/11/2026)
 
 ### Azure OpenAI: Definir Categoria e Explorar com IA com modelos de raciocínio
