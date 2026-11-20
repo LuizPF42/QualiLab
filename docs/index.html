@@ -992,7 +992,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.90';
+const QUALILAB_VERSION = '1.4.91';
 // QUALILAB_SCHEMA_VERSION — a versao do BANCO que este app espera. Nao e a do app: muda so quando o
 // app passa a PRECISAR de algo novo no servidor (tabela, coluna, funcao que ele chama). O assistente
 // do servidor compara com o que a qualilab_server_check() do banco responde e, se o servidor estiver
@@ -1873,6 +1873,7 @@ const MSG_PT = {
   'imp.skipped.audio': '{n} áudio(s)',
   'imp.skipped.video': '{n} vídeo(s)',
   'imp.skipped.pdfNoText': '{n} PDF(s) sem representação em texto',
+  'imp.skipped.textMissing': '{n} documento(s) de texto cujo conteúdo não está no pacote',
   'imp.skipped.external': '{n} fonte(s) externa(s)',
   'imp.skipped.region': '{n} codificação(ões) em regiões/imagens do PDF (sem texto selecionável)',
   'imp.skipped.notFound': '{n} codificação(ões) cujo trecho não foi localizado no texto',
@@ -2984,6 +2985,7 @@ const MSG_PT = {
   'iap.memoAi.empty': ' (vazio: escreva na aba Memos)',
   'iap.otherMemos': 'outros memos ({n})',
   'iap.noOtherMemos': 'Nenhum outro memo com conteúdo.',
+  'iap.pendingMemosOut': '{n} nota(s) de trecho ficam de fora até as codificações do projeto terminarem de carregar: sem saber o código do trecho, não há como garantir que ele não é censurado.',
   'iap.redactedMemosOut': '{n} memo(s) sobre censura ficam de fora: a definição de um código de censura e a nota escrita sobre um trecho censurado não vão ao modelo.',
   'iap.inspector.hint': 'Ajuste os controles; a prévia mostra exatamente o que a IA recebe.',
   'iap.docs': 'Documentos',
@@ -4319,6 +4321,7 @@ const MSG_PT = {
   'qdpx.loss.checkbox': 'Categoria de caixa de seleção ({names}) sai como texto único juntado por "{sep}": o REFI-QDA não tem múltipla escolha, e na volta o tipo é re-inferido.',
   'qdpx.loss.trail': 'O histórico do projeto ({n} evento(s)) fica de fora: o REFI-QDA não tem onde guardá-lo. Ele viaja só no .qualilab.',
   'imp.activity': ' Histórico: {n} evento(s) novo(s){rep}.',
+  'imp.qualilab.cyclesBroken': ' {n} código(s) do arquivo eram, pela cadeia de pais, ancestrais de si mesmos; cada um entrou como código de primeiro nível, com os filhos embaixo.',
   'imp.qualilab.collapsed': ' {n} codificação(ões) do arquivo não foram gravadas em separado: eram o gabarito de trechos que já tinham codificação individual (em projeto individual as duas camadas se fundem).',
   'imp.qualilab.configKept': ' {n} configuração(ões) do projeto vieram diferentes no arquivo (instruções e postura da IA, memo para a IA, palavras ignoradas) e NÃO foram aplicadas: o projeto manteve as suas.',
   'imp.qualilab.configUnread': ' Não consegui ler a configuração do projeto de destino, então {n} configuração(ões) que vieram no arquivo NÃO foram aplicadas, para não sobrescrever a sua. Se quiser aplicá-las, importe de novo.',
@@ -4611,6 +4614,7 @@ const MSG_EN = {
   'imp.skipped.audio': '{n} audio file(s)',
   'imp.skipped.video': '{n} video(s)',
   'imp.skipped.pdfNoText': '{n} PDF(s) with no text representation',
+  'imp.skipped.textMissing': '{n} text document(s) whose content is not in the package',
   'imp.skipped.external': '{n} external source(s)',
   'imp.skipped.region': '{n} coding(s) on PDF regions or images (no selectable text)',
   'imp.skipped.notFound': '{n} coding(s) whose passage was not found in the text',
@@ -5722,6 +5726,7 @@ const MSG_EN = {
   'iap.memoAi.empty': ' (empty: write it in the Memos tab)',
   'iap.otherMemos': 'other memos ({n})',
   'iap.noOtherMemos': 'No other memo has any content.',
+  'iap.pendingMemosOut': '{n} passage note(s) are left out until the project codings finish loading: without the passage code, there is no way to be sure it is not redacted.',
   'iap.redactedMemosOut': '{n} memo(s) about redaction are left out: the definition of a redaction code and a note written on a redacted passage are not sent to the model.',
   'iap.inspector.hint': 'Adjust the controls; the preview shows exactly what the AI receives.',
   'iap.docs': 'Documents',
@@ -7057,6 +7062,7 @@ const MSG_EN = {
   'qdpx.loss.checkbox': 'Checkbox attribute ({names}) goes out as a single text joined by "{sep}": REFI-QDA has no multiple choice, and on the way back the type is re-inferred.',
   'qdpx.loss.trail': 'The project history ({n} event(s)) stays behind: REFI-QDA has nowhere to keep it. It travels only in the .qualilab.',
   'imp.activity': ' History: {n} new event(s){rep}.',
+  'imp.qualilab.cyclesBroken': ' {n} code(s) in the file were, through the chain of parents, ancestors of themselves; each came in as a top-level code, with its children below it.',
   'imp.qualilab.collapsed': ' {n} coding(s) from the file were not saved separately: they were the reference layer of passages that already had an individual coding (individual projects merge the two layers).',
   'imp.qualilab.configKept': ' {n} project setting(s) came different in the file (AI instructions and stance, memo for the AI, ignored words) and were NOT applied: the project kept its own.',
   'imp.qualilab.configUnread': ' Could not read the destination project\'s settings, so {n} setting(s) that came in the file were NOT applied, so as not to overwrite yours. To apply them, import again.',
@@ -7349,6 +7355,7 @@ const MSG_ES = {
   'imp.skipped.audio': '{n} audio(s)',
   'imp.skipped.video': '{n} video(s)',
   'imp.skipped.pdfNoText': '{n} PDF(s) sin representación en texto',
+  'imp.skipped.textMissing': '{n} documento(s) de texto cuyo contenido no está en el paquete',
   'imp.skipped.external': '{n} fuente(s) externa(s)',
   'imp.skipped.region': '{n} codificación(es) en regiones/imágenes del PDF (sin texto seleccionable)',
   'imp.skipped.notFound': '{n} codificación(es) cuyo fragmento no se encontró en el texto',
@@ -8427,6 +8434,7 @@ const MSG_ES = {
   'iap.memoAi.empty': ' (vacío: escríbelo en la pestaña Memos)',
   'iap.otherMemos': 'otros memos ({n})',
   'iap.noOtherMemos': 'Ningún otro memo con contenido.',
+  'iap.pendingMemosOut': '{n} nota(s) de fragmento quedan fuera hasta que terminen de cargar las codificaciones del proyecto: sin saber el código del fragmento, no hay cómo garantizar que no está censurado.',
   'iap.redactedMemosOut': '{n} memo(s) sobre censura quedan fuera: la definición de un código de censura y la nota escrita sobre un fragmento censurado no van al modelo.',
   'iap.inspector.hint': 'Ajusta los controles; la vista previa muestra exactamente lo que recibe la IA.',
   'iap.docs': 'Documentos',
@@ -9762,6 +9770,7 @@ const MSG_ES = {
   'qdpx.loss.checkbox': 'La categoría de casilla de verificación ({names}) sale como un texto único unido por "{sep}": REFI-QDA no tiene opción múltiple, y a la vuelta el tipo se vuelve a inferir.',
   'qdpx.loss.trail': 'El historial del proyecto ({n} evento(s)) queda fuera: REFI-QDA no tiene dónde guardarlo. Viaja solo en el .qualilab.',
   'imp.activity': ' Historial: {n} evento(s) nuevo(s){rep}.',
+  'imp.qualilab.cyclesBroken': ' {n} código(s) del archivo eran, por la cadena de padres, ancestros de sí mismos; cada uno entró como código de primer nivel, con sus hijos debajo.',
   'imp.qualilab.collapsed': ' {n} codificación(es) del archivo no se grabaron por separado: eran la referencia de fragmentos que ya tenían codificación individual (en un proyecto individual las dos capas se funden).',
   'imp.qualilab.configKept': ' {n} configuración(es) del proyecto vinieron distintas en el archivo (instrucciones y postura de la IA, memo para la IA, palabras ignoradas) y NO se aplicaron: el proyecto mantuvo las suyas.',
   'imp.qualilab.configUnread': ' No pude leer la configuración del proyecto de destino, así que {n} configuración(es) que venían en el archivo NO se aplicaron, para no sobrescribir la tuya. Si quieres aplicarlas, importa de nuevo.',
@@ -10212,6 +10221,38 @@ function ancestorsOf(id, getParent){
   let p = getParent(id);
   while(p && !visto.has(p) && out.length < ANCESTOR_MAX_DEPTH){ out.push(p); visto.add(p); p = getParent(p); }
   return out;
+}
+
+/* S05, the IMPORT half (nov/2026). `ancestorsOf` keeps the screens from freezing on a cycle, but
+   the codes of a cycle still vanish from every tree (no node of it is a root), and the cloud's
+   `codes_acyclic_guard` refuses the rows. So the importer breaks the cycle BEFORE writing: the node
+   whose parent closes the loop becomes a root, and the depth of what hangs from it is recomputed
+   (depth decides colour and the order of the bulk insert). Codes outside a cycle are returned
+   untouched, depth included: a file with odd depths is the file's business, not this function's.
+   A parent that is not in the list is left as it is (the caller already maps unknown parents).
+   Returns `{ codes, broken }`, `broken` = how many links were cut, for the summary (M6). */
+function breakCodeCycles(codes){
+  const list = codes || [];
+  const byId = {}; list.forEach(c=>{ if(c && c.id!=null) byId[c.id] = c; });
+  const parent = {}; list.forEach(c=>{ if(c && c.id!=null) parent[c.id] = (c.parent_id!=null && byId[c.parent_id]) ? c.parent_id : null; });
+  const estado = {};   // 1 = on the current walk, 2 = settled
+  const cortados = new Set();
+  list.forEach(c=>{
+    if(!c || c.id==null || estado[c.id]) return;
+    const caminho = [];
+    let x = c.id;
+    while(x!=null && !estado[x]){ estado[x] = 1; caminho.push(x); x = parent[x]; }
+    if(x!=null && estado[x]===1){ const fecha = caminho[caminho.length-1]; parent[fecha] = null; cortados.add(fecha); }
+    caminho.forEach(id=>{ estado[id] = 2; });
+  });
+  if(!cortados.size) return { codes: list, broken: 0 };
+  const depthOf = id=>{ let d = 0, p = parent[id]; while(p!=null && d < list.length){ d++; p = parent[p]; } return d; };
+  const afetado = id=>{ let p = id, g = 0; while(p!=null && g++ <= list.length){ if(cortados.has(p)) return true; p = parent[p]; } return false; };
+  const out = list.map(c=>{
+    if(!c || c.id==null || !afetado(c.id)) return c;
+    return { ...c, parent_id: parent[c.id], depth: depthOf(c.id) };
+  });
+  return { codes: out, broken: cortados.size };
 }
 
 /* contagem por código AGREGADA na família: cada codificação conta no próprio código e sobe a
@@ -11716,7 +11757,11 @@ function maskRedactedContent(content, codings, maskedCodeIds, opts){
    the note written on a redacted coding (scope coding: "the speaker here is ..."). Both stay out of
    everything that goes to a model. Single source: the MCP list_memos calls the predicate and the four
    AI panels call memosForModel, which also returns HOW MANY left, because the screen says so (M6).
-   `codeOf(id)` answers the code_id of a coding. */
+   `codeOf(id)` answers the code_id of a coding.
+   FAIL-CLOSED (nov/2026): with redaction in the project, a coding note whose coding is not in
+   `allCodings` (the aggregate still loading, or the coding gone) cannot be cleared, so it stays out
+   too. It is counted apart (`pendentes`), because saying "about redaction" would be false: the
+   screen says it is waiting, and the note comes back once the aggregate arrives. */
 function memoOnRedaction(m, redIds, codeOf){
   if(!m || !redIds || !redIds.size) return false;
   if(m.scope==='code') return redIds.has(m.target_id);
@@ -11728,7 +11773,12 @@ function memosForModel(memos, codes, allCodings){
   if(!red.size) return { memos: memos||[], fora: 0 };
   const codeOfId = {}; (allCodings||[]).forEach(c=>{ codeOfId[c.id] = c.code_id; });
   const sobre = m => memoOnRedaction(m, red, id=>codeOfId[id]);
-  return { memos: (memos||[]).filter(m=>!sobre(m)), fora: (memos||[]).filter(m=>m.content && m.content.trim() && sobre(m)).length };
+  const incerto = m => m && m.scope==='coding' && !(m.target_id in codeOfId);
+  const cheio = m => m.content && m.content.trim();
+  const lista = memos||[];
+  return { memos: lista.filter(m=>!sobre(m) && !incerto(m)),
+           fora: lista.filter(m=>cheio(m) && sobre(m)).length,
+           pendentes: lista.filter(m=>cheio(m) && !sobre(m) && incerto(m)).length };
 }
 
 function hslToHex(h,s,l){
@@ -12331,7 +12381,7 @@ async function importQDPX(file, store, projectId, projectMode, onProgress, opts)
   const xml = new DOMParser().parseFromString(xmlText, 'application/xml');
   if(xml.querySelector('parsererror')) throw new Error('XML do project.qde inválido');
 
-  const skipped = { picture:0, audio:0, video:0, pdfSemTexto:0, fonteExterna:0, codingsRegiao:0, codingsNaoLocalizados:0 };
+  const skipped = { picture:0, audio:0, video:0, pdfSemTexto:0, textoAusente:0, fonteExterna:0, codingsRegiao:0, codingsNaoLocalizados:0 };
   let approxCount = 0; // trechos localizados de forma aproximada (fallback do findQuoteSpan)
   let geomCount = 0;   // trechos recuperados por geometria do PDF (selecoes retangulares)
   // citacoes que o .qdpx descreve DUAS vezes (por coordenada e por offset, mesmo guid) e que foram
@@ -12746,7 +12796,13 @@ async function importQDPX(file, store, projectId, projectMode, onProgress, opts)
         const id = stripGuid(src.getAttribute('guid'));
         const name = src.getAttribute('name') || 'documento importado';
         const content = readPlainText(src);
-        if(content==null) continue;
+        // A text document the package does not deliver (internal:// path with no entry in the zip,
+        // or no path at all) used to vanish from the import without a word (M6). External sources
+        // are already counted inside readPlainText, so only the rest is counted here.
+        if(content==null){
+          if(!/^(relative|absolute):\/\//.test(src.getAttribute('plainTextPath')||'')) skipped.textoAusente++;
+          continue;
+        }
         newDocs.push({ id, name, content });
         addDocMemo(src, id);
         lerVariaveisDaFonte(src, id);
@@ -13291,6 +13347,7 @@ function qdpxImportSummary(r){
   if(desc.audio) pulados.push(t('imp.skipped.audio',{n:desc.audio}));
   if(desc.video) pulados.push(t('imp.skipped.video',{n:desc.video}));
   if(desc.pdfSemTexto) pulados.push(t('imp.skipped.pdfNoText',{n:desc.pdfSemTexto}));
+  if(desc.textoAusente) pulados.push(t('imp.skipped.textMissing',{n:desc.textoAusente}));
   if(desc.fonteExterna) pulados.push(t('imp.skipped.external',{n:desc.fonteExterna}));
   if(desc.codingsRegiao) pulados.push(t('imp.skipped.region',{n:desc.codingsRegiao}));
   if(desc.codingsNaoLocalizados) pulados.push(t('imp.skipped.notFound',{n:desc.codingsNaoLocalizados}));
@@ -13662,6 +13719,7 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
   let memosGravados = 0, configMantida = 0, configAplicada = 0, configNaoLida = 0, memoProjetoAnexado = false;   // same: counted in the memo loop, read by the return
   let conversas = 0, memorias = 0, conversasRepetidas = 0, memoriasRepetidas = 0;
   let memoriasPuladas = 0;   // 1.4.73: memories the person chose NOT to import (origin.skipAiMemory)
+  let ciclosQuebrados = 0;   // S05: parent_id cycles in the file, broken before writing (breakCodeCycles)
   let activityEntries = 0, activityRepeated = 0;   // TRILHA (S4): eventos que entraram / ja registrados (dedup por id)
   // CONEXOES (item R): gravadas / ja existentes no destino / descartadas por ponta que nao resolveu
   let conexoes = 0, conexoesRepetidas = 0, conexoesDescartadas = 0;
@@ -13715,7 +13773,11 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
       await store.addCategory(projectId, { id:catMap[c.id], name:c.name, kind:c.kind, options:c.options||[], description:c.description||'', color:c.color||0, position:i }); await tick(); }
     // codes: sem lote automatico se o proprio addCode tiver a logica de fallback de coluna
     // 'description'... (nao tem — so addCategory tem essa quirk). Bulk seguro aqui.
-    const codesSorted = (db.codes||[]).slice().sort((a,b)=>(a.position??0)-(b.position??0));
+    // S05: a cycle in parent_id would leave its codes out of every tree, and the cloud trigger refuses
+    // the rows; break it here, where the file is still only data, and say so in the summary.
+    const semCiclo = breakCodeCycles(db.codes||[]);
+    ciclosQuebrados = semCiclo.broken;
+    const codesSorted = semCiclo.codes.slice().sort((a,b)=>(a.position??0)-(b.position??0));
     const codeItems = codesSorted.map((c,i)=>({ id:codeMap[c.id], parent_id:c.parent_id?codeMap[c.parent_id]:null, name:c.name, hue:c.hue||0, depth:c.depth||0, hue_deg:c.hue_deg??null, sat:c.sat??null, is_redaction:!!c.is_redaction, pos_x:c.pos_x??null, pos_y:c.pos_y??null, position:i }));
     if(store.addCodesBulk){
       linhasRecusadas += bulkFails(await store.addCodesBulk(projectId, codeItems));
@@ -14160,7 +14222,7 @@ async function mergeQualilabDb(db, store, projectId, projectMode, onProgress, pd
     // conversas/memorias contam o que FOI GRAVADO, nao o que veio no arquivo: sao as duas unicas
     // colecoes que o "Limpar conteudo" preserva de proposito, entao numero do arquivo e numero do
     // projeto sao coisas diferentes aqui — e e justamente o caso em que a diferenca importa.
-    conversas, memorias, conversasRepetidas, memoriasRepetidas, memoriasPuladas, linhasRecusadas,
+    conversas, memorias, conversasRepetidas, memoriasRepetidas, memoriasPuladas, linhasRecusadas, ciclosQuebrados,
     activity:activityEntries, activityRepeated,
     conexoes, conexoesRepetidas, conexoesDescartadas, discordancias
   };
@@ -18012,8 +18074,24 @@ function SupabaseStore(sb){
     async revokeInvite(id){ must(await sb.rpc('revoke_invite',{ p_invite:id })); },
     async renameProject(pid, pn){ must(await sb.rpc('rename_project',{ p_project:pid, p_name:pn })); },
     async deleteProject(pid){
-      // ESPELHAR BASE: as linhas de `snapshots` cascateiam pelo FK; os OBJETOS do bucket nao — best-effort
-      try{ const l = await sb.storage.from('snapshots').list(pid); const names = (l.data||[]).map(o=>`${pid}/${o.name}`); if(names.length) await sb.storage.from('snapshots').remove(names); }catch(e){}
+      // ESPELHAR BASE: as linhas de `snapshots` cascateiam pelo FK; os OBJETOS do bucket nao.
+      // The list of objects comes from the TABLE, paginated by key (`pageAllByKey`): the
+      // old `storage.list(pid)` stops at 100 per call, so a project with more snapshots than that left
+      // the rest in the bucket, out of reach once the project was gone (same disease as the PDFs).
+      // And it ABORTS on a real failure, like purgePdfObjects: before the RPC, deleting the project is
+      // something the admin can repeat; after it, the objects can no longer be reached by anyone.
+      // A server from before the snapshots (no table: 42P01 / PGRST205) has nothing to purge; any
+      // other read failure aborts, because an empty list would read as "no snapshot" (M6).
+      let espelhos = [];
+      try{ espelhos = await pageAllByKey(()=> sb.from('snapshots').select('id').eq('project_id',pid), 'espelhos a purgar'); }
+      catch(e){ if(!(e && (e.code === '42P01' || e.code === 'PGRST205'))) throw e; }
+      const chavesEsp = espelhos.map(s=>`${pid}/${s.id}.json`);
+      for(let i = 0; i < chavesEsp.length; i += 100){
+        const r = await sb.storage.from('snapshots').remove(chavesEsp.slice(i, i + 100));
+        if(pdfPurgeErrKind(r?.error) === 'falha') throw new Error('nao foi possivel remover os espelhos do projeto: ' + (r.error.message || r.error));
+      }
+      // leftovers with no row (an upload whose insert failed and whose own cleanup failed too): best-effort
+      try{ const l = await sb.storage.from('snapshots').list(pid, { limit:1000 }); const names = (l.data||[]).map(o=>`${pid}/${o.name}`); if(names.length) await sb.storage.from('snapshots').remove(names); }catch(e){}
       // PDF-BLOCK: os originais TAMBEM nao cascateiam. Antes da RPC, sempre: com o projeto fora,
       // somem os `documents` E os `members`, e o objeto deixa de ser alcancavel por qualquer um.
       await purgePdfObjects((await pageAllByKey(()=> sb.from('documents').select('id').eq('project_id',pid), 'documentos a purgar')).map(d=>d.id));
@@ -19953,6 +20031,7 @@ function App(){
   // no meio da codificacao nao havia caminho nenhum pro editor do codigo sem antes desfazer a
   // selecao ou ir ate a tela Esquema. O botao direito da esse caminho em qualquer estado.
   const [codeCtx, setCodeCtx] = useState(null); // {code, x, y}
+  const codeCtxRef = useRef(null); codeCtxRef.current = codeCtx;   // set IN RENDER: the global Escape sees the menu once painted, its closure only after the effect (regressoes #AV)
   const [selCode, setSelCode] = useState(null);
   const [rtab, setRtab] = useState('categorias');
   const [focusedCoding, setFocusedCoding] = useState(null); // FR-01/02/04: coding "em foco" (clicar num grifo foca; alimenta a aba Memos e o Delete)
@@ -21154,6 +21233,7 @@ function App(){
       if(e.key==='Escape'){
         if(ui.paleta || ui.atalhos){ mudaUi({paleta:false, atalhos:false}); e.preventDefault(); return; }
         if(ctxMenu){ closeCtxMenu(); e.preventDefault(); return; }
+        if(codeCtxRef.current){ setCodeCtx(null); e.preventDefault(); return; }   // right-click menu of the codes panel
         if(menu){ setMenu(null); e.preventDefault(); return; }
         if(gsOpen){ setGsOpen(false); e.preventDefault(); return; }
         if(busca.aberta){ mudaBusca({aberta:false}); e.preventDefault(); return; }
@@ -21569,7 +21649,7 @@ function App(){
         + (r.conversas ? t('imp.ai.chats',{n:r.conversas}) : '')
         + (r.memorias ? t('imp.ai.memories',{n:r.memorias}) : '')
         + (r.conexoes ? t('imp.links',{n:r.conexoes}) : '')
-        + '.' + (r.trechosColapsados ? t('imp.qualilab.collapsed',{n:r.trechosColapsados}) : '') + iaDupNotice(r) + iaOrigemNotice(r) + (r.memoriasPuladas ? t('imp.ai.memSkipped',{n:r.memoriasPuladas}) : '') + (r.memoProjetoAnexado ? t('imp.qualilab.projectMemoAppended') : '') + (r.configMantida ? t('imp.qualilab.configKept',{n:r.configMantida}) : '') + (r.configNaoLida ? t('imp.qualilab.configUnread',{n:r.configNaoLida}) : '') + (r.configAplicada ? t('imp.qualilab.configApplied',{n:r.configAplicada}) : '')
+        + '.' + (r.trechosColapsados ? t('imp.qualilab.collapsed',{n:r.trechosColapsados}) : '') + (r.ciclosQuebrados ? t('imp.qualilab.cyclesBroken',{n:r.ciclosQuebrados}) : '') + iaDupNotice(r) + iaOrigemNotice(r) + (r.memoriasPuladas ? t('imp.ai.memSkipped',{n:r.memoriasPuladas}) : '') + (r.memoProjetoAnexado ? t('imp.qualilab.projectMemoAppended') : '') + (r.configMantida ? t('imp.qualilab.configKept',{n:r.configMantida}) : '') + (r.configNaoLida ? t('imp.qualilab.configUnread',{n:r.configNaoLida}) : '') + (r.configAplicada ? t('imp.qualilab.configApplied',{n:r.configAplicada}) : '')
         + ((r.activity || r.activityRepeated) ? t('imp.activity',{n:r.activity||0, rep:r.activityRepeated ? t('imp.activity.rep',{n:r.activityRepeated}) : ''}) : '')
         + (r.conexoesRepetidas ? t('imp.links.rep',{n:r.conexoesRepetidas}) : '')
         + (r.conexoesDescartadas ? t('imp.links.dropped',{n:r.conexoesDescartadas}) : '')
@@ -30827,6 +30907,18 @@ function ReportView({ project, projectMode, docs, cats, codes, codeById, codePat
   const [enabled, setEnabled] = useState(()=>new Set(['credito','resumo','freq']));
   const [title, setTitle] = useState('');
   const [rmode, setRmode] = useState('ati'); // ati | padrao | w3c — interativo é o padrão (incentivar)
+  // The export buttons RE-READ the memos on click, like the export menu (doExport) does since 1.4.72:
+  // the `memos` prop is the screen state, and when its load failed the published artifact came out
+  // with no analytic note at all and nothing said so (M6). The preview keeps the prop: it is a preview.
+  const [expErr, setExpErr] = useState(null);
+  const exportar = async (format, fn)=>{
+    setExpErr(null);
+    try{
+      const ms = store && store.listMemos ? ((await store.listMemos(project.id)) || []) : (memos || []);
+      fn(docs, codes, allCodings, ms, project, anonAuthors, pageOfR, aiDecl, histDecl, designDecl);
+      onLog?.({ op:'export', target_kind:'project', target_id:project?.id, detail:{ format } });
+    }catch(e){ setExpErr(t('err.export',{e:e?.message||e})); }
+  };
   const [anonAuthors, setAnonAuthors] = useState(false); // ocultar autoria (revisão cega) nas saídas de transparência
   /* S7 — a declaração sobre uso de IA. LIGADA por padrão: o caminho honesto é o padrão, e quem
      usa e não declara está fazendo uma escolha, não caindo num default. Desmarcada, o bloco
@@ -31001,9 +31093,10 @@ function ReportView({ project, projectMode, docs, cats, codes, codeById, codePat
       <div class="row" style="gap:8px;flex-wrap:wrap">
         ${rmode==='padrao' && html`<button class="btn sm" onClick=${async ()=>{ await copy(); onLog?.({ op:'export', target_kind:'project', target_id:project?.id, detail:{ format:'report', via:'copy' } }); }} disabled=${enabled.size===0}>${copied?t('rep.copied'):t('rep.copy')}</button>
           <button class="btn sm primary" onClick=${()=>{ window.print(); onLog?.({ op:'export', target_kind:'project', target_id:project?.id, detail:{ format:'report', via:'print' } }); }} disabled=${enabled.size===0}>${t('rep.print')}</button>`}
-        ${rmode==='ati' && html`<button class="btn sm primary" onClick=${()=>{ exportTransparencyReader(docs, codes, allCodings, memos||[], project, anonAuthors, pageOfR, aiDecl, histDecl, designDecl); onLog?.({ op:'export', target_kind:'project', target_id:project?.id, detail:{ format:'ati' } }); }} disabled=${docs.length===0}>${t('rep.exportHtml')}</button>`}
-        ${rmode==='w3c' && html`<button class="btn sm primary" onClick=${()=>{ exportWebAnnotations(docs, codes, allCodings, memos||[], project, anonAuthors, pageOfR, aiDecl, histDecl, designDecl); onLog?.({ op:'export', target_kind:'project', target_id:project?.id, detail:{ format:'w3c' } }); }} disabled=${docs.length===0}>${t('rep.exportJson')}</button>`}
+        ${rmode==='ati' && html`<button class="btn sm primary" onClick=${()=>exportar('ati', exportTransparencyReader)} disabled=${docs.length===0}>${t('rep.exportHtml')}</button>`}
+        ${rmode==='w3c' && html`<button class="btn sm primary" onClick=${()=>exportar('w3c', exportWebAnnotations)} disabled=${docs.length===0}>${t('rep.exportJson')}</button>`}
       </div>
+      ${expErr && html`<div class="err" role="alert" style="flex-basis:100%;margin:0">${expErr}</div>`}
     </div>
     <div class="pane-body scroll" style="display:flex;gap:0;align-items:flex-start">
 
@@ -33611,6 +33704,7 @@ function IAAnalisarPanel({ project, docs, codes, codeById, codePath, allCodings,
             <summary class="field-label" style="font-weight:400">${t('iap.otherMemos',{n:injectableMemos.length})}</summary>
             ${injectableMemos.length===0 && html`<div class="meta" style="padding:4px 0 0 18px">${t('iap.noOtherMemos')}</div>`}
             ${memosModelo.fora>0 && html`<div class="meta" style="padding:4px 0 0 18px">${t('iap.redactedMemosOut',{n:memosModelo.fora})}</div>`}
+            ${memosModelo.pendentes>0 && html`<div class="meta" style="padding:4px 0 0 18px">${t('iap.pendingMemosOut',{n:memosModelo.pendentes})}</div>`}
             ${injectableMemos.map(m=>html`<label key=${memoKey(m)} class="row" style="gap:7px;font-size:12px;cursor:pointer;align-items:center;padding:2px 0 2px 18px">
               <input type="checkbox" checked=${injectSel.has(memoKey(m))} onChange=${()=>toggleInject(memoKey(m))} />
               <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${memoName(m)}</span>
@@ -34217,6 +34311,7 @@ function IAOrganizarPanel({ onLog, onSnapshot, project, docs, codes, codeById, c
             <summary class="field-label" style="font-weight:400">${t('iap.otherMemos',{n:injectableMemos.length})}</summary>
             ${injectableMemos.length===0 && html`<div class="meta" style="padding:4px 0 0 18px">${t('iap.noOtherMemos')}</div>`}
             ${memosModelo.fora>0 && html`<div class="meta" style="padding:4px 0 0 18px">${t('iap.redactedMemosOut',{n:memosModelo.fora})}</div>`}
+            ${memosModelo.pendentes>0 && html`<div class="meta" style="padding:4px 0 0 18px">${t('iap.pendingMemosOut',{n:memosModelo.pendentes})}</div>`}
             ${injectableMemos.map(m=>html`<label key=${memoKey(m)} class="row" style="gap:7px;font-size:12px;cursor:pointer;align-items:center;padding:2px 0 2px 18px">
               <input type="checkbox" checked=${injectSel.has(memoKey(m))} onChange=${()=>toggleInject(memoKey(m))} />
               <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${memoName(m)}</span>
@@ -35184,6 +35279,7 @@ function IACategorizarPanel({ onLog, project, docs, cats, codePath, allValues, s
             <summary class="field-label" style="font-weight:400">${t('iap.otherMemos',{n:injectableMemos.length})}</summary>
             ${injectableMemos.length===0 && html`<div class="meta" style="padding:4px 0 0 18px">${t('iap.noOtherMemos')}</div>`}
             ${memosModelo.fora>0 && html`<div class="meta" style="padding:4px 0 0 18px">${t('iap.redactedMemosOut',{n:memosModelo.fora})}</div>`}
+            ${memosModelo.pendentes>0 && html`<div class="meta" style="padding:4px 0 0 18px">${t('iap.pendingMemosOut',{n:memosModelo.pendentes})}</div>`}
             ${injectableMemos.map(m=>html`<label key=${memoKey(m)} class="row" style="gap:7px;font-size:12px;cursor:pointer;align-items:center;padding:2px 0 2px 18px">
               <input type="checkbox" checked=${injectSel.has(memoKey(m))} onChange=${()=>toggleInject(memoKey(m))} />
               <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${memoName(m)}</span>
@@ -36249,6 +36345,7 @@ function IACodificacaoPanel({ onLog, project, docs, codes, codeById, codePath, s
             <summary class="field-label" style="font-weight:400">${t('iap.otherMemos',{n:injectableMemos.length})}</summary>
             ${injectableMemos.length===0 && html`<div class="meta" style="padding:4px 0 0 18px">${t('iap.noOtherMemos')}</div>`}
             ${memosModelo.fora>0 && html`<div class="meta" style="padding:4px 0 0 18px">${t('iap.redactedMemosOut',{n:memosModelo.fora})}</div>`}
+            ${memosModelo.pendentes>0 && html`<div class="meta" style="padding:4px 0 0 18px">${t('iap.pendingMemosOut',{n:memosModelo.pendentes})}</div>`}
             ${injectableMemos.map(m=>html`<label key=${memoKey(m)} class="row" style="gap:7px;font-size:12px;cursor:pointer;align-items:center;padding:2px 0 2px 18px">
               <input type="checkbox" checked=${injectSel.has(memoKey(m))} onChange=${()=>toggleInject(memoKey(m))} />
               <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${memoName(m)}</span>
@@ -36989,7 +37086,16 @@ function makeQlToolRunner(ctx){
         const quem = new Set(analyticCodings.map(c=>authorLabel(c.author_name)));
         if(camadas.length > 1 || quem.size > 1)
           notes.push(`As contagens somam aplicações de código, de todas as camadas e de todos os codificadores (${camadas.join(' e ')}; ${quem.size} codificador(es)): o mesmo pedaço de texto marcado por três pessoas conta 3. list_codings devolve pedaços de texto e, por padrão, uma camada por documento; os dois números não se comparam diretamente.`);
-        return { items: raiz.filter(c=>!redIds.has(c.id)).map(c=>monta(c,1)), total: codes.filter(c=>!redIds.has(c.id)).length, notes };
+        // `total` counts what THIS call covers: with parent_id, the codes under that parent (at any
+        // depth), not the whole project, which made a model read a branch of 4 as "4 of 665".
+        // Walked with a visited set, so a cycle in parent_id cannot loop (S05).
+        let total;
+        if(a.parent_id){
+          const visto = new Set(), pilha = [...(kidsOf[a.parent_id]||[])];
+          while(pilha.length){ const k = pilha.pop(); if(visto.has(k.id)) continue; visto.add(k.id); pilha.push(...(kidsOf[k.id]||[])); }
+          total = [...visto].filter(id=>!redIds.has(id)).length;
+        } else total = codes.filter(c=>!redIds.has(c.id)).length;
+        return { items: raiz.filter(c=>!redIds.has(c.id)).map(c=>monta(c,1)), total, notes };
       }
       case 'list_codings': {
         const ordem = a.order || 'spread';

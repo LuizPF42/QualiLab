@@ -14,11 +14,29 @@
    "nova versao disponivel · recarregar" na barra de status; o clique manda SKIP_WAITING.
    Sem isso, SW e a maquina de mascarar deploy que o resto do repo existe para evitar. */
 const SHELL_CACHE = 'ql-shell-v1';
-const DEPS_CACHE = 'ql-deps-v1';
+// v2: the v1 cache may hold unpinned URLs from before pinnedCdnUrl; `activate` drops it.
+const DEPS_CACHE = 'ql-deps-v2';
 // cdn.sheetjs.com entrou na 1.4.64: o SheetJS passou a vir do fabricante na 1.4.57 (S04) e esta
 // lista ficou para tras, entao o app instalado nao importava .xlsx sem rede. A URL de la tambem e
 // pinada em versao (xlsx-0.20.3), a mesma condicao que torna o cache-first seguro nos outros dois.
 const CDN_HOSTS = ['cdn.jsdelivr.net', 'esm.sh', 'cdn.sheetjs.com'];
+/* ONLY a URL that names an exact version is immutable, and so only it may be served cache-first
+   (auditoria de out/2026). Before, ANY GET to these hosts was cached forever: an unpinned URL
+   (`/npm/pkg/+esm`, a `@latest`, a range) would keep the first copy it ever saw, and the "new
+   version" chip of the app would not reach it. Pinned = an `@x.y.z` in the path (jsdelivr and
+   esm.sh, including the second hops of the esm.sh shim), the `xlsx-x.y.z/` folder of SheetJS, or
+   an esm.sh build path (`/v135/...`, `/stable/...`), which esm.sh itself pins. Anything else goes to
+   the network untouched. tests/sw_cdn.test.mjs reads this function out of this file. */
+// SW-PINNED-START
+function pinnedCdnUrl(u) {
+  if (!CDN_HOSTS.includes(u.hostname)) return false;
+  const p = u.pathname;
+  if (/@\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?(?:\/|$)/.test(p)) return true;
+  if (u.hostname === 'cdn.sheetjs.com' && /^\/xlsx-\d+\.\d+\.\d+\//.test(p)) return true;
+  if (u.hostname === 'esm.sh' && /^\/(?:v\d+|stable)\//.test(p)) return true;
+  return false;
+}
+// SW-PINNED-END
 
 self.addEventListener('install', (e) => {
   /* O worker novo fica em waiting ate o SKIP_WAITING (toast) — mas o PRE-CACHE do shell roda
@@ -72,8 +90,8 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // 2. CDN pinada: cache-first (URL com versao exata e imutavel)
-  if (CDN_HOSTS.includes(url.hostname)) {
+  // 2. CDN pinada: cache-first (URL com versao exata e imutavel); sem versao, o SW nao toca
+  if (pinnedCdnUrl(url)) {
     e.respondWith((async () => {
       const cache = await caches.open(DEPS_CACHE);
       const hit = await cache.match(req);

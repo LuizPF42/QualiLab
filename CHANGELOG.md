@@ -14,6 +14,36 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.91 (20/11/2026)
+
+### Oito consertos pequenos, todos de coisas que falhavam caladas
+
+- **Nota sobre trecho censurado não escapa mais para a IA logo que a tela abre.** Nas quatro telas
+  de IA, a nota escrita sobre um trecho censurado só era reconhecida depois que as codificações do
+  projeto terminavam de carregar. Quem marcasse a nota e enviasse antes disso mandava a nota ao
+  modelo. Agora, enquanto o trecho de uma nota não é conhecido, ela fica de fora, e a tela diz
+  quantas notas estão esperando. Quando as codificações chegam, as que não são sobre censura voltam.
+- **Importar `.qdpx`: documento de texto sem conteúdo no pacote é contado.** Se o arquivo
+  declarava um documento cujo texto não estava dentro do pacote, ele sumia da importação sem aviso.
+  Agora o resumo diz quantos ficaram de fora.
+- **Importar `.qualilab` com códigos em ciclo.** Um arquivo em que um código é, pela cadeia de pais,
+  ancestral de si mesmo deixava esses códigos fora de todas as árvores (e a nuvem recusava as
+  linhas). O ciclo agora é quebrado na importação: o código que o fechava entra no primeiro nível,
+  com os filhos embaixo, e o resumo diz quantos foram.
+- **Relatório: exportar o leitor interativo ou o W3C relê as notas.** Os botões do próprio Relatório
+  usavam as notas que estavam na tela; se a carga delas tinha falhado, o arquivo saía sem nenhuma
+  nota analítica, sem aviso. Agora as notas são lidas de novo no clique, como no menu "exportar", e
+  uma falha aparece como erro em vez de um arquivo incompleto.
+- **Excluir um projeto na nuvem apaga todos os espelhos.** A limpeza parava nos 100 primeiros, e o
+  resto ficava guardado no servidor, sem ninguém poder alcançá-lo depois. Agora vão todos, e uma
+  falha interrompe a exclusão antes de apagar o projeto, para que ela possa ser repetida.
+- **Escape fecha o menu do botão direito no painel de códigos**, como já fechava os outros menus.
+- **O app instalado (PWA) só guarda para uso offline as bibliotecas com versão fixa.** Antes guardava
+  qualquer arquivo vindo desses endereços, e um arquivo sem versão podia ficar velho para sempre.
+- **Explorar com IA: contar um ramo da árvore de códigos dá o número do ramo.** Quando o modelo
+  pedia os códigos de uma família, o total da resposta era o do projeto inteiro, e ele podia concluir
+  que faltavam páginas. Agora o total conta só os códigos daquele ramo.
+
 ## 1.4.90 (15/11/2026)
 
 ### Exportar QDPX: você escolhe quais codificações levar
