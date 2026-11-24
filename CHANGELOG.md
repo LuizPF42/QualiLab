@@ -14,6 +14,20 @@ número ao relatar um problema**: sem ele não há como saber qual build o seu n
 > Ao publicar uma versão: suba o `QUALILAB_VERSION`, acrescente a seção aqui **antes** de
 > gerar (o `gen-estavel.sh` recusa publicar uma versão sem seção) e regenere.
 
+## 1.4.92 (24/11/2026)
+
+### Excluir documento ou código voltou a funcionar em arquivo e no rascunho
+
+Desde a 1.4.59, excluir um documento num projeto salvo em arquivo (`.qualilab`) ou no rascunho
+falhava com a mensagem `Não foi possível remover o documento: (codingIds || []).map is not a
+function`. Excluir um código falhava do mesmo jeito. Projetos na nuvem não eram afetados.
+
+- As duas exclusões voltaram a funcionar. As conexões que usavam um trecho do item excluído como
+  evidência continuam existindo e só perdem essa âncora, como já era a regra.
+- **Se você viu esse erro**, recarregue a página antes de tentar de novo. A falha acontecia no
+  meio da exclusão, antes de o arquivo ser salvo: sem outra edição depois do erro, o arquivo está
+  como antes; com outra edição, o documento pode já ter saído naquela gravação.
+
 ## 1.4.91 (20/11/2026)
 
 ### Oito consertos pequenos, todos de coisas que falhavam caladas

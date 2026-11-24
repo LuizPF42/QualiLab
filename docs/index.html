@@ -992,7 +992,7 @@ try {
 // motivo pratico: sem build nem cache-busting, o pesquisador que relata um problema nao tem
 // como dizer QUAL build ele esta usando (o navegador pode estar servindo uma copia antiga).
 // A cada release, suba isto E acrescente a entrada no CHANGELOG.md.
-const QUALILAB_VERSION = '1.4.91';
+const QUALILAB_VERSION = '1.4.92';
 // QUALILAB_SCHEMA_VERSION — a versao do BANCO que este app espera. Nao e a do app: muda so quando o
 // app passa a PRECISAR de algo novo no servidor (tabela, coluna, funcao que ele chama). O assistente
 // do servidor compara com o que a qualilab_server_check() do banco responde e, se o servidor estiver
@@ -16982,14 +16982,16 @@ function linksOfNode(links, kind, id) {
    ancora e deixa o link vivo — a evidencia sustenta a afirmacao, nao E a afirmacao, e destruir o
    julgamento de alguem porque um grifo saiu seria perda silenciosa. */
 function linksAfterNodeDelete(links, kind, ids) {
-  const morto = new Set((ids || []).map(String));
+  // Lista OU Set: os stores Local e Arquivo passam Set (Array.from aceita os dois).
+  const morto = new Set(Array.from(ids || [], String));
   // `!l ||` MANTERIA o nulo na lista (e o proximo a ler `l.id` estouraria): nulo nao e conexao.
   return (links || []).filter(l => !!l && !(
     (l.origin_kind === kind && morto.has(String(l.origin_id))) ||
     (l.target_kind === kind && morto.has(String(l.target_id)))));
 }
 function linksAfterCodingDelete(links, codingIds) {
-  const morto = new Set((codingIds || []).map(String));
+  // Lista OU Set: deleteDocument e deleteCode dos stores passam Set (era .map, e quebrava).
+  const morto = new Set(Array.from(codingIds || [], String));
   return (links || []).map(l => (l && l.evidence_coding_id && morto.has(String(l.evidence_coding_id)))
     ? { ...l, evidence_coding_id: null } : l);
 }
